@@ -1,0 +1,23 @@
+{
+  "name": "directhire",
+  "version": "1.0.0",
+  "description": "Direct Hire — AI Global Job Marketplace",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+
+  "scripts": {
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "start": "concurrently \"npm run start --workspace=backend\" \"npm run start --workspace=frontend\"",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:seed": "npm run db:seed --workspace=backend",
+    "db:studio": "npm run db:studio --workspace=backend",
+    "generate-secrets": "node scripts/generate-secrets.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

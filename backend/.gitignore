@@ -1,0 +1,36 @@
+# Environment — NEVER commit
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env*.local
+**/.env
+**/.env.local
+
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Prisma generated
+src/generated/
+
+# Uploads (local storage dev)
+.uploads/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp

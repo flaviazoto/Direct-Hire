@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node_modules/.bin/prisma generate:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(node -e \"require\\('bullmq'\\)\")",
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"API_PREFIX\\\\|fetch.*api\\\\|proxy\\\\|rewrites\\\\|NEXT_PUBLIC_API\" c:/Users/FLAVIA/directhire-v2-complete/directhire-v2/frontend/src/lib/api-client.ts c:/Users/FLAVIA/directhire-v2-complete/directhire-v2/frontend/next.config.*)",
+      "Bash(find \"c:\\\\Users\\\\FLAVIA\\\\directhire-v2-complete\\\\directhire-v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\employer\" -name \"*.tsx\" -exec grep -l \"candidates\\\\|workers\\\\|locks\" {} \\\\;)",
+      "Bash(powershell -Command ' *)",
+      "Bash(npm install *)",
+      "Bash(npx next *)"
+    ]
+  }
+}
