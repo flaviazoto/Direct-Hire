@@ -133,8 +133,16 @@ function VerifyEmailOtpContent() {
   const [success,   setSuccess]   = useState("");
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN);
 
-  const code     = digits.join("");
+  const code      = digits.join("");
   const allFilled = code.length === 6;
+
+  // Auto-send code on mount so user always has a fresh code when they arrive
+  useEffect(() => {
+    if (email) {
+      authApi.sendVerificationCode(email).catch(console.error);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Countdown timer
   useEffect(() => {

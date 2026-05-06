@@ -56,6 +56,12 @@ function CallbackContent() {
     })
       .then(async (res) => {
         if (!res.ok) throw new Error("exchange_failed");
+        const json = await res.json() as { data?: { accessToken?: string; token?: string; role?: string } };
+        const tok  = json.data?.accessToken ?? json.data?.token;
+        if (tok) {
+          localStorage.setItem("dh_token", tok);
+          localStorage.setItem("dh_role", json.data?.role ?? "");
+        }
         await refresh();
         router.replace(safeRedirect);
       })

@@ -13,10 +13,14 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { publicJobsApi, workerApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { Nav } from "@/components/Nav";
 import { ToastDisplay, type ToastData } from "@/components/ui";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -325,26 +329,188 @@ function FilterSidebar({
 
 // ── Apply modal ────────────────────────────────────────────────────────────────
 
-function ApplyModal({
-  job, onSubmit, onCancel, loading,
+interface FeeData {
+  feeCents:   number;
+  feeDisplay: string;
+  breakdown: {
+    base:             number;
+    regionMultiplier: number;
+    salaryMultiplier: number;
+    conversionAdj:    number;
+    matchScore:       number;
+  };
+}
+
+// ── ApplyPaymentForm (must render inside <Elements>) ─────────────────────────
+
+function ApplyPaymentForm({
+  jobId,
+  paymentIntentId,
+  coverLetter,
+  onSuccess,
+  onBack,
 }: {
-  job: Job;
-  onSubmit: (coverLetter: string) => void;
-  onCancel: () => void;
-  loading: boolean;
+  jobId:           string;
+  paymentIntentId: string;
+  coverLetter:     string;
+  onSuccess:       () => void;
+  onBack:          () => void;
 }) {
-  const [coverLetter, setCoverLetter] = useState("");
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [paying, setPaying]   = useState(false);
+  const [error,  setError]    = useState("");
+
+  async function handlePay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setPaying(true);
+    setError("");
+
+    const { error: stripeErr } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: { return_url: window.location.href },
+    });
+
+    if (stripeErr) {
+      setError(stripeErr.message ?? "Payment failed. Please try again.");
+      setPaying(false);
+      return;
+    }
+
+    // Payment succeeded — confirm with backend to create the application
+    const res = await workerApi.confirmApplication(jobId, {
+      paymentIntentId,
+      ...(coverLetter ? { coverLetter } : {}),
+    });
+
+    if (res.success) {
+      onSuccess();
+    } else {
+      setError((res as { error?: string }).error ?? "Application could not be confirmed. Contact support.");
+      setPaying(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handlePay}>
+      <div style={{ marginBottom: 16 }}>
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+      {error && (
+        <div style={{ fontSize: 12, color: "#f87171", marginBottom: 12 }}>{error}</div>
+      )}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={paying}
+          style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: paying ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={paying || !stripe || !elements}
+          style={{ flex: 1, background: paying ? "rgba(20,184,166,0.4)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", borderRadius: 10, padding: "9px 22px", color: "#fff", cursor: paying ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          {paying && <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
+          {paying ? "Processing…" : "Pay & submit application"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ── ApplyModal ────────────────────────────────────────────────────────────────
+
+function ApplyModal({
+  job,
+  onSuccess,
+  onCancel,
+}: {
+  job:       Job;
+  onSuccess: (jobId: string) => void;
+  onCancel:  () => void;
+}) {
+  const [phase,           setPhase]           = useState<"form" | "payment">("form");
+  const [coverLetter,     setCoverLetter]      = useState("");
+  const [feeLoading,      setFeeLoading]       = useState(true);
+  const [fee,             setFee]              = useState<FeeData | null>(null);
+  const [showBreakdown,   setShowBreakdown]    = useState(false);
+  const [submitting,      setSubmitting]       = useState(false);
+  const [submitError,     setSubmitError]      = useState("");
+  const [clientSecret,    setClientSecret]     = useState("");
+  const [paymentIntentId, setPaymentIntentId]  = useState("");
+  const [actualFeeCents,  setActualFeeCents]   = useState(0);
+  const [actualFeeDisplay, setActualFeeDisplay] = useState("");
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCancel(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape" && !submitting) onCancel(); }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, [onCancel, submitting]);
+
+  useEffect(() => {
+    workerApi.getApplicationFee(job.id)
+      .then((res: { success: boolean; data?: FeeData }) => {
+        if (res.success && res.data) setFee(res.data);
+      })
+      .catch(() => {/* non-blocking — still allow apply */})
+      .finally(() => setFeeLoading(false));
+  }, [job.id]);
+
+  const previewFeeCents   = fee?.feeCents ?? 0;
+  const previewFeeDisplay = fee?.feeDisplay ?? "";
+
+  async function handleApply() {
+    setSubmitting(true);
+    setSubmitError("");
+
+    const res = await workerApi.applyToJob(
+      job.id,
+      coverLetter.trim() ? { cover_letter: coverLetter.trim() } : undefined,
+    ) as {
+      success: boolean;
+      data?: {
+        requiresPayment: boolean;
+        clientSecret?:   string;
+        paymentIntentId?: string;
+        feeCents?:       number;
+        feeDisplay?:     string;
+        applicationId?:  string;
+      };
+      error?: string;
+    };
+
+    if (!res.success) {
+      setSubmitting(false);
+      setSubmitError(res.error ?? "Could not submit application. Please try again.");
+      return;
+    }
+
+    const data = res.data!;
+
+    if (!data.requiresPayment) {
+      // Free application — done
+      onSuccess(job.id);
+      return;
+    }
+
+    // Paid — move to payment phase
+    setClientSecret(data.clientSecret ?? "");
+    setPaymentIntentId(data.paymentIntentId ?? "");
+    setActualFeeCents(data.feeCents ?? 0);
+    setActualFeeDisplay(data.feeDisplay ?? "");
+    setSubmitting(false);
+    setPhase("payment");
+  }
 
   return (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+      onClick={e => { if (e.target === e.currentTarget && !submitting) onCancel(); }}
     >
       <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 28, maxWidth: 480, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
@@ -352,33 +518,104 @@ function ApplyModal({
         </div>
         <div style={{ fontSize: 12, color: "#71717a", marginBottom: 18 }}>{job.companyName}</div>
 
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-          Cover letter (optional)
-        </label>
-        <textarea
-          value={coverLetter}
-          onChange={e => setCoverLetter(e.target.value)}
-          placeholder="Tell the employer why you're a great fit..."
-          rows={5}
-          style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 12px", color: "#e4e4e7", fontSize: 13, fontFamily: "inherit", lineHeight: 1.6, resize: "vertical", outline: "none", marginBottom: 20 }}
-        />
+        {/* ── Phase 1: cover letter + fee preview ── */}
+        {phase === "form" && (
+          <>
+            {/* Fee card */}
+            <div style={{ marginBottom: 18, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {feeLoading ? (
+                <span style={{ fontSize: 13, color: "#555" }}>Calculating fee…</span>
+              ) : previewFeeCents === 0 ? (
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#4ade80" }}>✓ Free application</span>
+              ) : (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#a1a1aa" }}>Application fee</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{previewFeeDisplay}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowBreakdown(v => !v)}
+                    style={{ marginTop: 6, fontSize: 11, color: "#555", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+                  >
+                    {showBreakdown ? "Hide" : "Show"} breakdown ▾
+                  </button>
+                  {showBreakdown && fee?.breakdown && (
+                    <div style={{ marginTop: 8, fontSize: 11, color: "#555", lineHeight: 1.8 }}>
+                      <div>Base fee: ${(fee.breakdown.base / 100).toFixed(2)}</div>
+                      <div>Region demand: ×{fee.breakdown.regionMultiplier.toFixed(1)}</div>
+                      <div>Salary tier: ×{fee.breakdown.salaryMultiplier}</div>
+                      <div>Match adjustment: ×{fee.breakdown.conversionAdj}</div>
+                      <div style={{ marginTop: 4, color: "#71717a" }}>Your match score: {fee.breakdown.matchScore.toFixed(0)}%</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            onClick={onCancel}
-            style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSubmit(coverLetter.trim())}
-            disabled={loading}
-            style={{ background: loading ? "rgba(0,144,255,0.4)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", borderRadius: 10, padding: "9px 22px", color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
-          >
-            {loading && <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
-            Submit application
-          </button>
-        </div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Cover letter (optional)
+            </label>
+            <textarea
+              value={coverLetter}
+              onChange={e => setCoverLetter(e.target.value)}
+              placeholder="Tell the employer why you're a great fit..."
+              rows={5}
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 12px", color: "#e4e4e7", fontSize: 13, fontFamily: "inherit", lineHeight: 1.6, resize: "vertical", outline: "none", marginBottom: 20 }}
+            />
+
+            {submitError && (
+              <div style={{ fontSize: 12, color: "#f87171", marginBottom: 12 }}>{submitError}</div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={onCancel}
+                disabled={submitting}
+                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: submitting ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApply}
+                disabled={submitting || feeLoading}
+                style={{ background: submitting || feeLoading ? "rgba(20,184,166,0.4)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", borderRadius: 10, padding: "9px 22px", color: "#fff", cursor: submitting || feeLoading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
+              >
+                {submitting && <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid #fff", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
+                {submitting
+                  ? "Processing…"
+                  : previewFeeCents > 0
+                    ? `Apply & Pay ${previewFeeDisplay}`
+                    : "Submit application"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Phase 2: Stripe inline payment ── */}
+        {phase === "payment" && clientSecret && (
+          <>
+            {/* Confirmed cost summary */}
+            <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <span style={{ color: "#a1a1aa" }}>Application fee</span>
+                <span style={{ fontWeight: 700, color: "#fff" }}>{actualFeeDisplay || `$${(actualFeeCents / 100).toFixed(2)}`}</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#14b8a6", marginTop: 4 }}>
+                One-time fee · non-refundable
+              </div>
+            </div>
+
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night", variables: { colorPrimary: "#14b8a6" } } }}>
+              <ApplyPaymentForm
+                jobId={job.id}
+                paymentIntentId={paymentIntentId}
+                coverLetter={coverLetter.trim()}
+                onSuccess={() => onSuccess(job.id)}
+                onBack={() => { setPhase("form"); setSubmitError(""); }}
+              />
+            </Elements>
+          </>
+        )}
       </div>
     </div>
   );
@@ -664,7 +901,7 @@ function JobBoardContent() {
   const auth: AuthState = authLoading
     ? { loaded: false, isLoggedIn: false }
     : rawAuth.isLoggedIn
-      ? { loaded: true, isLoggedIn: true, role: rawAuth.role, accountStatus: rawAuth.accountStatus }
+      ? { loaded: true, isLoggedIn: true, role: rawAuth.role, accountStatus: rawAuth.user?.accountStatus }
       : { loaded: true, isLoggedIn: false };
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -687,6 +924,14 @@ function JobBoardContent() {
       }
     });
   }, [authIsWorker]);
+
+  // Clean up any legacy Stripe Checkout query params left in the URL
+  useEffect(() => {
+    const hasCancelParam = searchParams.get("apply_canceled") === "1";
+    const hasAppliedParam = searchParams.get("applied") === "1";
+    if (hasCancelParam || hasAppliedParam) router.replace("/jobs");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Fetch meta (categories + countries) once ─────────────────────────────
 
@@ -780,26 +1025,10 @@ function JobBoardContent() {
     if (job) setApplyModalJob(job);
   }
 
-  async function handleSubmitApplication(coverLetter: string) {
-    if (!applyModalJob) return;
-    const jobId = applyModalJob.id;
-    setApplyingId(jobId);
-    const res = await workerApi.applyToJob(jobId, coverLetter ? { cover_letter: coverLetter } : undefined);
-    setApplyingId(null);
-    if (!res.success) {
-      const code = (res as { error?: string }).error;
-      if (code === "Already applied") {
-        setAppliedJobIds(prev => new Set([...prev, jobId]));
-        setApplyModalJob(null);
-        showToast("Already applied to this job.", "err");
-      } else {
-        showToast(code ?? "Could not submit application.", "err");
-      }
-      return;
-    }
-    setAppliedJobIds(prev => new Set([...prev, jobId]));
+  function handleApplySuccess(jobId: string) {
     setApplyModalJob(null);
-    showToast("Application submitted!", "ok");
+    setAppliedJobIds(prev => new Set([...prev, jobId]));
+    showToast("Application submitted successfully!", "ok");
   }
 
   // ── Sort bar ──────────────────────────────────────────────────────────────
@@ -827,9 +1056,8 @@ function JobBoardContent() {
       {applyModalJob && (
         <ApplyModal
           job={applyModalJob}
-          onSubmit={handleSubmitApplication}
+          onSuccess={handleApplySuccess}
           onCancel={() => setApplyModalJob(null)}
-          loading={applyingId === applyModalJob.id}
         />
       )}
 

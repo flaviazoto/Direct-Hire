@@ -1,89 +1,158 @@
 "use client";
 // src/context/AuthContext.tsx
-// Cookie-based auth context — no localStorage, no token handling.
-// Calls /api/user/profile once on mount via the checkAuth() helper
-// (which never triggers the 401 → /login redirect used by other API calls).
-// All pages share this single auth check via React context.
+// localStorage-first auth. Reads dh_token on mount, hits /api/user/profile to
+// confirm validity, and handles silent token refresh when the access token expires.
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { checkAuth, authApi } from "@/lib/api-client";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+const API = "/api";
 
 export interface AuthUser {
-  isLoggedIn:    true;
+  id:            string;
+  email:         string;
+  firstName?:    string;
+  lastName?:     string;
   role:          string;
-  accountStatus: string | undefined;
-  firstName:     string | undefined;
+  accountStatus?: string;
 }
 
-export type AuthState =
-  | { isLoggedIn: false }
-  | AuthUser;
-
-interface AuthContextValue {
-  auth:    AuthState;
-  loading: boolean;
-  /** Re-runs the auth check — call after login or meaningful state change. */
-  refresh: () => Promise<void>;
-  logout:  () => Promise<void>;
+interface AuthState {
+  isLoggedIn: boolean;
+  user:       AuthUser | null;
+  role:       string | null;
+  firstName:  string | null;
+  loading:    boolean;
 }
 
-// ── Context ───────────────────────────────────────────────────────────────────
+interface AuthContextType {
+  auth:        AuthState;
+  loading:     boolean;
+  refresh:     () => Promise<void>;
+  logout:      () => Promise<void>;
+}
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-// ── Provider ──────────────────────────────────────────────────────────────────
+function getToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router  = useRouter();
-  const [auth,    setAuth]    = useState<AuthState>({ isLoggedIn: false });
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [auth, setAuth] = useState<AuthState>({
+    isLoggedIn: false,
+    user:       null,
+    role:       null,
+    firstName:  null,
+    loading:    true,
+  });
+
+  const setLoggedOut = useCallback(() => {
+    localStorage.removeItem("dh_token");
+    localStorage.removeItem("dh_role");
+    setAuth({ isLoggedIn: false, user: null, role: null, firstName: null, loading: false });
+  }, []);
+
+  const applyProfile = useCallback((data: Record<string, unknown>) => {
+    const u = (data.profile ?? data.user ?? data) as Record<string, unknown>;
+    const userBase = (data.user ?? {}) as Record<string, unknown>;
+    const user: AuthUser = {
+      id:            (userBase.id   ?? u.id   ?? "") as string,
+      email:         (userBase.email ?? u.email ?? "") as string,
+      firstName:     (u.firstName   ?? userBase.firstName  ?? "") as string,
+      lastName:      (u.lastName    ?? userBase.lastName   ?? "") as string,
+      role:          (userBase.role  ?? u.role  ?? localStorage.getItem("dh_role") ?? "") as string,
+      accountStatus: (userBase.accountStatus ?? u.accountStatus ?? "") as string,
+    };
+    setAuth({ isLoggedIn: true, user, role: user.role, firstName: user.firstName ?? null, loading: false });
+  }, []);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const token = getToken();
+    if (!token) { setLoggedOut(); return; }
+
     try {
-      const result = await checkAuth();
-      if (result.isLoggedIn) {
-        setAuth({
-          isLoggedIn:    true,
-          role:          result.role          ?? "",
-          accountStatus: result.accountStatus,
-          firstName:     result.firstName,
-        });
-      } else {
-        setAuth({ isLoggedIn: false });
+      const res = await fetch(`${API}/user/profile`, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as Record<string, unknown>;
+        applyProfile(data.data ? (data.data as Record<string, unknown>) : data);
+        return;
       }
-    } finally {
-      setLoading(false);
+
+      if (res.status === 401) {
+        // Try silent cookie-based refresh
+        const rr = await fetch(`${API}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (rr.ok) {
+          const rd = (await rr.json()) as Record<string, unknown>;
+          const d  = (rd.data ?? rd) as Record<string, unknown>;
+          const newToken = (d.accessToken ?? d.token) as string | undefined;
+          if (newToken) {
+            localStorage.setItem("dh_token", newToken);
+            if (d.role) localStorage.setItem("dh_role", d.role as string);
+          }
+
+          const retry = await fetch(`${API}/user/profile`, {
+            headers: {
+              Authorization: `Bearer ${newToken ?? token}`,
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          });
+
+          if (retry.ok) {
+            const data = (await retry.json()) as Record<string, unknown>;
+            applyProfile(data.data ? (data.data as Record<string, unknown>) : data);
+            return;
+          }
+        }
+
+        setLoggedOut();
+        return;
+      }
+
+      // Any other error — don't log out, just mark loading done
+      setAuth((s) => ({ ...s, loading: false }));
+    } catch {
+      setAuth((s) => ({ ...s, loading: false }));
     }
-  }, []);
+  }, [applyProfile, setLoggedOut]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const logout = useCallback(async () => {
-    await authApi.logout();
-    setAuth({ isLoggedIn: false });
-    router.push("/");
-  }, [router]);
+    const token = getToken();
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method:      "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    } catch { /* ignore — clear locally regardless */ }
+    setLoggedOut();
+    router.push("/login");
+  }, [router, setLoggedOut]);
 
   return (
-    <AuthContext.Provider value={{ auth, loading, refresh, logout }}>
+    <AuthContext.Provider value={{ auth, loading: auth.loading, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
-export function useAuth(): AuthContextValue {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;

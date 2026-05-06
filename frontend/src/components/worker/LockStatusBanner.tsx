@@ -4,15 +4,22 @@
 // Returns null when not locked — safe to drop anywhere.
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface LockStatusData {
-  is_locked:        boolean;
-  lock_start_date?: string;
-  lock_expiry_date?: string;
-  lock_days?:       number;
+  is_locked: boolean;
+  lock?: {
+    id:               string;
+    lock_status:      string;
+    lock_start_date:  string;
+    lock_expiry_date: string;
+    lock_days:        number;
+    days_remaining:   number;
+    employer:         { company_name: string };
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -195,11 +202,12 @@ export default function LockStatusBanner() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
-  if (!status?.is_locked || !status.lock_expiry_date) return null;
+  if (!status?.is_locked || !status.lock) return null;
 
-  const daysLeft  = daysRemaining(status.lock_expiry_date);
-  const expiryStr = fmtLong(status.lock_expiry_date);
-  const sinceStr  = status.lock_start_date ? fmtShort(status.lock_start_date) : null;
+  const daysLeft   = daysRemaining(status.lock.lock_expiry_date);
+  const expiryStr  = fmtLong(status.lock.lock_expiry_date);
+  const sinceStr   = status.lock.lock_start_date ? fmtShort(status.lock.lock_start_date) : null;
+  const companyName = status.lock.employer?.company_name ?? "An employer";
 
   return (
     <>
@@ -225,7 +233,7 @@ export default function LockStatusBanner() {
             Your profile is currently reserved
           </div>
           <div style={{ fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
-            An employer has reserved your profile until{" "}
+            <strong>{companyName}</strong> has reserved your profile until{" "}
             <strong>{expiryStr}</strong>.{" "}
             Other employers cannot proceed with hiring you during this time.
           </div>
@@ -243,6 +251,19 @@ export default function LockStatusBanner() {
               </>
             )}
           </div>
+          <Link
+            href={`/worker/reservation/${status.lock.id}`}
+            style={{
+              fontSize: 12,
+              color: "#B45309",
+              fontWeight: 600,
+              textDecoration: "underline",
+              marginTop: 4,
+              display: "inline-block",
+            }}
+          >
+            View reservation details →
+          </Link>
         </div>
 
         {/* CTA */}

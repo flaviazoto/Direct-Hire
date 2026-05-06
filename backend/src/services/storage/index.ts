@@ -1,6 +1,7 @@
 // backend/src/services/storage/index.ts
 import path from "path";
 import fs   from "fs";
+import { createClient } from "@supabase/supabase-js";
 import prisma from "../../lib/prisma";
 import type { FileType, UploadParams, UploadResult } from "../../types";
 
@@ -24,6 +25,25 @@ export const MAX_SIZE: Record<FileType, number> = {
   OTHER:               20 * 1024 * 1024,
 };
 
+// ── Supabase client — service role, bypasses RLS ──────────────
+function getStorageClient() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession:   false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+        },
+      },
+    }
+  );
+}
+
 // ── Local storage provider ─────────────────────────────────────
 async function localUpload(buffer: Buffer, filePath: string): Promise<string> {
   const dir      = path.join(process.cwd(), ".uploads", path.dirname(filePath));
@@ -41,14 +61,27 @@ async function localDelete(filePath: string): Promise<void> {
 
 // ── Supabase provider ─────────────────────────────────────────
 async function supabaseUpload(buffer: Buffer, filePath: string, mimeType: string, isPrivate: boolean): Promise<string> {
-  const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+  const client = getStorageClient();
   const bucket = process.env.SUPABASE_STORAGE_BUCKET!;
-  const { error } = await client.storage.from(bucket).upload(filePath, buffer, { contentType: mimeType, upsert: true });
-  if (error) throw new Error(`Supabase upload: ${error.message}`);
+
+  const { data, error } = await client.storage
+    .from(bucket)
+    .upload(filePath, buffer, { contentType: mimeType, upsert: true });
+
+  if (error) {
+    console.error("Storage upload failed:", {
+      message:    error.message,
+      bucket,
+      filePath,
+      supabaseUrl: process.env.SUPABASE_URL,
+      keyPrefix:   process.env.SUPABASE_SERVICE_KEY?.substring(0, 30),
+    });
+    throw new Error(`Supabase upload: ${error.message}`);
+  }
+
   if (isPrivate) return filePath;
-  const { data } = client.storage.from(bucket).getPublicUrl(filePath);
-  return data.publicUrl;
+  const { data: urlData } = client.storage.from(bucket).getPublicUrl(filePath);
+  return urlData.publicUrl;
 }
 
 // ── Main upload function ──────────────────────────────────────
@@ -89,8 +122,7 @@ export async function deleteFile(uploadId: string, userId: string): Promise<void
   if (!record) throw new Error("File not found");
 
   if (process.env.STORAGE_PROVIDER === "supabase") {
-    const { createClient } = await import("@supabase/supabase-js");
-    const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+    const client = getStorageClient();
     await client.storage.from(process.env.SUPABASE_STORAGE_BUCKET!).remove([record.filePath]);
   } else {
     await localDelete(record.filePath);

@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
 function EyeOpen() {
   return (
@@ -44,6 +45,78 @@ function LinkedInIcon() {
 function LoginPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { refresh }  = useAuth();
+
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const SLIDES = [
+    {
+      tag: "GLOBAL REACH",
+      headline: "Hire from\n190+ Countries",
+      metric: "2.4M+",
+      metricLabel: "Verified Workers",
+      body: "Our AI matches verified global talent with employers across every timezone — instantly.",
+      accentColor: "#0090FF",
+      secondaryColor: "#6366F1",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      ),
+      stats: [
+        { label: "Countries", value: "190+" },
+        { label: "Placements/mo", value: "1,400+" },
+      ],
+    },
+    {
+      tag: "AI POWERED",
+      headline: "Matched in\nMinutes, Not Weeks",
+      metric: "92%",
+      metricLabel: "Avg Match Score",
+      body: "Five-dimension AI scoring finds your perfect candidate before your coffee gets cold.",
+      accentColor: "#818cf8",
+      secondaryColor: "#0090FF",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      ),
+      stats: [
+        { label: "Avg match time", value: "< 24h" },
+        { label: "Active jobs", value: "847K" },
+      ],
+    },
+    {
+      tag: "TRUSTED PLATFORM",
+      headline: "Fraud-Free\nGlobal Hiring",
+      metric: "99.2%",
+      metricLabel: "Verified Profiles",
+      body: "Every profile is AI-screened for authenticity, so you hire with complete confidence.",
+      accentColor: "#10d9b5",
+      secondaryColor: "#0090FF",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+      ),
+      stats: [
+        { label: "Fraud rate", value: "< 0.1%" },
+        { label: "Profile checks", value: "50+" },
+      ],
+    },
+  ];
 
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
@@ -93,7 +166,13 @@ function LoginPageContent() {
     const res = await authApi.login({ email, password });
     setLoading(false);
     if (res.success) {
-      const d = res.data as { redirectTo?: string };
+      const d = res.data as { redirectTo?: string; accessToken?: string; token?: string; role?: string; user?: { role?: string } };
+      const tok = d.accessToken ?? d.token;
+      if (tok) {
+        localStorage.setItem("dh_token", tok);
+        localStorage.setItem("dh_role", d.role ?? d.user?.role ?? "");
+      }
+      await refresh();
       router.push(d.redirectTo ?? "/worker/dashboard");
     } else {
       const raw = res as { error?: string; accountStatus?: string };
@@ -158,7 +237,7 @@ function LoginPageContent() {
 
         {/* ── LEFT COLUMN ─────────────────────────────────────────────────────── */}
         <div className="login-left" style={{
-          width: "45%", background: "#f8fafc",
+          width: "45%", background: "#05080f",
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: "3rem 2rem",
         }}>
@@ -173,7 +252,7 @@ function LoginPageContent() {
               }}>
                 <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 11, color: "#fff" }}>DH</span>
               </div>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.3px" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "#ffffff", letterSpacing: "-0.3px" }}>
                 DirectHire
               </span>
             </div>
@@ -181,7 +260,7 @@ function LoginPageContent() {
             <div style={{ marginTop: "3rem" }}>
               <h1 style={{
                 fontFamily: "var(--font-display)", fontSize: "2rem", fontWeight: 700,
-                color: "#0f172a", letterSpacing: "-0.5px", margin: "0 0 8px",
+                color: "white", letterSpacing: "-0.5px", margin: "0 0 8px",
               }}>
                 Welcome back
               </h1>
@@ -274,7 +353,7 @@ function LoginPageContent() {
                       </svg>
                     )}
                   </div>
-                  <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#374151" }}>Remember for 30 days</span>
+                  <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "white" }}>Remember for 30 days</span>
                 </label>
                 <Link href="/forgot-password" style={{
                   fontFamily: "var(--font-body)", fontSize: 13, color: "#0090FF", textDecoration: "none", fontWeight: 500,
@@ -362,98 +441,124 @@ function LoginPageContent() {
         {/* ── RIGHT COLUMN ────────────────────────────────────────────────────── */}
         <div className="login-right-panel" style={{
           width: "55%",
-          background: "linear-gradient(145deg, #0a0a1a 0%, #0d1b3e 40%, #1a0a3e 100%)",
+          background: "linear-gradient(145deg, #050d1a 0%, #0a1628 40%, #0d1f3e 70%, #080f1e 100%)",
           position: "relative",
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
         }}>
-          {/* Blurred ellipses */}
-          <div aria-hidden style={{ position: "absolute", top: -100, right: -100, width: 600, height: 400, borderRadius: "50%", background: "rgba(0,144,255,0.3)", filter: "blur(60px)", opacity: 0.4, transform: "rotate(-20deg)", pointerEvents: "none" }} />
-          <div aria-hidden style={{ position: "absolute", bottom: -150, left: -50, width: 500, height: 500, borderRadius: "50%", background: "rgba(79,70,229,0.25)", filter: "blur(60px)", opacity: 0.4, pointerEvents: "none" }} />
-          <div aria-hidden style={{ position: "absolute", top: "40%", right: "5%", width: 300, height: 300, borderRadius: "50%", background: "rgba(0,200,255,0.15)", filter: "blur(60px)", opacity: 0.4, pointerEvents: "none" }} />
+          {/* Layer 1 — blue orb */}
+          <div aria-hidden style={{ position: "absolute", top: -100, right: -100, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,144,255,0.2) 0%, transparent 65%)", filter: "blur(80px)", pointerEvents: "none" }} />
+          {/* Layer 2 — purple orb */}
+          <div aria-hidden style={{ position: "absolute", bottom: -80, left: -60, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 65%)", filter: "blur(80px)", pointerEvents: "none" }} />
+          {/* Layer 3 — noise texture */}
+          <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.008) 2px, rgba(255,255,255,0.008) 4px)", pointerEvents: "none" }} />
+          {/* Layer 4 — glowing horizontal line */}
+          <div aria-hidden style={{ position: "absolute", top: "40%", left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent 0%, rgba(0,144,255,0.3) 30%, rgba(99,102,241,0.4) 50%, rgba(0,144,255,0.3) 70%, transparent 100%)", filter: "blur(1px)", pointerEvents: "none" }} />
+          {/* Layer 5 — corner accent top-left */}
+          <div aria-hidden style={{ position: "absolute", top: 0, left: 0, width: 200, height: 200, background: "linear-gradient(135deg, rgba(0,144,255,0.08) 0%, transparent 60%)", borderBottomRightRadius: "100%", pointerEvents: "none" }} />
 
-          {/* Grid overlay */}
-          <div aria-hidden style={{
-            position: "absolute", inset: 0, pointerEvents: "none",
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-          }} />
+          {/* Centered carousel */}
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2, padding: "0 2.5rem" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 340 }}>
+              {SLIDES.map((slide, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: i === 0 ? "relative" : "absolute",
+                    top: 0, left: 0, right: 0,
+                    opacity: activeSlide === i ? 1 : 0,
+                    transform: activeSlide === i ? "translateY(0)" : "translateY(16px)",
+                    transition: "opacity 0.7s ease, transform 0.7s ease",
+                    pointerEvents: activeSlide === i ? "auto" : "none",
+                    background: "rgba(255,255,255,0.04)",
+                    border: `1px solid ${slide.accentColor}33`,
+                    borderRadius: 24,
+                    padding: "2.25rem 2rem",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    boxShadow: `0 24px 80px rgba(0,0,0,0.5), 0 0 40px ${slide.accentColor}1a, inset 0 1px 0 rgba(255,255,255,0.08)`,
+                  }}
+                >
+                  {/* Tag pill */}
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: `${slide.accentColor}1a`,
+                    border: `1px solid ${slide.accentColor}33`,
+                    borderRadius: 100, padding: "3px 10px", marginBottom: 20,
+                  }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: slide.accentColor }} />
+                    <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, color: slide.accentColor, letterSpacing: "0.12em", textTransform: "uppercase" as const }}>
+                      {slide.tag}
+                    </span>
+                  </div>
 
-          {/* Floating card 1 — Platform Stats */}
-          <div style={{
-            position: "absolute", top: "15%", left: "8%",
-            background: "#ffffff", borderRadius: 16,
-            padding: "1.25rem 1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            minWidth: 200,
-            animation: "float 4s ease-in-out infinite",
-          }}>
-            <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Active Workers</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#111827", lineHeight: 1 }}>2.4M+</div>
-            <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#10b981", marginTop: 6 }}>↑ 12.5% this month</div>
-            <div style={{
-              marginTop: 12, width: 48, height: 48,
-              borderRadius: "50%",
-              border: "4px solid #0090FF",
-              borderRightColor: "transparent",
-              display: "inline-block",
-              transform: "rotate(-45deg)",
-            }} />
-          </div>
+                  {/* Icon */}
+                  <div style={{ color: slide.accentColor, marginBottom: 16, opacity: 0.9 }}>
+                    {slide.icon}
+                  </div>
 
-          {/* Floating card 2 — Jobs Matched */}
-          <div style={{
-            position: "absolute", top: "42%", right: "6%",
-            background: "#ffffff", borderRadius: 16,
-            padding: "1.25rem 1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            minWidth: 210,
-            animation: "float2 4s ease-in-out infinite",
-            animationDelay: "2s",
-          }}>
-            <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Jobs Matched</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 800, color: "#111827", lineHeight: 1 }}>847K</div>
-            <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#10b981", marginTop: 4 }}>↑ +3.89% this week</div>
-            {/* Mini bar chart */}
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 4, marginTop: 12, height: 32 }}>
-              {[0.45, 0.65, 0.5, 0.8, 1].map((h, i) => (
-                <div key={i} style={{
-                  flex: 1, borderRadius: 3,
-                  background: `rgba(0,144,255,${0.4 + h * 0.6})`,
-                  height: `${h * 100}%`,
-                }} />
+                  {/* Headline */}
+                  <h2 style={{
+                    fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700,
+                    color: "#fff", lineHeight: 1.2, margin: "0 0 20px", letterSpacing: "-0.5px",
+                  }}>
+                    {slide.headline.split("\n").map((line, j, arr) => (
+                      <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
+                    ))}
+                  </h2>
+
+                  {/* Metric */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{
+                      fontFamily: "var(--font-display)", fontSize: 44, fontWeight: 800, lineHeight: 1,
+                      background: `linear-gradient(135deg, ${slide.accentColor}, ${slide.secondaryColor})`,
+                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                    }}>
+                      {slide.metric}
+                    </div>
+                    <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
+                      {slide.metricLabel}
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, margin: "0 0 20px" }}>
+                    {slide.body}
+                  </p>
+
+                  {/* Stats */}
+                  <div style={{ display: "flex", gap: 20, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16 }}>
+                    {slide.stats.map((stat, j) => (
+                      <div key={j}>
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: slide.accentColor }}>{stat.value}</div>
+                        <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
+
+              {/* Progress dots */}
+              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 24 }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    height: 3,
+                    width: activeSlide === i ? 24 : 6,
+                    borderRadius: 2,
+                    background: activeSlide === i ? "#0090FF" : "rgba(255,255,255,0.2)",
+                    transition: "all 0.4s ease",
+                  }} />
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Card 3 — Countries */}
-          <div style={{
-            position: "absolute", bottom: "12%", left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 16, padding: "1.5rem 2rem",
-            maxWidth: 340, width: "max-content",
-            textAlign: "center",
-          }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 6 }}>
-              190+ Countries Connected
-            </div>
-            <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-              AI-powered matching across every timezone
-            </div>
-          </div>
-
-          {/* Dot indicators */}
-          <div style={{
-            position: "absolute", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)",
-            display: "flex", gap: 6,
-          }}>
-            {[true, false, false, false].map((active, i) => (
-              <div key={i} style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: active ? "#fff" : "rgba(255,255,255,0.3)",
-              }} />
-            ))}
+          {/* Tagline */}
+          <div style={{ position: "absolute", bottom: "2rem", left: 0, right: 0, textAlign: "center" as const, pointerEvents: "none" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+              The future of global hiring is here
+            </span>
           </div>
         </div>
 

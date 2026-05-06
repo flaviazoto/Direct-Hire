@@ -1,24 +1,21 @@
 "use client";
-// src/app/(app)/admin/users/pending/page.tsx
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
-import {
-  PageHeader, Card, CardContent, Badge, Button, Avatar,
-  Input, Textarea, Spinner, ToastDisplay, type ToastData, EmptyState,
-} from "@/components/ui";
+import { ToastDisplay, type ToastData } from "@/components/ui";
+import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface PendingUser {
-  id:                       string;
-  email:                    string;
-  role:                     "WORKER" | "EMPLOYER";
-  accountStatus:            string;
-  verificationSubmittedAt:  string | null;
-  createdAt:                string;
-  name:                     string | null;
-  companyName:              string | null;
+  id:                      string;
+  email:                   string;
+  role:                    "WORKER" | "EMPLOYER";
+  accountStatus:           string;
+  verificationSubmittedAt: string | null;
+  createdAt:               string;
+  name:                    string | null;
+  companyName:             string | null;
 }
 
 interface AuditEntry {
@@ -84,9 +81,9 @@ function displayName(user: PendingUser): string {
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
   if (!value && value !== 0) return null;
   return (
-    <div className="flex justify-between items-start py-2 border-b border-slate-50 last:border-0 gap-4">
-      <span className="text-xs text-slate-400 flex-shrink-0">{label}</span>
-      <span className="text-xs font-semibold text-slate-800 text-right break-words max-w-[60%]">{String(value)}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: `1px solid ${C.border}`, gap: 16 }}>
+      <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: C.secondary, textAlign: "right", wordBreak: "break-word", maxWidth: "60%" }}>{String(value)}</span>
     </div>
   );
 }
@@ -95,10 +92,10 @@ function DetailField({ label, value }: { label: string; value?: string | number 
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-slate-50">
+    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
       {[1, 2, 3, 4, 5, 6].map(i => (
-        <td key={i} className="px-4 py-4">
-          <div className="h-3 bg-slate-100 rounded animate-pulse" style={{ width: `${40 + (i * 13) % 40}%` }} />
+        <td key={i} style={{ padding: "16px 20px" }}>
+          <div style={{ height: 12, background: "rgba(255,255,255,0.06)", borderRadius: 6, width: `${40 + (i * 13) % 40}%` }} />
         </td>
       ))}
     </tr>
@@ -108,10 +105,7 @@ function SkeletonRow() {
 // ── SlideOverPanel ─────────────────────────────────────────────────────────────
 
 function SlideOverPanel({
-  userId,
-  onClose,
-  onApprove,
-  onReject,
+  userId, onClose, onApprove, onReject,
 }: {
   userId:    string;
   onClose:   () => void;
@@ -137,74 +131,72 @@ function SlideOverPanel({
     ? [wp.firstName, wp.lastName].filter(Boolean).join(" ") || detail?.email
     : ep?.companyName ?? detail?.email;
 
-  const days = daysAgo(detail?.verificationSubmittedAt ?? null);
-  const daysColor = days > 7 ? "text-red-600" : days > 3 ? "text-amber-600" : "text-slate-600";
+  const days      = daysAgo(detail?.verificationSubmittedAt ?? null);
+  const daysColor = days > 7 ? C.accent : days > 3 ? C.yellow : C.secondary;
+
+  const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 };
 
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", zIndex: 40 }} onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full w-[520px] max-w-full bg-white shadow-2xl z-50 flex flex-col">
+      <div style={{ position: "fixed", top: 0, right: 0, height: "100%", width: 520, maxWidth: "100%", background: "#161616", borderLeft: `1px solid ${C.border}`, zIndex: 50, display: "flex", flexDirection: "column", boxShadow: "-24px 0 60px rgba(0,0,0,0.6)" }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div>
-            <h2 className="font-bold text-slate-900">Review Profile</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{detail?.email ?? "Loading…"}</p>
+            <h2 style={{ margin: 0, fontWeight: 700, color: C.text, fontSize: 15 }}>Review Profile</h2>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: C.muted }}>{detail?.email ?? "Loading…"}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 text-lg transition-colors"
+            style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${C.border}`, color: C.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontFamily: "inherit" }}
           >
             ×
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 24 }}>
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Spinner size="lg" />
-            </div>
+            <div style={{ padding: "80px 0", textAlign: "center", color: C.muted, fontSize: 14 }}>Loading…</div>
           ) : !detail ? (
-            <p className="text-center text-slate-400 py-20">Could not load details</p>
+            <p style={{ textAlign: "center", color: C.muted, paddingTop: 80, fontSize: 14 }}>Could not load details</p>
           ) : (
             <>
-              {/* Identity block */}
-              <div className="flex items-start gap-4">
-                <Avatar name={fullName ?? "?"} size="xl" />
-                <div className="min-w-0">
-                  <div className="font-bold text-slate-900 text-base truncate">{fullName}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{detail.email}</div>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Badge variant={detail.role === "WORKER" ? "blue" : "teal"}>{detail.role}</Badge>
-                    <Badge variant="amber" dot>Pending Review</Badge>
+              {/* Identity */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: C.secondary, flexShrink: 0 }}>
+                  {(fullName ?? "?")[0]?.toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: C.text, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{detail.email}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: detail.role === "WORKER" ? C.blue : C.teal, background: detail.role === "WORKER" ? "rgba(0,144,255,0.12)" : "rgba(20,184,166,0.12)" }}>{detail.role}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: C.yellow, background: "rgba(245,158,11,0.12)" }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.yellow }} />
+                      Pending Review
+                    </span>
                     {days > 0 && (
-                      <span className={`text-xs font-semibold ${daysColor}`}>
-                        {days}d waiting
-                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: daysColor }}>{days}d waiting</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Submission timing */}
-              <div className="bg-slate-50 rounded-xl px-4 py-3 space-y-1">
-                <DetailField label="Submitted"    value={fmtDate(detail.verificationSubmittedAt)} />
-                <DetailField label="Registered"   value={fmtDate(detail.createdAt)} />
-                {detail.rejectionReason && (
-                  <DetailField label="Prev. Rejection" value={detail.rejectionReason} />
-                )}
+              <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px" }}>
+                <DetailField label="Submitted"       value={fmtDate(detail.verificationSubmittedAt)} />
+                <DetailField label="Registered"      value={fmtDate(detail.createdAt)} />
+                {detail.rejectionReason && <DetailField label="Prev. Rejection" value={detail.rejectionReason} />}
               </div>
 
               {/* Worker profile */}
               {wp && (
-                <div className="space-y-1">
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Personal Details</h3>
+                <div>
+                  <span style={sectionLabel}>Personal Details</span>
                   <DetailField label="Full Name"       value={[wp.firstName, wp.lastName].filter(Boolean).join(" ")} />
                   <DetailField label="Date of Birth"   value={wp.dateOfBirth ? new Date(wp.dateOfBirth).toLocaleDateString("en-GB") : null} />
                   <DetailField label="Nationality"     value={wp.nationality} />
@@ -223,20 +215,20 @@ function SlideOverPanel({
 
               {/* Employer profile */}
               {ep && (
-                <div className="space-y-1">
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Company Details</h3>
-                  <DetailField label="Company Name"    value={ep.companyName} />
-                  <DetailField label="Contact Person"  value={ep.contactPersonName} />
-                  <DetailField label="Industry"        value={ep.industry} />
-                  <DetailField label="Company Size"    value={ep.companySize} />
-                  <DetailField label="Website"         value={ep.website} />
-                  <DetailField label="Country"         value={ep.country} />
-                  <DetailField label="City"            value={ep.city} />
+                <div>
+                  <span style={sectionLabel}>Company Details</span>
+                  <DetailField label="Company Name"   value={ep.companyName} />
+                  <DetailField label="Contact Person" value={ep.contactPersonName} />
+                  <DetailField label="Industry"       value={ep.industry} />
+                  <DetailField label="Company Size"   value={ep.companySize} />
+                  <DetailField label="Website"        value={ep.website} />
+                  <DetailField label="Country"        value={ep.country} />
+                  <DetailField label="City"           value={ep.city} />
                   {ep.nipt && <DetailField label="NIPT" value={`${ep.nipt.slice(0, 3)}****`} />}
                   {ep.businessDescription && (
-                    <div className="py-2">
-                      <div className="text-xs text-slate-400 mb-1">Description</div>
-                      <p className="text-xs text-slate-700 leading-relaxed">{ep.businessDescription}</p>
+                    <div style={{ paddingTop: 8 }}>
+                      <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>Description</div>
+                      <p style={{ fontSize: 12, color: C.secondary, lineHeight: 1.6, margin: 0 }}>{ep.businessDescription}</p>
                     </div>
                   )}
                 </div>
@@ -245,10 +237,10 @@ function SlideOverPanel({
               {/* Skills */}
               {wp?.skills && wp.skills.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Skills</h3>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span style={sectionLabel}>Skills</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {wp.skills.map(s => (
-                      <span key={s.skill} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                      <span key={s.skill} style={{ padding: "3px 10px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: C.blue, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)" }}>
                         {s.skill}
                       </span>
                     ))}
@@ -259,12 +251,12 @@ function SlideOverPanel({
               {/* Languages */}
               {wp?.languages && wp.languages.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Languages</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <span style={sectionLabel}>Languages</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                     {wp.languages.map(l => (
-                      <div key={l.language} className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-slate-700">{l.language}</span>
-                        <Badge variant="slate">{l.proficiencyLevel}</Badge>
+                      <div key={l.language} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.secondary }}>{l.language}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99, color: C.muted, background: "rgba(255,255,255,0.07)" }}>{l.proficiencyLevel}</span>
                       </div>
                     ))}
                   </div>
@@ -274,10 +266,10 @@ function SlideOverPanel({
               {/* Target countries */}
               {wp?.targetCountries && wp.targetCountries.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Target Countries</h3>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span style={sectionLabel}>Target Countries</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {wp.targetCountries.map(c => (
-                      <span key={c.country} className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs">
+                      <span key={c.country} style={{ padding: "3px 10px", borderRadius: 99, fontSize: 12, color: C.secondary, background: "rgba(255,255,255,0.07)", border: `1px solid ${C.border}` }}>
                         🌍 {c.country}
                       </span>
                     ))}
@@ -288,13 +280,13 @@ function SlideOverPanel({
               {/* Audit log */}
               {detail.recentAuditLogs && detail.recentAuditLogs.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Recent Actions</h3>
-                  <div className="space-y-2">
+                  <span style={sectionLabel}>Recent Actions</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {detail.recentAuditLogs.map(log => (
-                      <div key={log.id} className="flex gap-3 text-xs">
-                        <span className="text-slate-400 whitespace-nowrap">{fmtDate(log.createdAt)}</span>
-                        <span className="font-semibold text-slate-700">{log.action.replace(/_/g, " ")}</span>
-                        {log.notes && <span className="text-slate-500 truncate">{log.notes}</span>}
+                      <div key={log.id} style={{ display: "flex", gap: 12, fontSize: 12 }}>
+                        <span style={{ color: C.muted, whiteSpace: "nowrap" }}>{fmtDate(log.createdAt)}</span>
+                        <span style={{ fontWeight: 600, color: C.secondary }}>{log.action.replace(/_/g, " ")}</span>
+                        {log.notes && <span style={{ color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.notes}</span>}
                       </div>
                     ))}
                   </div>
@@ -306,13 +298,19 @@ function SlideOverPanel({
 
         {/* Footer */}
         {!loading && detail && (
-          <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/60 flex gap-2">
-            <Button variant="teal"   size="sm" className="flex-1" onClick={() => onApprove(userId)}>
+          <div style={{ flexShrink: 0, padding: "16px 24px", borderTop: `1px solid ${C.border}`, background: "#1a1a1a", display: "flex", gap: 10 }}>
+            <button
+              onClick={() => onApprove(userId)}
+              style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.4)", color: C.teal, cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+            >
               ✓ Approve
-            </Button>
-            <Button variant="danger" size="sm" className="flex-1" onClick={() => onReject(userId)}>
+            </button>
+            <button
+              onClick={() => onReject(userId)}
+              style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", color: C.accent, cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+            >
               ✕ Reject
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -322,57 +320,36 @@ function SlideOverPanel({
 
 // ── RejectModal ────────────────────────────────────────────────────────────────
 
-function RejectModal({
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  onConfirm: (reason: string) => void;
-  onCancel:  () => void;
-  loading:   boolean;
-}) {
+function RejectModal({ onConfirm, onCancel, loading }: { onConfirm: (r: string) => void; onCancel: () => void; loading: boolean }) {
   const [reason, setReason] = useState("");
   const tooShort = reason.trim().length < 10;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
-      onClick={onCancel}
-    >
-      <div
-        className="bg-white rounded-2xl w-full max-w-md shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="p-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold mb-4 bg-red-100 text-red-700">
-            ✕ Reject User
-          </div>
-
-          <Textarea
-            label="Reason for rejection *"
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            rows={4}
-            placeholder="Explain why this account is being rejected (min. 10 characters)…"
-          />
-          {!tooShort ? null : reason.length > 0 ? (
-            <p className="text-xs text-red-500 mt-1">At least 10 characters required</p>
-          ) : null}
-
-          <div className="flex gap-3 mt-5">
-            <Button variant="secondary" className="flex-1" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              className="flex-1"
-              loading={loading}
-              disabled={tooShort}
-              onClick={() => onConfirm(reason.trim())}
-            >
-              Confirm Rejection
-            </Button>
-          </div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onCancel}>
+      <div style={{ background: "#141414", border: `1px solid ${C.border}`, borderRadius: 18, width: "100%", maxWidth: 420, padding: 28 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: 99, background: "rgba(220,38,38,0.12)", color: C.accent, fontSize: 12, fontWeight: 700, marginBottom: 18 }}>
+          ✕ Reject User
+        </div>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.secondary, marginBottom: 8 }}>Reason for rejection *</label>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          rows={4}
+          placeholder="Explain why this account is being rejected (min. 10 characters)…"
+          style={{ ...inputStyle, resize: "vertical" as const }}
+        />
+        {!tooShort ? null : reason.length > 0 ? (
+          <p style={{ fontSize: 12, color: C.accent, marginTop: 6 }}>At least 10 characters required</p>
+        ) : null}
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: "transparent", border: `1px solid ${C.border}`, color: C.muted, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Cancel</button>
+          <button
+            onClick={() => onConfirm(reason.trim())}
+            disabled={tooShort || loading}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: tooShort || loading ? "rgba(113,113,122,0.1)" : "rgba(220,38,38,0.15)", border: `1px solid ${tooShort || loading ? C.border : "rgba(220,38,38,0.4)"}`, color: tooShort || loading ? C.muted : C.accent, cursor: tooShort || loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+          >
+            {loading ? "…" : "Confirm Rejection"}
+          </button>
         </div>
       </div>
     </div>
@@ -382,14 +359,14 @@ function RejectModal({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function PendingUsersPage() {
-  const [users, setUsers]         = useState<PendingUser[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [roleTab, setRoleTab]     = useState<RoleTab>("ALL");
-  const [search, setSearch]       = useState("");
-  const [selectedId, setSelected] = useState<string | null>(null);
+  const [users, setUsers]               = useState<PendingUser[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [roleTab, setRoleTab]           = useState<RoleTab>("ALL");
+  const [search, setSearch]             = useState("");
+  const [selectedId, setSelected]       = useState<string | null>(null);
   const [rejectTargetId, setRejectTarget] = useState<string | null>(null);
-  const [acting, setActing]       = useState(false);
-  const [toast, setToast]         = useState<ToastData>(null);
+  const [acting, setActing]             = useState(false);
+  const [toast, setToast]               = useState<ToastData>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -414,12 +391,8 @@ export default function PendingUsersPage() {
     setActing(true);
     const res = await adminApi.approveUser(id);
     setActing(false);
-    if (res.success) {
-      showToast("User approved successfully", "ok");
-      removeUser(id);
-    } else {
-      showToast((res as { error?: string }).error ?? "Could not approve user", "err");
-    }
+    if (res.success) { showToast("User approved successfully", "ok"); removeUser(id); }
+    else showToast((res as { error?: string }).error ?? "Could not approve user", "err");
   };
 
   const handleRejectConfirm = async (reason: string) => {
@@ -427,21 +400,12 @@ export default function PendingUsersPage() {
     setActing(true);
     const res = await adminApi.rejectUser(rejectTargetId, reason);
     setActing(false);
-    if (res.success) {
-      showToast("User rejected", "ok");
-      removeUser(rejectTargetId);
-      setRejectTarget(null);
-    } else {
-      showToast((res as { error?: string }).error ?? "Could not reject user", "err");
-    }
+    if (res.success) { showToast("User rejected", "ok"); removeUser(rejectTargetId); setRejectTarget(null); }
+    else showToast((res as { error?: string }).error ?? "Could not reject user", "err");
   };
 
-  const openReject = (id: string) => {
-    setSelected(null);
-    setRejectTarget(id);
-  };
+  const openReject = (id: string) => { setSelected(null); setRejectTarget(id); };
 
-  // Client-side filter
   const filtered = useMemo(() => {
     let list = users;
     if (roleTab !== "ALL") list = list.filter(u => u.role === roleTab);
@@ -466,173 +430,126 @@ export default function PendingUsersPage() {
     key === "ALL" ? users.length : users.filter(u => u.role === key).length;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div style={{ padding: 32, maxWidth: 1100 }}>
       <ToastDisplay toast={toast} />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900">Pending Review</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: C.text }}>Pending Review</h1>
           {!loading && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-700">
+            <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: 99, fontSize: 13, fontWeight: 700, background: "rgba(245,158,11,0.15)", color: C.yellow }}>
               {users.length}
             </span>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={load}>↻ Refresh</Button>
+        <button onClick={load} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.secondary, borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+          ↻ Refresh
+        </button>
       </div>
 
       {/* Tabs + Search */}
-      <div className="flex items-center gap-4 mb-5 flex-wrap">
-        {/* Role tabs */}
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4 }}>
           {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setRoleTab(tab.key)}
-              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                roleTab === tab.key
-                  ? "bg-amber-500 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-50"
-              }`}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", background: roleTab === tab.key ? C.teal : "transparent", color: roleTab === tab.key ? "#000" : C.muted, border: `1px solid ${roleTab === tab.key ? C.teal : C.border}`, transition: "all 0.15s", fontFamily: "inherit" }}
             >
               {tab.label}
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                roleTab === tab.key ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-500"
-              }`}>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: roleTab === tab.key ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.07)", color: roleTab === tab.key ? "#000" : C.muted }}>
                 {countFor(tab.key)}
               </span>
             </button>
           ))}
         </div>
-
-        {/* Search */}
-        <Input
+        <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search name or email…"
-          className="w-56"
+          style={{ ...inputStyle, width: 220 }}
         />
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  {["Name", "Email", "Role", "Submitted", "Days waiting", "Actions"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
+                {["Name", "Email", "Role", "Submitted", "Days Waiting", "Actions"].map(h => (
+                  <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: "64px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>✓</div>
+                    <div style={{ color: C.muted, fontSize: 15 }}>{search || roleTab !== "ALL" ? "No matches" : "Queue is clear"}</div>
+                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, marginTop: 6 }}>
+                      {search || roleTab !== "ALL" ? "Try adjusting your filters." : "No users are pending review right now."}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-16">
-                      <EmptyState
-                        icon="✓"
-                        title={search || roleTab !== "ALL" ? "No matches" : "Queue is clear"}
-                        description={
-                          search || roleTab !== "ALL"
-                            ? "Try adjusting your filters."
-                            : "No users are pending review right now."
-                        }
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map(user => {
-                    const days = daysAgo(user.verificationSubmittedAt);
-                    const daysColor =
-                      days > 7 ? "text-red-600 font-bold" :
-                      days > 3 ? "text-amber-600 font-semibold" :
-                      "text-slate-600";
+              ) : (
+                filtered.map((user, idx) => {
+                  const days      = daysAgo(user.verificationSubmittedAt);
+                  const daysColor = days > 7 ? C.accent : days > 3 ? C.yellow : C.secondary;
+                  const name      = displayName(user);
 
-                    return (
-                      <tr
-                        key={user.id}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => setSelected(user.id)}
-                      >
-                        {/* Name */}
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <Avatar name={displayName(user)} size="sm" />
-                            <span className="font-semibold text-slate-900 text-sm">
-                              {displayName(user)}
-                            </span>
+                  return (
+                    <tr
+                      key={user.id}
+                      style={{ borderBottom: idx < filtered.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      onClick={() => setSelected(user.id)}
+                    >
+                      <td style={{ padding: "14px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.secondary, flexShrink: 0 }}>
+                            {name[0]?.toUpperCase() ?? "?"}
                           </div>
-                        </td>
+                          <span style={{ fontWeight: 600, color: C.secondary, fontSize: 13 }}>{name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 20px", maxWidth: 200 }}>
+                        <span style={{ fontSize: 12, color: C.muted, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</span>
+                      </td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: user.role === "WORKER" ? C.blue : C.teal, background: user.role === "WORKER" ? "rgba(0,144,255,0.12)" : "rgba(20,184,166,0.12)" }}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>
+                        {fmtDate(user.verificationSubmittedAt)}
+                      </td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{ fontSize: 13, fontWeight: days > 3 ? 700 : 400, color: daysColor }}>
+                          {days > 0 ? `${days}d` : "Today"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => setSelected(user.id)} style={{ padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, color: C.secondary, fontFamily: "inherit" }}>View →</button>
+                          <button disabled={acting} onClick={() => handleApprove(user.id)} style={{ padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: acting ? "not-allowed" : "pointer", background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.3)", color: acting ? C.muted : C.teal, fontFamily: "inherit" }}>✓</button>
+                          <button disabled={acting} onClick={() => openReject(user.id)} style={{ padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: acting ? "not-allowed" : "pointer", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", color: acting ? C.muted : C.accent, fontFamily: "inherit" }}>✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                        {/* Email */}
-                        <td className="px-4 py-3.5 text-xs text-slate-500 max-w-[180px]">
-                          <span className="truncate block">{user.email}</span>
-                        </td>
-
-                        {/* Role */}
-                        <td className="px-4 py-3.5">
-                          <Badge variant={user.role === "WORKER" ? "blue" : "teal"}>
-                            {user.role}
-                          </Badge>
-                        </td>
-
-                        {/* Submitted */}
-                        <td className="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">
-                          {fmtDate(user.verificationSubmittedAt)}
-                        </td>
-
-                        {/* Days waiting */}
-                        <td className="px-4 py-3.5">
-                          <span className={`text-sm ${daysColor}`}>
-                            {days > 0 ? `${days}d` : "Today"}
-                          </span>
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
-                          <div className="flex gap-1.5">
-                            <Button
-                              size="xs"
-                              variant="secondary"
-                              onClick={() => setSelected(user.id)}
-                            >
-                              View →
-                            </Button>
-                            <Button
-                              size="xs"
-                              variant="teal"
-                              disabled={acting}
-                              onClick={() => handleApprove(user.id)}
-                            >
-                              ✓
-                            </Button>
-                            <Button
-                              size="xs"
-                              variant="danger"
-                              disabled={acting}
-                              onClick={() => openReject(user.id)}
-                            >
-                              ✕
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Slide-over detail panel */}
       {selectedId && (
         <SlideOverPanel
           userId={selectedId}
@@ -642,7 +559,6 @@ export default function PendingUsersPage() {
         />
       )}
 
-      {/* Reject modal */}
       {rejectTargetId && (
         <RejectModal
           onConfirm={handleRejectConfirm}

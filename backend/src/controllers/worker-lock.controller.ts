@@ -1,10 +1,19 @@
 // backend/src/controllers/worker-lock.controller.ts
 // Worker lock endpoints — all require role = EMPLOYER + accountStatus = VERIFIED.
+//
+// Reservation flow (2 steps):
+//   Step 1  POST /employer/workers/:workerId/lock
+//           → validates, subscription gate, concurrent limit, creates Stripe PaymentIntent
+//           → returns { requiresPayment: true, clientSecret, … }
+//   Step 2  POST /employer/workers/:workerId/lock/confirm
+//           → verifies payment_status === "succeeded"
+//           → creates WorkerLock + LockBillingCharge + Payment record + side effects
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
+import stripe, { getOrCreateCustomer } from "../services/stripe";
 import {
   sendWorkerLockedWorkerEmail,
   sendWorkerLockedEmployerEmail,
@@ -18,9 +27,13 @@ import { insertAdminAuditLog } from "../lib/audit";
 // ── Validation ────────────────────────────────────────────────────────────────
 
 const LockSchema = z.object({
-  lock_days:  z.number().int().min(1).max(30),
-  daily_fee:  z.number().positive(),
-  currency:   z.string().length(3).default("USD"),
+  // Hard ceiling of 90 here; actual cap enforced at runtime via platform_config
+  lock_days: z.number().int().min(1).max(90),
+  currency:  z.string().length(3).default("USD"),
+});
+
+const ConfirmLockSchema = z.object({
+  paymentIntentId: z.string().min(1),
 });
 
 const ExtendSchema = z.object({
@@ -31,7 +44,15 @@ const ReleaseSchema = z.object({
   reason: z.string().max(2000).optional(),
 });
 
+// ── Helper: read a platform_config value with a fallback ─────────────────────
+
+async function cfg(key: string, fallback: string): Promise<string> {
+  const row = await prisma.platformConfig.findUnique({ where: { key } });
+  return row?.value ?? fallback;
+}
+
 // ── POST /employer/workers/:workerId/lock ─────────────────────────────────────
+// FIX 1 + 2 + 3 — subscription gate, concurrent / duration limits, PaymentIntent
 
 export async function lockWorker(req: Request, res: Response, next: NextFunction) {
   try {
@@ -40,11 +61,52 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
 
     const parsed = LockSchema.safeParse(req.body);
     if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
-    const { lock_days, daily_fee, currency } = parsed.data;
+    const { lock_days } = parsed.data;
 
-    // Fetch worker with lock-relevant fields
+    // ── FIX 1: Subscription gate ──────────────────────────────────────────────
+    const employerFull = await prisma.user.findUnique({
+      where:  { id: employerId },
+      select: {
+        email: true,
+        employerProfile: {
+          select: {
+            subscriptionStatus: true,
+            stripeCustomerId:   true,
+            companyName:        true,
+            contactPersonName:  true,
+          },
+        },
+      },
+    });
+
+    if (employerFull?.employerProfile?.subscriptionStatus !== "ACTIVE") {
+      return err(
+        res,
+        "An active subscription is required to reserve workers.",
+        403,
+        { code: "SUBSCRIPTION_REQUIRED", redirectTo: "/employer/subscription" },
+      );
+    }
+
+    // ── FIX 2a: Read all platform limits in parallel ──────────────────────────
+    const [maxDaysStr, maxConcurrentStr, dailyRateCentsStr] = await Promise.all([
+      cfg("lock_max_duration_days", "14"),
+      cfg("lock_max_concurrent",    "5"),
+      cfg("lock_daily_rate_cents",  "200"),
+    ]);
+
+    const maxDaysInt       = parseInt(maxDaysStr);
+    const maxConcurrentInt = parseInt(maxConcurrentStr);
+    const dailyRateCents   = parseInt(dailyRateCentsStr);
+
+    // ── FIX 2b: Duration cap ──────────────────────────────────────────────────
+    if (lock_days > maxDaysInt) {
+      return err(res, `Maximum reservation duration is ${maxDaysInt} days.`, 422);
+    }
+
+    // ── Fetch worker ──────────────────────────────────────────────────────────
     const worker = await prisma.user.findUnique({
-      where: { id: workerId },
+      where:  { id: workerId },
       select: {
         id:            true,
         accountStatus: true,
@@ -58,49 +120,179 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
     if (!worker || worker.role !== "WORKER") return err(res, "Worker not found", 404);
     if (worker.accountStatus !== "VERIFIED")  return err(res, "Worker is not verified", 400);
 
-    // Worker locked by another employer
     if (worker.isLocked) {
-      return err(res, "This worker is currently reserved by another employer.", 409, { code: "WORKER_LOCKED" });
+      return err(res, "This worker is currently reserved by another employer.", 409, {
+        code: "WORKER_LOCKED",
+      });
     }
 
-    // Employer already has an ACTIVE lock on this worker
-    const existingLock = await prisma.workerLock.findFirst({
+    const alreadyMyLock = await prisma.workerLock.findFirst({
       where: { workerId, employerId, lockStatus: "ACTIVE" },
     });
-    if (existingLock) return err(res, "You already have an active reservation on this worker.", 409);
+    if (alreadyMyLock) {
+      return err(res, "You already have an active reservation on this worker.", 409);
+    }
 
+    // ── FIX 2c: Concurrent lock limit ─────────────────────────────────────────
+    const activeLockCount = await prisma.workerLock.count({
+      where: { employerId, lockStatus: "ACTIVE" },
+    });
+    if (activeLockCount >= maxConcurrentInt) {
+      return err(
+        res,
+        `You can only reserve up to ${maxConcurrentInt} workers at a time.`,
+        403,
+        { code: "MAX_LOCKS_REACHED", current: activeLockCount, max: maxConcurrentInt },
+      );
+    }
+
+    // ── FIX 3: Create Stripe PaymentIntent (upfront charge for all days) ──────
+    const totalCents = dailyRateCents * lock_days;
+
+    const stripeCustomerId = await getOrCreateCustomer(
+      employerId,
+      employerFull.email,
+      employerFull.employerProfile?.companyName
+        ?? employerFull.employerProfile?.contactPersonName,
+    );
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount:      totalCents,
+      currency:    "usd",
+      customer:    stripeCustomerId,
+      description: `Worker reservation: ${lock_days} day${lock_days !== 1 ? "s" : ""} × $${(dailyRateCents / 100).toFixed(2)}/day`,
+      metadata:    {
+        type:            "WORKER_LOCK",
+        employerId,
+        workerId,
+        lockDays:        lock_days.toString(),
+        dailyRateCents:  dailyRateCents.toString(),
+        platform:        "directhire",
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    return res.status(200).json({
+      requiresPayment: true,
+      clientSecret:    paymentIntent.client_secret,
+      totalCents,
+      dailyRateCents,
+      lockDays:        lock_days,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (e) { next(e); }
+}
+
+// ── POST /employer/workers/:workerId/lock/confirm ─────────────────────────────
+// FIX 3 (continued) — verify payment → create WorkerLock + all side effects
+
+export async function confirmLock(req: Request, res: Response, next: NextFunction) {
+  try {
+    const employerId = req.user!.sub;
+    const { workerId } = req.params;
+
+    const parsed = ConfirmLockSchema.safeParse(req.body);
+    if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
+    const { paymentIntentId } = parsed.data;
+
+    // ── Retrieve and verify PaymentIntent ─────────────────────────────────────
+    type PaymentIntent = Awaited<ReturnType<typeof stripe.paymentIntents.retrieve>>;
+    let paymentIntent: PaymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch {
+      return err(res, "Invalid payment session.", 400);
+    }
+
+    if (paymentIntent.status !== "succeeded") {
+      return err(res, "Payment not completed — please try again.", 402);
+    }
+
+    // Guard against another employer's PaymentIntent being submitted
+    if (paymentIntent.metadata?.employerId !== employerId) return err(res, "Forbidden.", 403);
+    if (paymentIntent.metadata?.workerId   !== workerId)   return err(res, "Worker mismatch.", 400);
+
+    // ── Idempotency: already confirmed → return existing lock ─────────────────
+    const existingLock = await prisma.workerLock.findFirst({
+      where: { workerId, employerId, stripePaymentIntentId: paymentIntentId },
+    });
+    if (existingLock) return ok(res, existingLock, "Reservation already confirmed");
+
+    // ── Re-check worker availability (race condition between step 1 and step 2) ─
+    const freshWorker = await prisma.user.findUnique({
+      where:  { id: workerId },
+      select: {
+        id:             true,
+        role:           true,
+        accountStatus:  true,
+        isLocked:       true,
+        lockedByEmployerId: true,
+        email:          true,
+        workerProfile:  { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!freshWorker || freshWorker.role !== "WORKER") return err(res, "Worker not found.", 404);
+
+    if (freshWorker.isLocked && freshWorker.lockedByEmployerId !== employerId) {
+      // Another employer locked this worker between step 1 and step 2 — auto-refund
+      stripe.refunds.create({ payment_intent: paymentIntentId, reason: "duplicate" })
+        .catch(e => console.error("[confirmLock] Auto-refund failed:", e));
+      return err(
+        res,
+        "This worker was reserved by another employer. Your payment will be refunded.",
+        409,
+        { code: "WORKER_LOCKED" },
+      );
+    }
+
+    // ── Derive authoritative values from PaymentIntent metadata ───────────────
+    const lockDays       = parseInt(paymentIntent.metadata?.lockDays       ?? "0");
+    const dailyRateCents = parseInt(paymentIntent.metadata?.dailyRateCents ?? "200");
+    const totalCents     = paymentIntent.amount;
+
+    if (!lockDays || lockDays < 1) return err(res, "Invalid lock duration in payment.", 400);
+
+    const dailyFee       = dailyRateCents / 100;       // Decimal-compatible number
     const now            = new Date();
-    const lockExpiryDate = new Date(now.getTime() + lock_days * 24 * 3600 * 1000);
+    const lockExpiryDate = new Date(now.getTime() + lockDays * 24 * 3600 * 1000);
 
-    // Fetch employer name for emails
+    // Extract Stripe charge ID for the billing charge record
+    const chargeId =
+      typeof paymentIntent.latest_charge === "string"
+        ? paymentIntent.latest_charge
+        : (paymentIntent.latest_charge as { id?: string } | null)?.id ?? null;
+
+    // ── Employer display name (for emails + notification body) ─────────────────
     const employer = await prisma.user.findUnique({
-      where: { id: employerId },
+      where:  { id: employerId },
       select: {
         email:           true,
         employerProfile: { select: { companyName: true, contactPersonName: true } },
       },
     });
 
-    const workerName   = [worker.workerProfile?.firstName, worker.workerProfile?.lastName]
+    const workerName   = [freshWorker.workerProfile?.firstName, freshWorker.workerProfile?.lastName]
       .filter(Boolean).join(" ") || "Worker";
     const employerName = employer?.employerProfile?.companyName
       ?? employer?.employerProfile?.contactPersonName
       ?? "Employer";
 
-    // 1. Create lock + update worker flags atomically
+    // ── Atomic: create lock record + update worker flags ──────────────────────
     const [lock] = await prisma.$transaction([
       prisma.workerLock.create({
         data: {
           workerId,
           employerId,
-          lockStatus:    "ACTIVE",
-          dailyFee:      daily_fee,
-          currency,
-          lockStartDate: now,
+          lockStatus:            "ACTIVE",
+          dailyFee,
+          currency:              "USD",
+          lockStartDate:         now,
           lockExpiryDate,
-          lockDays:      lock_days,
-          totalBilled:   daily_fee,     // first day billed immediately
-          totalDaysBilled: 1,
+          lockDays,
+          totalBilled:           dailyFee,  // first day billed immediately
+          totalDaysBilled:       1,
+          stripePaymentIntentId: paymentIntentId,
         },
       }),
       prisma.user.update({
@@ -114,61 +306,80 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
       }),
     ]);
 
-    // 3. First billing charge
+    // ── First billing charge — already collected by Stripe ────────────────────
     await prisma.lockBillingCharge.create({
       data: {
-        lockId:       lock.id,
+        lockId:                lock.id,
         employerId,
         workerId,
-        amount:       daily_fee,
-        currency,
-        chargeDate:   now,
-        chargeStatus: "PENDING",
+        amount:                dailyFee,
+        currency:              "USD",
+        chargeDate:            now,
+        chargeStatus:          "CHARGED",
+        stripePaymentIntentId: paymentIntentId,
+        stripeChargeId:        chargeId ?? undefined,
       },
     });
 
-    // 4. Fire-and-forget side effects
+    // ── Payment record ────────────────────────────────────────────────────────
+    await prisma.payment.create({
+      data: {
+        userId:          employerId,
+        stripePaymentId: paymentIntentId,
+        amount:          totalCents,
+        currency:        "usd",
+        status:          "SUCCEEDED",
+        type:            "WORKER_LOCK",
+        description:     `Worker reservation — ${lockDays} day${lockDays !== 1 ? "s" : ""}`,
+        metadata:        { workerId, lockId: lock.id, lockDays },
+      },
+    });
+
+    // ── Fire-and-forget side effects (FIX 5: valid NotificationType) ──────────
     Promise.all([
       insertAdminAuditLog({
         actorId:  employerId,
         targetId: workerId,
         action:   "WORKER_LOCKED",
         metadata: {
-          lock_id:         lock.id,
-          lock_days,
-          daily_fee,
-          lock_expiry_date: lockExpiryDate.toISOString(),
+          lock_id:                  lock.id,
+          lock_days:                lockDays,
+          daily_fee:                dailyFee,
+          total_cents:              totalCents,
+          lock_expiry_date:         lockExpiryDate.toISOString(),
+          stripe_payment_intent_id: paymentIntentId,
         },
       }),
       sendWorkerLockedWorkerEmail(
         workerId,
-        worker.email,
-        worker.workerProfile?.firstName ?? "",
+        freshWorker.email,
+        freshWorker.workerProfile?.firstName ?? "",
         lockExpiryDate,
       ),
       sendWorkerLockedEmployerEmail(
         employerId,
         employer!.email,
-        worker.workerProfile?.firstName ?? "",
+        freshWorker.workerProfile?.firstName ?? "",
         workerName,
         now,
         lockExpiryDate,
-        daily_fee,
-        currency,
-        lock_days,
+        dailyFee,
+        "USD",
+        lockDays,
       ),
       prisma.notification.create({
         data: {
-          userId: workerId,
-          title:  "Your profile has been reserved",
-          body:   `${employerName} has placed a reservation on your profile until ${lockExpiryDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
-          type:   "worker_locked",
-          link:   "/worker/dashboard",
+          userId:   workerId,
+          type:     "WORKER_LOCKED",    // FIX 5: was "worker_locked"
+          title:    "Your profile has been reserved",
+          body:     `${employerName} has placed a reservation on your profile until ${lockExpiryDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
+          link:     "/worker/reservations",
+          metadata: { lockId: lock.id },
         },
       }),
     ]).catch(console.error);
 
-    return ok(res, lock, "Worker reservation created", 201);
+    return ok(res, lock, "Worker reservation confirmed", 201);
   } catch (e) { next(e); }
 }
 
@@ -188,29 +399,32 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
     });
     if (!lock) return err(res, "No active reservation found for this worker.", 404);
 
-    // Check 60-day total cap
+    // 60-day total cap
     const totalDays = Math.round(
-      (lock.lockExpiryDate.getTime() - lock.lockStartDate.getTime()) / (24 * 3600 * 1000)
+      (lock.lockExpiryDate.getTime() - lock.lockStartDate.getTime()) / (24 * 3600 * 1000),
     ) + additional_days;
     if (totalDays > 60) {
-      return err(res, `Cannot extend: total reservation duration would be ${totalDays} days (max 60).`, 400);
+      return err(
+        res,
+        `Cannot extend: total duration would be ${totalDays} days (max 60).`,
+        400,
+      );
     }
 
     const newExpiry = new Date(lock.lockExpiryDate.getTime() + additional_days * 24 * 3600 * 1000);
 
-    // Fetch worker + employer for emails
     const [worker, employer] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: workerId },
+        where:  { id: workerId },
         select: { email: true, workerProfile: { select: { firstName: true, lastName: true } } },
       }),
       prisma.user.findUnique({
-        where: { id: employerId },
+        where:  { id: employerId },
         select: { email: true, employerProfile: { select: { companyName: true, contactPersonName: true } } },
       }),
     ]);
 
-    const workerName   = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
+    const workerName = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
       .filter(Boolean).join(" ") || "Worker";
 
     const updated = await prisma.workerLock.update({
@@ -224,7 +438,7 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
 
     await prisma.user.update({
       where: { id: workerId },
-      data: { lockedUntil: newExpiry },
+      data:  { lockedUntil: newExpiry },
     });
 
     Promise.all([
@@ -256,11 +470,12 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
       ),
       prisma.notification.create({
         data: {
-          userId: workerId,
-          title:  "Your reservation has been extended",
-          body:   `Your profile reservation has been extended until ${newExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
-          type:   "worker_lock_extended",
-          link:   "/worker/dashboard",
+          userId:   workerId,
+          type:     "WORKER_LOCK_EXTENDED",    // FIX 5: was "worker_lock_extended"
+          title:    "Your reservation has been extended",
+          body:     `Your profile reservation has been extended until ${newExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
+          link:     "/worker/reservations",
+          metadata: { lockId: lock.id },
         },
       }),
     ]).catch(console.error);
@@ -270,6 +485,7 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
 }
 
 // ── POST /employer/workers/:workerId/release-lock ─────────────────────────────
+// FIX 4: partial Stripe refund for unused days; lock is released even if refund fails
 
 export async function releaseLock(req: Request, res: Response, next: NextFunction) {
   try {
@@ -287,11 +503,11 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
 
     const [worker, employer] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: workerId },
+        where:  { id: workerId },
         select: { email: true, workerProfile: { select: { firstName: true, lastName: true } } },
       }),
       prisma.user.findUnique({
-        where: { id: employerId },
+        where:  { id: employerId },
         select: { email: true },
       }),
     ]);
@@ -299,17 +515,84 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
     const workerName = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
       .filter(Boolean).join(" ") || "Worker";
 
+    // ── Release the lock in DB first (always succeeds regardless of Stripe) ────
     await prisma.$transaction([
       prisma.workerLock.update({
         where: { id: lock.id },
-        data: { lockStatus: "RELEASED", releaseReason: reason ?? null },
+        data:  { lockStatus: "RELEASED", releaseReason: reason ?? null },
       }),
       prisma.user.update({
         where: { id: workerId },
-        data: { isLocked: false, lockedByEmployerId: null, lockedUntil: null },
+        data:  { isLocked: false, lockedByEmployerId: null, lockedUntil: null },
       }),
     ]);
 
+    // ── FIX 4: Partial Stripe refund for unused days ───────────────────────────
+    // Only applicable to locks charged via Stripe (stripePaymentIntentId present)
+    if (lock.stripePaymentIntentId) {
+      try {
+        const now        = new Date();
+        const daysUsed   = Math.max(
+          1,
+          Math.ceil((now.getTime() - lock.lockStartDate.getTime()) / (1000 * 60 * 60 * 24)),
+        );
+        const unusedDays = Math.max(0, lock.lockDays - daysUsed);
+
+        if (unusedDays > 0) {
+          const dailyRateCents = parseInt(await cfg("lock_daily_rate_cents", "200"));
+          const refundCents    = unusedDays * dailyRateCents;
+
+          const refund = await stripe.refunds.create({
+            payment_intent: lock.stripePaymentIntentId,
+            amount:         refundCents,
+            reason:         "requested_by_customer",
+            metadata: {
+              lockId:     lock.id,
+              unusedDays: unusedDays.toString(),
+              workerId,
+              employerId,
+            },
+          });
+
+          await prisma.workerLock.update({
+            where: { id: lock.id },
+            data: {
+              stripeRefundId:     refund.id,
+              totalRefundedCents: refundCents,
+            },
+          });
+
+          await prisma.payment.create({
+            data: {
+              userId:          employerId,
+              stripePaymentId: refund.id,
+              amount:          -refundCents,   // negative = refund
+              currency:        "usd",
+              status:          "REFUNDED",
+              type:            "WORKER_LOCK",
+              description:     `Partial refund — ${unusedDays} unused day${unusedDays !== 1 ? "s" : ""}`,
+              metadata:        { lockId: lock.id, unusedDays, workerId },
+            },
+          });
+        }
+      } catch (refundErr) {
+        // Refund failure must NOT prevent the release response — log for admin review
+        console.error("[releaseLock] Stripe refund failed:", refundErr);
+        insertAdminAuditLog({
+          actorId:  employerId,
+          targetId: workerId,
+          action:   "WORKER_LOCK_RELEASED",
+          notes:    "STRIPE REFUND FAILED — requires manual review",
+          metadata: {
+            lock_id:               lock.id,
+            stripe_payment_intent: lock.stripePaymentIntentId,
+            error:                 refundErr instanceof Error ? refundErr.message : String(refundErr),
+          },
+        }).catch(console.error);
+      }
+    }
+
+    // ── Fire-and-forget side effects (FIX 5: valid NotificationType) ──────────
     Promise.all([
       insertAdminAuditLog({
         actorId:  employerId,
@@ -337,16 +620,41 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
       ),
       prisma.notification.create({
         data: {
-          userId: workerId,
-          title:  "Your reservation has ended",
-          body:   "Your profile reservation has been released. You are now available to other employers.",
-          type:   "worker_lock_released",
-          link:   "/worker/dashboard",
+          userId:   workerId,
+          type:     "WORKER_LOCK_RELEASED",    // FIX 5: was "worker_lock_released"
+          title:    "Your reservation has ended",
+          body:     "Your profile reservation has been released. You are now available to other employers.",
+          link:     "/worker/reservations",
+          metadata: { lockId: lock.id },
         },
       }),
     ]).catch(console.error);
 
     return ok(res, { success: true }, "Reservation released");
+  } catch (e) { next(e); }
+}
+
+// ── GET /employer/lock-rate ───────────────────────────────────────────────────
+
+export async function getLockRate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const [rateRow, maxDaysRow, maxConcurrentRow] = await Promise.all([
+      prisma.platformConfig.findUnique({ where: { key: "lock_daily_rate_cents" } }),
+      prisma.platformConfig.findUnique({ where: { key: "lock_max_duration_days" } }),
+      prisma.platformConfig.findUnique({ where: { key: "lock_max_concurrent" } }),
+    ]);
+
+    const dailyRateCents = parseInt(rateRow?.value ?? "200");
+    const maxDays        = parseInt(maxDaysRow?.value ?? "14");
+    const maxConcurrent  = parseInt(maxConcurrentRow?.value ?? "5");
+
+    return ok(res, {
+      dailyRateCents,
+      currency:    "USD",
+      maxDays,
+      maxConcurrent,
+      rateDisplay: `$${(dailyRateCents / 100).toFixed(2)}`,
+    });
   } catch (e) { next(e); }
 }
 
@@ -358,7 +666,7 @@ export async function getLockStatus(req: Request, res: Response, next: NextFunct
     const { workerId } = req.params;
 
     const worker = await prisma.user.findUnique({
-      where: { id: workerId },
+      where:  { id: workerId },
       select: { isLocked: true, lockedByEmployerId: true },
     });
     if (!worker) return err(res, "Worker not found", 404);
@@ -367,10 +675,9 @@ export async function getLockStatus(req: Request, res: Response, next: NextFunct
       return ok(res, { is_locked: false });
     }
 
-    // Locked by this employer — expose details
     if (worker.lockedByEmployerId === employerId) {
       const lock = await prisma.workerLock.findFirst({
-        where: { workerId, employerId, lockStatus: "ACTIVE" },
+        where:  { workerId, employerId, lockStatus: "ACTIVE" },
         select: {
           id:              true,
           dailyFee:        true,
@@ -443,17 +750,17 @@ export async function getMyLocks(req: Request, res: Response, next: NextFunction
     ]);
 
     const data = rows.map(r => ({
-      id:               r.id,
-      lock_status:      r.lockStatus,
-      daily_fee:        r.dailyFee,
-      currency:         r.currency,
-      lock_start_date:  r.lockStartDate,
-      lock_expiry_date: r.lockExpiryDate,
-      lock_days:        r.lockDays,
-      total_billed:     r.totalBilled,
+      id:                r.id,
+      lock_status:       r.lockStatus,
+      daily_fee:         r.dailyFee,
+      currency:          r.currency,
+      lock_start_date:   r.lockStartDate,
+      lock_expiry_date:  r.lockExpiryDate,
+      lock_days:         r.lockDays,
+      total_billed:      r.totalBilled,
       total_days_billed: r.totalDaysBilled,
-      release_reason:   r.releaseReason,
-      created_at:       r.createdAt,
+      release_reason:    r.releaseReason,
+      created_at:        r.createdAt,
       worker: {
         id:         r.worker.id,
         first_name: r.worker.workerProfile?.firstName          ?? null,

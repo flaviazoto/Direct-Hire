@@ -1,13 +1,9 @@
 "use client";
-// src/app/(app)/admin/audit-log/page.tsx
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { adminApi } from "@/lib/api-client";
-import {
-  PageHeader, Card, CardContent, Badge, Button,
-  Input, SelectInput, Spinner, Pagination,
-  ToastDisplay, type ToastData, EmptyState,
-} from "@/components/ui";
+import { ToastDisplay, type ToastData } from "@/components/ui";
+import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -28,17 +24,17 @@ interface AuditEntry {
   target_user: AuditUser & { role: string };
 }
 
-// ── Action config ──────────────────────────────────────────────────────────────
+// ── Action badge config ────────────────────────────────────────────────────────
 
-const ACTION_CONFIG: Record<string, { label: string; variant: string }> = {
-  USER_APPROVED:         { label: "Approved",   variant: "green"  },
-  USER_REJECTED:         { label: "Rejected",   variant: "red"    },
-  USER_SUSPENDED:        { label: "Suspended",  variant: "amber"  },
-  USER_REINSTATED:       { label: "Reinstated", variant: "blue"   },
-  JOB_APPROVED:          { label: "Job OK",     variant: "green"  },
-  JOB_REJECTED:          { label: "Job Rejected", variant: "red"  },
-  LOCK_OVERRIDDEN:       { label: "Lock Override", variant: "purple" },
-  AI_DECISION_OVERRIDDEN:{ label: "AI Override",  variant: "purple" },
+const ACTION_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  USER_APPROVED:          { label: "Approved",      color: C.green,   bg: "rgba(34,197,94,0.12)"   },
+  USER_REJECTED:          { label: "Rejected",      color: C.accent,  bg: "rgba(220,38,38,0.12)"   },
+  USER_SUSPENDED:         { label: "Suspended",     color: C.yellow,  bg: "rgba(245,158,11,0.12)"  },
+  USER_REINSTATED:        { label: "Reinstated",    color: C.blue,    bg: "rgba(0,144,255,0.12)"   },
+  JOB_APPROVED:           { label: "Job OK",        color: C.green,   bg: "rgba(34,197,94,0.12)"   },
+  JOB_REJECTED:           { label: "Job Rejected",  color: C.accent,  bg: "rgba(220,38,38,0.12)"   },
+  LOCK_OVERRIDDEN:        { label: "Lock Override", color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  AI_DECISION_OVERRIDDEN: { label: "AI Override",   color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
 };
 
 const ACTION_OPTIONS = [
@@ -55,13 +51,6 @@ function userName(u: AuditUser): string {
   return u.email;
 }
 
-function fmtTimestamp(s: string): string {
-  return new Date(s).toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
 function fmtDateOnly(s: string): string {
   return new Date(s).toISOString().split("T")[0];
 }
@@ -70,44 +59,42 @@ function fmtDateOnly(s: string): string {
 
 function MetadataViewer({ entry }: { entry: AuditEntry }) {
   const meta = entry.metadata;
+  const sL: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "block" };
+  const row: React.CSSProperties = { display: "flex", gap: 8, marginBottom: 4 };
+  const lbl: React.CSSProperties = { fontSize: 12, color: C.muted, width: 116, flexShrink: 0 };
+  const val: React.CSSProperties = { fontSize: 12, color: C.secondary, wordBreak: "break-all" };
+  const mono: React.CSSProperties = { fontSize: 11, color: C.secondary, fontFamily: "monospace", wordBreak: "break-all" };
 
   return (
-    <tr className="bg-slate-50/70 border-b border-slate-100">
-      <td colSpan={5} className="px-6 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          {/* IDs */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Identifiers</div>
-            <Row label="Log ID"         value={entry.id} mono />
-            <Row label="Admin ID"       value={entry.admin.id} mono />
-            <Row label="Target User ID" value={entry.target_user.id} mono />
+    <tr style={{ background: "#0d0d0d", borderBottom: `1px solid ${C.border}` }}>
+      <td colSpan={5} style={{ padding: "20px 24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <div>
+            <span style={sL}>Identifiers</span>
+            <div style={row}><span style={lbl}>Log ID:</span><span style={mono}>{entry.id}</span></div>
+            <div style={row}><span style={lbl}>Admin ID:</span><span style={mono}>{entry.admin.id}</span></div>
+            <div style={row}><span style={lbl}>Target User ID:</span><span style={mono}>{entry.target_user.id}</span></div>
           </div>
-
-          {/* Admin + target detail */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Parties</div>
-            <Row label="Admin"        value={`${userName(entry.admin)} <${entry.admin.email}>`} />
-            <Row label="Target"       value={`${userName(entry.target_user)} <${entry.target_user.email}>`} />
-            <Row label="Target role"  value={entry.target_user.role} />
-            <Row label="Timestamp"    value={fmtTimestamp(entry.created_at)} />
+          <div>
+            <span style={sL}>Parties</span>
+            <div style={row}><span style={lbl}>Admin:</span><span style={val}>{userName(entry.admin)} &lt;{entry.admin.email}&gt;</span></div>
+            <div style={row}><span style={lbl}>Target:</span><span style={val}>{userName(entry.target_user)} &lt;{entry.target_user.email}&gt;</span></div>
+            <div style={row}><span style={lbl}>Target role:</span><span style={val}>{entry.target_user.role}</span></div>
+            <div style={row}><span style={lbl}>Timestamp:</span><span style={val}>{new Date(entry.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
           </div>
-
-          {/* Notes */}
           {entry.notes && (
-            <div className="sm:col-span-2">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Notes / Reason</div>
-              <p className="text-sm text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 leading-relaxed">
+            <div style={{ gridColumn: "1 / -1" }}>
+              <span style={sL}>Notes / Reason</span>
+              <p style={{ fontSize: 13, color: C.secondary, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", margin: 0, lineHeight: 1.6 }}>
                 {entry.notes}
               </p>
             </div>
           )}
-
-          {/* Raw metadata */}
           {meta && Object.keys(meta).length > 0 && (
-            <div className="sm:col-span-2">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Metadata</div>
-              <div className="bg-slate-800 text-slate-100 rounded-lg p-3 overflow-x-auto">
-                <pre className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap">
+            <div style={{ gridColumn: "1 / -1" }}>
+              <span style={sL}>Metadata</span>
+              <div style={{ background: "#060606", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px", overflowX: "auto" }}>
+                <pre style={{ fontSize: 11, fontFamily: "monospace", color: "#a5f3fc", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                   {JSON.stringify(meta, null, 2)}
                 </pre>
               </div>
@@ -119,24 +106,14 @@ function MetadataViewer({ entry }: { entry: AuditEntry }) {
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  if (!value) return null;
-  return (
-    <div className="flex gap-2">
-      <span className="text-slate-400 w-28 flex-shrink-0">{label}:</span>
-      <span className={`text-slate-700 break-all ${mono ? "font-mono text-[11px]" : ""}`}>{value}</span>
-    </div>
-  );
-}
-
 // ── SkeletonRow ────────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-slate-50">
+    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <td key={i} className="px-4 py-4">
-          <div className="h-3 bg-slate-100 rounded animate-pulse" style={{ width: `${30 + (i * 19) % 50}%` }} />
+        <td key={i} style={{ padding: "16px 20px" }}>
+          <div style={{ height: 12, background: "rgba(255,255,255,0.06)", borderRadius: 6, width: `${30 + (i * 19) % 50}%` }} />
         </td>
       ))}
     </tr>
@@ -146,16 +123,16 @@ function SkeletonRow() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminAuditLogPage() {
-  const [entries, setEntries]   = useState<AuditEntry[]>([]);
-  const [total, setTotal]       = useState(0);
-  const [loading, setLoading]   = useState(true);
-  const [page, setPage]         = useState(1);
+  const [entries, setEntries]     = useState<AuditEntry[]>([]);
+  const [total, setTotal]         = useState(0);
+  const [loading, setLoading]     = useState(true);
+  const [page, setPage]           = useState(1);
   const [actionFilter, setAction] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-  const [search, setSearch]     = useState("");
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [toast, setToast]       = useState<ToastData>(null);
+  const [dateFrom, setDateFrom]   = useState("");
+  const [dateTo, setDateTo]       = useState("");
+  const [search, setSearch]       = useState("");
+  const [expanded, setExpanded]   = useState<string | null>(null);
+  const [toast, setToast]         = useState<ToastData>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,197 +153,232 @@ export default function AdminAuditLogPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Client-side search filter (on current page)
   const filtered = useMemo(() => {
     if (!search.trim()) return entries;
     const q = search.toLowerCase();
     return entries.filter(e =>
       e.admin.email.toLowerCase().includes(q) ||
-      (e.admin.first_name ?? "").toLowerCase().includes(q) ||
-      (e.admin.last_name  ?? "").toLowerCase().includes(q) ||
+      (e.admin.first_name  ?? "").toLowerCase().includes(q) ||
+      (e.admin.last_name   ?? "").toLowerCase().includes(q) ||
       e.target_user.email.toLowerCase().includes(q) ||
       (e.target_user.first_name ?? "").toLowerCase().includes(q) ||
       (e.target_user.last_name  ?? "").toLowerCase().includes(q)
     );
   }, [entries, search]);
 
-  const resetFilters = () => {
-    setAction(""); setDateFrom(""); setDateTo(""); setSearch(""); setPage(1);
+  const resetFilters = () => { setAction(""); setDateFrom(""); setDateTo(""); setSearch(""); setPage(1); };
+  const hasFilters   = actionFilter || dateFrom || dateTo || search;
+  const totalPages   = Math.ceil(total / 20);
+
+  const exportCSV = () => {
+    const rows = [
+      ["Timestamp", "Admin", "Action", "Target User", "Notes"],
+      ...filtered.map(e => [
+        e.created_at,
+        `${userName(e.admin)} <${e.admin.email}>`,
+        e.action,
+        `${userName(e.target_user)} <${e.target_user.email}>`,
+        e.notes ?? "",
+      ]),
+    ];
+    const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `audit-log-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const hasFilters = actionFilter || dateFrom || dateTo || search;
+  const ghostBtn: React.CSSProperties = {
+    background: "transparent", border: `1px solid ${C.border}`, color: C.secondary,
+    borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontFamily: "inherit",
+  };
+
+  const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
+    background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`,
+    color: disabled ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
+    borderRadius: 8, padding: "6px 14px", cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: 13, fontFamily: "inherit",
+  });
+
+  const dateInputStyle: React.CSSProperties = { ...inputStyle, width: 148, colorScheme: "dark" as unknown as undefined };
+  const selectStyle: React.CSSProperties    = { ...inputStyle, width: "auto", minWidth: 160, cursor: "pointer" };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div style={{ padding: 32, maxWidth: 1100 }}>
       <ToastDisplay toast={toast} />
 
-      <PageHeader
-        title="Audit Log"
-        description="All admin actions across the platform"
-        actions={
-          <div className="flex gap-2">
-            {hasFilters && (
-              <Button variant="outline" size="sm" onClick={resetFilters}>✕ Clear</Button>
-            )}
-            <Button variant="outline" size="sm" onClick={load}>↻ Refresh</Button>
-          </div>
-        }
-      />
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: C.text }}>Audit Log</h1>
+          <p style={{ margin: "6px 0 0", color: C.muted, fontSize: 14 }}>All admin actions across the platform</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {hasFilters && (
+            <button onClick={resetFilters} style={ghostBtn}>✕ Clear</button>
+          )}
+          <button
+            onClick={exportCSV}
+            style={{ ...ghostBtn, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.3)", color: C.blue, fontWeight: 600 }}
+          >
+            ↓ Export CSV
+          </button>
+          <button onClick={load} style={ghostBtn}>↻ Refresh</button>
+        </div>
+      </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap mb-5 items-end">
-        {/* Date from */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-500">From</label>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>From</label>
           <input
             type="date"
             value={dateFrom}
             onChange={e => { setDateFrom(e.target.value); setPage(1); }}
             max={dateTo || fmtDateOnly(new Date().toISOString())}
-            className="h-9 px-3 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400"
+            style={dateInputStyle}
           />
         </div>
-
-        {/* Date to */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-500">To</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>To</label>
           <input
             type="date"
             value={dateTo}
             onChange={e => { setDateTo(e.target.value); setPage(1); }}
             min={dateFrom}
             max={fmtDateOnly(new Date().toISOString())}
-            className="h-9 px-3 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400"
+            style={dateInputStyle}
           />
         </div>
-
-        {/* Action */}
-        <SelectInput
+        <select
           value={actionFilter}
           onChange={e => { setAction(e.target.value); setPage(1); }}
-          placeholder="All actions"
-          options={ACTION_OPTIONS}
-          className="w-44"
-        />
-
-        {/* Search */}
-        <Input
+          style={selectStyle}
+        >
+          <option value="">All actions</option>
+          {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search admin or user…"
-          className="w-56"
+          style={{ ...inputStyle, width: 220 }}
         />
       </div>
 
       {/* Stats strip */}
       {!loading && (
-        <p className="text-xs text-slate-400 mb-4">
-          Showing {filtered.length} of {total.toLocaleString()} events
-          {hasFilters ? " (filtered)" : ""}
+        <p style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>
+          Showing {filtered.length} of {total.toLocaleString()} events{hasFilters ? " (filtered)" : ""}
         </p>
       )}
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  {["Timestamp", "Admin", "Action", "User affected", "Notes"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
+                {["Timestamp", "Admin", "Action", "User Affected", "Notes"].map(h => (
+                  <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: "64px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>📋</div>
+                    <div style={{ color: C.muted, fontSize: 15 }}>No events found</div>
+                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, marginTop: 6 }}>
+                      {hasFilters ? "Try adjusting your filters." : "No audit events recorded yet."}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-16">
-                      <EmptyState
-                        icon="📋"
-                        title="No events found"
-                        description={hasFilters ? "Try adjusting your filters." : "No audit events recorded yet."}
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map(entry => {
-                    const cfg = ACTION_CONFIG[entry.action] ?? { label: entry.action.replace(/_/g, " "), variant: "slate" };
-                    const isOpen = expanded === entry.id;
+              ) : (
+                filtered.map(entry => {
+                  const badge  = ACTION_BADGE[entry.action] ?? { label: entry.action.replace(/_/g, " "), color: C.muted, bg: "rgba(113,113,122,0.12)" };
+                  const isOpen = expanded === entry.id;
 
-                    return [
-                      <tr
-                        key={entry.id}
-                        className={`border-b border-slate-50 hover:bg-slate-50/70 transition-colors cursor-pointer ${isOpen ? "bg-slate-50/70" : ""}`}
-                        onClick={() => setExpanded(isOpen ? null : entry.id)}
-                      >
-                        {/* Timestamp */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <div className="text-xs font-semibold text-slate-700">
-                            {new Date(entry.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            {new Date(entry.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                          </div>
-                        </td>
+                  return [
+                    <tr
+                      key={entry.id}
+                      style={{ borderBottom: `1px solid ${C.border}`, cursor: "pointer", background: isOpen ? "rgba(255,255,255,0.03)" : "transparent", transition: "background 0.1s" }}
+                      onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isOpen ? "rgba(255,255,255,0.03)" : "transparent"; }}
+                      onClick={() => setExpanded(isOpen ? null : entry.id)}
+                    >
+                      <td style={{ padding: "14px 20px", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.secondary }}>
+                          {new Date(entry.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                          {new Date(entry.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 20px", maxWidth: 180 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.secondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName(entry.admin)}</div>
+                        <div style={{ fontSize: 11, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.admin.email}</div>
+                      </td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: badge.color, background: badge.bg }}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px", maxWidth: 220 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.secondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName(entry.target_user)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                          <span style={{ fontSize: 11, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.target_user.email}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, flexShrink: 0, color: entry.target_user.role === "WORKER" ? C.blue : C.teal, background: entry.target_user.role === "WORKER" ? "rgba(0,144,255,0.12)" : "rgba(20,184,166,0.12)" }}>
+                            {entry.target_user.role}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 20px", maxWidth: 200 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {entry.notes ? entry.notes.slice(0, 60) + (entry.notes.length > 60 ? "…" : "") : "—"}
+                          </span>
+                          <span style={{ color: C.muted, fontSize: 11, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
+                        </div>
+                      </td>
+                    </tr>,
+                    ...(isOpen ? [<MetadataViewer key={`${entry.id}-meta`} entry={entry} />] : []),
+                  ];
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                        {/* Admin */}
-                        <td className="px-4 py-3.5 max-w-[160px]">
-                          <div className="text-xs font-semibold text-slate-800 truncate">
-                            {userName(entry.admin)}
-                          </div>
-                          <div className="text-[11px] text-slate-400 truncate">{entry.admin.email}</div>
-                        </td>
-
-                        {/* Action */}
-                        <td className="px-4 py-3.5">
-                          <Badge variant={cfg.variant as Parameters<typeof Badge>[0]["variant"]}>
-                            {cfg.label}
-                          </Badge>
-                        </td>
-
-                        {/* Target user */}
-                        <td className="px-4 py-3.5 max-w-[180px]">
-                          <div className="text-xs font-semibold text-slate-800 truncate">
-                            {userName(entry.target_user)}
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] text-slate-400 truncate">{entry.target_user.email}</span>
-                            <Badge variant={entry.target_user.role === "WORKER" ? "blue" : "teal"} className="text-[9px] px-1.5 py-0">
-                              {entry.target_user.role}
-                            </Badge>
-                          </div>
-                        </td>
-
-                        {/* Notes + expand indicator */}
-                        <td className="px-4 py-3.5 max-w-[180px]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-slate-500 truncate">
-                              {entry.notes ? entry.notes.slice(0, 60) + (entry.notes.length > 60 ? "…" : "") : "—"}
-                            </span>
-                            <span className="text-slate-300 text-xs flex-shrink-0">
-                              {isOpen ? "▲" : "▼"}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>,
-
-                      // Expanded metadata row
-                      ...(isOpen ? [<MetadataViewer key={`${entry.id}-meta`} entry={entry} />] : []),
-                    ];
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Pagination page={page} total={total} pageSize={20} onChange={p => { setPage(p); setExpanded(null); }} className="mt-6" />
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 24 }}>
+          <button
+            onClick={() => { setPage(p => Math.max(1, p - 1)); setExpanded(null); }}
+            disabled={page === 1}
+            style={pageBtnStyle(page === 1)}
+          >
+            Previous
+          </button>
+          <span style={{ color: C.muted, fontSize: 13 }}>Page {page} of {totalPages}</span>
+          <button
+            onClick={() => { setPage(p => Math.min(totalPages, p + 1)); setExpanded(null); }}
+            disabled={page >= totalPages}
+            style={pageBtnStyle(page >= totalPages)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

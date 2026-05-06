@@ -11,20 +11,21 @@ import {
 } from "@/components/ui";
 
 interface ProfileData {
-  user: { email: string; status: string; isEmailVerified: boolean };
+  user: { email: string; status: string; accountStatus?: string; onboardingComplete?: boolean; isEmailVerified: boolean };
   profile: {
     firstName?: string; lastName?: string; dateOfBirth?: string;
     nationality?: string; countryOfResidence?: string; city?: string;
     profession?: string; yearsExperience?: string; expectedSalary?: string;
     maritalStatus?: string; hasSpouse?: boolean; numberOfChildren?: number;
     additionalNotes?: string; trustScore?: number; riskScore?: number;
-    isSearchable?: boolean;
+    isSearchable?: boolean; documentsVerified?: boolean; documentsReviewedAt?: string;
     skills?: { skill: string }[];
     languages?: { language: string; proficiencyLevel: string }[];
     targetCountries?: { country: string }[];
   } | null;
   onboarding: { onboardingStatus: string; completedSteps: number[]; totalSteps: number } | null;
   verification: { reviewStatus: string } | null;
+  profileCompletionScore?: number | null;
 }
 
 const Field = ({ label, value }: { label: string; value?: string | number | boolean | null }) =>
@@ -80,19 +81,25 @@ export default function WorkerProfilePage() {
   if (loading) return <LoadingPage color="blue" />;
   if (!data) return null;
 
-  const { user, profile, onboarding, verification } = data;
+  const { user, profile, onboarding, verification, profileCompletionScore } = data;
   const firstName    = profile?.firstName ?? user.email.split("@")[0];
   const fullName     = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || user.email;
-  const completionPct = onboarding
+  const stepPct = onboarding
     ? Math.round((onboarding.completedSteps.length / onboarding.totalSteps) * 100)
     : 0;
+  const completionPct = profileCompletionScore ?? stepPct;
+  const isFullyApproved =
+    user.accountStatus === "VERIFIED" ||
+    onboarding?.onboardingStatus === "APPROVED" ||
+    user.onboardingComplete === true;
+  const isSearchableOrApproved = profile?.isSearchable || isFullyApproved;
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1200, margin: "0 auto" }}>
       <PageHeader
         title="My Profile"
         actions={
-          <Button variant="primary" size="md" onClick={() => router.push("/worker/onboarding")}>
+          <Button variant="primary" size="md" onClick={() => router.push("/worker/profile/edit")}>
             Edit Profile
           </Button>
         }
@@ -179,14 +186,23 @@ export default function WorkerProfilePage() {
                 fontWeight: 700,
                 padding: "3px 10px",
                 borderRadius: 20,
-                background: profile?.isSearchable ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)",
-                color: profile?.isSearchable ? "#4ade80" : "#555",
-                border: profile?.isSearchable ? "1px solid rgba(34,197,94,0.2)" : "1px solid transparent",
-                boxShadow: profile?.isSearchable ? "0 0 8px rgba(34,197,94,0.3)" : "none",
+                background: isSearchableOrApproved ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)",
+                color: isSearchableOrApproved ? "#4ade80" : "#555",
+                border: isSearchableOrApproved ? "1px solid rgba(34,197,94,0.2)" : "1px solid transparent",
+                boxShadow: isSearchableOrApproved ? "0 0 8px rgba(34,197,94,0.3)" : "none",
               }}>
-                {profile?.isSearchable ? "🌐 Searchable" : "🔒 Hidden"}
+                {isSearchableOrApproved ? "🌐 Searchable" : "🔒 Hidden"}
               </span>
-              {verification?.reviewStatus && (
+              {profile?.documentsVerified ? (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                  background: "rgba(74,222,128,0.12)", color: "#4ade80",
+                  border: "1px solid rgba(74,222,128,0.3)",
+                  boxShadow: "0 0 8px rgba(74,222,128,0.2)",
+                }}>
+                  ✓ Documents Verified
+                </span>
+              ) : verification?.reviewStatus && (
                 <span style={{
                   fontSize: 11,
                   fontWeight: 700,
@@ -203,15 +219,15 @@ export default function WorkerProfilePage() {
             {/* Progress bar */}
             <div style={{ position: "relative" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6 }}>
-                <span>Profile completion</span>
+                <span>{isFullyApproved ? "Profile score" : "Profile completion"}</span>
                 <span style={{ fontWeight: 700, color: "#0090FF" }}>{completionPct}%</span>
               </div>
               <ProgressBar value={completionPct} color="#0090FF" />
             </div>
           </div>
 
-          {/* Continue onboarding CTA */}
-          {completionPct < 100 && (
+          {/* Continue onboarding CTA — only shown when not yet approved */}
+          {stepPct < 100 && !isFullyApproved && (
             <Link
               href="/worker/onboarding"
               style={{

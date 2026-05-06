@@ -3,6 +3,7 @@
 // Worker-facing lock history — shows all reservations placed on this worker.
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
 import { LoadingPage } from "@/components/ui";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
@@ -15,7 +16,7 @@ interface LockRecord {
   lock_start_date:  string;
   lock_expiry_date: string;
   lock_days:        number;
-  employer_name:    string;  // display-safe employer identity
+  employer:         { company_name: string };
 }
 
 interface LockHistoryResponse {
@@ -80,10 +81,10 @@ function LockCard({ lock }: { lock: LockRecord }) {
             color:          "#a1a1aa",
             flexShrink:     0,
           }}>
-            {lock.employer_name?.[0]?.toUpperCase() ?? "?"}
+            {lock.employer?.company_name?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e7" }}>{lock.employer_name || "Employer"}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e7" }}>{lock.employer?.company_name || "Employer"}</div>
             <div style={{ fontSize: 12, color: "#555", marginTop: 1 }}>
               Reserved on {fmtDate(lock.lock_start_date)}
             </div>
@@ -131,7 +132,7 @@ function LockCard({ lock }: { lock: LockRecord }) {
       </div>
 
       {/* Footer row */}
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         {lock.lock_status === "ACTIVE" && daysLeft !== null ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>
@@ -149,6 +150,21 @@ function LockCard({ lock }: { lock: LockRecord }) {
               : `Ended ${fmtDate(lock.lock_expiry_date)}`}
           </div>
         )}
+        <Link
+          href={`/worker/reservation/${lock.id}`}
+          style={{
+            fontSize:    12,
+            color:       "#0090FF",
+            textDecoration: "none",
+            fontWeight:  600,
+            marginLeft:  "auto",
+            display:     "inline-flex",
+            alignItems:  "center",
+            gap:         4,
+          }}
+        >
+          View details →
+        </Link>
       </div>
     </div>
   );
@@ -211,9 +227,11 @@ function ReservationsContent() {
         setLocks(prev => append ? [...prev, ...d.data] : d.data);
         setTotal(d.total);
         setHasMore(pageNum * PAGE_SIZE < d.total);
+      } else {
+        console.error("Lock history API failed:", res.error, res);
       }
-    } catch {
-      // silently ignore
+    } catch (err) {
+      console.error("Lock history fetch error:", err);
     } finally {
       if (pageNum === 1) setLoading(false); else setLoadingMore(false);
     }

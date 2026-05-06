@@ -12,8 +12,7 @@ import { ok, err } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { z } from "zod";
 import { generateOTP, hashOTP, verifyOTP } from "../common/utils/otp.util";
-import { emailService } from "../email/email.service";
-import { sendEmail } from "../services/email";
+import { sendEmail, sendOtpVerification } from "../services/email";
 import { insertAuditLog } from "../lib/audit";
 
 // ── Schemas ───────────────────────────────────────────────────
@@ -105,12 +104,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 
       await tx.verificationRecord.create({ data: { userId: user.id, reviewStatus: "PENDING" } });
 
-      const emailToken = generateSecureToken();
-      await tx.emailVerificationToken.create({
-        data: { userId: user.id, token: emailToken, expiresAt: tokenExpiresAt(24) },
-      });
-
-      return { user, emailToken };
+      return { user };
     });
 
     // Issue tokens
@@ -122,23 +116,41 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       data: { userId: result.user.id, refreshToken, expiresAt: tokenExpiresAt(24 * 30) },
     });
 
-    // Queue emails
-    const appUrl    = process.env.FRONTEND_URL!;
-    const verifyUrl = `${appUrl}/verify-email?token=${result.emailToken}`;
+    // Generate OTP and store it (replaces token-based email verification)
+    const code      = generateOTP();
+    const hash      = await hashOTP(code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.$transaction([
+      prisma.verificationCode.deleteMany({
+        where: { userId: result.user.id, type: "EMAIL_VERIFICATION", usedAt: null },
+      }),
+      prisma.verificationCode.create({
+        data: { userId: result.user.id, type: "EMAIL_VERIFICATION", codeHash: hash, expiresAt, attempts: 0 },
+      }),
+      prisma.user.update({
+        where: { id: result.user.id },
+        data:  { emailVerificationSentAt: new Date() },
+      }),
+    ]);
 
     await enqueue("email.welcome", {
       userId: result.user.id, to: input.email,
       firstName: input.firstName, role: input.role,
     });
-    await enqueue("email.verify", {
-      userId: result.user.id, to: input.email, verifyUrl,
-    });
+
+    sendOtpVerification(result.user.id, input.email, code, 10).catch((e) =>
+      console.error("[register] OTP email error:", e)
+    );
 
     setAuthCookies(res, accessToken, refreshToken);
     return ok(res, {
-      user: { id: result.user.id, email: result.user.email, role: result.user.role },
-      redirectTo: `/${input.role.toLowerCase()}/onboarding`,
-    }, "Account created successfully", 201);
+      user:  { id: result.user.id, email: result.user.email, role: result.user.role },
+      email: result.user.email,
+      accessToken,
+      token: accessToken,
+      role: result.user.role,
+    }, "Check your email for a verification code", 201);
   } catch (e) { next(e); }
 }
 
@@ -189,6 +201,9 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     return ok(res, {
       user: { id: user.id, email: user.email, role: user.role },
       redirectTo,
+      accessToken,
+      token: accessToken,
+      role: user.role,
     });
   } catch (e) { next(e); }
 }
@@ -255,7 +270,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     ]);
 
     setAuthCookies(res, newAccessToken, newRefreshToken);
-    return ok(res, { role: user.role });
+    return ok(res, { role: user.role, accessToken: newAccessToken, token: newAccessToken });
   } catch (e) { next(e); }
 }
 
@@ -388,7 +403,7 @@ export async function sendVerificationCode(req: Request, res: Response, next: Ne
     ]);
 
     // Fire-and-forget — email failure must not fail the request
-    emailService.sendVerificationCode(email, code, 10).catch((e) =>
+    sendOtpVerification(user.id, email, code, 10).catch((e) =>
       console.error("[sendVerificationCode] email error:", e)
     );
 
@@ -449,7 +464,7 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
     sendEmail({
       userId:    user.id,
       to:        email,
-      emailType: "GENERAL",
+      emailType: "EMAIL_VERIFICATION",
       subject:   "Your email has been verified",
       html: `<p>Your email has been verified. Your account is now under review. We'll notify you once approved.</p>`,
       text: "Your email has been verified. Your account is now under review.",
@@ -531,6 +546,6 @@ export async function oauthComplete(req: Request, res: Response, next: NextFunct
     });
 
     setAuthCookies(res, accessToken, refreshToken);
-    return ok(res, { role: user.role });
+    return ok(res, { role: user.role, accessToken, token: accessToken });
   } catch (e) { next(e); }
 }

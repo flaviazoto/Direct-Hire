@@ -23,12 +23,17 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where:  { email: adminEmail },
-    update: {},
+    update: {
+      status:          "ACTIVE",
+      accountStatus:   "VERIFIED",
+      isEmailVerified: true,
+    },
     create: {
       email:           adminEmail,
       passwordHash:    await bcrypt.hash(adminPass, 12),
       role:            "ADMIN",
       status:          "ACTIVE",
+      accountStatus:   "VERIFIED",
       isEmailVerified: true,
     },
   });

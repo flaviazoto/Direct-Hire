@@ -12,7 +12,8 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
     const user = await prisma.user.findUnique({
       where:  { id: userId },
       select: { id: true, email: true, role: true, phone: true,
-                status: true, isEmailVerified: true, createdAt: true },
+                status: true, accountStatus: true, onboardingComplete: true,
+                isEmailVerified: true, createdAt: true },
     });
     if (!user) return err(res, "User not found", 404);
 
@@ -60,8 +61,42 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
       take:    20,
     });
 
-    return ok(res, { user, profile, onboarding, verification, notifications,
-                     unreadNotifications: notifications.filter(n => !n.isRead).length });
+    // Compute live profile completion score for workers
+    let profileCompletionScore: number | null = null;
+    if (role === "WORKER" && profile) {
+      const p = profile as any;
+      const uploads = await prisma.upload.findMany({
+        where:  { userId, status: { not: "DELETED" } },
+        select: { fileType: true },
+      });
+      const hasPhoto = uploads.some((u: { fileType: string }) => u.fileType === "PROFILE_PHOTO");
+      const hasVideo = uploads.some((u: { fileType: string }) =>
+        u.fileType === "WORK_VIDEO" || u.fileType === "INTRO_VIDEO",
+      );
+      let score = 0;
+      if (p.firstName)                   score += 5;
+      if (p.lastName)                    score += 5;
+      if (p.profession)                  score += 5;
+      if (p.countryOfResidence)          score += 5;
+      if (p.city)                        score += 5;
+      if (p.yearsExperience)             score += 5;
+      if (p.expectedSalary)              score += 5;
+      if (p.passportNumber)              score += 5;
+      if ((p.skills?.length   ?? 0) > 0) score += 10;
+      if ((p.languages?.length ?? 0) > 0)       score += 5;
+      if ((p.targetCountries?.length ?? 0) > 0) score += 5;
+      if (hasPhoto)                      score += 10;
+      if (hasVideo)                      score += 10;
+      if (p.documentsVerified === true)  score += 15;
+      if ((user as any).accountStatus === "VERIFIED") score += 10;
+      profileCompletionScore = score;
+    }
+
+    return ok(res, {
+      user, profile, onboarding, verification, notifications,
+      unreadNotifications: notifications.filter(n => !n.isRead).length,
+      profileCompletionScore,
+    });
   } catch (e) { next(e); }
 }
 

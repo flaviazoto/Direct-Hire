@@ -14,7 +14,7 @@ interface Stats {
   verification: { pending: number; approved: number; rejected: number; needsChanges: number };
   uploads:      number;
   emailsToday:  number;
-  recentSubmissions: { userId: string; email: string; role: string; submittedAt: string; completionPct: number }[];
+  recentSubmissions: { userId: string; email: string; role: string; submittedAt: string; completionPct: number; name?: string }[];
   monthly:      { month: string; count: number }[];
 }
 
@@ -111,12 +111,29 @@ export default function AdminDashboardPage() {
   const [pending,  setPending]  = useState<PendingUser[]>([]);
   const [audit,    setAudit]    = useState<AuditEntry[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [toast,    setToast]    = useState<{ msg: string; ok: boolean } | null>(null);
   const [actMap,   setActMap]   = useState<Record<string, ActionStatus>>({});
+
+  // ── Pricing config state ──────────────────────────────────────────────────
+  const [pricingEnabled,  setPricingEnabled]  = useState(true);
+  const [pricingBaseCents, setPricingBaseCents] = useState(300);
+  const [pricingEditing,  setPricingEditing]  = useState(false);
+  const [pricingSaving,   setPricingSaving]   = useState(false);
+  const [pricingDraft,    setPricingDraft]    = useState<{ baseCents: number; enabled: boolean } | null>(null);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  useEffect(() => {
+    adminApi.getPricingConfig().then((r: { success: boolean; data?: { enabled: boolean; baseCents: number } }) => {
+      if (r.success && r.data) {
+        setPricingEnabled(r.data.enabled);
+        setPricingBaseCents(r.data.baseCents);
+      }
+    }).catch(() => {/* non-blocking */});
   }, []);
 
   useEffect(() => {
@@ -125,7 +142,12 @@ export default function AdminDashboardPage() {
       adminApi.getPendingUsers(),
       adminApi.getAuditLog({ limit: "10" }),
     ]).then(([sRes, pRes, aRes]) => {
-      if (!sRes.success) { router.push("/login"); return; }
+      if (!sRes.success) {
+        console.error("[Admin] Stats API failed:", sRes.error, sRes);
+        setLoadError(sRes.error ?? "Failed to load admin stats");
+        setLoading(false);
+        return;
+      }
       setStats(sRes.data as Stats);
       if (pRes.success) setPending((pRes.data as { users?: PendingUser[] }).users ?? pRes.data as PendingUser[]);
       if (aRes.success) {
@@ -133,8 +155,27 @@ export default function AdminDashboardPage() {
         setAudit(Array.isArray(raw) ? raw : (raw.entries ?? []));
       }
       setLoading(false);
+    }).catch(err => {
+      console.error("[Admin] Dashboard load error:", err);
+      setLoading(false);
     });
   }, [router]);
+
+  async function handleSavePricing() {
+    if (!pricingDraft) return;
+    setPricingSaving(true);
+    const res = await adminApi.updatePricingConfig(pricingDraft).catch(() => ({ success: false }));
+    setPricingSaving(false);
+    if ((res as { success: boolean }).success) {
+      setPricingEnabled(pricingDraft.enabled);
+      setPricingBaseCents(pricingDraft.baseCents);
+      setPricingEditing(false);
+      setPricingDraft(null);
+      showToast("Pricing config saved", true);
+    } else {
+      showToast("Failed to save pricing config", false);
+    }
+  }
 
   async function handleAction(userId: string, action: "approve" | "reject" | "suspend") {
     setActMap(m => ({ ...m, [userId + action]: "loading" }));
@@ -159,6 +200,13 @@ export default function AdminDashboardPage() {
   }
 
   if (loading) return <LoadingPage color="amber" />;
+  if (loadError) return (
+    <div style={{ padding: "60px 40px", textAlign: "center" }}>
+      <div style={{ fontSize: 14, color: "#f87171", marginBottom: 8, fontWeight: 600 }}>Failed to load admin dashboard</div>
+      <div style={{ fontSize: 12, color: "#71717a", fontFamily: "monospace" }}>{loadError}</div>
+      <div style={{ fontSize: 12, color: "#555", marginTop: 12 }}>Check the browser console and Network tab for details.</div>
+    </div>
+  );
   if (!stats)  return null;
 
   const pendingCount = stats.verification.pending;
@@ -187,7 +235,7 @@ export default function AdminDashboardPage() {
               <strong style={{ color: "var(--admin-2)" }}>{pendingCount} applications</strong> awaiting your review
             </span>
           </div>
-          <Link href="/admin/approvals" style={{
+          <Link href="/admin/users/pending" style={{
             padding: "7px 16px", borderRadius: "var(--r-sm)",
             background: "var(--admin-primary)", color: "#fff",
             fontSize: 13, fontWeight: 700, textDecoration: "none",
@@ -534,6 +582,135 @@ export default function AdminDashboardPage() {
             ))}
           </>
         )}
+      </div>
+
+      {/* ── Application Fee Config ───────────────────────────────────────────── */}
+      <div style={{
+        background: "var(--navy-2)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: 28,
+      }}>
+        <div style={{
+          padding: "16px 20px", borderBottom: "1px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>
+            Application Fee Configuration
+          </h2>
+          {!pricingEditing ? (
+            <button
+              onClick={() => { setPricingDraft({ baseCents: pricingBaseCents, enabled: pricingEnabled }); setPricingEditing(true); }}
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--admin-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              Edit
+            </button>
+          ) : (
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { setPricingEditing(false); setPricingDraft(null); }}
+                style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePricing}
+                disabled={pricingSaving}
+                style={{
+                  fontSize: 12, fontWeight: 600, color: "var(--white)",
+                  background: "var(--admin-2)", border: "none", borderRadius: 6,
+                  padding: "4px 12px", cursor: pricingSaving ? "not-allowed" : "pointer",
+                  opacity: pricingSaving ? 0.7 : 1,
+                }}
+              >
+                {pricingSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          {/* Fee enabled toggle */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)" }}>Application Fee</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+                Charge workers a fee when applying to jobs
+              </div>
+            </div>
+            {pricingEditing ? (
+              <button
+                onClick={() => setPricingDraft(d => d ? { ...d, enabled: !d.enabled } : d)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
+                  background: pricingDraft?.enabled ? "var(--admin-2)" : "var(--border)",
+                  transition: "background 0.2s", position: "relative",
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 3, width: 18, height: 18, borderRadius: "50%",
+                  background: "var(--white)", transition: "left 0.2s",
+                  left: pricingDraft?.enabled ? 23 : 3,
+                }} />
+              </button>
+            ) : (
+              <span style={{
+                fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                background: pricingEnabled ? "rgba(34,197,94,0.15)" : "rgba(100,100,100,0.15)",
+                color: pricingEnabled ? "#4ade80" : "var(--muted)",
+              }}>
+                {pricingEnabled ? "Enabled" : "Disabled"}
+              </span>
+            )}
+          </div>
+
+          {/* Base fee */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)" }}>Base Fee</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+                Starting fee before regional/salary multipliers (50¢ – $25.00)
+              </div>
+            </div>
+            {pricingEditing ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, color: "var(--muted)" }}>$</span>
+                <input
+                  type="number"
+                  min={0.5}
+                  max={25}
+                  step={0.5}
+                  value={pricingDraft ? (pricingDraft.baseCents / 100).toFixed(2) : ""}
+                  onChange={e => {
+                    const dollars = parseFloat(e.target.value);
+                    if (!isNaN(dollars)) {
+                      const cents = Math.round(dollars * 100);
+                      if (cents >= 50 && cents <= 2500) {
+                        setPricingDraft(d => d ? { ...d, baseCents: cents } : d);
+                      }
+                    }
+                  }}
+                  style={{
+                    width: 80, padding: "6px 10px", borderRadius: 6, fontSize: 13,
+                    background: "var(--navy-1)", border: "1px solid var(--border)",
+                    color: "var(--white)", outline: "none",
+                  }}
+                />
+              </div>
+            ) : (
+              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--white)" }}>
+                ${(pricingBaseCents / 100).toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {/* Info note */}
+          <div style={{
+            fontSize: 12, color: "var(--muted)", padding: "10px 14px",
+            background: "rgba(255,255,255,0.03)", borderRadius: 8,
+            borderLeft: "3px solid var(--admin-2)",
+          }}>
+            Final fee = base × region multiplier (1×–2.5×) × salary tier (0.8×–1.4×). Clamped to $1.00–$25.00 and rounded to nearest $0.50.
+          </div>
+        </div>
       </div>
 
       {/* ── Quick nav cards ───────────────────────────────────────────────────── */}

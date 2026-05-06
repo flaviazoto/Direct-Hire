@@ -21,6 +21,16 @@ const COUNTRIES = [
 
 type Country = typeof COUNTRIES[number];
 
+// ── Connection arc pairs ───────────────────────────────────────────────────────
+
+const ARCS = [
+  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 24.0,  lng:  54.0 } }, // London → Dubai
+  { from: { lat: 24.0,  lng:  54.0 }, to: { lat:  1.3,  lng: 103.8 } }, // Dubai → Singapore
+  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 37.1,  lng: -95.7 } }, // London → US
+  { from: { lat: 37.1,  lng: -95.7 }, to: { lat: 56.1,  lng: -106.3} }, // US → Canada
+  { from: { lat: 51.2,  lng:  10.4 }, to: { lat: 41.9,  lng:  12.5 } }, // Germany → Italy
+];
+
 // ── HTML pill markers (CSS2DRenderer) ─────────────────────────────────────────
 
 const HTML_MARKERS = [
@@ -73,8 +83,8 @@ const ATM_VERT = `
 const ATM_FRAG = `
   varying vec3 vNormal;
   void main() {
-    float i = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-    gl_FragColor = vec4(0.1, 0.4, 1.0, 1.0) * i;
+    float i = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+    gl_FragColor = vec4(0.05, 0.35, 1.0, 1.0) * i;
   }
 `;
 
@@ -107,6 +117,7 @@ export default function InteractiveGlobe() {
   const lastDragTime  = useRef<number>(0);
   const dotRefs       = useRef<{ mesh: THREE.Mesh; localPos: THREE.Vector3; country: Country }[]>([]);
   const ringRefs      = useRef<{ mesh: THREE.Mesh; offset: number }[]>([]);
+  const arcLinesRef   = useRef<THREE.Line[]>([]);
 
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, country: null });
 
@@ -137,20 +148,7 @@ export default function InteractiveGlobe() {
     rim.position.set(-4, -1, -3);
     scene.add(rim);
 
-    // ── Stars ──────────────────────────────────────────────────────────────────
-    const starVerts: number[] = [];
-    for (let i = 0; i < 3000; i++) {
-      starVerts.push(
-        (Math.random() - 0.5) * 400,
-        (Math.random() - 0.5) * 400,
-        (Math.random() - 0.5) * 400,
-      );
-    }
-    const starsGeo = new THREE.BufferGeometry();
-    starsGeo.setAttribute("position", new THREE.Float32BufferAttribute(starVerts, 3));
-    scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({
-      color: 0xffffff, size: 0.15, transparent: true, opacity: 0.6,
-    })));
+
 
     // ── Globe group ────────────────────────────────────────────────────────────
     const globeGroup = new THREE.Group();
@@ -172,7 +170,7 @@ export default function InteractiveGlobe() {
     // Earth texture (non-blocking — plain colour globe if it fails)
     const textureLoader = new THREE.TextureLoader();
     const earthTexture  = textureLoader.load(
-      "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
+      "https://unpkg.com/three-globe/example/img/earth-night.jpg",
       (tex) => { earthMat.map = tex; earthMat.needsUpdate = true; },
       undefined,
       () => { /* texture failed — solid colour fallback is fine */ },
@@ -229,6 +227,27 @@ export default function InteractiveGlobe() {
       addLine(pts, gridMat);
     }
 
+    // ── Wireframe dot-grid overlay ─────────────────────────────────────────────
+    const wireGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.001, 36, 18);
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x0090FF, wireframe: true, transparent: true, opacity: 0.04 });
+    globeGroup.add(new THREE.Mesh(wireGeo, wireMat));
+
+    // ── Connection arcs ────────────────────────────────────────────────────────
+    const arcLines: THREE.Line[] = [];
+    ARCS.forEach(arc => {
+      const start = latLngToVec3(arc.from.lat, arc.from.lng, GLOBE_RADIUS);
+      const end   = latLngToVec3(arc.to.lat,   arc.to.lng,   GLOBE_RADIUS);
+      const mid   = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(GLOBE_RADIUS * 1.4);
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      const points = curve.getPoints(60);
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x0090FF, transparent: true, opacity: 0.35 });
+      const line = new THREE.Line(geo, mat);
+      globeGroup.add(line);
+      arcLines.push(line);
+    });
+    arcLinesRef.current = arcLines;
+
     // ── Three.js country dot + ring markers ────────────────────────────────────
     const dotData:  typeof dotRefs.current  = [];
     const ringData: typeof ringRefs.current = [];
@@ -282,20 +301,34 @@ export default function InteractiveGlobe() {
       HTML_MARKERS.forEach(m => {
         const div = document.createElement("div");
         div.textContent = m.label;
-        div.style.cssText = [
-          "background:rgba(5,13,26,0.82)",
-          "border:1px solid rgba(96,165,250,0.25)",
-          "border-radius:99px",
-          "padding:3px 9px",
-          "font-size:11px",
-          "font-family:monospace",
-          "color:rgba(147,197,253,0.9)",
-          "white-space:nowrap",
-          "pointer-events:auto",
-          "cursor:pointer",
-          "user-select:none",
-          "backdrop-filter:blur(8px)",
-        ].join(";");
+        div.style.cssText = `
+          background: rgba(1,9,19,0.88);
+          border: 1px solid rgba(0,144,255,0.35);
+          border-radius: 20px;
+          padding: 4px 11px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          font-size: 11px;
+          font-weight: 600;
+          color: #60A5FA;
+          white-space: nowrap;
+          cursor: pointer;
+          letter-spacing: 0.04em;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,144,255,0.1);
+          transition: all 0.2s;
+          pointer-events: auto;
+          backdrop-filter: blur(8px);
+          user-select: none;
+        `;
+        div.addEventListener("mouseenter", () => {
+          div.style.background    = "rgba(0,144,255,0.15)";
+          div.style.borderColor   = "rgba(0,144,255,0.6)";
+          div.style.color         = "#93C5FD";
+        });
+        div.addEventListener("mouseleave", () => {
+          div.style.background    = "rgba(1,9,19,0.88)";
+          div.style.borderColor   = "rgba(0,144,255,0.35)";
+          div.style.color         = "#60A5FA";
+        });
 
         const label = new CSS2DObject(div);
         label.position.copy(latLngToVec3(m.lat, m.lng, GLOBE_RADIUS + 6));
@@ -451,6 +484,12 @@ export default function InteractiveGlobe() {
         (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
       });
 
+      // Animate arc opacity
+      arcLinesRef.current.forEach((line, i) => {
+        (line.material as THREE.LineBasicMaterial).opacity =
+          0.15 + 0.3 * Math.abs(Math.sin(Date.now() * 0.001 + i * 1.2));
+      });
+
       renderer.render(scene, camera);
       if (css2dRenderer) css2dRenderer.render(scene, camera);
     }
@@ -474,8 +513,6 @@ export default function InteractiveGlobe() {
           else obj.material.dispose();
         }
       });
-      starsGeo.dispose();
-
       renderer.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
       if (css2dRenderer && el.contains(css2dRenderer.domElement)) {

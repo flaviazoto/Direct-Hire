@@ -46,12 +46,13 @@ class ResendProvider implements EmailProvider {
   async send(params: SendParams) {
     const { Resend } = await import("resend");
     const resend = new Resend(process.env.RESEND_API_KEY!);
-    const { data } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from:    `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM_ADDRESS}>`,
       to:      params.to,
       subject: params.subject,
       html:    params.html,
     });
+    if (error) throw new Error(error.message);
     return { messageId: data?.id };
   }
 }
@@ -89,17 +90,25 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
-  const logRecord = await prisma.emailLog.create({
-    data: {
-      userId:     opts.userId,
-      emailType:  opts.emailType,
-      toAddress:  opts.to,
-      subject:    opts.subject,
-      templateId: opts.templateId,
-      variables:  (opts.variables ?? {}) as Prisma.InputJsonValue,
-      status:     "QUEUED",
-    },
-  });
+  // DB logging is best-effort — if the Prisma client doesn't have emailLog (e.g. after
+  // a --no-engine generate), we still want the email to be sent and the request to succeed.
+  let logId: string | undefined;
+  try {
+    const logRecord = await prisma.emailLog.create({
+      data: {
+        userId:     opts.userId,
+        emailType:  opts.emailType,
+        toAddress:  opts.to,
+        subject:    opts.subject,
+        templateId: opts.templateId,
+        variables:  (opts.variables ?? {}) as Prisma.InputJsonValue,
+        status:     "QUEUED",
+      },
+    });
+    logId = logRecord.id;
+  } catch (logErr) {
+    console.error("[sendEmail] Failed to create email log:", logErr instanceof Error ? logErr.message : logErr);
+  }
 
   try {
     const provider = getProvider();
@@ -110,22 +119,19 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
       text:    opts.text,
     });
 
-    await prisma.emailLog.update({
-      where: { id: logRecord.id },
-      data: {
-        status:        "SENT",
-        providerMsgId: result.messageId,
-        sentAt:        new Date(),
-      },
-    });
+    if (logId) {
+      await prisma.emailLog.update({
+        where: { id: logId },
+        data: { status: "SENT", providerMsgId: result.messageId, sentAt: new Date() },
+      }).catch((e: Error) => console.error("[sendEmail] Failed to update log to SENT:", e.message));
+    }
   } catch (error) {
-    await prisma.emailLog.update({
-      where: { id: logRecord.id },
-      data: {
-        status:       "FAILED",
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      },
-    });
+    if (logId) {
+      await prisma.emailLog.update({
+        where: { id: logId },
+        data: { status: "FAILED", errorMessage: error instanceof Error ? error.message : "Unknown error" },
+      }).catch((e: Error) => console.error("[sendEmail] Failed to update log to FAILED:", e.message));
+    }
     console.error("[Email send failed]", error);
     // Don't rethrow — email failure should not crash request
   }
@@ -133,6 +139,17 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
 
 // ── Template-based email helpers ──────────────────────────────
 // Importable send functions for each email type
+
+export async function sendOtpVerification(
+  userId: string,
+  to: string,
+  code: string,
+  expiresMinutes: number
+) {
+  const { otpVerificationTemplate } = await import("./templates");
+  const { subject, html, text } = otpVerificationTemplate({ code, expiresMinutes });
+  await sendEmail({ userId, to, emailType: "EMAIL_VERIFICATION", subject, html, text });
+}
 
 export async function sendWelcomeEmail(
   userId: string,
@@ -317,8 +334,35 @@ export async function sendNewApplicationEmail(
 ) {
   const { newApplicationTemplate } = await import("./templates");
   const { subject, html, text } = newApplicationTemplate({ jobTitle, companyName, applicationId, jobId });
-  await sendEmail({ userId: employerUserId, to, emailType: "GENERAL", subject, html, text,
+  await sendEmail({ userId: employerUserId, to, emailType: "APPLICATION_RECEIVED", subject, html, text,
     templateId: "new_application", variables: { jobTitle, companyName, applicationId, jobId } });
+}
+
+export async function sendApplicationConfirmationEmail(data: {
+  workerUserId:   string;
+  workerEmail:    string;
+  workerFirstName: string;
+  jobTitle:       string;
+  companyName:    string;
+  applicationId:  string;
+}) {
+  const { applicationConfirmationTemplate } = await import("./templates");
+  const { subject, html, text } = applicationConfirmationTemplate({
+    firstName:     data.workerFirstName,
+    jobTitle:      data.jobTitle,
+    companyName:   data.companyName,
+    applicationId: data.applicationId,
+  });
+  await sendEmail({
+    userId:     data.workerUserId,
+    to:         data.workerEmail,
+    emailType:  "APPLICATION_RECEIVED",
+    subject,
+    html,
+    text,
+    templateId: "application_confirmation",
+    variables:  { jobTitle: data.jobTitle, companyName: data.companyName, applicationId: data.applicationId },
+  });
 }
 
 export async function sendApplicationWithdrawnEmail(
@@ -339,7 +383,7 @@ export async function sendApplicationShortlistedEmail(
 ) {
   const { applicationShortlistedTemplate } = await import("./templates");
   const { subject, html, text } = applicationShortlistedTemplate({ firstName, jobTitle, companyName });
-  await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text,
+  await sendEmail({ userId, to, emailType: "APPLICATION_SHORTLISTED", subject, html, text,
     templateId: "application_shortlisted", variables: { firstName, jobTitle, companyName } });
 }
 
@@ -356,7 +400,7 @@ export async function sendApplicationInterviewedEmail(
   const { subject, html, text } = applicationInterviewedTemplate({
     firstName, jobTitle, companyName, applicationId, interviewInstructions,
   });
-  await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text,
+  await sendEmail({ userId, to, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
     templateId: "application_interviewed", variables: { firstName, jobTitle, companyName, applicationId } });
 }
 
@@ -365,7 +409,7 @@ export async function sendApplicationAcceptedWorkerEmail(
 ) {
   const { applicationAcceptedWorkerTemplate } = await import("./templates");
   const { subject, html, text } = applicationAcceptedWorkerTemplate({ firstName, jobTitle, companyName });
-  await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text,
+  await sendEmail({ userId, to, emailType: "APPLICATION_ACCEPTED", subject, html, text,
     templateId: "application_accepted_worker", variables: { firstName, jobTitle, companyName } });
 }
 
@@ -378,12 +422,45 @@ export async function sendApplicationAcceptedEmployerEmail(
     templateId: "application_accepted_employer", variables: { workerName } });
 }
 
+export async function sendHireConfirmationEmployerEmail(data: {
+  employerUserId:  string;
+  employerEmail:   string;
+  employerName:    string;
+  workerName:      string;
+  jobTitle:        string;
+  startDate?:      string;
+  contractType?:   string;
+  offeredSalary?:  string;
+  offeredCurrency?: string;
+}) {
+  const { hireConfirmationEmployerTemplate } = await import("./templates");
+  const { subject, html, text } = hireConfirmationEmployerTemplate({
+    employerName:    data.employerName,
+    workerName:      data.workerName,
+    jobTitle:        data.jobTitle,
+    startDate:       data.startDate,
+    contractType:    data.contractType,
+    offeredSalary:   data.offeredSalary,
+    offeredCurrency: data.offeredCurrency,
+  });
+  await sendEmail({
+    userId:     data.employerUserId,
+    to:         data.employerEmail,
+    emailType:  "APPLICATION_ACCEPTED",
+    subject,
+    html,
+    text,
+    templateId: "hire_confirmation_employer",
+    variables:  { workerName: data.workerName, jobTitle: data.jobTitle },
+  });
+}
+
 export async function sendApplicationRejectedWorkerEmail(
   userId: string, to: string, jobTitle: string, companyName: string,
 ) {
   const { applicationRejectedWorkerTemplate } = await import("./templates");
   const { subject, html, text } = applicationRejectedWorkerTemplate({ jobTitle, companyName });
-  await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text,
+  await sendEmail({ userId, to, emailType: "APPLICATION_REJECTED", subject, html, text,
     templateId: "application_rejected_worker", variables: { jobTitle, companyName } });
 }
 

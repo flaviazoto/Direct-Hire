@@ -161,7 +161,7 @@ function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClo
           </div>
 
           <div style={{ background: "rgba(13,148,136,0.08)", border: "1px solid rgba(13,148,136,0.2)", borderRadius: "var(--r-md)", padding: "14px 16px", fontSize: 13, color: "var(--employer-3)", lineHeight: 1.65 }}>
-            Once confirmed, this candidate will be notified and a reservation will be created automatically.
+            The worker will be notified and their profile will become available to other employers after hiring is confirmed.
           </div>
         </div>
 
@@ -244,11 +244,16 @@ function EmployerApplicationsContent() {
   };
 
   const confirmHire = async (app: Application, data: { salary: string; startDate: string; contractType: string }) => {
-    const res = await employerApi.updateApplicationStatus(app.id, "ACCEPTED");
+    const res = await employerApi.updateApplicationStatus(app.id, "ACCEPTED", {
+      offeredSalary:   data.salary,
+      offeredCurrency: "USD",
+      startDate:       data.startDate,
+      contractType:    data.contractType,
+    });
     setHireApp(null);
     if (res.success) {
       const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Candidate";
-      showToast(`🎉 ${name} has been hired! Reservation created.`, "ok");
+      showToast(`🎉 ${name} has been hired! A confirmation has been sent.`, "ok");
       load();
     } else {
       showToast(res.error ?? "Failed to confirm hire", "err");
@@ -331,11 +336,22 @@ function EmployerApplicationsContent() {
 
                     {/* Match Score */}
                     <td style={{ padding: "14px 20px" }}>
-                      {score !== undefined ? (
+                      {score != null ? (
                         <div>
-                          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: score >= 80 ? "var(--employer-3)" : score >= 60 ? "var(--blue-4)" : "var(--warning)" }}>{score}%</div>
-                          <div style={{ width: 80, height: 4, background: "rgba(13,148,136,0.15)", borderRadius: 2, marginTop: 4 }}>
-                            <div style={{ width: `${score}%`, height: "100%", background: "linear-gradient(90deg, var(--employer-primary), var(--employer-2))", borderRadius: 2 }} />
+                          <span style={{
+                            display: "inline-block",
+                            fontSize: 12, fontWeight: 700,
+                            padding: "3px 9px", borderRadius: 99,
+                            fontFamily: "var(--font-display)",
+                            color:       score >= 80 ? "#15803d" : score >= 60 ? "#92400e" : "#4b5563",
+                            background:  score >= 80 ? "rgba(21,128,61,0.12)" : score >= 60 ? "rgba(146,64,14,0.12)" : "rgba(75,85,99,0.12)",
+                            border: `1px solid ${score >= 80 ? "rgba(21,128,61,0.25)" : score >= 60 ? "rgba(146,64,14,0.25)" : "rgba(75,85,99,0.25)"}`,
+                          }}>
+                            {score.toFixed(0)}%
+                          </span>
+                          <div style={{ width: 64, height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, marginTop: 5 }}>
+                            <div style={{ width: `${score}%`, height: "100%", borderRadius: 2,
+                              background: score >= 80 ? "#16a34a" : score >= 60 ? "#d97706" : "#6b7280" }} />
                           </div>
                         </div>
                       ) : <span style={{ color: "var(--muted)", fontSize: 13 }}>—</span>}

@@ -1,117 +1,219 @@
 "use client";
 // src/app/(app)/worker/notifications/page.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { userApi } from "@/lib/api-client";
-import {
-  LoadingPage, PageHeader, Card, CardContent, Badge, Button,
-  EmptyState, ToastDisplay, type ToastData,
-} from "@/components/ui";
+import { workerApi } from "@/lib/api-client";
+import { ToastDisplay, type ToastData } from "@/components/ui";
 
-interface Notification {
-  id: string;
-  title: string;
-  body: string;
-  type: string;
-  isRead: boolean;
-  link?: string;
+interface NotifItem {
+  id:        string;
+  type:      string;
+  title:     string;
+  body:      string;
+  isRead:    boolean;
+  link?:     string;
   createdAt: string;
 }
 
+interface PagedResponse {
+  success:    boolean;
+  data:       NotifItem[];
+  total:      number;
+  totalPages: number;
+  page:       number;
+}
+
 const TYPE_ICON: Record<string, string> = {
-  REVIEW_APPROVED:     "✅",
-  REVIEW_REJECTED:     "❌",
-  REVIEW_NEEDS_CHANGES: "✏️",
-  APPLICATION_SUBMITTED: "📬",
-  APPLICATION_STATUS_CHANGE: "📋",
+  MESSAGE_RECEIVED:   "✉️",
+  APPLICATION_UPDATE: "📋",
+  PROFILE_APPROVED:   "✅",
+  PROFILE_REJECTED:   "❌",
+  JOB_MATCH:          "🎯",
+  GENERAL:            "🔔",
 };
+
+function timeAgo(d: string) {
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 60)    return "just now";
+  if (s < 3600)  return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
 
 export default function WorkerNotificationsPage() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [toast, setToast]       = useState<ToastData>(null);
+  const [notifs,      setNotifs]      = useState<NotifItem[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [page,        setPage]        = useState(1);
+  const [totalPages,  setTotalPages]  = useState(1);
+  const [unreadOnly,  setUnreadOnly]  = useState(false);
+  const [toast,       setToast]       = useState<ToastData>(null);
+  const prevUnreadOnly = useRef(unreadOnly);
 
   const showToast = (msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
+  async function load(p: number, unread: boolean) {
+    setLoading(true);
+    const params: Record<string, string> = { page: String(p), limit: "20" };
+    if (unread) params.unreadOnly = "true";
+    const res = await workerApi.getNotifications(params);
+    if (!res.success) { router.push("/login"); return; }
+    const d = res as unknown as PagedResponse;
+    setNotifs(d.data ?? []);
+    setTotalPages(d.totalPages ?? 1);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    userApi.getNotifications().then(res => {
-      if (!res.success) { router.push("/login"); return; }
-      setNotifications((res.data as unknown as Notification[]) ?? []);
-      setLoading(false);
-    });
-  }, []);
+    if (prevUnreadOnly.current !== unreadOnly) {
+      prevUnreadOnly.current = unreadOnly;
+      setPage(1);
+      load(1, unreadOnly);
+    } else {
+      load(page, unreadOnly);
+    }
+  }, [page, unreadOnly]);
 
   const markRead = async (id: string) => {
-    await userApi.markNotificationRead(id);
-    setNotifications(ns => ns.map(n => n.id === id ? { ...n, isRead: true } : n));
+    await workerApi.markNotificationRead(id);
+    setNotifs(ns => ns.map(n => n.id === id ? { ...n, isRead: true } : n));
   };
 
   const markAllRead = async () => {
-    const unread = notifications.filter(n => !n.isRead);
-    await Promise.all(unread.map(n => userApi.markNotificationRead(n.id)));
-    setNotifications(ns => ns.map(n => ({ ...n, isRead: true })));
+    await workerApi.markAllNotificationsRead();
+    setNotifs(ns => ns.map(n => ({ ...n, isRead: true })));
     showToast("All marked as read", "ok");
   };
 
-  if (loading) return <LoadingPage color="blue" />;
+  const handleClick = async (n: NotifItem) => {
+    if (!n.isRead) await markRead(n.id);
+    if (n.link) router.push(n.link);
+  };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifs.filter(n => !n.isRead).length;
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
       <ToastDisplay toast={toast} />
-      <PageHeader
-        title="Notifications"
-        description={unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-        actions={
-          unreadCount > 0
-            ? <Button variant="outline" size="sm" onClick={markAllRead}>Mark all read</Button>
-            : undefined
-        }
-      />
 
-      {notifications.length === 0 ? (
-        <EmptyState
-          icon="🔔"
-          title="No notifications"
-          description="You're all caught up! Notifications about your profile and applications will appear here."
-        />
-      ) : (
-        <div className="space-y-2">
-          {notifications.map(n => (
-            <Card
-              key={n.id}
-              className={n.isRead ? "opacity-75" : ""}
-              onClick={() => {
-                if (!n.isRead) markRead(n.id);
-                if (n.link) router.push(n.link);
-              }}
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: 0 }}>Notifications</h1>
+          <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
+            {unreadCount > 0 ? `${unreadCount} unread on this page` : "All caught up"}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={() => setUnreadOnly(v => !v)}
+            style={{
+              padding:      "7px 14px",
+              borderRadius: 8,
+              border:       `1px solid ${unreadOnly ? "#7c3aed" : "rgba(255,255,255,0.1)"}`,
+              background:   unreadOnly ? "rgba(124,58,237,0.15)" : "transparent",
+              color:        unreadOnly ? "#a78bfa" : "#94a3b8",
+              fontSize:     13,
+              fontWeight:   600,
+              cursor:       "pointer",
+            }}
+          >
+            {unreadOnly ? "Showing unread" : "Show unread only"}
+          </button>
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllRead}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}
             >
-              <CardContent className="flex items-start gap-4 py-4">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-lg flex-shrink-0">
-                  {TYPE_ICON[n.type] ?? "🔔"}
+              Mark all read
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+          <div style={{ width: 32, height: 32, border: "3px solid rgba(124,58,237,0.2)", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : notifs.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "64px 0", color: "#4b5563" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>No notifications</div>
+          <div style={{ fontSize: 13, color: "#4b5563" }}>
+            {unreadOnly ? "No unread notifications." : "You're all caught up. Notifications will appear here."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {notifs.map(n => (
+            <div
+              key={n.id}
+              onClick={() => handleClick(n)}
+              style={{
+                display:      "flex",
+                gap:          14,
+                padding:      "14px 16px",
+                background:   n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)",
+                border:       `1px solid ${n.isRead ? "rgba(255,255,255,0.05)" : "rgba(124,58,237,0.2)"}`,
+                borderRadius: 12,
+                cursor:       n.link ? "pointer" : "default",
+                transition:   "background 0.15s",
+              }}
+              onMouseOver={e => { if (n.link) e.currentTarget.style.background = "rgba(124,58,237,0.12)"; }}
+              onMouseOut={e  => { e.currentTarget.style.background = n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)"; }}
+            >
+              {/* Icon */}
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                {TYPE_ICON[n.type] ?? "🔔"}
+              </div>
+
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{n.title}</span>
+                  {!n.isRead && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, padding: "1px 7px" }}>New</span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-slate-900">{n.title}</span>
-                    {!n.isRead && <Badge variant="blue" dot>New</Badge>}
-                  </div>
-                  <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">{n.body}</p>
-                  <p className="text-xs text-slate-300 mt-1.5">
-                    {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
-                {!n.isRead && (
-                  <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
-                )}
-              </CardContent>
-            </Card>
+                <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>{n.body}</p>
+                <div style={{ fontSize: 11, color: "#4b5563", marginTop: 5 }}>{timeAgo(n.createdAt)}</div>
+              </div>
+
+              {/* Unread dot */}
+              {!n.isRead && (
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7c3aed", flexShrink: 0, marginTop: 6 }} />
+              )}
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 24 }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: page === 1 ? "#374151" : "#94a3b8", cursor: page === 1 ? "not-allowed" : "pointer", fontSize: 13 }}
+          >
+            ← Prev
+          </button>
+          <span style={{ padding: "6px 14px", fontSize: 13, color: "#64748b" }}>
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: page === totalPages ? "#374151" : "#94a3b8", cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: 13 }}
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>

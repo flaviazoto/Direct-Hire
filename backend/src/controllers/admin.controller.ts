@@ -7,7 +7,6 @@ import { ok, err, getPagination, paginated } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { sendAccountApproved, sendAccountRejected, sendAccountSuspended, sendAccountReinstated } from "../services/email";
 import { z } from "zod";
-import { emailService } from "../email/email.service";
 import { decrypt } from "../lib/encrypt";
 import { insertAuditLog } from "../lib/audit";
 
@@ -22,7 +21,7 @@ async function insertAdminAuditLog(opts: {
   const id = crypto.randomUUID();
   await prisma.$executeRawUnsafe(
     `INSERT INTO "audit_log" (id, admin_id, action, target_user_id, notes, metadata, created_at)
-     VALUES ($1, $2, $3::\"AuditAction\", $4, $5, $6, NOW())`,
+     VALUES ($1, $2, $3::\"AuditAction\", $4, $5, $6::jsonb, NOW())`,
     id,
     opts.adminId,
     opts.action,
@@ -79,25 +78,52 @@ export async function getStats(_req: Request, res: Response, next: NextFunction)
     const startOfDay = new Date(new Date().setHours(0,0,0,0));
     const start30d   = new Date(Date.now() - 30 * 24 * 3600 * 1000);
 
-    const [totalWorkers, totalEmployers, totalAdmins, newToday, pending, approved, rejected, needsChanges, uploads, emailsToday, recent] =
+    const [totalWorkers, totalEmployers, totalAdmins, newToday, pendingUsers, approved, rejected, needsChanges, uploads, emailsToday] =
       await Promise.all([
         prisma.user.count({ where: { role: "WORKER" } }),
         prisma.user.count({ where: { role: "EMPLOYER" } }),
         prisma.user.count({ where: { role: "ADMIN" } }),
         prisma.user.count({ where: { createdAt: { gte: startOfDay } } }),
-        prisma.verificationRecord.count({ where: { reviewStatus: "PENDING" } }),
+        prisma.user.count({ where: { accountStatus: "PENDING_REVIEW" } }),
         prisma.verificationRecord.count({ where: { reviewStatus: "APPROVED" } }),
         prisma.verificationRecord.count({ where: { reviewStatus: "REJECTED" } }),
         prisma.verificationRecord.count({ where: { reviewStatus: "NEEDS_CHANGES" } }),
         prisma.upload.count({ where: { status: "UPLOADED" } }),
         prisma.emailLog.count({ where: { createdAt: { gte: startOfDay } } }),
-        prisma.onboardingProgress.findMany({
-          where:   { isSubmitted: true, submittedAt: { gte: start30d } },
-          orderBy: { submittedAt: "desc" },
-          take:    5,
-          include: { user: { select: { email: true, role: true } } },
-        }),
       ]);
+
+    // Raw SQL with INNER JOIN guarantees no orphaned rows reach the mapping
+    const recentRaw = await prisma.$queryRaw<{
+      id: string; email: string; role: string; submittedAt: Date | null;
+      firstName: string | null; lastName: string | null; countryOfResidence: string | null;
+      companyName: string | null; contactPersonName: string | null;
+    }[]>`
+      SELECT
+        u.id, u.email, u.role,
+        op."submittedAt",
+        wp."firstName", wp."lastName", wp."countryOfResidence",
+        ep."companyName", ep."contactPersonName"
+      FROM "OnboardingProgress" op
+      INNER JOIN "User" u ON u.id = op."userId"
+      LEFT JOIN "WorkerProfile" wp ON wp."userId" = u.id
+      LEFT JOIN "EmployerProfile" ep ON ep."userId" = u.id
+      WHERE op."isSubmitted" = true
+        AND op."submittedAt" >= ${start30d}
+      ORDER BY op."submittedAt" DESC
+      LIMIT 5
+    `;
+
+    const recentSubmissions = recentRaw.map(r => ({
+      userId:        r.id,
+      email:         r.email,
+      role:          r.role,
+      submittedAt:   r.submittedAt,
+      completionPct: 100,
+      country:       r.countryOfResidence ?? null,
+      name: r.role === "WORKER"
+        ? [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email
+        : r.companyName || r.contactPersonName || r.email,
+    }));
 
     // Monthly registrations (last 12 months)
     const monthly = await prisma.$queryRaw<{ month: string; count: bigint }[]>`
@@ -109,16 +135,12 @@ export async function getStats(_req: Request, res: Response, next: NextFunction)
 
     return ok(res, {
       users:        { workers: totalWorkers, employers: totalEmployers, admins: totalAdmins, newToday },
-      verification: { pending, approved, rejected, needsChanges },
+      verification: { pending: pendingUsers, approved, rejected, needsChanges },
       uploads, emailsToday,
-      recentSubmissions: recent.map(s => ({
-        userId: s.userId, email: s.user.email, role: s.role,
-        submittedAt: s.submittedAt,
-        completionPct: Math.round((s.completedSteps.length / s.totalSteps) * 100),
-      })),
+      recentSubmissions,
       monthly: monthly.map(m => ({ month: m.month, count: Number(m.count) })),
     });
-  } catch (e) { next(e); }
+  } catch (e) { console.error("[getStats] ERROR:", e); next(e); }
 }
 
 // ── getSubmissions ────────────────────────────────────────────
@@ -497,7 +519,7 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
           id: true, email: true, role: true,
           accountStatus: true, isEmailVerified: true, createdAt: true,
           verificationSubmittedAt: true,
-          workerProfile:   { select: { firstName: true, lastName: true } },
+          workerProfile:   { select: { firstName: true, lastName: true, documentsVerified: true } },
           employerProfile: { select: { companyName: true, contactPersonName: true } },
         },
       }),
@@ -516,6 +538,7 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
         ? [u.workerProfile.firstName, u.workerProfile.lastName].filter(Boolean).join(" ") || null
         : u.employerProfile?.contactPersonName ?? null,
       companyName: u.employerProfile?.companyName ?? null,
+      documentsVerified: (u.workerProfile as any)?.documentsVerified === true,
     }));
 
     return paginated(res, rows, total, page, limit);
@@ -941,8 +964,22 @@ export async function approveUser(req: Request, res: Response, next: NextFunctio
 
     await prisma.user.update({
       where: { id },
-      data: { accountStatus: "VERIFIED", approvedAt: new Date(), reviewedById: adminId },
+      data: { accountStatus: "VERIFIED", approvedAt: new Date(), reviewedById: adminId, onboardingComplete: true },
     });
+
+    // For workers: mark onboarding approved and make profile searchable
+    if (user.role === "WORKER") {
+      await Promise.all([
+        prisma.onboardingProgress.updateMany({
+          where: { userId: id },
+          data:  { onboardingStatus: "APPROVED" },
+        }),
+        prisma.workerProfile.updateMany({
+          where: { userId: id },
+          data:  { isSearchable: true },
+        }),
+      ]);
+    }
 
     await insertAdminAuditLog({ adminId, action: "USER_APPROVED", targetUserId: id });
 
@@ -1113,6 +1150,83 @@ export async function reinstateUser(req: Request, res: Response, next: NextFunct
     await sendAccountReinstated(id, user.email, firstName);
 
     return ok(res, { success: true });
+  } catch (e) { next(e); }
+}
+
+// ── getEmailLogs ──────────────────────────────────────────────
+// GET /admin/email-logs?page=&limit=&emailType=&status=&search=
+const VALID_EMAIL_STATUSES = ["QUEUED", "SENT", "FAILED", "BOUNCED"] as const;
+const VALID_EMAIL_TYPES = [
+  "WELCOME", "EMAIL_VERIFICATION", "PASSWORD_RESET", "ONBOARDING_REMINDER",
+  "ONBOARDING_SUBMITTED", "ACCOUNT_APPROVED", "ACCOUNT_REJECTED",
+  "ACCOUNT_NEEDS_CHANGES", "SUBSCRIPTION_CONFIRMED", "ADMIN_NEW_SUBMISSION", "GENERAL",
+] as const;
+
+export async function getEmailLogs(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
+    const { emailType, status, search } = req.query as Record<string, string>;
+
+    const where: Prisma.EmailLogWhereInput = {};
+    if (status    && (VALID_EMAIL_STATUSES as readonly string[]).includes(status))
+      where.status = status as typeof VALID_EMAIL_STATUSES[number];
+    if (emailType && (VALID_EMAIL_TYPES as readonly string[]).includes(emailType))
+      where.emailType = emailType as typeof VALID_EMAIL_TYPES[number];
+    if (search)
+      where.toAddress = { contains: search, mode: "insensitive" };
+
+    const [data, total] = await Promise.all([
+      prisma.emailLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        select: {
+          id: true, userId: true, emailType: true, toAddress: true,
+          subject: true, status: true, providerMsgId: true,
+          errorMessage: true, sentAt: true, createdAt: true,
+        },
+      }),
+      prisma.emailLog.count({ where }),
+    ]);
+
+    return paginated(res, data, total, page, limit);
+  } catch (e) { next(e); }
+}
+
+// ── getEmailStats ─────────────────────────────────────────────
+// GET /admin/email-stats — counts grouped by status + type, last 30 days
+export async function getEmailStats(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [byStatus, byType, last24h] = await Promise.all([
+      prisma.emailLog.groupBy({
+        by: ["status"],
+        where: { createdAt: { gte: since30d } },
+        _count: { _all: true },
+      }),
+      prisma.emailLog.groupBy({
+        by: ["emailType"],
+        where: { createdAt: { gte: since30d } },
+        _count: { _all: true },
+      }),
+      prisma.emailLog.count({ where: { createdAt: { gte: since24h } } }),
+    ]);
+
+    const statusMap = Object.fromEntries(byStatus.map(r => [r.status, r._count._all]));
+
+    return ok(res, {
+      total:   byStatus.reduce((s, r) => s + r._count._all, 0),
+      sent:    statusMap["SENT"]    ?? 0,
+      failed:  statusMap["FAILED"]  ?? 0,
+      queued:  statusMap["QUEUED"]  ?? 0,
+      bounced: statusMap["BOUNCED"] ?? 0,
+      last24h,
+      byType:  byType.map(r => ({ type: r.emailType, count: r._count._all }))
+                     .sort((a, b) => b.count - a.count),
+    });
   } catch (e) { next(e); }
 }
 

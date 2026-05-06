@@ -11,17 +11,18 @@ import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
 
 interface ProfileData {
-  user:         { email: string; status: string; isEmailVerified: boolean };
+  user:         { email: string; status: string; accountStatus?: string; onboardingComplete?: boolean; isEmailVerified: boolean };
   profile:      {
     firstName?: string; lastName?: string; profession?: string;
     countryOfResidence?: string; yearsExperience?: string; expectedSalary?: string;
-    trustScore?: number; riskScore?: number; isSearchable?: boolean;
+    trustScore?: number; riskScore?: number; isSearchable?: boolean; documentsVerified?: boolean;
     skills?: { skill: string }[]; languages?: { language: string; proficiencyLevel: string }[];
     targetCountries?: { country: string }[];
   } | null;
   onboarding:   { currentStep: number; totalSteps: number; onboardingStatus: string; isSubmitted: boolean; completedSteps: number[] } | null;
   verification: { reviewStatus: string; adminNotes?: string; changesRequested?: string } | null;
   notifications: { id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string }[];
+  profileCompletionScore?: number | null;
 }
 
 interface Application {
@@ -260,16 +261,16 @@ function WorkerDashboardContent() {
   if (loading) return <LoadingPage color="blue" />;
   if (!profileData) return null;
 
-  const { user, profile, onboarding, notifications } = profileData;
+  const { user, profile, onboarding, notifications, profileCompletionScore } = profileData;
   const firstName   = profile?.firstName ?? user.email.split("@")[0];
   const onbStatus   = onboarding?.onboardingStatus ?? "DRAFT";
   const statusInfo  = STATUS_INFO[onbStatus] ?? STATUS_INFO.DRAFT;
   const completePct = onboarding
     ? Math.round((onboarding.completedSteps.length / onboarding.totalSteps) * 100)
     : 0;
-  const profileScore = profile?.trustScore ?? completePct;
-  const isApproved   = onbStatus === "APPROVED";
-  const needsAction  = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus);
+  const profileScore = profileCompletionScore ?? profile?.trustScore ?? completePct;
+  const isApproved   = onbStatus === "APPROVED" || user.accountStatus === "VERIFIED";
+  const needsAction  = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus) && user.accountStatus !== "VERIFIED";
 
   const appsSent       = applications.length;
   const interviewCount = applications.filter(a => a.status === "INTERVIEWED" || a.status === "INTERVIEW").length;

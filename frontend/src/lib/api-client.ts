@@ -25,7 +25,19 @@ async function silentRefresh(): Promise<boolean> {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
   })
-    .then((r) => r.ok)
+    .then(async (r) => {
+      if (!r.ok) return false;
+      try {
+        const rd = await r.json() as Record<string, unknown>;
+        const d  = (rd.data ?? rd) as Record<string, unknown>;
+        const newToken = (d.accessToken ?? d.token) as string | undefined;
+        if (newToken && typeof window !== "undefined") {
+          localStorage.setItem("dh_token", newToken);
+          if (d.role) localStorage.setItem("dh_role", d.role as string);
+        }
+      } catch { /* non-fatal */ }
+      return true;
+    })
     .catch(() => false)
     .finally(() => { _isRefreshing = false; _refreshPromise = null; });
   return _refreshPromise;
@@ -33,11 +45,13 @@ async function silentRefresh(): Promise<boolean> {
 
 async function request<T>(path: string, options: RequestInit = {}, _retry = false): Promise<ApiResult<T>> {
   try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
     const res = await fetch(`${API_PREFIX}${path}`, {
       ...options,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });
@@ -98,6 +112,8 @@ function upload<T>(path: string, formData: FormData, onProgress?: (pct: number) 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_PREFIX}${path}`);
     xhr.withCredentials = true;
+    const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
     if (onProgress) {
       xhr.upload.addEventListener("progress", (e) => {
@@ -129,10 +145,11 @@ export async function checkAuth(): Promise<{
   firstName?:    string;
 }> {
   try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
     const res = await fetch(`${API_PREFIX}/user/profile`, {
       method:      "GET",
       credentials: "include",
-      headers:     { "Content-Type": "application/json" },
+      headers:     { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     if (!res.ok) return { isLoggedIn: false };
     const json = (await res.json()) as { success: boolean; data?: unknown };
@@ -229,6 +246,29 @@ export const adminApi = {
   revokePostingRights: (id: string, reason: string) =>
     post(`/admin/employers/${id}/revoke-posting-rights`, { reason }),
   restorePostingRights: (id: string) => post(`/admin/employers/${id}/restore-posting-rights`),
+  // ── Platform config ───────────────────────────────────────────────────────────
+  getAllConfig: () => get("/admin/config"),
+  getPricingConfig: () => get("/admin/config/application-fee"),
+  updatePricingConfig: (body: { baseCents?: number; enabled?: boolean }) =>
+    patch("/admin/config/application-fee", body),
+  updateLockRateConfig: (body: { dailyRateCents?: number; maxConcurrentLocks?: number; maxDurationDays?: number }) =>
+    patch("/admin/config/lock-rate", body),
+  // ── Revenue dashboard ───────────────────────────────────────────────────────
+  getRevenueSummary: () => get("/admin/revenue/summary"),
+  getRevenueChart: (period = "30d", type = "all") =>
+    get(`/admin/revenue/chart?period=${period}&type=${type}`),
+  getPaymentLog: (params?: Record<string, string>) =>
+    get(`/admin/revenue/payments${params ? "?" + new URLSearchParams(params) : ""}`),
+  // ── Email logs ──────────────────────────────────────────────────────────────
+  getEmailLogs: (params?: Record<string, string>) =>
+    get(`/admin/email-logs${params ? "?" + new URLSearchParams(params) : ""}`),
+  getEmailStats: () => get("/admin/email-stats"),
+  // ── Document review ─────────────────────────────────────────────────────────
+  getPendingDocumentWorkers: (params?: Record<string, string>) =>
+    get(`/admin/workers/pending-documents${params ? "?" + new URLSearchParams(params) : ""}`),
+  getWorkerDocuments: (id: string) => get(`/admin/workers/${id}/documents`),
+  reviewWorkerDocuments: (id: string, body: { photoStatus: string; videoStatus: string; passportStatus: string; notes?: string }) =>
+    patch(`/admin/workers/${id}/documents/review`, body),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*
@@ -260,10 +300,26 @@ export const workerApi = {
   getApplicationContact: (id: string) => get(`/applications/${id}/contact`),
   getDocuments: () => get("/uploads"),
   deleteDocument: (id: string) => del(`/uploads/${id}`),
+  getApplicationFee: (jobId: string) => get(`/jobs/${jobId}/application-fee`),
+  confirmApplication: (jobId: string, body: { paymentIntentId: string; coverLetter?: string }) =>
+    post(`/jobs/${jobId}/apply/confirm`, body),
   getLockStatus: () => get("/worker/lock-status"),
   getLockHistory: (params?: Record<string, string>) =>
     get(`/worker/lock-history${params ? "?" + new URLSearchParams(params) : ""}`),
-  getLockDetail: (lockId: string) => get(`/worker/lock-history/${lockId}`),
+  getLockDetail: (lockId: string) =>
+    get(`/worker/lock-history/${lockId}`),
+  // ── Notifications ───────────────────────────────────────────────────────────
+  getNotifications: (params?: Record<string, string>) =>
+    get(`/worker/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
+  getUnreadCount: () => get("/worker/notifications/unread-count"),
+  markNotificationRead: (id: string) => patch(`/worker/notifications/${id}/read`),
+  markAllNotificationsRead: () => patch("/worker/notifications/read-all"),
+  // ── Messages ────────────────────────────────────────────────────────────────
+  getMessages: (params?: Record<string, string>) =>
+    get(`/worker/messages${params ? "?" + new URLSearchParams(params) : ""}`),
+  markMessageRead: (id: string) => patch(`/worker/messages/${id}/read`),
+  getPayments: (params?: Record<string, string>) =>
+    get(`/payments${params ? "?" + new URLSearchParams(params) : ""}`),
 };
 
 export const employerApi = {
@@ -293,19 +349,36 @@ export const employerApi = {
   updateApplicationStatus: (
     id: string,
     status: string,
-    extra?: { reason?: string; interview_instructions?: string },
+    extra?: {
+      reason?: string;
+      interview_instructions?: string;
+      offeredSalary?: string;
+      offeredCurrency?: string;
+      startDate?: string;
+      contractType?: string;
+    },
   ) => put(`/employer/applications/${id}/status`, { status, ...extra }),
   getProfile: () => get("/user/profile"),
   updateProfile: (body: unknown) => patch("/user/profile", body),
   getWorkerDetail: (workerId: string) => get(`/employer/workers/${workerId}`),
+  getLockRate: () => get("/employer/lock-rate"),
   getWorkerLockStatus: (workerId: string) => get(`/employer/workers/${workerId}/lock-status`),
-  lockWorker: (workerId: string, body: { lock_days: number; daily_fee: number; currency: string }) =>
+  lockWorker: (workerId: string, body: { lock_days: number }) =>
     post(`/employer/workers/${workerId}/lock`, body),
+  confirmLock: (workerId: string, body: { payment_intent_id: string }) =>
+    post(`/employer/workers/${workerId}/lock/confirm`, body),
   extendWorkerLock: (workerId: string, body: { additional_days: number }) =>
     post(`/employer/workers/${workerId}/extend-lock`, body),
   releaseWorkerLock: (workerId: string, body?: { reason?: string }) =>
     post(`/employer/workers/${workerId}/release-lock`, body ?? {}),
   getWorkerApplications: (workerId: string) => get(`/employer/workers/${workerId}/applications`),
+  messageWorker: (workerId: string, message: string) =>
+    post("/employer/message-worker", { workerId, message }),
+  // ── Subscription (Stripe) ───────────────────────────────────────────────────
+  getSubscriptionStatus: () => get("/employer/subscription/status"),
+  createSubscriptionCheckout: () => post("/employer/subscription/checkout"),
+  cancelSubscription: () => post("/employer/subscription/cancel"),
+  getPortalSession: () => post("/employer/subscription/portal"),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */

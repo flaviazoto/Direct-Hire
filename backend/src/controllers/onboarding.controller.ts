@@ -186,9 +186,19 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
       const passportNumber = data.passportNumber
         ? await encrypt(data.passportNumber as string)
         : undefined;
-      await prisma.workerProfile.update({
+      await prisma.workerProfile.upsert({
         where: { userId },
-        data: {
+        update: {
+          firstName:          data.firstName as string,
+          lastName:           data.lastName  as string,
+          dateOfBirth:        data.dateOfBirth ? new Date(data.dateOfBirth as string) : undefined,
+          countryOfResidence: data.countryOfResidence as string,
+          city:               data.city as string,
+          passportNumber,
+          maritalStatus:      data.maritalStatus as string | undefined,
+        },
+        create: {
+          userId,
           firstName:          data.firstName as string,
           lastName:           data.lastName  as string,
           dateOfBirth:        data.dateOfBirth ? new Date(data.dateOfBirth as string) : undefined,
@@ -202,9 +212,17 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
       break;
     }
     case 2: {
-      await prisma.workerProfile.update({
+      await prisma.workerProfile.upsert({
         where: { userId },
-        data: {
+        update: {
+          fatherName:       data.fatherName as string,
+          motherName:       data.motherName as string,
+          hasSpouse:        data.hasSpouse  as boolean,
+          spouseName:       data.spouseName as string | undefined,
+          numberOfChildren: data.numberOfChildren as number,
+        },
+        create: {
+          userId,
           fatherName:       data.fatherName as string,
           motherName:       data.motherName as string,
           hasSpouse:        data.hasSpouse  as boolean,
@@ -227,7 +245,11 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           workerProfileId: profile.id, language: l.language, proficiencyLevel: l.proficiencyLevel,
         })),
       });
-      await prisma.workerProfile.update({ where: { userId }, data: { yearsExperience: data.yearsExperience as string } });
+      await prisma.workerProfile.upsert({
+        where: { userId },
+        update: { yearsExperience: data.yearsExperience as string },
+        create: { userId, yearsExperience: data.yearsExperience as string },
+      });
       break;
     }
     case 4: {
@@ -239,11 +261,17 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           workerProfileId: profile.id, country, visaTypePreference: data.visaTypePreference as string,
         })),
       });
-      await prisma.workerProfile.update({
+      await prisma.workerProfile.upsert({
         where: { userId },
-        data: {
-          expectedSalary:  data.expectedSalary  as string,
-          additionalNotes: data.additionalNotes as string | undefined,
+        update: {
+          expectedSalary:   data.expectedSalary  as string,
+          additionalNotes:  data.additionalNotes as string | undefined,
+          availabilityDate: data.availabilityDate ? new Date(data.availabilityDate as string) : undefined,
+        },
+        create: {
+          userId,
+          expectedSalary:   data.expectedSalary  as string,
+          additionalNotes:  data.additionalNotes as string | undefined,
           availabilityDate: data.availabilityDate ? new Date(data.availabilityDate as string) : undefined,
         },
       });
@@ -256,22 +284,38 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
 async function persistEmployerStep(userId: string, step: number, data: Record<string, unknown>) {
   switch (step) {
     case 1: {
-      await prisma.employerProfile.update({
+      const administratorId = data.administratorId ? await encrypt(data.administratorId as string) : undefined;
+      await prisma.employerProfile.upsert({
         where: { userId },
-        data: {
+        update: {
           companyName:     data.companyName as string,
           nipt:            data.nipt as string,
           qkr:             data.qkr as string | undefined,
-          administratorId: data.administratorId ? await encrypt(data.administratorId as string) : undefined,
+          administratorId,
+          website:         data.website as string | undefined,
+        },
+        create: {
+          userId,
+          companyName:     data.companyName as string,
+          nipt:            data.nipt as string,
+          qkr:             data.qkr as string | undefined,
+          administratorId,
           website:         data.website as string | undefined,
         },
       });
       break;
     }
     case 2: {
-      await prisma.employerProfile.update({
+      await prisma.employerProfile.upsert({
         where: { userId },
-        data: {
+        update: {
+          industry:            data.industry            as string,
+          companySize:         data.companySize         as string,
+          address:             data.address             as string,
+          businessDescription: data.businessDescription as string,
+        },
+        create: {
+          userId,
           industry:            data.industry            as string,
           companySize:         data.companySize         as string,
           address:             data.address             as string,
@@ -296,9 +340,10 @@ async function persistEmployerStep(userId: string, step: number, data: Record<st
     }
     case 4: {
       const trialEnd = new Date(Date.now() + 14 * 24 * 3600 * 1000);
-      await prisma.employerProfile.update({
+      await prisma.employerProfile.upsert({
         where: { userId },
-        data: { subscriptionPlan: data.subscriptionPlan as string, subscriptionStatus: "TRIAL", trialEndsAt: trialEnd },
+        update: { subscriptionPlan: data.subscriptionPlan as string, subscriptionStatus: "TRIAL", trialEndsAt: trialEnd },
+        create: { userId, subscriptionPlan: data.subscriptionPlan as string, subscriptionStatus: "TRIAL", trialEndsAt: trialEnd },
       });
       break;
     }

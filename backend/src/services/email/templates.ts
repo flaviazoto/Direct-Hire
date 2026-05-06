@@ -111,6 +111,31 @@ export function welcomeTemplate(vars: {
   };
 }
 
+export function otpVerificationTemplate(vars: { code: string; expiresMinutes: number }): TemplateResult {
+  const html = layout(`
+    ${badge("EMAIL VERIFICATION")}
+    <br/><br/>
+    ${h1("Your verification code")}
+    ${p("Use the code below to verify your email address. Do not share this code with anyone.")}
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+      <tr>
+        <td style="background:#F7F9FF;border:2px solid #E2E8F0;border-radius:16px;padding:24px 48px;text-align:center;">
+          <span style="font-family:'Courier New',Courier,monospace;font-size:42px;font-weight:800;color:#08142A;letter-spacing:10px;display:block;">${vars.code}</span>
+        </td>
+      </tr>
+    </table>
+    ${p(`This code expires in <strong>${vars.expiresMinutes} minutes.</strong>`)}
+    ${p("If you did not request this, ignore this email. Your account will remain unchanged.")}
+    ${divider()}
+    ${p("For security, never share this code with anyone — Direct Hire staff will never ask for it.")}
+  `);
+  return {
+    subject: "Your DirectHire verification code",
+    html,
+    text: `Your DirectHire verification code is: ${vars.code}\n\nExpires in ${vars.expiresMinutes} minutes. Do not share this code.`,
+  };
+}
+
 export function emailVerificationTemplate(vars: { verifyUrl: string }): TemplateResult {
   const html = layout(`
     ${badge("EMAIL VERIFICATION")}
@@ -625,6 +650,43 @@ export function applicationAcceptedEmployerTemplate(vars: {
   };
 }
 
+export function hireConfirmationEmployerTemplate(vars: {
+  employerName:     string;
+  workerName:       string;
+  jobTitle:         string;
+  startDate?:       string;
+  contractType?:    string;
+  offeredSalary?:   string;
+  offeredCurrency?: string;
+}): TemplateResult {
+  const detailRows = [
+    vars.offeredSalary ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;width:140px;">Offered salary</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${vars.offeredCurrency ?? "USD"} ${parseFloat(vars.offeredSalary).toLocaleString()}/month</td></tr>` : "",
+    vars.startDate    ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;">Start date</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${new Date(vars.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</td></tr>` : "",
+    vars.contractType ? `<tr><td style="padding:10px 0;font-size:14px;color:#64748B;">Contract type</td><td style="padding:10px 0;font-size:14px;font-weight:600;color:#08142A;">${vars.contractType}</td></tr>` : "",
+  ].filter(Boolean).join("");
+
+  const detailsBlock = detailRows
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">${detailRows}</table>`
+    : "";
+
+  const html = layout(`
+    ${badge("✓ HIRE CONFIRMED", "#16A34A")}
+    <br/><br/>
+    ${h1("Hire confirmed")}
+    ${p(`You have successfully hired <strong>${vars.workerName}</strong> for <strong>"${vars.jobTitle}"</strong>.`)}
+    ${detailsBlock}
+    ${p(`${vars.workerName} has been notified and their profile is now available to other employers. Their full contact details are in your dashboard.`)}
+    ${btn(`${APP_URL}/employer/applications`, "View all applications", "#16A34A")}
+    ${divider()}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+  `);
+  return {
+    subject: `Hire confirmed — ${vars.workerName} for ${vars.jobTitle}`,
+    html,
+    text: `You have hired ${vars.workerName} for "${vars.jobTitle}". View the application at ${APP_URL}/employer/applications`,
+  };
+}
+
 export function applicationRejectedWorkerTemplate(vars: {
   jobTitle: string;
   companyName: string;
@@ -1000,5 +1062,29 @@ export function lockOverrideEmployerTemplate(vars: {
     subject: `Your DirectHire reservation has been ended by our moderation team`,
     html,
     text: `Your reservation on ${vars.workerName} has been ended by the DirectHire moderation team. Contact support@directhire.io with any questions.`,
+  };
+}
+
+export function applicationConfirmationTemplate(vars: {
+  firstName:     string;
+  jobTitle:      string;
+  companyName:   string;
+  applicationId: string;
+}): TemplateResult {
+  const trackUrl = `${APP_URL}/worker/reservations`;
+  const html = layout(`
+    ${badge("APPLICATION SUBMITTED", "#0D9488")}
+    <br/><br/>
+    ${h1(`Hi ${vars.firstName}, you're in!`)}
+    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has been submitted successfully.`)}
+    ${p("We will notify you as soon as the employer reviews your profile. In the meantime, you can track all your applications from your dashboard.")}
+    ${btn(trackUrl, "Track my applications", "#0D9488")}
+    ${divider()}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+  `);
+  return {
+    subject: `Application submitted — ${vars.jobTitle} at ${vars.companyName}`,
+    html,
+    text: `Hi ${vars.firstName}, your application for "${vars.jobTitle}" at ${vars.companyName} has been submitted successfully. We will notify you as soon as the employer reviews it. Track your applications at: ${trackUrl}`,
   };
 }

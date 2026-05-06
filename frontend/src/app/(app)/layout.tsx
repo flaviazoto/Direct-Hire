@@ -99,17 +99,24 @@ const icons = {
       <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
     </svg>
   ),
+  mail: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/>
+    </svg>
+  ),
 };
 
 // ─── Nav definitions ─────────────────────────────────────────────────────────
 
 const WORKER_NAV = [
-  { icon: icons.dashboard, label: "Dashboard",    href: "/worker/dashboard" },
-  { icon: icons.search,    label: "Browse Jobs",  href: "/worker/jobs" },
-  { icon: icons.user,      label: "My Profile",   href: "/worker/profile" },
-  { icon: icons.clipboard, label: "Applications", href: "/worker/applications" },
-  { icon: icons.lock,      label: "Reservations", href: "/worker/reservations", badgeKey: "worker_reserved" as const },
-  { icon: icons.folder,    label: "Documents",    href: "/worker/documents" },
+  { icon: icons.dashboard, label: "Dashboard",     href: "/worker/dashboard" },
+  { icon: icons.search,    label: "Browse Jobs",   href: "/worker/jobs" },
+  { icon: icons.user,      label: "My Profile",    href: "/worker/profile" },
+  { icon: icons.clipboard,  label: "Applications",  href: "/worker/applications" },
+  { icon: icons.creditcard, label: "Payments",      href: "/worker/payments" },
+  { icon: icons.lock,       label: "Reservations",  href: "/worker/reservations", badgeKey: "worker_reserved" as const },
+  { icon: icons.folder,    label: "Documents",     href: "/worker/documents" },
+  { icon: icons.mail,      label: "Messages",      href: "/worker/messages" },
   { icon: icons.bell,      label: "Notifications", href: "/worker/notifications" },
 ];
 
@@ -124,12 +131,16 @@ const EMPLOYER_NAV = [
 ];
 
 const ADMIN_NAV = [
-  { icon: icons.chart,     label: "Overview",       href: "/admin/dashboard" },
-  { icon: icons.clock,     label: "Pending Review", href: "/admin/users/pending" },
-  { icon: icons.check,     label: "Approvals",      href: "/admin/approvals" },
-  { icon: icons.users,     label: "Users",          href: "/admin/users" },
-  { icon: icons.list,      label: "Audit Log",      href: "/admin/audit-log" },
-  { icon: icons.shield,    label: "Fraud Console",  href: "/admin/fraud" },
+  { icon: icons.chart,      label: "Overview",         href: "/admin/dashboard" },
+  { icon: icons.chart,      label: "Revenue",          href: "/admin/revenue" },
+  { icon: icons.clock,      label: "Pending Review",   href: "/admin/users/pending" },
+  { icon: icons.check,      label: "Approvals",        href: "/admin/approvals" },
+  { icon: icons.clipboard,  label: "Document Review",  href: "/admin/document-review" },
+  { icon: icons.users,      label: "Users",            href: "/admin/users" },
+  { icon: icons.list,       label: "Audit Log",        href: "/admin/audit-log" },
+  { icon: icons.shield,     label: "Fraud Console",    href: "/admin/fraud" },
+  { icon: icons.mail,       label: "Email Logs",       href: "/admin/email-logs" },
+  { icon: icons.creditcard, label: "Pricing",          href: "/admin/pricing" },
 ];
 
 // Job posts section — rendered separately as a collapsible group
@@ -248,11 +259,13 @@ function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
   const router = useRouter();
   const { nav, accent, accentRgb, label, badge, portalLabel } = ROLE_CONFIG[role];
-  const [logoutHovered,   setLogoutHovered]   = useState(false);
-  const [adminCounts,     setAdminCounts]     = useState<AdminCounts | null>(null);
-  const [activeLockCount, setActiveLockCount] = useState(0);
-  const [workerIsLocked,  setWorkerIsLocked]  = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [logoutHovered,    setLogoutHovered]    = useState(false);
+  const [adminCounts,      setAdminCounts]      = useState<AdminCounts | null>(null);
+  const [activeLockCount,  setActiveLockCount]  = useState(0);
+  const [workerIsLocked,   setWorkerIsLocked]   = useState(false);
+  const [workerNotifCount, setWorkerNotifCount] = useState(0);
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notifRef     = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -302,8 +315,24 @@ function Sidebar({ role }: { role: Role }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [role]);
 
+  useEffect(() => {
+    if (role !== "worker") return;
+    const fetchNotifCount = async () => {
+      const res = await workerApi.getUnreadCount();
+      if (res.success && res.data) {
+        const d = res.data as { count?: number };
+        setWorkerNotifCount(d.count ?? 0);
+      }
+    };
+    fetchNotifCount();
+    notifRef.current = setInterval(fetchNotifCount, 30_000);
+    return () => { if (notifRef.current) clearInterval(notifRef.current); };
+  }, [role]);
+
   const handleLogout = async () => {
-    await authApi.logout();
+    localStorage.removeItem("dh_token");
+    localStorage.removeItem("dh_role");
+    authApi.logout().catch(() => {});
     router.push("/login");
   };
 
@@ -387,6 +416,8 @@ function Sidebar({ role }: { role: Role }) {
           const isPendingReview    = item.href === "/admin/users/pending";
           const isLocksItem        = item.href === "/employer/locks";
           const isReservationsItem = item.href === "/worker/reservations";
+          const isNotificationsItem = item.href === "/worker/notifications";
+          const isMessagesItem      = item.href === "/worker/messages";
           return (
             <NavItem
               key={item.href}
@@ -394,7 +425,12 @@ function Sidebar({ role }: { role: Role }) {
               isActive={isActive}
               accent={accent}
               accentRgb={accentRgb}
-              badgeCount={isPendingReview ? (adminCounts?.pending_review ?? undefined) : undefined}
+              badgeCount={
+                isPendingReview   ? (adminCounts?.pending_review ?? undefined) :
+                isNotificationsItem ? (workerNotifCount > 0 ? workerNotifCount : undefined) :
+                isMessagesItem      ? undefined :
+                undefined
+              }
               dotBadge={(isLocksItem && activeLockCount > 0) || (isReservationsItem && workerIsLocked)}
             />
           );
@@ -466,10 +502,151 @@ function Sidebar({ role }: { role: Role }) {
   );
 }
 
+// ─── WorkerTopBar ─────────────────────────────────────────────────────────────
+
+interface NotifItem {
+  id: string; title: string; body: string; isRead: boolean; link?: string; createdAt: string;
+}
+
+function WorkerTopBar() {
+  const router = useRouter();
+  const [unread,   setUnread]   = useState(0);
+  const [open,     setOpen]     = useState(false);
+  const [notifs,   setNotifs]   = useState<NotifItem[]>([]);
+  const [loading,  setLoading]  = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Poll unread count every 30s
+  useEffect(() => {
+    const fetch_ = async () => {
+      const res = await workerApi.getUnreadCount();
+      if (res.success) setUnread((res.data as { count: number })?.count ?? 0);
+    };
+    fetch_();
+    const t = setInterval(fetch_, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  async function toggleOpen() {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    setLoading(true);
+    const res = await workerApi.getNotifications({ limit: "5" });
+    if (res.success) {
+      const d = res.data as { data?: NotifItem[] } | NotifItem[];
+      setNotifs(Array.isArray(d) ? d : (d as { data?: NotifItem[] }).data ?? []);
+    }
+    setLoading(false);
+  }
+
+  async function handleNotifClick(n: NotifItem) {
+    setOpen(false);
+    if (!n.isRead) {
+      await workerApi.markNotificationRead(n.id);
+      setUnread(c => Math.max(0, c - 1));
+      setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+    }
+    router.push(n.link ?? "/worker/notifications");
+  }
+
+  function timeAgo(d: string) {
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60)  return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
+
+  return (
+    <div style={{ position: "sticky", top: 0, zIndex: 50, background: "var(--navy-2, #0b1120)", borderBottom: "1px solid rgba(124,58,237,0.1)", padding: "8px 24px", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+      <div ref={wrapRef} style={{ position: "relative" }}>
+        <button
+          onClick={toggleOpen}
+          aria-label="Notifications"
+          style={{ position: "relative", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 10, cursor: "pointer", color: "rgba(248,250,252,0.7)", transition: "all 0.15s" }}
+          onMouseOver={e => { e.currentTarget.style.background = "rgba(124,58,237,0.16)"; e.currentTarget.style.color = "#f8fafc"; }}
+          onMouseOut={e  => { e.currentTarget.style.background = "rgba(124,58,237,0.08)"; e.currentTarget.style.color = "rgba(248,250,252,0.7)"; }}
+        >
+          <div style={{ width: 18, height: 18 }}>{icons.bell}</div>
+          {unread > 0 && (
+            <span style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: "#dc2626", color: "white", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", border: "2px solid #0b1120" }}>
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </button>
+
+        {open && (
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340, background: "#111827", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden", zIndex: 100 }}>
+            {/* Header */}
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>Notifications</span>
+              {unread > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", background: "rgba(124,58,237,0.12)", borderRadius: 20, padding: "2px 8px" }}>
+                  {unread} unread
+                </span>
+              )}
+            </div>
+
+            {/* List */}
+            {loading ? (
+              <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 13 }}>Loading…</div>
+            ) : notifs.length === 0 ? (
+              <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 13 }}>No notifications yet</div>
+            ) : (
+              notifs.map(n => (
+                <button
+                  key={n.id}
+                  onClick={() => handleNotifClick(n)}
+                  style={{ width: "100%", display: "flex", gap: 12, padding: "12px 16px", background: n.isRead ? "transparent" : "rgba(124,58,237,0.06)", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", textAlign: "left", transition: "background 0.1s" }}
+                  onMouseOver={e => (e.currentTarget.style.background = "rgba(124,58,237,0.1)")}
+                  onMouseOut={e  => (e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(124,58,237,0.06)")}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: n.isRead ? "transparent" : "#7c3aed", flexShrink: 0, marginTop: 5 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
+                    <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{n.body}</div>
+                    <div style={{ fontSize: 11, color: "#4b5563", marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
+                  </div>
+                </button>
+              ))
+            )}
+
+            {/* Footer */}
+            <button
+              onClick={() => { setOpen(false); router.push("/worker/notifications"); }}
+              style={{ width: "100%", padding: "10px 16px", background: "transparent", border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", color: "#7c3aed", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.1s" }}
+              onMouseOver={e => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
+              onMouseOut={e  => (e.currentTarget.style.background = "transparent")}
+            >
+              View all notifications →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router   = useRouter();
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
+    if (!token) router.push("/login");
+  }, []);
 
   const role: Role = pathname.startsWith("/admin")
     ? "admin"
@@ -484,8 +661,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "row", minHeight: "100vh", background: "var(--navy, #05080f)" }}>
       <Sidebar role={role} />
-      <main style={{ flex: 1, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto" }}>
-        <div key={pathname} data-page-root style={{ minHeight: "100%" }}>
+      <main style={{ flex: 1, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        {role === "worker" && <WorkerTopBar />}
+        <div key={pathname} data-page-root style={{ flex: 1 }}>
           {children}
         </div>
       </main>

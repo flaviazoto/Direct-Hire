@@ -21,6 +21,7 @@ interface WorkerResult {
   account_status:     string;
   is_locked:          boolean;
   has_profile:        boolean;
+  documents_verified: boolean;
   skills:             { skill: string }[];
   languages:          { language: string; proficiencyLevel: string }[];
 }
@@ -102,8 +103,19 @@ function WorkerCard({ worker }: { worker: WorkerResult }) {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
-              {worker.name}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
+                {worker.name}
+              </span>
+              {worker.documents_verified && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
+                  color: "#4ade80", background: "rgba(74,222,128,0.1)",
+                  border: "1px solid rgba(74,222,128,0.3)", flexShrink: 0, whiteSpace: "nowrap",
+                }}>
+                  ✓ Verified
+                </span>
+              )}
             </div>
             {worker.profession ? (
               <div style={{ fontSize: 12, color: "#71717a", marginTop: 2 }}>{worker.profession}</div>

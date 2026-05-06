@@ -4,8 +4,12 @@
 import React, { CSSProperties, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { ToastDisplay, Spinner, type ToastData } from "@/components/ui";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,7 +38,9 @@ interface WorkerDetail {
   skills:              { skill: string }[];
   languages:           { language: string; proficiencyLevel: string }[];
   target_countries:    { country: string }[];
-  documents:           { id: string; file_type: string; file_name: string; file_url: string; uploaded_at: string }[];
+  documents:                { id: string; file_type: string; file_name: string; file_url: string; uploaded_at: string; review_status: string; is_private: boolean }[];
+  document_status:          string;
+  documents_verified_badge: boolean;
 }
 
 interface LockData {
@@ -61,6 +67,14 @@ interface WorkerApplication {
   applied_at: string;
   job_id:    string;
   job_title: string;
+}
+
+interface LockRate {
+  dailyRateCents: number;
+  currency:       string;
+  maxDays:        number;
+  maxConcurrent:  number;
+  rateDisplay:    string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,8 +112,7 @@ const APP_STATUS_CFG: Record<string, { label: string; bg: string; color: string;
   WITHDRAWN:   { label: "Withdrawn",    bg: "rgba(161,161,170,0.1)",  color: "#a1a1aa", border: "rgba(161,161,170,0.2)"  },
 };
 
-const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR"];
-const LOCK_PRESETS = [3, 7, 14, 30];
+const LOCK_PRESETS = [3, 7, 14];
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -135,13 +148,19 @@ function WorkerProfileContent() {
   const [appsLoading, setAppsLoading] = useState(false);
   const [toast,      setToast]      = useState<ToastData>(null);
 
+  // Platform lock rate (fetched on load for badge + modal preview)
+  const [lockRate, setLockRate] = useState<LockRate | null>(null);
+
   // Lock modal state
   const [showModal,    setShowModal]    = useState(false);
   const [modalDays,    setModalDays]    = useState(7);
-  const [modalFee,     setModalFee]     = useState("15.00");
-  const [modalCurrency, setModalCurrency] = useState("USD");
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError,   setModalError]   = useState("");
+  const [modalPhase,   setModalPhase]   = useState<"configure" | "payment">("configure");
+  const [stripeClientSecret,     setStripeClientSecret]     = useState("");
+  const [stripePaymentIntentId,  setStripePaymentIntentId]  = useState("");
+  const [stripeTotalCents,       setStripeTotalCents]       = useState(0);
+  const [stripeDailyRateCents,   setStripeDailyRateCents]   = useState(0);
 
   // Extend modal state
   const [showExtendModal, setShowExtendModal] = useState(false);
@@ -155,15 +174,24 @@ function WorkerProfileContent() {
   const [releaseLoading,   setReleaseLoading]   = useState(false);
   const [releaseError,     setReleaseError]     = useState("");
 
-  // Fetch worker + lock status in parallel
+  // Message modal state
+  const [showMsgModal, setShowMsgModal] = useState(false);
+  const [msgText,      setMsgText]      = useState("");
+  const [msgSending,   setMsgSending]   = useState(false);
+  const [msgError,     setMsgError]     = useState("");
+  const [msgSent,      setMsgSent]      = useState(false);
+
+  // Fetch worker, lock status, and platform lock rate in parallel
   useEffect(() => {
     Promise.all([
       employerApi.getWorkerDetail(workerId),
       employerApi.getWorkerLockStatus(workerId),
-    ]).then(([wRes, lRes]) => {
+      employerApi.getLockRate(),
+    ]).then(([wRes, lRes, rRes]) => {
       if (!wRes.success) { router.push("/employer/workers"); return; }
       setWorker(wRes.data as WorkerDetail);
       if (lRes.success) setLockStatus(lRes.data as LockStatus);
+      if (rRes.success) setLockRate(rRes.data as LockRate);
       setLoading(false);
     }).catch(() => { router.push("/employer/workers"); });
   }, [workerId]);
@@ -179,23 +207,24 @@ function WorkerProfileContent() {
   }, [activeTab]);
 
   // Escape key + body scroll lock for modals
-  const anyModalOpen = showModal || showExtendModal || showReleaseModal;
+  const anyModalOpen = showModal || showExtendModal || showReleaseModal || showMsgModal;
   useEffect(() => {
     if (!anyModalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (showModal        && !modalLoading)   setShowModal(false);
+      if (showModal        && !modalLoading)   closeReserveModal();
       if (showExtendModal  && !extendLoading)  setShowExtendModal(false);
       if (showReleaseModal && !releaseLoading) setShowReleaseModal(false);
+      if (showMsgModal     && !msgSending)     { setShowMsgModal(false); setMsgText(""); setMsgError(""); setMsgSent(false); }
     }
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, modalLoading, extendLoading, releaseLoading]);
+  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, showMsgModal, modalLoading, extendLoading, releaseLoading, msgSending]);
 
   function showToast(msg: string, type: "ok" | "err") {
     setToast({ msg, type });
@@ -209,32 +238,63 @@ function WorkerProfileContent() {
 
   // ── Lock actions ─────────────────────────────────────────────────────────
 
-  async function handleConfirmReserve() {
-    const fee = parseFloat(modalFee);
-    if (isNaN(fee) || fee < 1) { setModalError("Daily fee must be at least 1."); return; }
-    if (modalDays < 1 || modalDays > 60) { setModalError("Duration must be 1–60 days."); return; }
+  function closeReserveModal() {
+    if (modalLoading) return;
+    setShowModal(false);
+    setModalDays(7);
+    setModalPhase("configure");
+    setModalError("");
+    setStripeClientSecret("");
+    setStripePaymentIntentId("");
+    setStripeTotalCents(0);
+    setStripeDailyRateCents(0);
+  }
+
+  async function handleInitiateReserve() {
+    if (modalDays < 1 || modalDays > 14) { setModalError("Duration must be 1–14 days."); return; }
     setModalLoading(true);
     setModalError("");
-    const res = await employerApi.lockWorker(workerId, {
-      lock_days:  modalDays,
-      daily_fee:  fee,
-      currency:   modalCurrency,
-    });
+    const res = await employerApi.lockWorker(workerId, { lock_days: modalDays });
     setModalLoading(false);
     if (res.success) {
-      setShowModal(false);
+      const data = res.data as {
+        clientSecret:    string;
+        paymentIntentId: string;
+        totalCents:      number;
+        dailyRateCents:  number;
+        lockDays:        number;
+      };
+      setStripeClientSecret(data.clientSecret);
+      setStripePaymentIntentId(data.paymentIntentId);
+      setStripeTotalCents(data.totalCents);
+      setStripeDailyRateCents(data.dailyRateCents);
+      setModalPhase("payment");
+    } else {
+      const errData = res as unknown as { code?: string; error?: string };
+      if (errData.code === "WORKER_LOCKED") {
+        closeReserveModal();
+        await refetchLock();
+        showToast("This worker is already reserved by another employer.", "err");
+      } else if (errData.code === "SUBSCRIPTION_REQUIRED") {
+        setModalError("An active subscription is required to reserve workers.");
+      } else if (errData.code === "CONCURRENT_LIMIT") {
+        setModalError("You've reached the maximum number of concurrent reservations.");
+      } else {
+        setModalError(res.error ?? "Something went wrong. Please try again.");
+      }
+    }
+  }
+
+  async function handleLockConfirmed() {
+    const res = await employerApi.confirmLock(workerId, { payment_intent_id: stripePaymentIntentId });
+    if (res.success) {
+      closeReserveModal();
       await refetchLock();
       const expiry = (res.data as { lockExpiryDate?: string })?.lockExpiryDate;
       showToast(`Worker reserved${expiry ? " until " + fmtDate(expiry) : ""}`, "ok");
     } else {
-      const code = (res as unknown as { code?: string }).code;
-      if (code === "WORKER_LOCKED") {
-        setShowModal(false);
-        await refetchLock();
-        showToast("This worker was just reserved by another employer.", "err");
-      } else {
-        setModalError(res.error ?? "Something went wrong. Please try again.");
-      }
+      setModalError(res.error ?? "Reservation could not be confirmed. Please contact support.");
+      setModalPhase("configure");
     }
   }
 
@@ -277,6 +337,19 @@ function WorkerProfileContent() {
     }
   }
 
+  async function handleSendMessage() {
+    if (!msgText.trim()) return;
+    setMsgSending(true);
+    setMsgError("");
+    const res = await employerApi.messageWorker(workerId, msgText.trim());
+    setMsgSending(false);
+    if (res.success) {
+      setMsgSent(true);
+    } else {
+      setMsgError(res.error ?? "Failed to send message. Please try again.");
+    }
+  }
+
   if (loading) return <Skeleton />;
   if (!worker)  return null;
 
@@ -284,7 +357,6 @@ function WorkerProfileContent() {
   const isLocked     = lockStatus?.is_locked ?? false;
   const lockByMe     = lockStatus?.lock_by_me ?? false;
   const lock         = lockStatus?.lock;
-  const estCost      = (parseFloat(modalFee || "0") * modalDays).toFixed(2);
   const daysLeft     = lock ? daysRemaining(lock.lock_expiry_date) : 0;
   const usedPct      = lock ? Math.min(100, Math.round((lock.total_days_billed / lock.lock_days) * 100)) : 0;
 
@@ -355,7 +427,18 @@ function WorkerProfileContent() {
           </div>
 
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: "#0f172a", margin: "0 0 4px" }}>{name}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 600, color: "#0f172a", margin: 0 }}>{name}</h1>
+              {worker.documents_verified_badge && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
+                  color: "#15803d", background: "#f0fdf4", border: "1px solid #86efac",
+                  flexShrink: 0, whiteSpace: "nowrap",
+                }}>
+                  ✓ Verified
+                </span>
+              )}
+            </div>
             {worker.profession && (
               <div style={{ fontSize: 14, color: "#475569", marginBottom: 4 }}>{worker.profession}</div>
             )}
@@ -392,6 +475,11 @@ function WorkerProfileContent() {
           {/* STATE A: not locked */}
           {!isLocked && (
             <>
+              {lockRate && (
+                <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", padding: "6px 0 2px" }}>
+                  Reservation fee: <strong>{lockRate.rateDisplay}/day</strong> · Up to {lockRate.maxDays} days
+                </div>
+              )}
               <button
                 onClick={() => setShowModal(true)}
                 style={{
@@ -411,28 +499,26 @@ function WorkerProfileContent() {
               >
                 Reserve this worker
               </button>
-              <a
-                href={`mailto:${worker.email}?subject=Opportunity via DirectHire&body=Hi ${worker.first_name ?? "there"},%0D%0A%0D%0AI found your profile on DirectHire and would like to connect.`}
+              <button
+                onClick={() => setShowMsgModal(true)}
                 style={{
-                  width:          "100%",
-                  padding:        "10px 20px",
-                  background:     "white",
-                  color:          "#374151",
-                  border:         "1px solid #e2e8f0",
-                  borderRadius:   10,
-                  fontSize:       14,
-                  fontWeight:     500,
-                  cursor:         "pointer",
-                  textAlign:      "center",
-                  textDecoration: "none",
-                  display:        "block",
-                  transition:     "border-color 0.15s",
+                  width:        "100%",
+                  padding:      "10px 20px",
+                  background:   "white",
+                  color:        "#374151",
+                  border:       "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  fontSize:     14,
+                  fontWeight:   500,
+                  cursor:       "pointer",
+                  textAlign:    "center",
+                  transition:   "border-color 0.15s",
                 }}
-                onMouseOver={e => ((e.currentTarget as HTMLElement).style.borderColor = "#0d9488")}
-                onMouseOut={e  => ((e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0")}
+                onMouseOver={e => (e.currentTarget.style.borderColor = "#0d9488")}
+                onMouseOut={e  => (e.currentTarget.style.borderColor = "#e2e8f0")}
               >
                 ✉ Message
-              </a>
+              </button>
               <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
                 Secure exclusive access during your hiring process
               </div>
@@ -487,12 +573,12 @@ function WorkerProfileContent() {
                   Release
                 </button>
               </div>
-              <a
-                href={`mailto:${worker.email}?subject=Your reservation on DirectHire&body=Hi ${worker.first_name ?? "there"},%0D%0A%0D%0AI have reserved your profile on DirectHire and would like to discuss next steps.`}
-                style={{ display: "block", textAlign: "center", padding: "8px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontWeight: 500, color: "#475569", textDecoration: "none" }}
+              <button
+                onClick={() => setShowMsgModal(true)}
+                style={{ width: "100%", padding: "8px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontWeight: 500, color: "#475569", cursor: "pointer" }}
               >
                 ✉ Message
-              </a>
+              </button>
             </div>
           )}
 
@@ -530,12 +616,12 @@ function WorkerProfileContent() {
               }}>
                 Currently reserved
               </button>
-              <a
-                href={`mailto:${worker.email}?subject=Opportunity via DirectHire&body=Hi ${worker.first_name ?? "there"},%0D%0A%0D%0AI found your profile on DirectHire and would like to connect about a future opportunity.`}
-                style={{ display: "block", textAlign: "center", padding: "10px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 14, fontWeight: 500, color: "#374151", textDecoration: "none" }}
+              <button
+                onClick={() => setShowMsgModal(true)}
+                style={{ width: "100%", padding: "10px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 14, fontWeight: 500, color: "#374151", cursor: "pointer" }}
               >
                 ✉ Message
-              </a>
+              </button>
             </>
           )}
         </div>
@@ -694,53 +780,105 @@ function WorkerProfileContent() {
       {/* DOCUMENTS */}
       {activeTab === "documents" && (
         <Section title="Uploaded documents">
-          {!worker.documents?.length ? (
-            <EmptyTabMsg text="No approved documents available for this worker." />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {worker.documents.map(doc => (
-                <div key={doc.id} style={{
-                  display:        "flex",
-                  alignItems:     "center",
-                  justifyContent: "space-between",
-                  padding:        "12px 16px",
-                  background:     "#f8fafc",
-                  border:         "1px solid #e2e8f0",
-                  borderRadius:   10,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ fontSize: 20 }}>
-                      {doc.file_type.includes("PDF") ? "📄" :
-                       doc.file_type.includes("IMAGE") ? "🖼" : "📎"}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: "#0f172a" }}>{doc.file_name}</div>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                        {doc.file_type.replace(/_/g, " ").toLowerCase()} · Uploaded {fmtDate(doc.uploaded_at)}
-                      </div>
-                    </div>
-                  </div>
-                  <a
-                    href={doc.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      padding:        "6px 14px",
-                      background:     "white",
-                      border:         "1px solid #e2e8f0",
-                      borderRadius:   8,
-                      fontSize:       13,
-                      fontWeight:     500,
-                      color:          "#374151",
-                      textDecoration: "none",
-                      whiteSpace:     "nowrap",
-                    }}
-                  >
-                    View ↗
-                  </a>
+          {/* Documents not yet verified by admin */}
+          {worker.document_status === "PENDING_REVIEW" && (
+            <div style={{
+              display:      "flex",
+              alignItems:   "center",
+              gap:          16,
+              padding:      "20px 24px",
+              background:   "rgba(251,191,36,0.06)",
+              border:       "1px solid rgba(251,191,36,0.2)",
+              borderRadius: 12,
+            }}>
+              <div style={{ fontSize: 28, flexShrink: 0 }}>🔒</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#fbbf24", marginBottom: 4 }}>
+                  Documents under review
                 </div>
-              ))}
+                <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+                  This worker's documents are being reviewed by our team. They will become visible once approved.
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* Verified badge + document list */}
+          {worker.document_status === "VERIFIED" && (
+            <>
+              <div style={{
+                display:      "flex",
+                alignItems:   "center",
+                gap:          10,
+                padding:      "12px 16px",
+                background:   "rgba(34,197,94,0.06)",
+                border:       "1px solid rgba(34,197,94,0.2)",
+                borderRadius: 10,
+                marginBottom: 16,
+              }}>
+                <span style={{ fontSize: 18 }}>✅</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#22c55e" }}>
+                  All documents have been verified by DirectHire
+                </span>
+              </div>
+
+              {!worker.documents?.length ? (
+                <EmptyTabMsg text="No documents uploaded yet." />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {worker.documents.map(doc => (
+                    <div key={doc.id} style={{
+                      display:        "flex",
+                      alignItems:     "center",
+                      justifyContent: "space-between",
+                      padding:        "12px 16px",
+                      background:     "#f8fafc",
+                      border:         "1px solid #e2e8f0",
+                      borderRadius:   10,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ fontSize: 20 }}>
+                          {doc.file_type === "PROFILE_PHOTO" ? "🖼" :
+                           doc.file_type === "WORK_VIDEO" || doc.file_type === "INTRO_VIDEO" ? "🎬" : "📄"}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: "#0f172a", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                            {doc.file_name}
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "2px 7px", marginLeft: 6 }}>Verified</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                            {doc.file_type.replace(/_/g, " ").toLowerCase()} · Uploaded {fmtDate(doc.uploaded_at)}
+                          </div>
+                        </div>
+                      </div>
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding:        "6px 14px",
+                          background:     "white",
+                          border:         "1px solid #e2e8f0",
+                          borderRadius:   8,
+                          fontSize:       13,
+                          fontWeight:     500,
+                          color:          "#374151",
+                          textDecoration: "none",
+                          whiteSpace:     "nowrap",
+                        }}
+                      >
+                        View ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Fallback: no document_status field (worker not yet migrated) */}
+          {!worker.document_status && !worker.documents?.length && (
+            <EmptyTabMsg text="No documents uploaded yet." />
           )}
         </Section>
       )}
@@ -811,109 +949,133 @@ function WorkerProfileContent() {
 
       {/* ── Reserve modal ── */}
       {showModal && (
-        <Modal onClose={() => !modalLoading && setShowModal(false)}>
+        <Modal onClose={closeReserveModal}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
             Reserve {worker.first_name ?? name}
           </h2>
           <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
-            Other employers cannot hire this worker during the reservation.
+            Other employers cannot contact or hire this worker during the reservation.
           </p>
 
-          {/* Duration presets */}
-          <label style={labelStyle}>Reservation duration</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            {LOCK_PRESETS.map(d => (
-              <button
-                key={d}
-                onClick={() => setModalDays(d)}
-                style={{
-                  flex:         1,
-                  padding:      "8px 0",
-                  border:       modalDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
-                  borderRadius: 8,
-                  background:   modalDays === d ? "#f0fdfa" : "white",
-                  color:        modalDays === d ? "#0d9488" : "#374151",
-                  fontWeight:   modalDays === d ? 700 : 400,
-                  fontSize:     13,
-                  cursor:       "pointer",
-                  transition:   "all 0.1s",
-                }}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
-          <input
-            type="number"
-            min={1}
-            max={60}
-            value={modalDays}
-            onChange={e => setModalDays(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
-            placeholder="Custom days (1–60)"
-            style={inputStyle}
-          />
+          {/* Phase 1: configure duration */}
+          {modalPhase === "configure" && (
+            <>
+              <label style={labelStyle}>Reservation duration</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                {LOCK_PRESETS.map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setModalDays(d)}
+                    style={{
+                      flex:         1,
+                      padding:      "8px 0",
+                      border:       modalDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
+                      borderRadius: 8,
+                      background:   modalDays === d ? "#f0fdfa" : "white",
+                      color:        modalDays === d ? "#0d9488" : "#374151",
+                      fontWeight:   modalDays === d ? 700 : 400,
+                      fontSize:     13,
+                      cursor:       "pointer",
+                      transition:   "all 0.1s",
+                    }}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={14}
+                value={modalDays}
+                onChange={e => setModalDays(Math.max(1, Math.min(14, parseInt(e.target.value) || 1)))}
+                placeholder="Custom days (1–14)"
+                style={inputStyle}
+              />
 
-          {/* Daily fee */}
-          <label style={{ ...labelStyle, marginTop: 16 }}>Daily fee</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              type="number"
-              min="1"
-              step="0.01"
-              value={modalFee}
-              onChange={e => setModalFee(e.target.value)}
-              style={{ ...inputStyle, flex: 1 }}
-            />
-            <select
-              value={modalCurrency}
-              onChange={e => setModalCurrency(e.target.value)}
-              style={{ ...inputStyle, width: 90 }}
-            >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
+              {lockRate ? (
+                <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: 14, marginTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 8 }}>Pricing</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 4 }}>
+                    <span>Daily rate</span>
+                    <span style={{ fontWeight: 600 }}>{lockRate.rateDisplay} / day · platform rate</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 4 }}>
+                    <span>Duration</span>
+                    <span style={{ fontWeight: 600 }}>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                    <span>Total</span>
+                    <span>${((lockRate.dailyRateCents * modalDays) / 100).toFixed(2)} USD</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#0d9488", marginTop: 4 }}>
+                    Charged upfront. Unused days are refunded automatically if you release early.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14, marginTop: 16 }}>
+                  <div style={{ fontSize: 13, color: "#64748b" }}>Loading platform rate…</div>
+                </div>
+              )}
 
-          {/* Cost calculator */}
-          <div style={{
-            background:   "#f8fafc",
-            borderRadius: 10,
-            padding:      14,
-            marginTop:    16,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Estimated cost</div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 4 }}>
-              <span>Duration</span><span>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 8 }}>
-              <span>Daily fee</span><span>{modalCurrency} {parseFloat(modalFee || "0").toFixed(2)}</span>
-            </div>
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-              <span>Total est.</span><span>{modalCurrency} {estCost}</span>
-            </div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>Actual total may vary if released early.</div>
-          </div>
+              {modalError && (
+                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{modalError}</div>
+              )}
 
-          {modalError && (
-            <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{modalError}</div>
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button onClick={closeReserveModal} disabled={modalLoading} style={{ ...btnSecondaryStyle, flex: 1 }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleInitiateReserve}
+                  disabled={modalLoading}
+                  style={{ ...btnPrimaryStyle, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  {modalLoading && <Spinner size="xs" color="white" />}
+                  {lockRate
+                    ? `Confirm & Pay $${((lockRate.dailyRateCents * modalDays) / 100).toFixed(2)}`
+                    : "Continue to payment"}
+                </button>
+              </div>
+            </>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button
-              onClick={() => setShowModal(false)}
-              disabled={modalLoading}
-              style={{ ...btnSecondaryStyle, flex: 1 }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmReserve}
-              disabled={modalLoading}
-              style={{ ...btnPrimaryStyle, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              {modalLoading && <Spinner size="xs" color="white" />}
-              Confirm reservation
-            </button>
-          </div>
+          {/* Phase 2: Stripe payment */}
+          {modalPhase === "payment" && stripeClientSecret && (
+            <>
+              {/* Cost summary */}
+              <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 6 }}>Reservation summary</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+                  <span>Duration</span>
+                  <span style={{ fontWeight: 600 }}>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+                  <span>Daily rate</span>
+                  <span style={{ fontWeight: 600 }}>${(stripeDailyRateCents / 100).toFixed(2)} USD</span>
+                </div>
+                <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                  <span>Total charged today</span>
+                  <span>${(stripeTotalCents / 100).toFixed(2)} USD</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#0d9488", marginTop: 4 }}>
+                  Unused days are refunded automatically if you release early.
+                </div>
+              </div>
+
+              <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: "stripe" } }}>
+                <PaymentForm
+                  paymentIntentId={stripePaymentIntentId}
+                  onSuccess={handleLockConfirmed}
+                  onCancel={() => { setModalPhase("configure"); setModalError(""); }}
+                />
+              </Elements>
+
+              {modalError && (
+                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{modalError}</div>
+              )}
+            </>
+          )}
         </Modal>
       )}
 
@@ -1019,6 +1181,87 @@ function WorkerProfileContent() {
         </Modal>
       )}
 
+      {/* ── Message modal ── */}
+      {showMsgModal && (
+        <Modal onClose={() => { if (!msgSending) { setShowMsgModal(false); setMsgText(""); setMsgError(""); setMsgSent(false); } }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
+            Message {worker.first_name ?? name}
+          </h2>
+          <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
+            Your message will be sent to the worker's email address.
+          </p>
+
+          {msgSent ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 6 }}>Message sent!</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>
+                {worker.first_name ?? name} will receive your message by email.
+              </div>
+              <button
+                onClick={() => { setShowMsgModal(false); setMsgText(""); setMsgSent(false); }}
+                style={{ ...btnPrimaryStyle, padding: "10px 32px" }}
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <>
+              <label style={labelStyle}>Your message</label>
+              <textarea
+                value={msgText}
+                onChange={e => setMsgText(e.target.value.slice(0, 500))}
+                placeholder={`Write a message to ${worker.first_name ?? name}...`}
+                rows={5}
+                style={{
+                  ...inputStyle,
+                  resize:     "vertical",
+                  fontFamily: "inherit",
+                  lineHeight: 1.5,
+                }}
+                autoFocus
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 2 }}>
+                <span style={{ fontSize: 11, color: msgText.length >= 480 ? "#f59e0b" : "#94a3b8" }}>
+                  {msgText.length}/500
+                </span>
+              </div>
+
+              {msgError && (
+                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 8 }}>{msgError}</div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <button
+                  onClick={() => { setShowMsgModal(false); setMsgText(""); setMsgError(""); }}
+                  disabled={msgSending}
+                  style={{ ...btnSecondaryStyle, flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={msgSending || !msgText.trim()}
+                  style={{
+                    ...btnPrimaryStyle,
+                    flex:    2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    opacity: !msgText.trim() ? 0.5 : 1,
+                    cursor:  !msgText.trim() ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {msgSending && <Spinner size="xs" color="white" />}
+                  Send message
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+
       {/* ── Release modal ── */}
       {showReleaseModal && lock && (
         <Modal onClose={() => !releaseLoading && setShowReleaseModal(false)}>
@@ -1111,6 +1354,78 @@ function WorkerProfileContent() {
         </Modal>
       )}
     </div>
+  );
+}
+
+// ── Stripe PaymentForm (must be rendered inside <Elements>) ──────────────────
+
+function PaymentForm({
+  paymentIntentId: _paymentIntentId,
+  onSuccess,
+  onCancel,
+}: {
+  paymentIntentId: string;
+  onSuccess:       () => Promise<void>;
+  onCancel:        () => void;
+}) {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setLoading(true);
+    setError("");
+
+    const { error: stripeError } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: {
+        return_url: window.location.href,
+      },
+    });
+
+    if (stripeError) {
+      setError(stripeError.message ?? "Payment failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    await onSuccess();
+    setLoading(false);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: 16 }}>
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+
+      {error && (
+        <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 12 }}>{error}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          style={{ ...btnSecondaryStyle, flex: 1 }}
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={loading || !stripe || !elements}
+          style={{ ...btnPrimaryStyle, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: !stripe ? 0.6 : 1 }}
+        >
+          {loading && <Spinner size="xs" color="white" />}
+          Pay &amp; confirm reservation
+        </button>
+      </div>
+    </form>
   );
 }
 

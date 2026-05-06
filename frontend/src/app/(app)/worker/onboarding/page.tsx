@@ -53,37 +53,37 @@ const VISA_TYPES = [
   "Seasonal Work", "Domestic Worker", "Any available",
 ];
 const FILE_TYPES = [
-  { key: "PROFILE_PHOTO",       label: "Profile Photo",          icon: "📷", hint: "JPG/PNG, max 5MB" },
-  { key: "WORK_VIDEO",          label: "30s Work Video",         icon: "🎥", hint: "MP4/MOV, max 50MB" },
-  { key: "INTRO_VIDEO",         label: "30s Intro Video",        icon: "🎬", hint: "MP4/MOV, max 50MB" },
-  { key: "MEDICAL_CERTIFICATE", label: "Medical Certificate",    icon: "📄", hint: "PDF/JPG, max 10MB" },
+  { key: "PROFILE_PHOTO",       label: "Profile Photo",       icon: "📷", hint: "JPG/PNG, max 5MB" },
+  { key: "WORK_VIDEO",          label: "30s Work Video",      icon: "🎥", hint: "MP4/MOV, max 50MB" },
+  { key: "INTRO_VIDEO",         label: "30s Intro Video",     icon: "🎬", hint: "MP4/MOV, max 50MB" },
+  { key: "MEDICAL_CERTIFICATE", label: "Medical Certificate", icon: "📄", hint: "PDF/JPG, max 10MB" },
 ];
 
 // ── Component ─────────────────────────────────────────────────
 export default function WorkerOnboardingPage() {
   const router = useRouter();
   const store  = useOnboardingStore();
+  const searchParams = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const returnTo = searchParams.get('returnTo') ?? '/worker/dashboard';
   const [uiStep, setUiStep] = useState(0);
   const [direction, setDirection] = useState<"fwd" | "bwd">("fwd");
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
-  // Step-level local state
-  const [selectedSkills, setSelectedSkills]           = useState<string[]>([]);
-  const [selectedCountries, setSelectedCountries]     = useState<string[]>([]);
-  const [languages, setLanguages]                     = useState([{ language: "English", proficiencyLevel: "B2 – Upper Intermediate" }]);
-  const [hasSpouse, setHasSpouse]                     = useState(false);
-  const [children, setChildren]                       = useState(0);
+  const [selectedSkills, setSelectedSkills]       = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [languages, setLanguages]                 = useState([{ language: "English", proficiencyLevel: "B2 – Upper Intermediate" }]);
+  const [hasSpouse, setHasSpouse]                 = useState(false);
+  const [children, setChildren]                   = useState(0);
 
   const { register, handleSubmit, watch, getValues, formState: { errors } } = useForm({ mode: "onChange" });
 
-  // Load server progress on mount
   useEffect(() => {
     if (!store.isLoaded) {
       store.loadProgress().then(() => {
         const saved = store.currentStep;
         setUiStep(Math.min(saved, TOTAL_STEPS - 1));
-
-        // Restore step data
         const s1 = store.stepData[1] ?? {};
         const s2 = store.stepData[2] ?? {};
         const s3 = store.stepData[3] ?? {};
@@ -99,27 +99,24 @@ export default function WorkerOnboardingPage() {
     }
   }, []);
 
-  // Auto-save indicator
   const SaveIndicator = () =>
     store.isSaving ? (
-      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-        <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "rgba(255,255,255,0.6)", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
         Saving…
-      </div>
+      </span>
     ) : store.lastSavedAt ? (
-      <div className="text-xs text-emerald-500 font-medium">✓ Saved</div>
+      <span style={{ fontSize: 12, color: "#60A5FA", fontWeight: 600 }}>✓ Saved</span>
     ) : null;
 
-  // Validate and advance
   const goNext = async () => {
     const vals = getValues();
     const errs: Record<string, string> = {};
 
-    // Per-step validation
     if (uiStep === 1) {
-      if (!vals.firstName?.trim())    errs.firstName = "First name required";
-      if (!vals.lastName?.trim())     errs.lastName  = "Last name required";
-      if (!vals.dateOfBirth)          errs.dateOfBirth = "Date of birth required";
+      if (!vals.firstName?.trim())     errs.firstName = "First name required";
+      if (!vals.lastName?.trim())      errs.lastName  = "Last name required";
+      if (!vals.dateOfBirth)           errs.dateOfBirth = "Date of birth required";
       else {
         const age = (Date.now() - new Date(vals.dateOfBirth).getTime()) / (365.25 * 86400000);
         if (age < 18) errs.dateOfBirth = "Must be at least 18 years old";
@@ -151,7 +148,6 @@ export default function WorkerOnboardingPage() {
     }
     setStepErrors({});
 
-    // Build step payload
     let stepPayload: Record<string, unknown> = {};
     if (uiStep === 1) {
       stepPayload = {
@@ -174,7 +170,6 @@ export default function WorkerOnboardingPage() {
         availabilityDate: vals.availabilityDate, additionalNotes: vals.additionalNotes,
       };
     } else if (uiStep === 5) {
-      // Uploads step — just advance
       stepPayload = { uploads: Object.keys(store.uploads) };
     }
 
@@ -200,7 +195,11 @@ export default function WorkerOnboardingPage() {
 
   const handleFinalSubmit = async () => {
     const ok = await store.submitOnboarding();
-    if (ok) router.push("/worker/dashboard?submitted=1");
+    if (ok) {
+      const sp = new URLSearchParams(window.location.search);
+      const dest = sp.get('returnTo') ?? '/worker/dashboard';
+      router.push(`${dest}?saved=1`);
+    }
   };
 
   const handleFileUpload = async (fileType: string, file: File) => {
@@ -209,377 +208,437 @@ export default function WorkerOnboardingPage() {
 
   const completedUploads = Object.values(store.uploads).filter(u => u.status === "done").length;
 
-  // ── Render current step content ───────────────────────────
+  // ── Style helpers ─────────────────────────────────────────────
+  const inputClass = (f: string) =>
+    `worker-input w-full rounded-xl px-4 py-3.5 text-[15px] outline-none transition-all ${
+      stepErrors[f]
+        ? "border-2 border-red-500 bg-red-500/10 text-white placeholder-red-300"
+        : "border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] text-white placeholder-[rgba(255,255,255,0.25)] focus:border-[#0090FF] focus:bg-[rgba(0,144,255,0.06)]"
+    }`;
+
+  const E = (f: string) => stepErrors[f]
+    ? <p style={{ fontSize: 12, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>⚠ {stepErrors[f]}</p>
+    : null;
+
+  const labelSt: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 6 };
+  const helperSt: React.CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 };
+
+  const pillSel: React.CSSProperties  = { padding: "8px 14px", borderRadius: 99, border: "2px solid #0090FF", background: "rgba(0,144,255,0.15)", color: "#60A5FA",  fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" };
+  const pillOff: React.CSSProperties  = { padding: "8px 14px", borderRadius: 99, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" };
+
+  const headingSt: React.CSSProperties = { paddingBottom: "1.25rem", marginBottom: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)" };
+
+  // ── Render current step content ───────────────────────────────
   const renderStep = () => {
-    const E = (f: string) => stepErrors[f] ? (
-      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">⚠ {stepErrors[f]}</p>
-    ) : null;
-
-    const inputClass = (f: string) =>
-      `w-full border rounded-xl px-4 py-3.5 text-[15px] outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${stepErrors[f] ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"}`;
-
     switch (uiStep) {
+
+      // ── Step 0: Welcome ──────────────────────────────────────────
       case 0:
         return (
-          <div className="space-y-5 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900 leading-tight">Create your account</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Your login details are already set — let's continue with your profile.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Create your account</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Your login details are already set — let's continue with your profile.</p>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-sm text-blue-800 font-medium">
-                ✓ Account created. Complete the steps below to get matched with global employers.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-slate-700">Your onboarding checklist:</p>
-              {STEP_LABELS.slice(1).map((l, i) => (
-                <div key={l} className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${store.completedSteps.includes(i + 1) ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500"}`}>
-                    {store.completedSteps.includes(i + 1) ? "✓" : i + 1}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 14, padding: "14px 16px" }}>
+                <p style={{ fontSize: 13, color: "#60A5FA", fontWeight: 600 }}>
+                  ✓ Account created. Complete the steps below to get matched with global employers.
+                </p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your onboarding checklist:</p>
+                {STEP_LABELS.slice(1).map((l, i) => (
+                  <div key={l} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 700, flexShrink: 0,
+                      ...(store.completedSteps.includes(i + 1)
+                        ? { background: "linear-gradient(135deg, #0090FF, #6366F1)", color: "white" }
+                        : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }),
+                    }}>
+                      {store.completedSteps.includes(i + 1) ? "✓" : i + 1}
+                    </div>
+                    <span style={{ fontSize: 14, color: store.completedSteps.includes(i + 1) ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.45)" }}>{l}</span>
                   </div>
-                  <span className="text-sm text-slate-700">{l}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         );
 
+      // ── Step 1: Personal Info ────────────────────────────────────
       case 1:
         return (
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Personal information</h2>
-              <p className="text-sm text-slate-500 mt-1.5">All data is securely stored and used only for employment matching.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Personal information</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>All data is securely stored and used only for employment matching.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">First Name <span className="text-red-500">*</span></label>
-                <input {...register("firstName")} className={inputClass("firstName")} placeholder="Ana" />
-                {E("firstName")}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={labelSt}>First Name <span style={{ color: "#f87171" }}>*</span></label>
+                  <input {...register("firstName")} className={inputClass("firstName")} placeholder="Ana" />
+                  {E("firstName")}
+                </div>
+                <div>
+                  <label style={labelSt}>Last Name <span style={{ color: "#f87171" }}>*</span></label>
+                  <input {...register("lastName")} className={inputClass("lastName")} placeholder="Koci" />
+                  {E("lastName")}
+                </div>
               </div>
               <div>
-                <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Last Name <span className="text-red-500">*</span></label>
-                <input {...register("lastName")} className={inputClass("lastName")} placeholder="Koci" />
-                {E("lastName")}
+                <label style={labelSt}>Date of Birth <span style={{ color: "#f87171" }}>*</span></label>
+                <input type="date" {...register("dateOfBirth")} className={inputClass("dateOfBirth")} />
+                {E("dateOfBirth")}
               </div>
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Date of Birth <span className="text-red-500">*</span></label>
-              <input type="date" {...register("dateOfBirth")} className={inputClass("dateOfBirth")} />
-              {E("dateOfBirth")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Phone Number <span className="text-red-500">*</span></label>
-              <input type="tel" {...register("phone")} className={inputClass("phone")} placeholder="+355 69 123 4567" />
-              {E("phone")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Country of Residence <span className="text-red-500">*</span></label>
-              <select {...register("countryOfResidence")} className={inputClass("countryOfResidence")}>
-                <option value="">Select country…</option>
-                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              {E("countryOfResidence")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">City <span className="text-red-500">*</span></label>
-              <input {...register("city")} className={inputClass("city")} placeholder="Tirana" />
-              {E("city")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">
-                Passport Number <span className="text-red-500">*</span>
-              </label>
-              <input {...register("passportNumber")} className={inputClass("passportNumber")} placeholder="AB1234567" maxLength={20}
-                onChange={e => { e.target.value = e.target.value.toUpperCase(); }} />
-              <p className="text-xs text-slate-400 mt-1">📝 Text entry only — no document scan required</p>
-              {E("passportNumber")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Marital Status</label>
-              <select {...register("maritalStatus")} className={inputClass("maritalStatus")}>
-                <option value="">Select…</option>
-                {["Single","Married","Divorced","Widowed"].map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <div>
+                <label style={labelSt}>Phone Number <span style={{ color: "#f87171" }}>*</span></label>
+                <input type="tel" {...register("phone")} className={inputClass("phone")} placeholder="+355 69 123 4567" />
+                {E("phone")}
+              </div>
+              <div>
+                <label style={labelSt}>Country of Residence <span style={{ color: "#f87171" }}>*</span></label>
+                <select {...register("countryOfResidence")} className={inputClass("countryOfResidence")} style={{ color: "#fff", background: "#0a1628" }}>
+                  <option value="">Select country…</option>
+                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {E("countryOfResidence")}
+              </div>
+              <div>
+                <label style={labelSt}>City <span style={{ color: "#f87171" }}>*</span></label>
+                <input {...register("city")} className={inputClass("city")} placeholder="Tirana" />
+                {E("city")}
+              </div>
+              <div>
+                <label style={labelSt}>Passport Number <span style={{ color: "#f87171" }}>*</span></label>
+                <input {...register("passportNumber")} className={inputClass("passportNumber")} placeholder="AB1234567" maxLength={20}
+                  onChange={e => { e.target.value = e.target.value.toUpperCase(); }} />
+                <p style={helperSt}>📝 Text entry only — no document scan required</p>
+                {E("passportNumber")}
+              </div>
+              <div>
+                <label style={labelSt}>Marital Status</label>
+                <select {...register("maritalStatus")} className={inputClass("maritalStatus")} style={{ color: "#fff", background: "#0a1628" }}>
+                  <option value="">Select…</option>
+                  {["Single","Married","Divorced","Widowed"].map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
           </div>
         );
 
+      // ── Step 2: Family ───────────────────────────────────────────
       case 2:
         return (
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Family details</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Required for visa applications and employment documentation.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Family details</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Required for visa applications and employment documentation.</p>
             </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Father's Full Name <span className="text-red-500">*</span></label>
-              <input {...register("fatherName")} className={inputClass("fatherName")} placeholder="Arben Koci" />
-              {E("fatherName")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Mother's Full Name <span className="text-red-500">*</span></label>
-              <input {...register("motherName")} className={inputClass("motherName")} placeholder="Erjola Koci" />
-              {E("motherName")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Do you have a spouse/partner?</label>
-              <div className="flex gap-3">
-                {[["No", false], ["Yes", true]].map(([label, val]) => (
-                  <button key={String(label)} type="button"
-                    onClick={() => setHasSpouse(val as boolean)}
-                    className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all ${hasSpouse === val ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"}`}>
-                    {String(label)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {hasSpouse && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Spouse's Full Name <span className="text-red-500">*</span></label>
-                <input {...register("spouseName")} className={inputClass("spouseName")} placeholder="Full name" />
-                {E("spouseName")}
+                <label style={labelSt}>Father's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                <input {...register("fatherName")} className={inputClass("fatherName")} placeholder="Arben Koci" />
+                {E("fatherName")}
               </div>
-            )}
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Number of Children</label>
-              <div className="flex items-center gap-4 border-2 border-slate-200 rounded-xl px-4 py-3">
-                <button type="button" onClick={() => setChildren(c => Math.max(0, c - 1))}
-                  className="w-8 h-8 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center">−</button>
-                <span className="flex-1 text-center text-lg font-bold text-slate-900">{children}</span>
-                <button type="button" onClick={() => setChildren(c => Math.min(20, c + 1))}
-                  className="w-8 h-8 rounded-full bg-blue-100 font-bold text-blue-700 flex items-center justify-center">+</button>
+              <div>
+                <label style={labelSt}>Mother's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                <input {...register("motherName")} className={inputClass("motherName")} placeholder="Erjola Koci" />
+                {E("motherName")}
               </div>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-5 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Skills & experience</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Your skills power the AI matching engine.</p>
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-3 block">Your Skills <span className="text-red-500">*</span></label>
-              <div className="flex flex-wrap gap-2">
-                {SKILLS.map(skill => (
-                  <button key={skill} type="button"
-                    onClick={() => setSelectedSkills(s => s.includes(skill) ? s.filter(x => x !== skill) : [...s, skill])}
-                    className={`px-3 py-2 rounded-full border-2 text-[13px] font-semibold transition-all ${selectedSkills.includes(skill) ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 bg-white"}`}>
-                    {selectedSkills.includes(skill) && "✓ "}{skill}
-                  </button>
-                ))}
-              </div>
-              {E("skills")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Years of Experience <span className="text-red-500">*</span></label>
-              <select {...register("yearsExperience")} className={inputClass("yearsExperience")}>
-                <option value="">Select…</option>
-                {["Less than 1 year","1–2 years","3–5 years","5–8 years","8–12 years","12+ years"].map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-              {E("yearsExperience")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-3 block">Languages Spoken</label>
-              {languages.map((entry, i) => (
-                <div key={i} className="flex gap-2 mb-2">
-                  <select value={entry.language}
-                    onChange={e => setLanguages(l => l.map((x, j) => j === i ? { ...x, language: e.target.value } : x))}
-                    className="flex-1 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-blue-500">
-                    {LANGUAGES.map(l => <option key={l}>{l}</option>)}
-                  </select>
-                  <select value={entry.proficiencyLevel}
-                    onChange={e => setLanguages(l => l.map((x, j) => j === i ? { ...x, proficiencyLevel: e.target.value } : x))}
-                    className="flex-1 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-blue-500">
-                    {LANG_LEVELS.map(l => <option key={l}>{l}</option>)}
-                  </select>
-                  {i > 0 && (
-                    <button type="button" onClick={() => setLanguages(l => l.filter((_, j) => j !== i))}
-                      className="w-11 h-11 rounded-xl bg-red-50 text-red-500 font-bold flex items-center justify-center">✕</button>
-                  )}
-                </div>
-              ))}
-              <button type="button"
-                onClick={() => setLanguages(l => [...l, { language: "French", proficiencyLevel: "A2 – Elementary" }])}
-                className="w-full py-2.5 border-2 border-dashed border-blue-200 rounded-xl text-blue-600 text-sm font-semibold mt-1">
-                + Add language
-              </button>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-5 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Work preferences</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Tell us where and how you want to work.</p>
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Expected Monthly Salary <span className="text-red-500">*</span></label>
-              <select {...register("expectedSalary")} className={inputClass("expectedSalary")}>
-                <option value="">Select range…</option>
-                {SALARY_RANGES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              {E("expectedSalary")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-3 block">Target Countries <span className="text-red-500">*</span></label>
-              <div className="flex flex-wrap gap-2">
-                {TARGET_COUNTRIES.map(c => (
-                  <button key={c} type="button"
-                    onClick={() => setSelectedCountries(s => s.includes(c) ? s.filter(x => x !== c) : [...s, c])}
-                    className={`px-3 py-2 rounded-full border-2 text-[13px] font-semibold transition-all ${selectedCountries.includes(c) ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"}`}>
-                    {selectedCountries.includes(c) && "✓ "}{c}
-                  </button>
-                ))}
-              </div>
-              {E("targetCountries")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Preferred Visa Type <span className="text-red-500">*</span></label>
-              <select {...register("visaTypePreference")} className={inputClass("visaTypePreference")}>
-                <option value="">Select…</option>
-                {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-              {E("visaTypePreference")}
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Earliest Availability</label>
-              <input type="date" {...register("availabilityDate")} className={inputClass("availabilityDate")} />
-            </div>
-            <div>
-              <label className="text-[13px] font-semibold text-slate-700 mb-1.5 block">Additional Notes</label>
-              <textarea {...register("additionalNotes")} rows={3}
-                className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-blue-500 resize-none"
-                placeholder="Driving licence, immediate availability, etc." />
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Upload documents</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Files are encrypted and stored securely.</p>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-500">{completedUploads} of 4 uploaded</span>
-              <span className="text-sm font-bold text-blue-600">{Math.round((completedUploads / 4) * 100)}%</span>
-            </div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full transition-all duration-500"
-                style={{ width: `${(completedUploads / 4) * 100}%` }} />
-            </div>
-            {FILE_TYPES.map(({ key, label, icon, hint }) => {
-              const entry = store.uploads[key];
-              const isDone = entry?.status === "done";
-              const isLoading = entry?.status === "uploading";
-              const isError = entry?.status === "error";
-
-              return (
-                <div key={key} className={`border-2 rounded-2xl p-4 transition-all ${isDone ? "border-emerald-400 bg-emerald-50" : isError ? "border-red-300 bg-red-50" : "border-dashed border-slate-200 bg-white"}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{isDone ? "✅" : icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-slate-900">{label}</div>
-                      {isDone ? (
-                        <div className="text-xs text-emerald-600 font-medium truncate">{entry.fileName}</div>
-                      ) : isError ? (
-                        <div className="text-xs text-red-500">{entry.errorMsg}</div>
-                      ) : isLoading ? (
-                        <div>
-                          <div className="text-xs text-blue-500 mb-1">Uploading… {entry.progress}%</div>
-                          <div className="h-1 bg-blue-100 rounded-full">
-                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${entry.progress}%` }} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-slate-400">{hint}</div>
-                      )}
-                    </div>
-                    {isDone ? (
-                      <button type="button" onClick={() => store.removeUpload(key)}
-                        className="text-xs text-red-400 font-medium hover:text-red-600">Remove</button>
-                    ) : !isLoading && (
-                      <label className="cursor-pointer">
-                        <input type="file" className="hidden"
-                          accept={key === "PROFILE_PHOTO" ? "image/jpeg,image/png,image/webp" : key.includes("VIDEO") ? "video/mp4,video/quicktime" : "application/pdf,image/jpeg,image/png"}
-                          onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(key, f); }} />
-                        <span className="text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">Upload</span>
-                      </label>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <p className="text-xs text-blue-800">
-                📸 Profile photo and at least one video are required before your profile becomes searchable. Other documents can be added later.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Review & submit</h2>
-              <p className="text-sm text-slate-500 mt-1.5">Check your details. Tap any section to edit.</p>
-            </div>
-            {store.submitError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">⚠ {store.submitError}</div>
-            )}
-            {[
-              { label: "Personal Info", step: 1, rows: [
-                { k: "Name", v: `${store.stepData[1]?.firstName ?? ""} ${store.stepData[1]?.lastName ?? ""}`.trim() || "—" },
-                { k: "Country", v: (store.stepData[1]?.countryOfResidence as string) || "—" },
-                { k: "City", v: (store.stepData[1]?.city as string) || "—" },
-                { k: "Passport", v: store.stepData[1]?.passportNumber ? "••••••" + String(store.stepData[1].passportNumber).slice(-3) : "—" },
-              ]},
-              { label: "Family", step: 2, rows: [
-                { k: "Father", v: (store.stepData[2]?.fatherName as string) || "—" },
-                { k: "Mother", v: (store.stepData[2]?.motherName as string) || "—" },
-                { k: "Children", v: String(store.stepData[2]?.numberOfChildren ?? 0) },
-              ]},
-              { label: "Skills", step: 3, rows: [
-                { k: "Skills", v: selectedSkills.slice(0, 4).join(", ") + (selectedSkills.length > 4 ? ` +${selectedSkills.length - 4}` : "") || "—" },
-                { k: "Experience", v: (store.stepData[3]?.yearsExperience as string) || "—" },
-              ]},
-              { label: "Preferences", step: 4, rows: [
-                { k: "Salary", v: (store.stepData[4]?.expectedSalary as string) || "—" },
-                { k: "Countries", v: selectedCountries.slice(0, 2).join(", ") + (selectedCountries.length > 2 ? ` +${selectedCountries.length - 2}` : "") || "—" },
-              ]},
-              { label: "Documents", step: 5, rows: FILE_TYPES.map(f => ({
-                k: f.label, v: store.uploads[f.key]?.status === "done" ? "✓ Uploaded" : "— Not uploaded",
-              }))},
-            ].map(({ label, step, rows }) => (
-              <div key={label} className="border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-200">
-                  <span className="font-bold text-sm text-slate-800">{label}</span>
-                  <button type="button" onClick={() => { setDirection("bwd"); setUiStep(step); }}
-                    className="text-blue-600 text-sm font-semibold">Edit</button>
-                </div>
-                <div className="px-4 py-2">
-                  {rows.map(({ k, v }) => (
-                    <div key={k} className="flex justify-between py-2.5 border-b last:border-0 border-slate-100">
-                      <span className="text-[13px] text-slate-500 w-28 flex-shrink-0">{k}</span>
-                      <span className={`text-[13px] font-semibold text-right flex-1 ${v.includes("✓") ? "text-emerald-600" : v === "—" ? "text-slate-400" : "text-slate-900"}`}>{v}</span>
-                    </div>
+              <div>
+                <label style={labelSt}>Do you have a spouse/partner?</label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {[["No", false], ["Yes", true]].map(([label, val]) => (
+                    <button key={String(label)} type="button"
+                      onClick={() => setHasSpouse(val as boolean)}
+                      style={{
+                        flex: 1, padding: "12px", borderRadius: 12,
+                        fontWeight: 600, fontSize: 14, cursor: "pointer", transition: "all 0.15s",
+                        ...(hasSpouse === val
+                          ? { border: "2px solid #0090FF", background: "rgba(0,144,255,0.15)", color: "#60A5FA" }
+                          : { border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)" }),
+                      }}>
+                      {String(label)}
+                    </button>
                   ))}
                 </div>
               </div>
-            ))}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-              <p className="text-xs text-emerald-800 font-medium">
-                ✓ By submitting you confirm all information is accurate and consent to secure data processing for employment matching.
-              </p>
+              {hasSpouse && (
+                <div>
+                  <label style={labelSt}>Spouse's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                  <input {...register("spouseName")} className={inputClass("spouseName")} placeholder="Full name" />
+                  {E("spouseName")}
+                </div>
+              )}
+              <div>
+                <label style={labelSt}>Number of Children</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "12px 16px" }}>
+                  <button type="button" onClick={() => setChildren(c => Math.max(0, c - 1))}
+                    style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", fontWeight: 700, color: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", fontSize: 18 }}>−</button>
+                  <span style={{ flex: 1, textAlign: "center", fontSize: 18, fontWeight: 700, color: "white" }}>{children}</span>
+                  <button type="button" onClick={() => setChildren(c => Math.min(20, c + 1))}
+                    style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,144,255,0.15)", fontWeight: 700, color: "#60A5FA", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", fontSize: 18 }}>+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      // ── Step 3: Skills ───────────────────────────────────────────
+      case 3:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Skills & experience</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Your skills power the AI matching engine.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ ...labelSt, marginBottom: 10 }}>Your Skills <span style={{ color: "#f87171" }}>*</span></label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {SKILLS.map(skill => (
+                    <button key={skill} type="button"
+                      onClick={() => setSelectedSkills(s => s.includes(skill) ? s.filter(x => x !== skill) : [...s, skill])}
+                      style={selectedSkills.includes(skill) ? pillSel : pillOff}>
+                      {selectedSkills.includes(skill) && "✓ "}{skill}
+                    </button>
+                  ))}
+                </div>
+                {E("skills")}
+              </div>
+              <div>
+                <label style={labelSt}>Years of Experience <span style={{ color: "#f87171" }}>*</span></label>
+                <select {...register("yearsExperience")} className={inputClass("yearsExperience")} style={{ color: "#fff", background: "#0a1628" }}>
+                  <option value="">Select…</option>
+                  {["Less than 1 year","1–2 years","3–5 years","5–8 years","8–12 years","12+ years"].map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+                {E("yearsExperience")}
+              </div>
+              <div>
+                <label style={{ ...labelSt, marginBottom: 10 }}>Languages Spoken</label>
+                {languages.map((entry, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    <select value={entry.language}
+                      onChange={e => setLanguages(l => l.map((x, j) => j === i ? { ...x, language: e.target.value } : x))}
+                      style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 12px", fontSize: 14, color: "white", outline: "none" }}>
+                      {LANGUAGES.map(l => <option key={l} style={{ background: "#0a1628" }}>{l}</option>)}
+                    </select>
+                    <select value={entry.proficiencyLevel}
+                      onChange={e => setLanguages(l => l.map((x, j) => j === i ? { ...x, proficiencyLevel: e.target.value } : x))}
+                      style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 12px", fontSize: 14, color: "white", outline: "none" }}>
+                      {LANG_LEVELS.map(l => <option key={l} style={{ background: "#0a1628" }}>{l}</option>)}
+                    </select>
+                    {i > 0 && (
+                      <button type="button" onClick={() => setLanguages(l => l.filter((_, j) => j !== i))}
+                        style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16 }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button"
+                  onClick={() => setLanguages(l => [...l, { language: "French", proficiencyLevel: "A2 – Elementary" }])}
+                  style={{ width: "100%", padding: "10px", border: "2px dashed rgba(0,144,255,0.3)", borderRadius: 12, background: "transparent", color: "#60A5FA", fontSize: 13, fontWeight: 600, cursor: "pointer", marginTop: 4 }}>
+                  + Add language
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      // ── Step 4: Preferences ──────────────────────────────────────
+      case 4:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Work preferences</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Tell us where and how you want to work.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={labelSt}>Expected Monthly Salary <span style={{ color: "#f87171" }}>*</span></label>
+                <select {...register("expectedSalary")} className={inputClass("expectedSalary")} style={{ color: "#fff", background: "#0a1628" }}>
+                  <option value="">Select range…</option>
+                  {SALARY_RANGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {E("expectedSalary")}
+              </div>
+              <div>
+                <label style={{ ...labelSt, marginBottom: 10 }}>Target Countries <span style={{ color: "#f87171" }}>*</span></label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {TARGET_COUNTRIES.map(c => (
+                    <button key={c} type="button"
+                      onClick={() => setSelectedCountries(s => s.includes(c) ? s.filter(x => x !== c) : [...s, c])}
+                      style={selectedCountries.includes(c) ? pillSel : pillOff}>
+                      {selectedCountries.includes(c) && "✓ "}{c}
+                    </button>
+                  ))}
+                </div>
+                {E("targetCountries")}
+              </div>
+              <div>
+                <label style={labelSt}>Preferred Visa Type <span style={{ color: "#f87171" }}>*</span></label>
+                <select {...register("visaTypePreference")} className={inputClass("visaTypePreference")} style={{ color: "#fff", background: "#0a1628" }}>
+                  <option value="">Select…</option>
+                  {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {E("visaTypePreference")}
+              </div>
+              <div>
+                <label style={labelSt}>Earliest Availability</label>
+                <input type="date" {...register("availabilityDate")} className={inputClass("availabilityDate")} />
+              </div>
+              <div>
+                <label style={labelSt}>Additional Notes</label>
+                <textarea {...register("additionalNotes")} rows={3}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 16px", fontSize: 15, color: "white", outline: "none", resize: "none", boxSizing: "border-box" }}
+                  className="worker-textarea"
+                  placeholder="Driving licence, immediate availability, etc." />
+              </div>
+            </div>
+          </div>
+        );
+
+      // ── Step 5: Documents ────────────────────────────────────────
+      case 5:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Upload documents</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Files are encrypted and stored securely.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{completedUploads} of 4 uploaded</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>{Math.round((completedUploads / 4) * 100)}%</span>
+              </div>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.5s", width: `${(completedUploads / 4) * 100}%` }} />
+              </div>
+              {FILE_TYPES.map(({ key, label, icon, hint }) => {
+                const entry    = store.uploads[key];
+                const isDone   = entry?.status === "done";
+                const isLoading = entry?.status === "uploading";
+                const isError  = entry?.status === "error";
+
+                return (
+                  <div key={key} style={{
+                    border: isDone
+                      ? "2px solid rgba(0,144,255,0.3)"
+                      : isError
+                      ? "2px solid rgba(239,68,68,0.3)"
+                      : "2px dashed rgba(255,255,255,0.1)",
+                    background: isDone
+                      ? "rgba(0,144,255,0.08)"
+                      : isError
+                      ? "rgba(239,68,68,0.08)"
+                      : "rgba(255,255,255,0.03)",
+                    borderRadius: 16,
+                    padding: 16,
+                    transition: "all 0.2s",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 24 }}>{isDone ? "✅" : icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{label}</div>
+                        {isDone ? (
+                          <div style={{ fontSize: 12, color: "#60A5FA", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.fileName}</div>
+                        ) : isError ? (
+                          <div style={{ fontSize: 12, color: "#f87171" }}>{entry.errorMsg}</div>
+                        ) : isLoading ? (
+                          <div>
+                            <div style={{ fontSize: 12, color: "#60A5FA", marginBottom: 4 }}>Uploading… {entry.progress}%</div>
+                            <div style={{ height: 3, background: "rgba(0,144,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
+                              <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.3s", width: `${entry.progress}%` }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{hint}</div>
+                        )}
+                      </div>
+                      {isDone ? (
+                        <button type="button" onClick={() => store.removeUpload(key)}
+                          style={{ fontSize: 12, color: "#f87171", fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>Remove</button>
+                      ) : !isLoading && (
+                        <label style={{ cursor: "pointer" }}>
+                          <input type="file" className="hidden"
+                            accept={key === "PROFILE_PHOTO" ? "image/jpeg,image/png,image/webp" : key.includes("VIDEO") ? "video/mp4,video/quicktime" : "application/pdf,image/jpeg,image/png"}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(key, f); }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 8, padding: "5px 12px" }}>Upload</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 12, padding: "12px 14px" }}>
+                <p style={{ fontSize: 12, color: "#60A5FA" }}>
+                  📸 Profile photo and at least one video are required before your profile becomes searchable. Other documents can be added later.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      // ── Step 6: Review ───────────────────────────────────────────
+      case 6:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={headingSt}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Review & submit</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Check your details. Tap any section to edit.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {store.submitError && (
+                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#f87171" }}>⚠ {store.submitError}</div>
+              )}
+              {[
+                { label: "Personal Info", step: 1, rows: [
+                  { k: "Name",     v: `${store.stepData[1]?.firstName ?? ""} ${store.stepData[1]?.lastName ?? ""}`.trim() || "—" },
+                  { k: "Country",  v: (store.stepData[1]?.countryOfResidence as string) || "—" },
+                  { k: "City",     v: (store.stepData[1]?.city as string) || "—" },
+                  { k: "Passport", v: store.stepData[1]?.passportNumber ? "••••••" + String(store.stepData[1].passportNumber).slice(-3) : "—" },
+                ]},
+                { label: "Family", step: 2, rows: [
+                  { k: "Father",   v: (store.stepData[2]?.fatherName as string) || "—" },
+                  { k: "Mother",   v: (store.stepData[2]?.motherName as string) || "—" },
+                  { k: "Children", v: String(store.stepData[2]?.numberOfChildren ?? 0) },
+                ]},
+                { label: "Skills", step: 3, rows: [
+                  { k: "Skills",     v: selectedSkills.slice(0, 4).join(", ") + (selectedSkills.length > 4 ? ` +${selectedSkills.length - 4}` : "") || "—" },
+                  { k: "Experience", v: (store.stepData[3]?.yearsExperience as string) || "—" },
+                ]},
+                { label: "Preferences", step: 4, rows: [
+                  { k: "Salary",    v: (store.stepData[4]?.expectedSalary as string) || "—" },
+                  { k: "Countries", v: selectedCountries.slice(0, 2).join(", ") + (selectedCountries.length > 2 ? ` +${selectedCountries.length - 2}` : "") || "—" },
+                ]},
+                { label: "Documents", step: 5, rows: FILE_TYPES.map(f => ({
+                  k: f.label, v: store.uploads[f.key]?.status === "done" ? "✓ Uploaded" : "— Not uploaded",
+                }))},
+              ].map(({ label, step, rows }) => (
+                <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{label}</span>
+                    <button type="button" onClick={() => { setDirection("bwd"); setUiStep(step); }}
+                      style={{ background: "none", border: "none", fontSize: 13, color: "#60A5FA", fontWeight: 600, cursor: "pointer", padding: 0 }}>Edit</button>
+                  </div>
+                  <div style={{ padding: "4px 16px" }}>
+                    {rows.map(({ k, v }, ri) => (
+                      <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: ri < rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", width: 100, flexShrink: 0 }}>{k}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, textAlign: "right", flex: 1, color: v.includes("✓") ? "#60A5FA" : v === "—" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.85)" }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 12, padding: "12px 14px" }}>
+                <p style={{ fontSize: 12, color: "#34d399", fontWeight: 600 }}>
+                  ✓ By submitting you confirm all information is accurate and consent to secure data processing for employment matching.
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -589,64 +648,164 @@ export default function WorkerOnboardingPage() {
   const isLastStep = uiStep === TOTAL_STEPS - 1;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-[430px] mx-auto">
-      {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#1848CC" opacity="0.9"/>
-              <path d="M2 17l10 5 10-5" stroke="#1848CC" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
+    <>
+      <style>{`
+        @media (min-width: 640px) { .step-label { display: block !important; } }
+        @media (max-width: 640px) { .onboarding-card { border-radius: 16px !important; } }
+        .worker-input::placeholder { color: rgba(255,255,255,0.25) !important; }
+        .worker-input:focus { border-color: #0090FF !important; background: rgba(0,144,255,0.06) !important; }
+        .worker-input option { background: #0a1628; color: #ffffff; }
+        .worker-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.35); }
+        .worker-textarea:focus { border-color: #0090FF !important; outline: none; }
+        .worker-textarea::placeholder { color: rgba(255,255,255,0.25); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+
+      <div style={{ minHeight: "100vh", background: "#010913", display: "flex", flexDirection: "column", fontFamily: "var(--font-body)" }}>
+
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <header style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "rgba(5,13,26,0.95)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          padding: "0 2rem",
+          height: 64,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #0090FF, #6366F1)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, color: "#fff" }}>DH</div>
+            <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", letterSpacing: "-0.3px" }}>DirectHire</span>
           </div>
-          <span className="font-extrabold text-[15px] text-slate-900">Direct Hire</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <SaveIndicator />
-          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">Worker</span>
-        </div>
-      </div>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>
+            Worker Onboarding — {STEP_LABELS[uiStep]}
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <SaveIndicator />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#60A5FA", background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 20, padding: "3px 10px", letterSpacing: "0.04em" }}>Worker</span>
+          </div>
+        </header>
 
-      {/* Progress */}
-      <div className="px-5 pt-4 pb-2 bg-white border-b border-slate-100">
-        <div className="flex justify-between text-xs mb-2">
-          <span className="font-bold text-blue-600 uppercase tracking-wide">Step {uiStep + 1} / {TOTAL_STEPS}</span>
-          <span className="text-slate-400">{STEP_LABELS[uiStep]}</span>
+        {/* ── Premium Stepper ──────────────────────────────────────── */}
+        <div style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1.25rem 2rem" }}>
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginBottom: "1rem" }}>
+              {STEP_LABELS.map((label, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, position: "relative" }}>
+                  {i < STEP_LABELS.length - 1 && (
+                    <div style={{
+                      position: "absolute", top: 16, left: "60%", right: "-40%",
+                      height: 2, zIndex: 0,
+                      background: i < uiStep
+                        ? "linear-gradient(90deg, #0090FF, #6366F1)"
+                        : "rgba(255,255,255,0.08)",
+                      transition: "background 0.3s",
+                    }} />
+                  )}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%", zIndex: 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 700,
+                    background: i < uiStep
+                      ? "linear-gradient(135deg, #0090FF, #6366F1)"
+                      : i === uiStep
+                      ? "rgba(0,144,255,0.15)"
+                      : "rgba(255,255,255,0.05)",
+                    border: i === uiStep
+                      ? "2px solid #0090FF"
+                      : i < uiStep
+                      ? "none"
+                      : "2px solid rgba(255,255,255,0.1)",
+                    color: i <= uiStep ? "#fff" : "rgba(255,255,255,0.3)",
+                    transition: "all 0.3s",
+                    boxShadow: i === uiStep ? "0 0 12px rgba(0,144,255,0.4)" : i < uiStep ? "0 2px 8px rgba(0,144,255,0.3)" : "none",
+                  }}>
+                    {i < uiStep ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : i + 1}
+                  </div>
+                  <span className="step-label" style={{
+                    fontSize: 10, fontWeight: i === uiStep ? 600 : 400,
+                    color: i === uiStep ? "#60A5FA" : i < uiStep ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)",
+                    marginTop: 6, textAlign: "center", whiteSpace: "nowrap",
+                    display: "none",
+                  }}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: "linear-gradient(90deg, #0090FF, #6366F1)",
+                width: `${((uiStep + 1) / TOTAL_STEPS) * 100}%`,
+                transition: "width 0.5s ease",
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Step {uiStep + 1} of {TOTAL_STEPS}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{Math.round(((uiStep + 1) / TOTAL_STEPS) * 100)}% complete</span>
+            </div>
+          </div>
         </div>
-        <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all duration-500"
-            style={{ width: `${((uiStep + 1) / TOTAL_STEPS) * 100}%` }} />
+
+        {/* ── Step Content ─────────────────────────────────────────── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "2rem 1rem" }}>
+          <div className="onboarding-card" style={{
+            maxWidth: 680, margin: "0 auto",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 24,
+            overflow: "hidden",
+          }}>
+            <div style={{ padding: "1.75rem 2rem 2rem" }}>
+              {renderStep()}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Step content */}
-      <div className="flex-1 overflow-y-auto pt-6">
-        {renderStep()}
-      </div>
-
-      {/* Sticky footer */}
-      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200 px-5 py-4 safe-area-bottom">
-        {stepErrors._form && (
-          <div className="text-xs text-red-500 mb-2 font-medium">⚠ {stepErrors._form}</div>
-        )}
-        <div className="flex gap-3">
-          {uiStep > 0 && (
-            <button type="button" onClick={goBack}
-              className="px-5 py-4 border-2 border-slate-200 rounded-2xl text-slate-600 font-semibold text-sm flex items-center gap-1.5 active:scale-95 transition-transform">
-              ← Back
-            </button>
+        {/* ── Sticky Footer ────────────────────────────────────────── */}
+        <div style={{
+          position: "sticky", bottom: 0,
+          background: "rgba(5,13,26,0.95)",
+          backdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          padding: "1rem 1.5rem",
+        }}>
+          {stepErrors._form && (
+            <div style={{ maxWidth: 680, margin: "0 auto 8px", fontSize: 12, color: "#f87171" }}>⚠ {stepErrors._form}</div>
           )}
-          <button
-            type="button"
-            onClick={isLastStep ? handleFinalSubmit : goNext}
-            disabled={store.isSaving || store.isSubmitting}
-            className="flex-1 py-4 rounded-2xl font-bold text-[16px] bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50">
-            {store.isSaving || store.isSubmitting ? (
-              <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            ) : isLastStep ? "Submit Application" : "Continue →"}
-          </button>
+          <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 12 }}>
+            {uiStep > 0 && (
+              <button type="button" onClick={goBack} style={{
+                padding: "14px 24px",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 12, color: "rgba(255,255,255,0.7)",
+                fontWeight: 600, fontSize: 14,
+                cursor: "pointer", transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: 6,
+              }}>← Back</button>
+            )}
+            <button type="button" onClick={isLastStep ? handleFinalSubmit : goNext}
+              disabled={store.isSaving || store.isSubmitting}
+              style={{
+                flex: 1, padding: "14px 24px",
+                background: "linear-gradient(135deg, #0090FF, #6366F1)",
+                border: "none", borderRadius: 12, color: "#fff",
+                fontWeight: 700, fontSize: 15,
+                cursor: "pointer", transition: "all 0.2s",
+                boxShadow: "0 0 32px rgba(0,144,255,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                opacity: store.isSaving || store.isSubmitting ? 0.6 : 1,
+              }}>
+              {store.isSaving || store.isSubmitting
+                ? <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                : isLastStep ? "Submit Application →" : "Continue →"}
+            </button>
+          </div>
         </div>
+
       </div>
-    </div>
+    </>
   );
 }

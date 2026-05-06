@@ -43,7 +43,7 @@ export async function insertAdminAuditLog(entry: AdminAuditEntry): Promise<void>
   const id = crypto.randomUUID();
   await prisma.$executeRawUnsafe(
     `INSERT INTO "audit_log" (id, admin_id, action, target_user_id, notes, metadata, created_at)
-     VALUES ($1, $2, $3::"AuditAction", $4, $5, $6, NOW())`,
+     VALUES ($1, $2, $3::"AuditAction", $4, $5, $6::jsonb, NOW())`,
     id,
     entry.actorId,
     entry.action,

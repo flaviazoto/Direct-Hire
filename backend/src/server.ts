@@ -38,22 +38,25 @@ import { cronRouter }        from "./routes/cron.routes";
 import { workerRouter }      from "./routes/worker.routes";
 import { employerRouter }    from "./routes/employer.routes";
 import { publicJobsRouter }  from "./routes/public-jobs.routes";
+import { stripeWebhook }     from "./controllers/webhook.controller";
 import { errorHandler }      from "./middleware/error.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
 import { startScheduler } from "./services/scheduler";
 
 const app  = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT ?? 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
-const ALLOWED_ORIGINS = Array.from(new Set([
-  FRONTEND_URL,
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://127.0.0.1:3000",
-]));
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3000")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
 const CORS_OPTIONS: cors.CorsOptions = {
-  origin: ALLOWED_ORIGINS,
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Cron-Secret"],
@@ -64,6 +67,10 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors(CORS_OPTIONS));
 app.options("*", cors(CORS_OPTIONS));
 app.use(cookieParser());
+
+// Stripe webhook needs raw body for signature verification — MUST be before express.json()
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));

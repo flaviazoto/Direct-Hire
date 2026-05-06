@@ -15,9 +15,9 @@ const InteractiveGlobe = dynamic(
 
 function GlobePlaceholder() {
   return (
-    <div style={{ position: "relative", width: 460, height: 460, flexShrink: 0 }}>
+    <div style={{ position: "relative", width: 540, height: 540, flexShrink: 0 }}>
       <div style={{
-        width: 460, height: 460, borderRadius: "50%",
+        width: 540, height: 540, borderRadius: "50%",
         background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #010913 100%)",
         position: "relative", overflow: "hidden",
         boxShadow: "0 0 80px rgba(30,84,183,0.2), 0 0 160px rgba(99,102,241,0.08)",
@@ -146,13 +146,13 @@ const CARD: React.CSSProperties = {
 };
 
 const FLOAT_CARD: React.CSSProperties = {
-  background: "rgba(10,22,40,0.9)",
+  background: "rgba(5,15,30,0.75)",
   border: "1px solid rgba(0,144,255,0.2)",
-  borderRadius: 16,
-  padding: "14px 18px",
-  backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
-  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+  borderRadius: 18,
+  padding: "16px 20px",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
 };
 
 // ── Check icon ────────────────────────────────────────────────────────────────
@@ -185,134 +185,73 @@ export default function LandingPage() {
   return (
     <div ref={pageRef} style={{ background: "#010913", minHeight: "100vh" }}>
 
-      {/* ── ANNOUNCEMENT BAR ─────────────────────────────────────────────────── */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 101,
-        height: 36,
-        background: "rgba(0,144,255,0.08)",
-        borderBottom: "1px solid rgba(0,144,255,0.12)",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-      }}>
-        <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
-          🌍 AI-powered hiring is now live in 190+ countries —
-        </span>
-        <Link href="/about" style={{
-          fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600,
-          color: "#60A5FA", textDecoration: "none",
-          transition: "opacity 0.15s",
-        }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = "0.75"; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-        >
-          See how it works →
-        </Link>
-      </div>
-
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
-        position: "relative", minHeight: "100vh",
+        position: "relative", minHeight: "auto",
         display: "flex", alignItems: "center",
-        paddingTop: 108, overflow: "hidden",
+        paddingTop: 70, paddingBottom: 80, overflow: "hidden",
         background: "#010913",
       }}>
         {/* Blue orb top-left */}
         <div aria-hidden style={{
           position: "absolute", top: -200, left: -150,
           width: 900, height: 900, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(0,144,255,0.14) 0%, transparent 70%)",
-          pointerEvents: "none", filter: "blur(60px)",
+          background: "radial-gradient(circle, rgba(0,144,255,0.10) 0%, transparent 70%)",
+          pointerEvents: "none", filter: "blur(80px)",
         }} />
         {/* Purple orb top-right */}
         <div aria-hidden style={{
           position: "absolute", top: -100, right: -100,
           width: 600, height: 600, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)",
-          pointerEvents: "none", filter: "blur(60px)",
+          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
+          pointerEvents: "none", filter: "blur(80px)",
         }} />
-        {/* Fine grid overlay */}
-        <div aria-hidden style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-          WebkitMaskImage: "radial-gradient(ellipse 70% 100% at 50% 0%, black 30%, transparent 100%)",
-          maskImage: "radial-gradient(ellipse 70% 100% at 50% 0%, black 30%, transparent 100%)",
-        }} />
-
         <div style={{
           position: "relative", zIndex: 1,
           maxWidth: 1280, margin: "0 auto",
-          padding: "80px 40px", width: "100%",
-          display: "grid", gridTemplateColumns: "1fr 1fr",
-          gap: 80, alignItems: "center",
+          padding: "32px 40px", width: "100%",
+          display: "grid", gridTemplateColumns: "52% 48%",
+          gap: 48, alignItems: "center",
         }} className="hero-grid">
 
           {/* LEFT: text */}
-          <div>
-            {/* Eyebrow pill */}
-            <div className="dh-reveal" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              borderRadius: 999, padding: "6px 16px", marginBottom: 32,
-              background: "rgba(99,102,241,0.1)",
-              border: "1px solid rgba(99,102,241,0.25)",
-            }}>
-              <div style={{
-                width: 7, height: 7, borderRadius: "50%",
-                background: "#818cf8",
-                boxShadow: "0 0 0 0 rgba(129,140,248,0.4)",
-                animation: "ping 2s infinite",
-                flexShrink: 0,
-              }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#a5b4fc", fontFamily: "var(--font-body)", letterSpacing: "0.04em" }}>
-                AI-Powered Global Hiring Platform
-              </span>
-            </div>
-
+          <div style={{ maxWidth: 560 }}>
             {/* H1 */}
             <h1 className="dh-reveal" style={{
               fontFamily: "var(--font-display)",
-              fontSize: "clamp(3.25rem, 5.5vw, 5.5rem)",
+              fontSize: "clamp(2.75rem, 4.5vw, 4.5rem)",
               fontWeight: 900,
-              lineHeight: 1.03,
-              letterSpacing: "-3.5px",
+              lineHeight: 1.12,
+              letterSpacing: "-1.5px",
               color: "#fff",
-              margin: "0 0 28px",
+              margin: "0 0 24px",
+              maxWidth: 560,
             }}>
-              Find World-Class<br />
-              Talent —{" "}
+              Find World-Class Talent<br />
               <span style={{
                 background: "linear-gradient(135deg, #0090FF 0%, #818cf8 50%, #6366F1 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
               }}>
-                Anywhere
-              </span>
-              <br />
-              <span style={{
-                background: "linear-gradient(135deg, #0090FF 0%, #818cf8 50%, #6366F1 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                fontSize: "0.82em",
-              }}>
-                on Earth
+                Anywhere on Earth
               </span>
             </h1>
 
             {/* Subheadline */}
             <p className="dh-reveal" style={{
-              fontSize: 18, color: "rgba(255,255,255,0.55)",
-              lineHeight: 1.8, maxWidth: 500,
+              fontSize: 17, color: "rgba(255,255,255,0.6)",
+              lineHeight: 1.8, maxWidth: 520,
               fontFamily: "var(--font-body)", fontWeight: 400,
-              margin: "0 0 40px",
+              margin: "0 0 36px",
             }}>
               DirectHire&apos;s AI matches verified global workers with top employers across 190+ countries — intelligently, securely, at scale.
             </p>
 
             {/* Social proof row — ABOVE buttons */}
-            <div className="dh-reveal" style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
+            <div className="dh-reveal" style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 32 }}>
               <div style={{ display: "flex" }}>
                 {["AK", "SR", "MJ", "EC", "PO"].map((init, i) => (
                   <div key={i} style={{
@@ -336,14 +275,14 @@ export default function LandingPage() {
             </div>
 
             {/* CTA buttons */}
-            <div className="dh-reveal" style={{ display: "flex", gap: 14, flexWrap: "wrap" as const, marginBottom: 48 }}>
+            <div className="dh-reveal" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, marginBottom: 52 }}>
               <Link href="/register?role=employer" style={{
                 display: "inline-flex", alignItems: "center",
-                padding: "15px 32px",
+                padding: "14px 28px",
                 background: "linear-gradient(135deg, #0090FF, #6366F1)",
                 boxShadow: "0 0 40px rgba(0,144,255,0.4)",
                 borderRadius: 12, color: "#fff",
-                fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700,
+                fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700,
                 textDecoration: "none", transition: "filter 0.2s",
                 border: "none",
               }}
@@ -354,13 +293,13 @@ export default function LandingPage() {
               </Link>
               <Link href="/register?role=worker" style={{
                 display: "inline-flex", alignItems: "center",
-                padding: "15px 32px",
+                padding: "14px 28px",
                 background: "rgba(255,255,255,0.05)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
                 border: "1px solid rgba(255,255,255,0.14)",
                 borderRadius: 12, color: "rgba(255,255,255,0.85)",
-                fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600,
+                fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600,
                 textDecoration: "none", transition: "all 0.2s",
               }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.24)"; }}
@@ -368,6 +307,21 @@ export default function LandingPage() {
               >
                 Find work
               </Link>
+            </div>
+
+            {/* Trust badge pills */}
+            <div className="dh-reveal" style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 32 }}>
+              {TRUST_ITEMS.map(item => (
+                <span key={item} style={{
+                  fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
+                  color: "rgba(255,255,255,0.45)", letterSpacing: "0.04em",
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 999, padding: "4px 12px",
+                  whiteSpace: "nowrap" as const,
+                }}>
+                  {item}
+                </span>
+              ))}
             </div>
 
             {/* Stats row */}
@@ -382,10 +336,10 @@ export default function LandingPage() {
                   { n: "847K",  l: "Jobs"       },
                 ].map((s, i) => (
                   <div key={s.l} style={{ display: "flex", alignItems: "center" }}>
-                    {i > 0 && <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.1)", margin: "0 32px", flexShrink: 0 }} />}
+                    {i > 0 && <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.1)", margin: "0 28px", flexShrink: 0 }} />}
                     <div>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.n}</div>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{s.l}</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.n}</div>
+                      <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{s.l}</div>
                     </div>
                   </div>
                 ))}
@@ -394,11 +348,11 @@ export default function LandingPage() {
           </div>
 
           {/* RIGHT: Globe + floating cards */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 680 }} className="hero-globe-col">
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 720 }} className="hero-globe-col">
             {/* Glow behind globe */}
             <div aria-hidden style={{
-              position: "absolute", width: 500, height: 500, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(99,102,241,0.1), transparent)",
+              position: "absolute", width: 600, height: 600, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(0,144,255,0.07) 0%, transparent 65%)",
               pointerEvents: "none", zIndex: 0,
             }} />
             {/* Globe */}
@@ -409,7 +363,7 @@ export default function LandingPage() {
             {/* Floating card 1 — top-left: Germany */}
             <div className="globe-float-card" style={{
               ...FLOAT_CARD,
-              position: "absolute", top: "12%", left: -20,
+              position: "absolute", top: "15%", left: -10,
               animation: "float 4s ease-in-out infinite",
               zIndex: 2,
             }}>
@@ -422,8 +376,8 @@ export default function LandingPage() {
                   flexShrink: 0,
                 }}>DE</div>
                 <div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>Germany</div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>94K open roles</div>
+                  <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>Germany</div>
+                  <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>94K open roles</div>
                 </div>
               </div>
             </div>
@@ -431,7 +385,7 @@ export default function LandingPage() {
             {/* Floating card 2 — bottom-right: UK */}
             <div className="globe-float-card" style={{
               ...FLOAT_CARD,
-              position: "absolute", bottom: "18%", right: -24,
+              position: "absolute", bottom: "20%", right: -10,
               animation: "float 4s ease-in-out infinite",
               animationDelay: "2s",
               zIndex: 2,
@@ -450,7 +404,7 @@ export default function LandingPage() {
             {/* Floating card 3 — top-right: match score */}
             <div className="globe-float-card" style={{
               ...FLOAT_CARD,
-              position: "absolute", top: "25%", right: -10,
+              position: "absolute", top: "22%", right: 0,
               padding: "10px 14px",
               animation: "float 4s ease-in-out infinite",
               animationDelay: "1s",
@@ -1122,7 +1076,6 @@ export default function LandingPage() {
           .cta-float-card  { display: none !important; }
           .globe-float-card { display: none !important; }
         }
-        header { top: 36px !important; }
       `}</style>
     </div>
   );

@@ -10,7 +10,7 @@ import {
   sendApplicationShortlistedEmail,
   sendApplicationInterviewedEmail,
   sendApplicationAcceptedWorkerEmail,
-  sendApplicationAcceptedEmployerEmail,
+  sendHireConfirmationEmployerEmail,
   sendApplicationRejectedWorkerEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
@@ -55,9 +55,14 @@ const MUTABLE_STATUSES = ["SHORTLISTED", "INTERVIEWED", "ACCEPTED", "REJECTED"] 
 type MutableStatus = typeof MUTABLE_STATUSES[number];
 
 const StatusUpdateSchema = z.object({
-  status:                z.enum(MUTABLE_STATUSES),
-  reason:                z.string().max(2000).optional(),
+  status:                 z.enum(MUTABLE_STATUSES),
+  reason:                 z.string().max(2000).optional(),
   interview_instructions: z.string().max(5000).optional(),
+  // hire confirmation fields (only used when status = ACCEPTED)
+  offeredSalary:          z.string().optional(),
+  offeredCurrency:        z.string().max(3).optional(),
+  startDate:              z.string().optional(),
+  contractType:           z.string().max(50).optional(),
 });
 
 // ── GET /employer/applications ────────────────────────────────────────────────
@@ -109,7 +114,7 @@ export async function getEmployerApplications(req: Request, res: Response, next:
     const data = rows.map(r => ({
       id:           r.id,
       status:       r.status,
-      aiMatchScore: r.matchScore,
+      aiMatchScore: r.matchScore != null ? Number(r.matchScore) : null,
       appliedAt:    r.createdAt,
       jobPost: r.job
         ? { title: r.job.title, country: r.job.country }
@@ -197,7 +202,7 @@ export async function getJobApplications(req: Request, res: Response, next: Next
       status:                   (r as Record<string, unknown>).status ?? r.status,
       created_at:               r.createdAt,
       cover_letter:             r.coverLetter,
-      match_score:              r.matchScore,
+      match_score:              r.matchScore != null ? Number(r.matchScore) : null,
       interview_contact_unlocked: r.interviewContactUnlocked,
       worker: {
         id:           r.worker.id,
@@ -264,7 +269,15 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
 
     const parsed = StatusUpdateSchema.safeParse(req.body);
     if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
-    const { status: newStatus, reason, interview_instructions } = parsed.data;
+    const {
+      status: newStatus,
+      reason,
+      interview_instructions,
+      offeredSalary,
+      offeredCurrency,
+      startDate,
+      contractType,
+    } = parsed.data;
 
     // Fetch application with worker + job data needed for notifications
     const app = await prisma.application.findUnique({
@@ -287,7 +300,11 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
           },
         },
         employer: {
-          select: { id: true, email: true },
+          select: {
+            id:    true,
+            email: true,
+            employerProfile: { select: { companyName: true, contactPersonName: true } },
+          },
         },
       },
     });
@@ -348,7 +365,15 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
     }
 
     if (newStatus === "ACCEPTED") {
-      updateData.acceptedAt = now;
+      // Cast to bypass stale Prisma client types — new columns exist in DB but client
+      // hasn't been regenerated yet (run `prisma generate` after stopping the server).
+      const hireData = updateData as Record<string, unknown>;
+      hireData.acceptedAt      = now;
+      hireData.hireConfirmedAt = now;
+      hireData.offeredSalary   = offeredSalary ? parseFloat(offeredSalary) : null;
+      hireData.offeredCurrency = offeredCurrency ?? "USD";
+      hireData.startDate       = startDate ? new Date(startDate) : null;
+      hireData.contractType    = contractType ?? null;
     }
 
     if (newStatus === "REJECTED") {
@@ -383,16 +408,17 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
       sideEffects.push(
         sendApplicationShortlistedEmail(
           app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
-        ),
+        ).catch((e: unknown) => console.error("[shortlisted email]", e)),
         prisma.notification.create({
           data: {
-            userId: app.worker.id,
-            title:  `You've been shortlisted for ${app.job.title}`,
-            body:   `Good news! You've been shortlisted for "${app.job.title}" at ${app.job.companyName}.`,
-            type:   "application_shortlisted",
-            link:   `/worker/applications/${id}`,
+            userId:   app.worker.id,
+            type:     "APPLICATION_UPDATE",
+            title:    `You've been shortlisted for ${app.job.title}`,
+            body:     `Good news! You've been shortlisted for "${app.job.title}" at ${app.job.companyName}.`,
+            link:     `/worker/applications/${id}`,
+            metadata: { applicationId: id, jobId: app.job.title, status: "SHORTLISTED" },
           },
-        }),
+        }).catch((e: unknown) => console.error("[shortlisted notif]", e)),
       );
     }
 
@@ -401,45 +427,80 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
         sendApplicationInterviewedEmail(
           app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName, id,
           interview_instructions ?? undefined,
-        ),
+        ).catch((e: unknown) => console.error("[interviewed email]", e)),
         prisma.notification.create({
           data: {
-            userId: app.worker.id,
-            title:  `Interview invitation — ${app.job.title} at ${app.job.companyName}`,
-            body:   `Congratulations! You've been selected for an interview for "${app.job.title}" at ${app.job.companyName}.`,
-            type:   "application_interviewed",
-            link:   `/worker/applications/${id}`,
+            userId:   app.worker.id,
+            type:     "APPLICATION_UPDATE",
+            title:    `Interview invitation — ${app.job.title} at ${app.job.companyName}`,
+            body:     `Congratulations! You've been selected for an interview for "${app.job.title}" at ${app.job.companyName}.`,
+            link:     `/worker/applications/${id}`,
+            metadata: { applicationId: id, status: "INTERVIEWED" },
           },
-        }),
+        }).catch((e: unknown) => console.error("[interviewed notif]", e)),
       );
     }
 
     if (newStatus === "ACCEPTED") {
+      // Release active lock held by this employer on this worker (hired = no longer needs a lock)
+      sideEffects.push(
+        prisma.workerLock.findFirst({
+          where: { workerId: app.worker.id, employerId, lockStatus: "ACTIVE" },
+        }).then(activeLock => {
+          if (!activeLock) return;
+          return prisma.$transaction([
+            prisma.workerLock.update({
+              where: { id: activeLock.id },
+              data:  { lockStatus: "RELEASED", releaseReason: "HIRED" },
+            }),
+            prisma.user.update({
+              where: { id: app.worker.id },
+              data:  { isLocked: false, lockedByEmployerId: null, lockedUntil: null },
+            }),
+          ]);
+        }).catch((e: unknown) => console.error("[hire lock release]", e)),
+      );
+
+      const employerDisplayName =
+        app.employer.employerProfile?.companyName ??
+        app.employer.employerProfile?.contactPersonName ??
+        app.employer.email;
+
       sideEffects.push(
         sendApplicationAcceptedWorkerEmail(
           app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
-        ),
-        sendApplicationAcceptedEmployerEmail(
-          app.employer.id, app.employer.email, workerName,
-        ),
+        ).catch((e: unknown) => console.error("[accepted worker email]", e)),
+        sendHireConfirmationEmployerEmail({
+          employerUserId:  app.employer.id,
+          employerEmail:   app.employer.email,
+          employerName:    employerDisplayName,
+          workerName,
+          jobTitle:        app.job.title,
+          startDate,
+          contractType,
+          offeredSalary,
+          offeredCurrency: offeredCurrency ?? "USD",
+        }).catch((e: unknown) => console.error("[hire confirmation email]", e)),
         prisma.notification.create({
           data: {
-            userId: app.worker.id,
-            title:  `Application accepted — ${app.job.title}`,
-            body:   `Congratulations! ${app.job.companyName} has accepted your application for "${app.job.title}".`,
-            type:   "application_accepted",
-            link:   `/worker/applications/${id}`,
+            userId:   app.worker.id,
+            type:     "APPLICATION_UPDATE",
+            title:    `Application accepted — ${app.job.title}`,
+            body:     `Congratulations! ${app.job.companyName} has accepted your application for "${app.job.title}".`,
+            link:     `/worker/applications/${id}`,
+            metadata: { applicationId: id, status: "ACCEPTED" },
           },
-        }),
+        }).catch((e: unknown) => console.error("[accepted worker notif]", e)),
         prisma.notification.create({
           data: {
-            userId: employerId,
-            title:  `You accepted ${workerName}'s application`,
-            body:   `You've accepted ${workerName}'s application for "${app.job.title}". Their contact details are in your dashboard.`,
-            type:   "application_accepted",
-            link:   `/employer/applications/${id}`,
+            userId:   employerId,
+            type:     "APPLICATION_UPDATE",
+            title:    `You accepted ${workerName}'s application`,
+            body:     `You've accepted ${workerName}'s application for "${app.job.title}". Their contact details are in your dashboard.`,
+            link:     `/employer/applications/${id}`,
+            metadata: { applicationId: id, status: "ACCEPTED" },
           },
-        }),
+        }).catch((e: unknown) => console.error("[accepted employer notif]", e)),
       );
     }
 
@@ -448,16 +509,17 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
         // Do NOT include rejection reason in worker email (per spec)
         sendApplicationRejectedWorkerEmail(
           app.worker.id, app.worker.email, app.job.title, app.job.companyName,
-        ),
+        ).catch((e: unknown) => console.error("[rejected email]", e)),
         prisma.notification.create({
           data: {
-            userId: app.worker.id,
-            title:  `Update on your application — ${app.job.title}`,
-            body:   `Thank you for your interest in "${app.job.title}" at ${app.job.companyName}. We will not be moving forward at this time.`,
-            type:   "application_rejected",
-            link:   `/worker/applications/${id}`,
+            userId:   app.worker.id,
+            type:     "APPLICATION_UPDATE",
+            title:    `Update on your application — ${app.job.title}`,
+            body:     `Thank you for your interest in "${app.job.title}" at ${app.job.companyName}. We will not be moving forward at this time.`,
+            link:     `/worker/applications/${id}`,
+            metadata: { applicationId: id, status: "REJECTED" },
           },
-        }),
+        }).catch((e: unknown) => console.error("[rejected notif]", e)),
       );
     }
 

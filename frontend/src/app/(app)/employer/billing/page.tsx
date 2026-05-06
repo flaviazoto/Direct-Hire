@@ -1,37 +1,33 @@
 "use client";
 // src/app/(app)/employer/billing/page.tsx
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { userApi, employerApi } from "@/lib/api-client";
-import {
-  LoadingPage,
-  PageHeader,
-  Badge,
-  Button,
-  ToastDisplay,
-  type ToastData,
-} from "@/components/ui";
+import { Suspense, useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { employerApi } from "@/lib/api-client";
+import { LoadingPage } from "@/components/ui";
 
-interface BillingData {
-  currentPlan?: string;
-  status?: string;
-  trialEndsAt?: string;
-  nextBillingDate?: string;
-  amount?: number;
-  currency?: string;
-  invoices?: { id: string; date: string; amount: number; status: string; description: string }[];
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface SubStatus {
+  status:           string;
+  plan:             string | null;
+  currentPeriodEnd: string | null;
+  trialEndsAt:      string | null;
+  hasCustomer:      boolean;
+  cancelAtPeriodEnd: boolean;
+  payments: Array<{
+    id:              string;
+    amount:          number;
+    currency:        string;
+    status:          string;
+    type:            string;
+    description:     string | null;
+    createdAt:       string;
+    stripeInvoiceId: string | null;
+  }>;
 }
 
-interface ProfileData {
-  profile?: {
-    subscriptionPlan?: string;
-    subscriptionStatus?: string;
-    trialEndsAt?: string;
-    companyName?: string;
-  } | null;
-  user?: { email: string };
-}
+// ── Plans ─────────────────────────────────────────────────────────────────────
 
 const PLANS = [
   {
@@ -64,50 +60,204 @@ const PLANS = [
   },
 ];
 
-function EmployerBillingContent() {
-  const router = useRouter();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [billing, setBilling] = useState<BillingData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast]     = useState<ToastData>(null);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const showToast = (msg: string, type: "ok" | "err") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function fmtAmount(cents: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: currency.toUpperCase(), maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+// ── Cancel confirmation modal ─────────────────────────────────────────────────
+
+function CancelModal({
+  periodEnd,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  periodEnd: string | null;
+  loading:   boolean;
+  onConfirm: () => void;
+  onClose:   () => void;
+}) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
+      <div style={{ background: "#0F1C35", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 20, padding: 36, maxWidth: 460, width: "100%" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(248,113,113,0.12)", border: "2px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#F0F4FF", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
+        <p style={{ fontSize: 13, color: "#4A5980", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
+          Your subscription will remain active until <strong style={{ color: "#8B9CC8" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#8B9CC8", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+          >
+            Keep subscription
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{ flex: 1, padding: "12px", background: loading ? "rgba(248,113,113,0.1)" : "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 10, color: "#F87171", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? "Canceling…" : "Yes, cancel"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+function EmployerBillingContent() {
+  const searchParams = useSearchParams();
+
+  const [sub,          setSub]          = useState<SubStatus | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [actionBusy,   setActionBusy]   = useState<string | null>(null);
+  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
+  const [showCancel,   setShowCancel]   = useState(false);
+
+  const fromSuccess  = searchParams?.get("success")  === "1";
+  const fromCanceled = searchParams?.get("canceled") === "1";
+
+  const showToast = (msg: string, ok: boolean) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 4500);
   };
 
-  useEffect(() => {
-    Promise.all([
-      userApi.getProfile(),
-      employerApi.getBilling(),
-    ]).then(([profileRes, billingRes]) => {
-      if (!profileRes.success) { router.push("/login"); return; }
-      setProfile(profileRes.data as ProfileData);
-      if (billingRes.success) setBilling(billingRes.data as BillingData);
-      setLoading(false);
-    });
+  const load = useCallback(async () => {
+    const r = await employerApi.getSubscriptionStatus();
+    if (r.success) setSub(r.data as SubStatus);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Action handlers ───────────────────────────────────────────────────────
+
+  const handleSubscribe = async () => {
+    setActionBusy("checkout");
+    const r = await employerApi.createSubscriptionCheckout();
+    setActionBusy(null);
+    if (r.success) {
+      window.location.href = (r.data as { checkoutUrl: string }).checkoutUrl;
+    } else {
+      showToast(r.error ?? "Failed to start checkout. Try again.", false);
+    }
+  };
+
+  const handlePortal = async () => {
+    setActionBusy("portal");
+    const r = await employerApi.getPortalSession();
+    setActionBusy(null);
+    if (r.success) {
+      window.location.href = (r.data as { portalUrl: string }).portalUrl;
+    } else {
+      showToast(r.error ?? "Failed to open billing portal. Try again.", false);
+    }
+  };
+
+  const handleCancelConfirm = async () => {
+    setActionBusy("cancel");
+    const r = await employerApi.cancelSubscription();
+    setActionBusy(null);
+    setShowCancel(false);
+    if (r.success) {
+      showToast("Subscription will cancel at end of billing period.", true);
+      setSub(prev => prev ? { ...prev, status: "CANCELED", cancelAtPeriodEnd: true } : prev);
+    } else {
+      showToast(r.error ?? "Failed to cancel subscription.", false);
+    }
+  };
 
   if (loading) return <LoadingPage color="blue" />;
 
-  const currentPlan = profile?.profile?.subscriptionPlan ?? billing?.currentPlan;
-  const planStatus  = profile?.profile?.subscriptionStatus ?? billing?.status;
-  const trialEnds   = profile?.profile?.trialEndsAt ?? billing?.trialEndsAt;
+  const status      = sub?.status ?? "INACTIVE";
+  const isActive    = status === "ACTIVE";
+  const isInactive  = status === "INACTIVE" || !sub;
+  const isCanceled  = status === "CANCELED";
+  const isTrial     = status === "TRIAL";
+  const currentPlan = sub?.plan?.toUpperCase() ?? null;
 
-  const currentPlanData = PLANS.find(p => p.key === currentPlan?.toUpperCase());
+  const statusLabel = isActive ? "ACTIVE" : isTrial ? "TRIAL" : isCanceled ? "CANCELED" : "Inactive";
+  const statusColor = isActive ? "#34D399" : isTrial ? "#FBBF24" : isCanceled ? "#F87171" : "rgba(255,255,255,0.4)";
+  const statusBg    = isActive ? "rgba(52,211,153,0.18)" : isTrial ? "rgba(251,191,36,0.18)" : isCanceled ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.08)";
+
+  const currentPlanData = PLANS.find(p => p.key === currentPlan);
+
+  const BTN: React.CSSProperties = {
+    padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+    cursor: actionBusy ? "not-allowed" : "pointer", transition: "opacity 0.15s",
+    opacity: actionBusy ? 0.6 : 1, border: "none", display: "inline-flex",
+    alignItems: "center", gap: 6,
+  };
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1200, margin: "0 auto" }}>
-      <ToastDisplay toast={toast} />
 
-      <PageHeader
-        title="Subscription & Billing"
-        description="Manage your plan and payment details"
-      />
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 24, right: 24, zIndex: 9999,
+          padding: "14px 20px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+          background: toast.ok ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
+          color:      toast.ok ? "#34D399" : "#F87171",
+          border:     `1px solid ${toast.ok ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.3)", maxWidth: 380,
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Cancel modal */}
+      {showCancel && (
+        <CancelModal
+          periodEnd={sub?.currentPeriodEnd ?? null}
+          loading={actionBusy === "cancel"}
+          onConfirm={handleCancelConfirm}
+          onClose={() => setShowCancel(false)}
+        />
+      )}
+
+      {/* URL param banners */}
+      {fromSuccess && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 12, background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34D399", fontSize: 14, fontWeight: 600 }}>
+          ✓ Subscription activated! Your plan is now active.
+        </div>
+      )}
+      {fromCanceled && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 12, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)", color: "#FBBF24", fontSize: 14, fontWeight: 600 }}>
+          ⚠ Checkout was canceled. No charges were made.
+        </div>
+      )}
+
+      {/* Canceled warning banner */}
+      {isCanceled && (
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 12, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", fontSize: 13, fontWeight: 600 }}>
+          Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}. You can resubscribe below to continue using DirectHire.
+        </div>
+      )}
+
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: "#F0F4FF", margin: "0 0 4px", letterSpacing: "-0.03em" }}>
+          Subscription &amp; Billing
+        </h1>
+        <p style={{ fontSize: 14, color: "#4A5980", margin: 0 }}>Manage your plan and payment details</p>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 3fr", gap: 24 }}>
 
-        {/* ── Left column ── */}
+        {/* ── Left column ───────────────────────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* Current plan hero */}
@@ -118,86 +268,187 @@ function EmployerBillingContent() {
           }}>
             <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(129,140,248,0.15)", filter: "blur(40px)", pointerEvents: "none" }} />
             <div style={{ position: "relative" }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Current Plan</div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <div style={{
-                  fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)",
-                  fontWeight: 800, fontSize: 28, color: "#ffffff",
-                }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
+                Current Plan
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: "#ffffff" }}>
                   {currentPlan ?? "No Plan"}
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 999,
-                  background: planStatus === "ACTIVE" ? "rgba(52,211,153,0.2)" : planStatus === "TRIAL" ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.1)",
-                  color:      planStatus === "ACTIVE" ? "#34D399" : planStatus === "TRIAL" ? "#FBBF24" : "rgba(255,255,255,0.5)",
-                }}>
-                  {planStatus ?? "Inactive"}
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: statusBg, color: statusColor }}>
+                  {statusLabel}
                 </span>
               </div>
+
               {currentPlanData && (
-                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 36, color: "rgba(255,255,255,0.9)", marginBottom: 16 }}>
-                  {currentPlanData.price}<span style={{ fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.5)" }}>{currentPlanData.period}</span>
+                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 34, color: "rgba(255,255,255,0.9)", marginBottom: 16 }}>
+                  {currentPlanData.price}
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.5)" }}>{currentPlanData.period}</span>
                 </div>
               )}
-              {trialEnds && (
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 8 }}>
-                  Trial ends {new Date(trialEnds).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+
+              {isTrial && sub?.trialEndsAt && (
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 14 }}>
+                  Trial ends {fmtDate(sub.trialEndsAt)}
                 </div>
               )}
-              {!currentPlan && (
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", margin: 0 }}>Choose a plan to unlock hiring features.</p>
-              )}
+
+              {/* ── Action buttons ── */}
+              <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginTop: 6 }}>
+
+                {/* INACTIVE or no plan → Subscribe Now */}
+                {(isInactive || (!currentPlan && !isActive)) && (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={!!actionBusy}
+                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
+                  >
+                    {actionBusy === "checkout"
+                      ? <><Spinner />Redirecting to Stripe…</>
+                      : "Subscribe Now →"}
+                  </button>
+                )}
+
+                {/* ACTIVE → Manage billing + Cancel */}
+                {isActive && (
+                  <>
+                    <button
+                      onClick={handlePortal}
+                      disabled={!!actionBusy}
+                      style={{ ...BTN, background: "rgba(255,255,255,0.12)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.2)", justifyContent: "center" as const }}
+                    >
+                      {actionBusy === "portal"
+                        ? <><Spinner />Opening portal…</>
+                        : "Manage billing →"}
+                    </button>
+                    <button
+                      onClick={() => setShowCancel(true)}
+                      disabled={!!actionBusy}
+                      style={{ ...BTN, background: "transparent", color: "rgba(248,113,113,0.8)", border: "1px solid rgba(248,113,113,0.2)", fontSize: 12, justifyContent: "center" as const }}
+                    >
+                      Cancel subscription
+                    </button>
+                  </>
+                )}
+
+                {/* CANCELED → Resubscribe */}
+                {isCanceled && (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={!!actionBusy}
+                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
+                  >
+                    {actionBusy === "checkout"
+                      ? <><Spinner />Redirecting to Stripe…</>
+                      : "Resubscribe →"}
+                  </button>
+                )}
+
+                {/* TRIAL → Subscribe to continue */}
+                {isTrial && (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={!!actionBusy}
+                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
+                  >
+                    {actionBusy === "checkout"
+                      ? <><Spinner />Redirecting to Stripe…</>
+                      : "Subscribe to continue →"}
+                  </button>
+                )}
+
+              </div>
             </div>
           </div>
 
-          {/* Billing history */}
-          {billing?.invoices && billing.invoices.length > 0 && (
-            <div style={{ background: "var(--surface,#0F1C35)", border: "1px solid var(--surface-border,#1E3258)", borderRadius: 20, overflow: "hidden" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--surface-border,#1E3258)" }}>
-                <span style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)" }}>Billing History</span>
+          {/* Invoice history */}
+          <div style={{ background: "#0F1C35", border: "1px solid #1E3258", borderRadius: 20, overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #1E3258", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 14, color: "#F0F4FF" }}>
+                Billing History
+              </span>
+              {isActive && (
+                <button
+                  onClick={handlePortal}
+                  disabled={!!actionBusy}
+                  style={{ background: "none", border: "none", color: "#818CF8", fontSize: 12, fontWeight: 600, cursor: actionBusy ? "not-allowed" : "pointer" }}
+                >
+                  All invoices →
+                </button>
+              )}
+            </div>
+
+            {(!sub?.payments || sub.payments.length === 0) ? (
+              <div style={{ padding: "24px 20px", textAlign: "center" as const, color: "#4A5980", fontSize: 13 }}>
+                No invoices yet. They will appear here after your first payment.
               </div>
-              {billing.invoices.map((inv, i) => (
-                <div key={inv.id} style={{
+            ) : (
+              sub.payments.map((pmt, i) => (
+                <div key={pmt.id} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "14px 20px",
-                  borderBottom: i < (billing.invoices?.length ?? 0) - 1 ? "1px solid var(--surface-border,#1E3258)" : "none",
+                  borderBottom: i < sub.payments.length - 1 ? "1px solid #1E3258" : "none",
                 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary,#F0F4FF)" }}>{inv.description}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted,#4A5980)", marginTop: 2 }}>
-                      {new Date(inv.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#F0F4FF", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {pmt.description ?? pmt.type}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#4A5980", marginTop: 2 }}>
+                      {fmtDate(pmt.createdAt)}
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)", marginBottom: 4 }}>€{inv.amount.toFixed(2)}</div>
-                    <Badge variant={inv.status === "PAID" ? "green" : "amber"}>{inv.status}</Badge>
+                  <div style={{ textAlign: "right" as const, flexShrink: 0, marginLeft: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#F0F4FF", marginBottom: 4 }}>
+                      {fmtAmount(pmt.amount, pmt.currency)}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" as const }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
+                        background: pmt.status === "SUCCEEDED" ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.15)",
+                        color:      pmt.status === "SUCCEEDED" ? "#34D399" : "#FBBF24",
+                      }}>
+                        {pmt.status === "SUCCEEDED" ? "PAID" : pmt.status}
+                      </span>
+                      {pmt.stripeInvoiceId && (
+                        <a
+                          href={`https://pay.stripe.com/invoices/${pmt.stripeInvoiceId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 11, fontWeight: 600, color: "#818CF8", textDecoration: "none" }}
+                        >
+                          Download
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
           {/* Contact card */}
-          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "20px 24px", textAlign: "center" }}>
-            <p style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", marginBottom: 6 }}>Need a custom enterprise plan?</p>
+          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "20px 24px", textAlign: "center" as const }}>
+            <p style={{ fontSize: 13, color: "#4A5980", marginBottom: 6 }}>Need a custom enterprise plan?</p>
             <a href="mailto:billing@directhire.io" style={{ fontSize: 13, fontWeight: 600, color: "#818CF8", textDecoration: "none" }}>
               billing@directhire.io
             </a>
           </div>
         </div>
 
-        {/* ── Right column: plan cards ── */}
+        {/* ── Right column: plan cards ───────────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "var(--text-muted,#4A5980)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Available Plans</div>
+          <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#4A5980", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
+            Available Plans
+          </div>
+
           {PLANS.map(plan => {
-            const isCurrent = currentPlan?.toUpperCase() === plan.key;
+            const isCurrent = currentPlan === plan.key;
             return (
               <div key={plan.key} style={{
-                background: "var(--surface,#0F1C35)",
-                border: isCurrent ? `1px solid rgba(129,140,248,0.5)` : "1px solid var(--surface-border,#1E3258)",
-                borderRadius: 18, padding: "24px 24px",
+                background: "#0F1C35",
+                border: isCurrent ? "1px solid rgba(129,140,248,0.5)" : "1px solid #1E3258",
+                borderRadius: 18, padding: 24,
                 boxShadow: isCurrent ? "0 0 24px rgba(99,102,241,0.12)" : "none",
-                transition: "border-color 0.2s",
                 position: "relative",
               }}>
                 {isCurrent && (
@@ -206,37 +457,59 @@ function EmployerBillingContent() {
                     background: "linear-gradient(135deg,#6366F1,#4F46E5)",
                     color: "#F0F4FF", fontSize: 10, fontWeight: 800,
                     padding: "4px 12px", borderRadius: 999, letterSpacing: "0.06em",
-                  }}>CURRENT PLAN</div>
+                  }}>
+                    CURRENT PLAN
+                  </div>
                 )}
+
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                   <div>
-                    <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 18, color: "var(--text-primary,#F0F4FF)" }}>{plan.name}</div>
+                    <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 18, color: "#F0F4FF" }}>
+                      {plan.name}
+                    </div>
                     {plan.highlighted && (
                       <div style={{ fontSize: 11, color: "#818CF8", fontWeight: 600, marginTop: 2 }}>Most Popular</div>
                     )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: plan.accent }}>{plan.price}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted,#4A5980)" }}>{plan.period}</div>
+                  <div style={{ textAlign: "right" as const }}>
+                    <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: plan.accent }}>
+                      {plan.price}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#4A5980" }}>{plan.period}</div>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginBottom: 20 }}>
                   {plan.features.map(f => (
-                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary,#8B9CC8)" }}>
+                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#8B9CC8" }}>
                       <span style={{ color: "#34D399", fontWeight: 700, flexShrink: 0 }}>✓</span>
                       {f}
                     </div>
                   ))}
                 </div>
-                <Button
-                  variant={isCurrent ? "secondary" : "primary"}
-                  size="sm"
-                  disabled={isCurrent}
-                  style={{ width: "100%" }}
-                  onClick={() => showToast("Billing portal coming soon — contact support to upgrade", "ok")}
+
+                <button
+                  disabled={isCurrent || !!actionBusy}
+                  onClick={isCurrent ? undefined : (isActive || sub?.hasCustomer ? handlePortal : handleSubscribe)}
+                  style={{
+                    width: "100%", padding: "10px 16px", borderRadius: 10,
+                    fontSize: 13, fontWeight: 600,
+                    cursor:     isCurrent || !!actionBusy ? "not-allowed" : "pointer",
+                    transition: "opacity 0.15s",
+                    opacity:    isCurrent ? 0.5 : actionBusy ? 0.7 : 1,
+                    background: isCurrent ? "rgba(255,255,255,0.05)" : `linear-gradient(135deg, ${plan.accent}33, ${plan.accent}22)`,
+                    color:      isCurrent ? "#4A5980" : plan.accent,
+                    border:     isCurrent ? "1px solid rgba(255,255,255,0.08)" : `1px solid ${plan.accent}44`,
+                  } as React.CSSProperties}
                 >
-                  {isCurrent ? "Current Plan" : `Switch to ${plan.name}`}
-                </Button>
+                  {isCurrent
+                    ? "Current Plan"
+                    : actionBusy === "portal" || actionBusy === "checkout"
+                    ? "Redirecting…"
+                    : isActive || sub?.hasCustomer
+                    ? `Switch to ${plan.name} (via portal)`
+                    : `Get ${plan.name}`}
+                </button>
               </div>
             );
           })}
@@ -246,10 +519,27 @@ function EmployerBillingContent() {
   );
 }
 
+// ── Spinner ───────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  return (
+    <span style={{
+      display: "inline-block", width: 13, height: 13,
+      border: "2px solid rgba(255,255,255,0.25)", borderTopColor: "currentColor",
+      borderRadius: "50%", animation: "spin 0.7s linear infinite",
+    }} />
+  );
+}
+
+// ── Page wrapper ──────────────────────────────────────────────────────────────
+
 export default function EmployerBillingPage() {
   return (
-    <Suspense fallback={<LoadingPage color="blue" />}>
-      <EmployerBillingContent />
-    </Suspense>
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <Suspense fallback={<LoadingPage color="blue" />}>
+        <EmployerBillingContent />
+      </Suspense>
+    </>
   );
 }

@@ -80,6 +80,11 @@ enum EmailType {
   ACCOUNT_NEEDS_CHANGES
   SUBSCRIPTION_CONFIRMED
   ADMIN_NEW_SUBMISSION
+  APPLICATION_RECEIVED
+  APPLICATION_SHORTLISTED
+  APPLICATION_INTERVIEW_REQUESTED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
   GENERAL
 }
 
@@ -88,6 +93,21 @@ enum EmailStatus {
   SENT
   FAILED
   BOUNCED
+}
+
+enum NotificationType {
+  MESSAGE_RECEIVED
+  APPLICATION_SUBMITTED
+  APPLICATION_UPDATE
+  PROFILE_APPROVED
+  PROFILE_REJECTED
+  JOB_MATCH
+  WORKER_LOCKED
+  WORKER_LOCK_EXTENDED
+  WORKER_LOCK_RELEASED
+  LOCK_EXPIRY_WARNING
+  LOCK_EXPIRED
+  GENERAL
 }
 
 enum ApplicationStatus {
@@ -150,6 +170,7 @@ enum AuditAction {
   WORKER_LOCK_RELEASED
   WORKER_LOCK_EXPIRED
   WORKER_LOCK_OVERRIDDEN
+  DOCUMENT_BATCH_REVIEWED
 }
 
 enum JobPostStatus {
@@ -230,6 +251,9 @@ model User {
   employerApplications Application[]      @relation("EmployerApplications")
   workerLocksAsWorker   WorkerLock[]      @relation("WorkerLocks")
   workerLocksAsEmployer WorkerLock[]      @relation("EmployerLocks")
+  sentMessages          Message[]         @relation("SentMessages")
+  receivedMessages      Message[]         @relation("ReceivedMessages")
+  payments              Payment[]
 
   @@index([email])
   @@index([role])
@@ -309,6 +333,10 @@ model WorkerProfile {
   trustScore        Int?     // AI-computed 0–100
   riskScore         Int?     // AI-computed 0–100
   isSearchable      Boolean  @default(false)
+  passportStatus    DocumentReviewStatus @default(PENDING)
+  documentsVerified Boolean              @default(false)
+  documentsReviewedAt DateTime?
+  documentsReviewedBy String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -369,9 +397,12 @@ model EmployerProfile {
   city              String?
   address           String?
   businessDescription String?
-  subscriptionPlan  String?
-  subscriptionStatus String?
-  trialEndsAt       DateTime?
+  subscriptionPlan             String?
+  subscriptionStatus           String?
+  trialEndsAt                  DateTime?
+  stripeCustomerId             String?   @unique
+  stripeSubscriptionId         String?
+  subscriptionCurrentPeriodEnd DateTime?
   logoUrl           String?
   isVerified        Boolean  @default(false)
   createdAt         DateTime @default(now())
@@ -580,6 +611,16 @@ model Application {
 
   matchScore               Decimal?          @db.Decimal(5, 2) @map("match_score")
 
+  offeredSalary            Decimal?          @db.Decimal(10, 2) @map("offered_salary")
+  offeredCurrency          String?           @map("offered_currency")
+  startDate                DateTime?         @map("start_date")
+  contractType             String?           @map("contract_type")
+  hireConfirmedAt          DateTime?         @map("hire_confirmed_at")
+
+  applicationFeeCents      Int?              @map("application_fee_cents")
+  applicationFeePaid       Boolean           @default(false) @map("application_fee_paid")
+  stripePaymentIntentId    String?           @map("stripe_payment_intent_id")
+
   createdAt                DateTime          @default(now()) @map("created_at")
   updatedAt                DateTime          @updatedAt @map("updated_at")
 
@@ -628,9 +669,12 @@ model WorkerLock {
   adminOverrideBy     String?    @map("admin_override_by")
   adminOverrideAt     DateTime?  @map("admin_override_at")
   adminOverrideNote   String?    @map("admin_override_note")
-  expiryWarningSent   Boolean    @default(false) @map("expiry_warning_sent")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
+  expiryWarningSent       Boolean   @default(false) @map("expiry_warning_sent")
+  stripePaymentIntentId   String?   @map("stripe_payment_intent_id")
+  stripeRefundId          String?   @map("stripe_refund_id")
+  totalRefundedCents      Int       @default(0) @map("total_refunded_cents")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
 
   billingCharges      LockBillingCharge[]
 
@@ -649,9 +693,14 @@ model LockBillingCharge {
   amount       Decimal      @db.Decimal(10, 2)
   currency     String       @default("USD")
   chargeDate   DateTime     @map("charge_date")
-  chargeStatus ChargeStatus @default(PENDING) @map("charge_status")
-  invoiceId    String?      @map("invoice_id")
-  createdAt    DateTime     @default(now()) @map("created_at")
+  chargeStatus          ChargeStatus @default(PENDING) @map("charge_status")
+  invoiceId             String?      @map("invoice_id")
+  stripePaymentIntentId String?      @map("stripe_payment_intent_id")
+  stripeChargeId        String?      @map("stripe_charge_id")
+  failureReason         String?      @map("failure_reason")
+  retryCount            Int          @default(0) @map("retry_count")
+  gracePeriodEndsAt     DateTime?    @map("grace_period_ends_at")
+  createdAt             DateTime     @default(now()) @map("created_at")
 
   @@index([lockId])
   @@index([employerId])
@@ -688,19 +737,36 @@ model EmailLog {
 // ─────────────────────────────────────────────
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
+  type      NotificationType
   title     String
   body      String
-  type      String
-  isRead    Boolean  @default(false)
+  isRead    Boolean          @default(false)
   link      String?
-  createdAt DateTime @default(now())
+  metadata  Json?
+  createdAt DateTime         @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
+  @@index([createdAt])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentMessages",    fields: [senderId],    references: [id])
+  recipientId String
+  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  body        String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([senderId])
+  @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────
@@ -808,4 +874,42 @@ model JobRunLog {
   @@index([jobName])
   @@index([startedAt])
   @@map("job_run_logs")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  stripePaymentId String?
+  stripeInvoiceId String?  @unique
+  amount          Int      // in smallest currency unit (e.g. cents/qindarka)
+  currency        String   @default("USD")
+  status          String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED
+  type            String   @default("SUBSCRIPTION") // SUBSCRIPTION | WORKER_LOCK | APPLICATION_FEE
+  description     String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stripeInvoiceId])
+}
+
+// ─────────────────────────────────────────────
+// PLATFORM CONFIG
+// ─────────────────────────────────────────────
+
+model PlatformConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by")
+
+  @@map("platform_config")
 }
