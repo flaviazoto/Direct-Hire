@@ -3,7 +3,7 @@ import { Router } from "express";
 import * as ctrl from "../controllers/auth.controller";
 import { authLimiter, otpLimiter } from "../middleware/ratelimit.middleware";
 import { requireAnyAuth } from "../middleware/auth.middleware";
-import { googleCallback, linkedinCallback, googleInitiate, linkedinInitiate } from "./oauth.handler";
+import { googleCallback, googleInitiate } from "./oauth.handler";
 
 export const authRouter = Router();
 
@@ -20,9 +20,7 @@ authRouter.post("/oauth/complete",         authLimiter, ctrl.oauthComplete);
 authRouter.delete("/account",              requireAnyAuth, ctrl.deleteAccount);
 
 // OAuth initiate — rate-limited to prevent abuse
-authRouter.get("/linkedin",          authLimiter, linkedinInitiate);
 authRouter.get("/google",            authLimiter, googleInitiate);
 
 // OAuth callbacks — NO auth middleware (these are the endpoints that create the token)
 authRouter.get("/google/callback",   googleCallback);
-authRouter.get("/linkedin/callback", linkedinCallback);
