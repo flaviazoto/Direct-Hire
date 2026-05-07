@@ -4,16 +4,17 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi } from "@/lib/api-client";
 import { LoadingPage } from "@/components/ui";
+import { C, pill } from "@/lib/admin-theme";
 
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
 
 interface EmailLogEntry {
-  id:            string;
-  userId?:       string | null;
-  emailType:     string;
-  toAddress:     string;
-  subject:       string;
-  status:        "QUEUED" | "SENT" | "FAILED" | "BOUNCED";
+  id:             string;
+  userId?:        string | null;
+  emailType:      string;
+  toAddress:      string;
+  subject:        string;
+  status:         "QUEUED" | "SENT" | "FAILED" | "BOUNCED";
   providerMsgId?: string | null;
   errorMessage?:  string | null;
   sentAt?:        string | null;
@@ -71,18 +72,18 @@ function KpiCard({ label, value, sub, icon, accent }: {
 }) {
   return (
     <div style={{
-      background: "var(--navy-2)",
-      border: "1px solid rgba(220,38,38,0.15)",
-      borderRadius: "var(--r-lg)",
+      background: C.card,
+      border: `1px solid rgba(220,38,38,0.15)`,
+      borderRadius: 14,
       padding: "20px 22px",
       display: "flex", flexDirection: "column", gap: 10,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {label}
         </span>
         <div style={{
-          width: 36, height: 36, borderRadius: "var(--r-sm)",
+          width: 36, height: 36, borderRadius: 7,
           background: accent,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 16,
@@ -91,9 +92,9 @@ function KpiCard({ label, value, sub, icon, accent }: {
       <div style={{
         fontFamily: "var(--font-display)",
         fontWeight: 800, fontSize: 28,
-        color: "var(--white)", lineHeight: 1,
+        color: C.text, lineHeight: 1,
       }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
-      {sub && <div style={{ fontSize: 12, color: "var(--admin-2)" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: C.accent }}>{sub}</div>}
     </div>
   );
 }
@@ -105,7 +106,7 @@ function StatusBadge({ status }: { status: string }) {
     QUEUED:  { label: "Queued",  color: "#94a3b8", bg: "rgba(148,163,184,0.10)" },
     BOUNCED: { label: "Bounced", color: "#fb923c", bg: "rgba(251,146,60,0.12)"  },
   };
-  const c = cfg[status] ?? { label: status, color: "var(--muted)", bg: "rgba(255,255,255,0.06)" };
+  const c = cfg[status] ?? { label: status, color: C.muted, bg: "rgba(255,255,255,0.06)" };
   return (
     <span style={{
       padding: "3px 10px", borderRadius: 999, fontSize: 11,
@@ -113,6 +114,34 @@ function StatusBadge({ status }: { status: string }) {
       letterSpacing: "0.04em", whiteSpace: "nowrap",
     }}>{c.label}</span>
   );
+}
+
+function TypeBadge({ emailType }: { emailType: string }) {
+  const OTP_TYPES    = ["OTP", "EMAIL_VERIFICATION", "PASSWORD_RESET"];
+  const APPROVE_TYPES = ["ACCOUNT_APPROVED", "ONBOARDING_SUBMITTED", "SUBSCRIPTION_CONFIRMED"];
+  const REJECT_TYPES  = ["ACCOUNT_REJECTED", "ACCOUNT_NEEDS_CHANGES"];
+  const WELCOME_TYPES = ["WELCOME", "ONBOARDING_REMINDER"];
+  const JOB_TYPES     = ["JOB_MATCH", "ADMIN_NEW_SUBMISSION"];
+
+  let color: string  = C.muted;
+  let bg: string     = "rgba(113,113,122,0.15)";
+  let border: string = "rgba(113,113,122,0.25)";
+
+  if (OTP_TYPES.includes(emailType)) {
+    color = C.blue; bg = "rgba(0,144,255,0.12)"; border = "rgba(0,144,255,0.25)";
+  } else if (APPROVE_TYPES.includes(emailType)) {
+    color = C.green; bg = "rgba(34,197,94,0.12)"; border = "rgba(34,197,94,0.25)";
+  } else if (REJECT_TYPES.includes(emailType)) {
+    color = C.accent; bg = "rgba(220,38,38,0.12)"; border = "rgba(220,38,38,0.25)";
+  } else if (WELCOME_TYPES.includes(emailType)) {
+    color = C.teal; bg = "rgba(20,184,166,0.12)"; border = "rgba(20,184,166,0.25)";
+  } else if (JOB_TYPES.includes(emailType)) {
+    color = "#a78bfa"; bg = "rgba(167,139,250,0.12)"; border = "rgba(167,139,250,0.25)";
+  } else if (emailType.startsWith("APPLICATION")) {
+    color = C.yellow; bg = "rgba(245,158,11,0.12)"; border = "rgba(245,158,11,0.25)";
+  }
+
+  return <span style={pill(color, bg, border)}>{fmtType(emailType)}</span>;
 }
 
 /* ─── Main page ──────────────────────────────────────────────────────────────── */
@@ -130,6 +159,8 @@ export default function AdminEmailLogsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [search,       setSearch]       = useState("");
   const [searchInput,  setSearchInput]  = useState("");
+  const [dateFrom,     setDateFrom]     = useState("");
+  const [dateTo,       setDateTo]       = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string, ok = true) => {
@@ -137,20 +168,20 @@ export default function AdminEmailLogsPage() {
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // Fetch stats once on mount
   useEffect(() => {
     adminApi.getEmailStats().then(res => {
       if (res.success) setStats(res.data as EmailStats);
     });
   }, []);
 
-  // Fetch logs on page / filter change
   useEffect(() => {
     setFetching(true);
     const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
     if (filterType)   params.emailType = filterType;
     if (filterStatus) params.status    = filterStatus;
     if (search)       params.search    = search;
+    if (dateFrom)     params.from      = dateFrom;
+    if (dateTo)       params.to        = dateTo;
 
     adminApi.getEmailLogs(params)
       .then(res => {
@@ -161,7 +192,7 @@ export default function AdminEmailLogsPage() {
         }
       })
       .finally(() => { setLoading(false); setFetching(false); });
-  }, [page, filterType, filterStatus, search]);
+  }, [page, filterType, filterStatus, search, dateFrom, dateTo]);
 
   function handleSearchInput(val: string) {
     setSearchInput(val);
@@ -177,7 +208,9 @@ export default function AdminEmailLogsPage() {
 
   function clearFilters() {
     setFilterType(""); setFilterStatus("");
-    setSearch(""); setSearchInput(""); setPage(1);
+    setSearch(""); setSearchInput("");
+    setDateFrom(""); setDateTo("");
+    setPage(1);
   }
 
   async function copyToClipboard(text: string) {
@@ -192,8 +225,8 @@ export default function AdminEmailLogsPage() {
   if (loading) return <LoadingPage color="amber" />;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const hasFilters = filterType || filterStatus || search || dateFrom || dateTo;
 
-  // Pagination page numbers — up to 7 buttons centred around current page
   const pageNums: number[] = [];
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pageNums.push(i);
@@ -205,22 +238,36 @@ export default function AdminEmailLogsPage() {
     for (let i = page - 3; i <= page + 3; i++) pageNums.push(i);
   }
 
+  const dateInputStyle = {
+    padding: "7px 12px", borderRadius: 7,
+    border: `1px solid ${C.border}`,
+    background: C.inputBg, color: C.text,
+    fontSize: 13, outline: "none", colorScheme: "dark" as const,
+  };
+
+  const selectStyle = {
+    padding: "7px 12px", borderRadius: 7,
+    border: `1px solid ${C.border}`,
+    background: C.inputBg,
+    fontSize: 13, outline: "none", cursor: "pointer",
+  };
+
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
 
       {/* ── Page header ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{
-          width: 44, height: 44, borderRadius: "var(--r-md)",
-          background: "linear-gradient(135deg, var(--admin-primary), var(--admin-2))",
+          width: 44, height: 44, borderRadius: 10,
+          background: `linear-gradient(135deg, ${C.accent}, #b91c1c)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, boxShadow: "0 4px 18px var(--admin-glow)", flexShrink: 0,
+          fontSize: 20, boxShadow: "0 4px 18px rgba(220,38,38,0.3)", flexShrink: 0,
         }}>📧</div>
         <div>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: "var(--white)", margin: 0 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: C.text, margin: 0 }}>
             Email Logs
           </h1>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
             Delivery tracking · last 30 days
           </p>
         </div>
@@ -236,45 +283,55 @@ export default function AdminEmailLogsPage() {
 
       {/* ── Log table ────────────────────────────────────────────────────────── */}
       <div style={{
-        background: "var(--navy-2)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", overflow: "hidden",
+        background: C.card, border: `1px solid ${C.border}`,
+        borderRadius: 14, overflow: "hidden",
       }}>
 
         {/* Filter bar */}
         <div style={{
-          padding: "14px 20px", borderBottom: "1px solid var(--border)",
-          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" as const,
+          padding: "14px 20px", borderBottom: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const,
         }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0, flexShrink: 0 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0, flexShrink: 0 }}>
             Log Entries
           </h2>
-          <span style={{ fontSize: 12, color: "var(--muted)", marginRight: "auto" }}>
+          <span style={{ fontSize: 12, color: C.muted, marginRight: "auto" }}>
             {total.toLocaleString()} total
           </span>
 
+          {/* Search */}
           <input
             type="text"
             placeholder="Search recipient…"
             value={searchInput}
             onChange={e => handleSearchInput(e.target.value)}
-            style={{
-              padding: "7px 12px", borderRadius: "var(--r-sm)",
-              border: "1px solid var(--border)",
-              background: "var(--navy-3)", color: "var(--white)",
-              fontSize: 13, outline: "none", width: 200,
-            }}
+            style={{ ...dateInputStyle, width: 180 }}
           />
 
+          {/* Date range */}
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+            max={dateTo || new Date().toISOString().split("T")[0]}
+            style={{ ...dateInputStyle, width: 140 }}
+            title="From date"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => { setDateTo(e.target.value); setPage(1); }}
+            min={dateFrom}
+            max={new Date().toISOString().split("T")[0]}
+            style={{ ...dateInputStyle, width: 140 }}
+            title="To date"
+          />
+
+          {/* Type */}
           <select
             value={filterType}
             onChange={e => applyFilters(e.target.value, filterStatus)}
-            style={{
-              padding: "7px 12px", borderRadius: "var(--r-sm)",
-              border: "1px solid var(--border)",
-              background: "var(--navy-3)",
-              color: filterType ? "var(--white)" : "var(--muted)",
-              fontSize: 13, outline: "none", cursor: "pointer",
-            }}
+            style={{ ...selectStyle, color: filterType ? C.text : C.muted }}
           >
             <option value="">All Types</option>
             {EMAIL_TYPES.map(t => (
@@ -282,16 +339,11 @@ export default function AdminEmailLogsPage() {
             ))}
           </select>
 
+          {/* Status */}
           <select
             value={filterStatus}
             onChange={e => applyFilters(filterType, e.target.value)}
-            style={{
-              padding: "7px 12px", borderRadius: "var(--r-sm)",
-              border: "1px solid var(--border)",
-              background: "var(--navy-3)",
-              color: filterStatus ? "var(--white)" : "var(--muted)",
-              fontSize: 13, outline: "none", cursor: "pointer",
-            }}
+            style={{ ...selectStyle, color: filterStatus ? C.text : C.muted }}
           >
             <option value="">All Statuses</option>
             <option value="SENT">Sent</option>
@@ -300,13 +352,13 @@ export default function AdminEmailLogsPage() {
             <option value="BOUNCED">Bounced</option>
           </select>
 
-          {(filterType || filterStatus || search) && (
+          {hasFilters && (
             <button
               onClick={clearFilters}
               style={{
-                padding: "7px 12px", borderRadius: "var(--r-sm)",
-                border: "1px solid var(--border)",
-                background: "transparent", color: "var(--muted)",
+                padding: "7px 12px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
+                background: "transparent", color: C.muted,
                 fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" as const,
               }}
             >Clear ×</button>
@@ -316,14 +368,14 @@ export default function AdminEmailLogsPage() {
         {/* Table header */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 190px 90px 170px 110px",
+          gridTemplateColumns: "1fr 200px 90px 170px 110px",
           padding: "9px 20px",
           background: "rgba(255,255,255,0.02)",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: `1px solid ${C.border}`,
         }}>
           {["Recipient / Subject", "Type", "Status", "Message ID", "Sent"].map(h => (
             <span key={h} style={{
-              fontSize: 11, fontWeight: 700, color: "var(--muted)",
+              fontSize: 11, fontWeight: 700, color: C.muted,
               textTransform: "uppercase" as const, letterSpacing: "0.06em",
             }}>{h}</span>
           ))}
@@ -331,21 +383,21 @@ export default function AdminEmailLogsPage() {
 
         {/* Rows */}
         {fetching ? (
-          <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+          <div style={{ padding: "48px 20px", textAlign: "center", color: C.muted, fontSize: 13 }}>
             Loading…
           </div>
         ) : logs.length === 0 ? (
-          <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-            {(filterType || filterStatus || search) ? "No entries match these filters." : "No email logs yet."}
+          <div style={{ padding: "48px 20px", textAlign: "center", color: C.muted, fontSize: 13 }}>
+            {hasFilters ? "No entries match these filters." : "No email logs yet."}
           </div>
         ) : logs.map(entry => (
           <div
             key={entry.id}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 190px 90px 170px 110px",
+              gridTemplateColumns: "1fr 200px 90px 170px 110px",
               padding: "13px 20px", alignItems: "center",
-              borderBottom: "1px solid var(--border)",
+              borderBottom: `1px solid ${C.border}`,
               transition: "background 0.15s",
             }}
             onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
@@ -354,26 +406,21 @@ export default function AdminEmailLogsPage() {
             {/* Recipient / Subject */}
             <div style={{ minWidth: 0 }}>
               <div style={{
-                fontSize: 13, fontWeight: 600, color: "var(--white)",
+                fontSize: 13, fontWeight: 600, color: C.text,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {entry.toAddress}
               </div>
               <div style={{
-                fontSize: 11, color: "var(--muted)", marginTop: 2,
+                fontSize: 11, color: C.muted, marginTop: 2,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {entry.subject}
               </div>
             </div>
 
-            {/* Type */}
-            <span style={{
-              fontSize: 12, color: "var(--muted)", fontWeight: 500,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {fmtType(entry.emailType)}
-            </span>
+            {/* Type — color-coded badge */}
+            <div><TypeBadge emailType={entry.emailType} /></div>
 
             {/* Status */}
             <div><StatusBadge status={entry.status} /></div>
@@ -383,7 +430,7 @@ export default function AdminEmailLogsPage() {
               {entry.providerMsgId ? (
                 <>
                   <span style={{
-                    fontSize: 12, fontFamily: "monospace", color: "var(--muted)",
+                    fontSize: 12, fontFamily: "monospace", color: C.muted,
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {entry.providerMsgId.length > 14
@@ -395,8 +442,8 @@ export default function AdminEmailLogsPage() {
                     onClick={() => copyToClipboard(entry.providerMsgId!)}
                     style={{
                       padding: "2px 6px", borderRadius: 4,
-                      border: "1px solid var(--border)",
-                      background: "transparent", color: "var(--muted)",
+                      border: `1px solid ${C.border}`,
+                      background: "transparent", color: C.muted,
                       fontSize: 10, cursor: "pointer", flexShrink: 0, lineHeight: 1,
                     }}
                   >⎘</button>
@@ -414,12 +461,12 @@ export default function AdminEmailLogsPage() {
                     : entry.errorMessage}
                 </span>
               ) : (
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>—</span>
+                <span style={{ fontSize: 12, color: C.muted }}>—</span>
               )}
             </div>
 
             {/* Sent at */}
-            <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>
               {timeAgo(entry.sentAt ?? entry.createdAt)}
             </span>
           </div>
@@ -428,20 +475,20 @@ export default function AdminEmailLogsPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div style={{
-            padding: "14px 20px", borderTop: "1px solid var(--border)",
+            padding: "14px 20px", borderTop: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end",
           }}>
-            <span style={{ fontSize: 12, color: "var(--muted)", marginRight: "auto" }}>
+            <span style={{ fontSize: 12, color: C.muted, marginRight: "auto" }}>
               Page {page} of {totalPages} · {total.toLocaleString()} entries
             </span>
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => p - 1)}
               style={{
-                padding: "6px 14px", borderRadius: "var(--r-sm)",
-                border: "1px solid var(--border)",
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
                 background: page <= 1 ? "transparent" : "rgba(255,255,255,0.04)",
-                color: page <= 1 ? "var(--muted)" : "var(--white)",
+                color: page <= 1 ? C.muted : C.text,
                 fontSize: 13, fontWeight: 600,
                 cursor: page <= 1 ? "default" : "pointer",
               }}
@@ -451,10 +498,10 @@ export default function AdminEmailLogsPage() {
                 key={p}
                 onClick={() => setPage(p)}
                 style={{
-                  padding: "6px 12px", borderRadius: "var(--r-sm)",
-                  border: "1px solid var(--border)",
+                  padding: "6px 12px", borderRadius: 7,
+                  border: `1px solid ${C.border}`,
                   background: p === page ? "rgba(220,38,38,0.15)" : "transparent",
-                  color: p === page ? "var(--admin-2)" : "var(--muted)",
+                  color: p === page ? C.accent : C.muted,
                   fontSize: 13, fontWeight: p === page ? 700 : 400, cursor: "pointer",
                 }}
               >{p}</button>
@@ -463,10 +510,10 @@ export default function AdminEmailLogsPage() {
               disabled={page >= totalPages}
               onClick={() => setPage(p => p + 1)}
               style={{
-                padding: "6px 14px", borderRadius: "var(--r-sm)",
-                border: "1px solid var(--border)",
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
                 background: page >= totalPages ? "transparent" : "rgba(255,255,255,0.04)",
-                color: page >= totalPages ? "var(--muted)" : "var(--white)",
+                color: page >= totalPages ? C.muted : C.text,
                 fontSize: 13, fontWeight: 600,
                 cursor: page >= totalPages ? "default" : "pointer",
               }}
@@ -479,7 +526,7 @@ export default function AdminEmailLogsPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 9999,
-          padding: "13px 20px", borderRadius: "var(--r-md)",
+          padding: "13px 20px", borderRadius: 10,
           background: toast.ok ? "rgba(16,185,129,0.15)" : "rgba(220,38,38,0.15)",
           border: `1px solid ${toast.ok ? "rgba(16,185,129,0.4)" : "rgba(220,38,38,0.4)"}`,
           color: toast.ok ? "#34d399" : "#f87171",

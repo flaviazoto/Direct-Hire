@@ -1,8 +1,10 @@
 "use client";
 // frontend/src/app/(app)/admin/revenue/page.tsx
 
+import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminApi } from "@/lib/api-client";
+import { C } from "@/lib/admin-theme";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,6 @@ type PaymentRow = {
   user:            { email: string; role: string; displayName: string };
 };
 
-// paginated() in response.ts returns top-level total/page/limit/totalPages
 type PaginatedPayments = {
   success:    boolean;
   data:       PaymentRow[];
@@ -72,9 +73,9 @@ function KpiCard({
 }) {
   return (
     <div style={{
-      background:    "var(--navy-2)",
-      border:        "1px solid var(--border)",
-      borderRadius:  "var(--r-lg)",
+      background:    C.card,
+      border:        `1px solid ${C.border}`,
+      borderRadius:  14,
       padding:       "20px 22px",
       display:       "flex",
       flexDirection: "column",
@@ -82,13 +83,13 @@ function KpiCard({
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{
-          fontSize: 12, fontWeight: 600, color: "var(--muted)",
+          fontSize: 12, fontWeight: 600, color: C.muted,
           textTransform: "uppercase", letterSpacing: "0.06em",
         }}>
           {label}
         </span>
         <div style={{
-          width: 36, height: 36, borderRadius: "var(--r-sm)",
+          width: 36, height: 36, borderRadius: 7,
           background: accent,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 16,
@@ -100,13 +101,13 @@ function KpiCard({
         fontFamily: "var(--font-display)",
         fontWeight: 800,
         fontSize:   28,
-        color:      valueColor ?? "var(--white)",
+        color:      valueColor ?? C.text,
         lineHeight: 1,
       }}>
         {typeof value === "number" ? value.toLocaleString() : value}
       </div>
       {sub && (
-        <div style={{ fontSize: 12, color: "var(--admin-2)", lineHeight: 1.4 }}>{sub}</div>
+        <div style={{ fontSize: 12, color: C.accent, lineHeight: 1.4 }}>{sub}</div>
       )}
     </div>
   );
@@ -118,7 +119,7 @@ function TypeBadge({ type }: { type: string }) {
     WORKER_LOCK:     { label: "Worker Lock",  bg: "rgba(249,115,22,0.12)",  color: "#fb923c" },
     APPLICATION_FEE: { label: "App Fee",      bg: "rgba(34,197,94,0.12)",   color: "#4ade80" },
   };
-  const c = cfg[type] ?? { label: type, bg: "rgba(255,255,255,0.06)", color: "var(--muted)" };
+  const c = cfg[type] ?? { label: type, bg: "rgba(255,255,255,0.06)", color: C.muted };
   return (
     <span style={{
       padding: "3px 9px", borderRadius: 999, fontSize: 11,
@@ -134,10 +135,10 @@ function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { color: string; bg: string }> = {
     SUCCEEDED: { color: "#4ade80", bg: "rgba(34,197,94,0.12)"   },
     FAILED:    { color: "#f87171", bg: "rgba(248,113,113,0.12)" },
-    PENDING:   { color: "var(--muted)", bg: "rgba(255,255,255,0.06)" },
+    PENDING:   { color: C.muted,   bg: "rgba(255,255,255,0.06)" },
     REFUNDED:  { color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
   };
-  const c = cfg[status] ?? { color: "var(--muted)", bg: "rgba(255,255,255,0.06)" };
+  const c = cfg[status] ?? { color: C.muted, bg: "rgba(255,255,255,0.06)" };
   return (
     <span style={{
       padding: "3px 9px", borderRadius: 999, fontSize: 11,
@@ -178,10 +179,8 @@ export default function AdminRevenuePage() {
   const [csvLoading,      setCsvLoading]      = useState(false);
   const [copiedId,        setCopiedId]        = useState<string | null>(null);
 
-  // Prevents the chart period/type effect from firing on initial mount
   const skipChartEffect = useRef(true);
 
-  // ── Initial load: summary + chart ──────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       adminApi.getRevenueSummary(),
@@ -194,7 +193,6 @@ export default function AdminRevenuePage() {
     });
   }, []);
 
-  // ── Re-fetch chart when period or type changes ─────────────────────────────
   useEffect(() => {
     if (skipChartEffect.current) return;
     adminApi.getRevenueChart(chartPeriod, chartType).then(r => {
@@ -202,16 +200,13 @@ export default function AdminRevenuePage() {
     });
   }, [chartPeriod, chartType]);
 
-  // ── Debounce search input ─────────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  // ── Reset to page 1 when filters change ───────────────────────────────────
   useEffect(() => { setPage(1); }, [filterType, filterStatus, debouncedSearch]);
 
-  // ── Fetch payment log ─────────────────────────────────────────────────────
   const fetchPayments = useCallback(() => {
     const params: Record<string, string> = {
       page:  String(page),
@@ -232,7 +227,6 @@ export default function AdminRevenuePage() {
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
 
-  // ── Export CSV ────────────────────────────────────────────────────────────
   async function exportCsv() {
     setCsvLoading(true);
     const params: Record<string, string> = { page: "1", limit: "1000" };
@@ -263,7 +257,6 @@ export default function AdminRevenuePage() {
     setCsvLoading(false);
   }
 
-  // ── Copy Stripe ID ────────────────────────────────────────────────────────
   function copyStripeId(id: string) {
     navigator.clipboard.writeText(id).catch(() => {});
     setCopiedId(id);
@@ -274,7 +267,7 @@ export default function AdminRevenuePage() {
 
   if (loading) {
     return (
-      <div style={{ padding: "60px 40px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
+      <div style={{ padding: "60px 40px", textAlign: "center", color: C.muted, fontSize: 14 }}>
         Loading revenue data…
       </div>
     );
@@ -297,16 +290,16 @@ export default function AdminRevenuePage() {
 
   // ── Shared style objects ─────────────────────────────────────────────────
   const panel: React.CSSProperties = {
-    background:   "var(--navy-2)",
-    border:       "1px solid var(--border)",
-    borderRadius: "var(--r-lg)",
+    background:   C.card,
+    border:       `1px solid ${C.border}`,
+    borderRadius: 14,
     overflow:     "hidden",
     marginBottom: 24,
   };
 
   const panelHead: React.CSSProperties = {
     padding:        "16px 20px",
-    borderBottom:   "1px solid var(--border)",
+    borderBottom:   `1px solid ${C.border}`,
     display:        "flex",
     alignItems:     "center",
     justifyContent: "space-between",
@@ -318,16 +311,16 @@ export default function AdminRevenuePage() {
     fontFamily: "var(--font-display)",
     fontWeight: 700,
     fontSize:   15,
-    color:      "var(--white)",
+    color:      C.text,
     margin:     0,
   };
 
   const pillBtn = (active: boolean): React.CSSProperties => ({
     padding:      "5px 13px",
-    borderRadius: "var(--r-sm)",
-    border:       `1px solid ${active ? "transparent" : "var(--border)"}`,
-    background:   active ? "var(--admin-primary)" : "transparent",
-    color:        active ? "var(--white)" : "var(--muted)",
+    borderRadius: 7,
+    border:       `1px solid ${active ? "transparent" : C.border}`,
+    background:   active ? C.accent : "transparent",
+    color:        active ? C.text : C.muted,
     fontSize:     12,
     fontWeight:   600,
     cursor:       "pointer",
@@ -336,10 +329,10 @@ export default function AdminRevenuePage() {
 
   const inputStyle: React.CSSProperties = {
     padding:      "7px 11px",
-    borderRadius: "var(--r-sm)",
-    border:       "1px solid var(--border)",
-    background:   "var(--navy-1)",
-    color:        "var(--white)",
+    borderRadius: 7,
+    border:       `1px solid ${C.border}`,
+    background:   C.inputBg,
+    color:        C.text,
     fontSize:     13,
     outline:      "none",
   };
@@ -352,18 +345,18 @@ export default function AdminRevenuePage() {
       {/* ── Page header ── */}
       <div style={{ marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{
-          width: 44, height: 44, borderRadius: "var(--r-md)",
-          background: "linear-gradient(135deg, var(--admin-primary), var(--admin-2))",
+          width: 44, height: 44, borderRadius: 10,
+          background: `linear-gradient(135deg, ${C.accent}, #b91c1c)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, boxShadow: "0 4px 18px var(--admin-glow)", flexShrink: 0,
+          fontSize: 20, boxShadow: "0 4px 18px rgba(220,38,38,0.3)", flexShrink: 0,
         }}>
           💰
         </div>
         <div>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: "var(--white)", margin: 0 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: C.text, margin: 0 }}>
             Revenue
           </h1>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
             Subscriptions · worker locks · application fees
           </p>
         </div>
@@ -398,7 +391,7 @@ export default function AdminRevenuePage() {
             value={summary.failedPayments30d}
             icon="⚠️"
             accent={summary.failedPayments30d > 0 ? "rgba(220,38,38,0.18)" : "rgba(16,185,129,0.12)"}
-            valueColor={summary.failedPayments30d > 0 ? "#f87171" : "var(--white)"}
+            valueColor={summary.failedPayments30d > 0 ? "#f87171" : C.text}
             sub={summary.failedPayments30d > 0 ? "⚠ Action required" : "✓ All clear"}
           />
         </div>
@@ -409,7 +402,6 @@ export default function AdminRevenuePage() {
         <div style={panelHead}>
           <h2 style={h2}>Revenue over time</h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {/* Period selector */}
             <div style={{ display: "flex", gap: 4 }}>
               {(["7d", "30d", "90d"] as const).map(p => (
                 <button key={p} onClick={() => setChartPeriod(p)} style={pillBtn(chartPeriod === p)}>
@@ -417,8 +409,7 @@ export default function AdminRevenuePage() {
                 </button>
               ))}
             </div>
-            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
-            {/* Type selector */}
+            <div style={{ width: 1, background: C.border, alignSelf: "stretch" }} />
             <div style={{ display: "flex", gap: 4 }}>
               {CHART_TYPES.map(t => (
                 <button key={t.key} onClick={() => setChartType(t.key)} style={pillBtn(chartType === t.key)}>
@@ -430,7 +421,6 @@ export default function AdminRevenuePage() {
         </div>
 
         <div style={{ padding: "20px 24px 8px" }}>
-          {/* Bar area */}
           <div style={{ position: "relative", height: 192, marginBottom: 8 }}>
             {allChartEmpty && (
               <div style={{
@@ -439,13 +429,13 @@ export default function AdminRevenuePage() {
                 display:    "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color:      "var(--muted)",
+                color:      C.muted,
                 fontSize:   13,
                 textAlign:  "center",
                 lineHeight: 1.6,
                 background: "rgba(255,255,255,0.01)",
                 borderRadius: 8,
-                border:     "1px dashed var(--border)",
+                border:     `1px dashed ${C.border}`,
               }}>
                 No revenue yet — chart will populate once payments begin.
               </div>
@@ -474,12 +464,11 @@ export default function AdminRevenuePage() {
             </div>
           </div>
 
-          {/* X-axis date labels */}
           <div style={{ display: "flex", gap: 2 }}>
             {chart.map((day, i) => (
               <div key={day.date} style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
                 {i % chartStep === 0 && (
-                  <span style={{ fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 10, color: C.muted, whiteSpace: "nowrap" }}>
                     {fmtShort(day.date)}
                   </span>
                 )}
@@ -487,7 +476,6 @@ export default function AdminRevenuePage() {
             ))}
           </div>
 
-          {/* Legend */}
           {!allChartEmpty && (
             <div style={{ display: "flex", gap: 16, marginTop: 14, justifyContent: "flex-end" }}>
               {chartType === "all" ? (
@@ -496,13 +484,13 @@ export default function AdminRevenuePage() {
                   { color: "#f97316", label: "Locks" },
                   { color: "#22c55e", label: "Fees" },
                 ].map(l => (
-                  <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)" }}>
+                  <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.muted }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
                     {l.label}
                   </div>
                 ))
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.muted }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: barColor }} />
                   {CHART_TYPES.find(t => t.key === chartType)?.label}
                 </div>
@@ -555,10 +543,10 @@ export default function AdminRevenuePage() {
             disabled={csvLoading}
             style={{
               padding:      "7px 16px",
-              borderRadius: "var(--r-sm)",
-              border:       "1px solid var(--border)",
+              borderRadius: 7,
+              border:       `1px solid ${C.border}`,
               background:   "transparent",
-              color:        csvLoading ? "var(--muted)" : "var(--white)",
+              color:        csvLoading ? C.muted : C.text,
               fontSize:     12,
               fontWeight:   600,
               cursor:       csvLoading ? "not-allowed" : "pointer",
@@ -575,11 +563,11 @@ export default function AdminRevenuePage() {
           display: "grid", gridTemplateColumns: TH_COLS,
           padding: "10px 20px",
           background: "rgba(255,255,255,0.02)",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: `1px solid ${C.border}`,
         }}>
           {["User", "Type", "Status", "Amount", "Date", "Stripe ID"].map(h => (
             <span key={h} style={{
-              fontSize: 11, fontWeight: 700, color: "var(--muted)",
+              fontSize: 11, fontWeight: 700, color: C.muted,
               textTransform: "uppercase", letterSpacing: "0.06em",
             }}>
               {h}
@@ -591,10 +579,10 @@ export default function AdminRevenuePage() {
         {payments.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>💳</div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--white)", marginBottom: 6 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: C.text, marginBottom: 6 }}>
               No payments recorded yet
             </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", maxWidth: 420, margin: "0 auto", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: C.muted, maxWidth: 420, margin: "0 auto", lineHeight: 1.6 }}>
               Payments will appear here once Stripe begins processing subscriptions,
               worker locks, or application fees.
             </div>
@@ -606,48 +594,42 @@ export default function AdminRevenuePage() {
               style={{
                 display: "grid", gridTemplateColumns: TH_COLS,
                 padding: "13px 20px", alignItems: "center",
-                borderBottom: "1px solid var(--border)",
+                borderBottom: `1px solid ${C.border}`,
                 background: i % 2 === 1 ? "rgba(255,255,255,0.01)" : "transparent",
                 fontSize: 13,
               }}
             >
-              {/* User */}
               <div style={{ overflow: "hidden", paddingRight: 8 }}>
                 <div style={{
-                  fontWeight: 600, color: "var(--white)",
+                  fontWeight: 600, color: C.text,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {p.user.displayName}
                 </div>
                 <div style={{
-                  fontSize: 11, color: "var(--muted)",
+                  fontSize: 11, color: C.muted,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {p.user.email}
                 </div>
               </div>
 
-              {/* Type */}
               <div><TypeBadge type={p.type} /></div>
 
-              {/* Status */}
               <div><StatusBadge status={p.status} /></div>
 
-              {/* Amount */}
               <div style={{
                 fontWeight: 700,
                 fontFamily: "var(--font-display)",
-                color: p.amount < 0 ? "#f87171" : "var(--white)",
+                color: p.amount < 0 ? "#f87171" : C.text,
               }}>
                 {p.amount < 0 ? `−${fmt(Math.abs(p.amount))}` : fmt(p.amount)}
               </div>
 
-              {/* Date */}
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>
+              <div style={{ color: C.muted, fontSize: 12 }}>
                 {fmtDate(p.createdAt)}
               </div>
 
-              {/* Stripe ID */}
               <div>
                 {p.stripePaymentId ? (
                   <button
@@ -655,7 +637,7 @@ export default function AdminRevenuePage() {
                     title={p.stripePaymentId}
                     style={{
                       background: "none", border: "none", cursor: "pointer", padding: 0,
-                      color: copiedId === p.stripePaymentId ? "#4ade80" : "var(--muted)",
+                      color: copiedId === p.stripePaymentId ? "#4ade80" : C.muted,
                       fontSize: 11, fontFamily: "monospace", textAlign: "left",
                       transition: "color 0.15s",
                     }}
@@ -667,7 +649,7 @@ export default function AdminRevenuePage() {
                         : p.stripePaymentId}
                   </button>
                 ) : (
-                  <span style={{ color: "var(--border)", fontSize: 11 }}>—</span>
+                  <span style={{ color: C.border, fontSize: 11 }}>—</span>
                 )}
               </div>
             </div>
@@ -677,23 +659,23 @@ export default function AdminRevenuePage() {
         {/* Pagination */}
         {total > 0 && (
           <div style={{
-            padding: "14px 20px", borderTop: "1px solid var(--border)",
+            padding: "14px 20px", borderTop: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
               style={{
-                padding: "6px 14px", borderRadius: "var(--r-sm)",
-                border: "1px solid var(--border)", background: "transparent",
-                color: page === 1 ? "var(--border)" : "var(--white)",
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`, background: "transparent",
+                color: page === 1 ? C.border : C.text,
                 fontSize: 12, cursor: page === 1 ? "not-allowed" : "pointer",
               }}
             >
               ← Prev
             </button>
 
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>
+            <span style={{ fontSize: 13, color: C.muted }}>
               Page {page} of {totalPages}
               <span style={{ marginLeft: 12, fontSize: 11 }}>({total.toLocaleString()} total)</span>
             </span>
@@ -702,9 +684,9 @@ export default function AdminRevenuePage() {
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               style={{
-                padding: "6px 14px", borderRadius: "var(--r-sm)",
-                border: "1px solid var(--border)", background: "transparent",
-                color: page >= totalPages ? "var(--border)" : "var(--white)",
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`, background: "transparent",
+                color: page >= totalPages ? C.border : C.text,
                 fontSize: 12, cursor: page >= totalPages ? "not-allowed" : "pointer",
               }}
             >

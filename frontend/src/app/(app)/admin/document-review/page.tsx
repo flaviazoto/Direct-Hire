@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
+import { C } from "@/lib/admin-theme";
 
 interface WorkerRow {
   userId:              string;
@@ -46,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
     VERIFIED:       { label: "Verified",       color: "#34d399", bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.25)"  },
     HAS_REJECTIONS: { label: "Has rejections", color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.25)" },
     PENDING:        { label: "Pending",        color: "#fbbf24", bg: "rgba(251,191,36,0.1)",  border: "rgba(251,191,36,0.25)"  },
-    NONE:           { label: "No upload",      color: "#64748b", bg: "rgba(100,116,139,0.1)", border: "rgba(100,116,139,0.2)"  },
+    NONE:           { label: "No upload",      color: C.muted,   bg: "rgba(100,116,139,0.1)", border: "rgba(100,116,139,0.2)"  },
     APPROVED:       { label: "Approved",       color: "#34d399", bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.25)"  },
     REJECTED:       { label: "Rejected",       color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.25)" },
   };
@@ -91,9 +92,9 @@ export default function DocumentReviewPage() {
   const tabStyle = (active: boolean) => ({
     padding:      "8px 20px",
     borderRadius: 8,
-    border:       `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.08)"}`,
+    border:       `1px solid ${active ? "rgba(220,38,38,0.4)" : C.border}`,
     background:   active ? "rgba(220,38,38,0.12)" : "transparent",
-    color:        active ? "#fca5a5" : "#64748b",
+    color:        active ? "#fca5a5" : C.muted,
     fontSize:     13,
     fontWeight:   600,
     cursor:       "pointer",
@@ -104,8 +105,8 @@ export default function DocumentReviewPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: 0 }}>Document Review</h1>
-        <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>Document Review</h1>
+        <p style={{ fontSize: 13, color: C.muted, margin: "4px 0 0" }}>
           Review and approve worker documents before they become visible to employers.
         </p>
       </div>
@@ -119,7 +120,7 @@ export default function DocumentReviewPage() {
           All workers
         </button>
         {!loading && (
-          <span style={{ marginLeft: "auto", fontSize: 13, color: "#4b5563", alignSelf: "center" }}>
+          <span style={{ marginLeft: "auto", fontSize: 13, color: C.muted, alignSelf: "center" }}>
             {total} worker{total !== 1 ? "s" : ""}
           </span>
         )}
@@ -132,9 +133,9 @@ export default function DocumentReviewPage() {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       ) : rows.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "64px 0", color: "#4b5563" }}>
+        <div style={{ textAlign: "center", padding: "64px 0", color: C.muted }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
             {tab === "pending" ? "No pending documents" : "No workers found"}
           </div>
           <div style={{ fontSize: 13 }}>
@@ -173,8 +174,8 @@ export default function DocumentReviewPage() {
               >
                 {/* Name + email */}
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{row.name}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>{row.email}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.secondary }}>{row.name}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{row.email}</div>
                 </div>
 
                 {/* Overall */}
@@ -182,29 +183,29 @@ export default function DocumentReviewPage() {
 
                 {/* Photo */}
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 3 }}>Photo</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 3 }}>Photo</div>
                   <StatusBadge status={row.photoStatus} />
                 </div>
 
                 {/* Video */}
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 3 }}>Video</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 3 }}>Video</div>
                   <StatusBadge status={row.videoStatus} />
                 </div>
 
                 {/* Passport */}
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 3 }}>Passport</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 3 }}>Passport</div>
                   <StatusBadge status={row.passportStatus} />
                 </div>
 
                 {/* Uploads count */}
-                <div style={{ textAlign: "center", fontSize: 12, color: "#64748b" }}>
+                <div style={{ textAlign: "center", fontSize: 12, color: C.muted }}>
                   {row.uploadCount} file{row.uploadCount !== 1 ? "s" : ""}
                 </div>
 
                 {/* Submitted */}
-                <div style={{ fontSize: 11, color: "#4b5563", textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: C.muted, textAlign: "right" }}>
                   {timeAgo(row.createdAt)}
                 </div>
               </div>
@@ -219,15 +220,15 @@ export default function DocumentReviewPage() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: page === 1 ? "#374151" : "#94a3b8", cursor: page === 1 ? "not-allowed" : "pointer", fontSize: 13 }}
+            style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: page === 1 ? "rgba(255,255,255,0.15)" : C.secondary, cursor: page === 1 ? "not-allowed" : "pointer", fontSize: 13 }}
           >
             ← Prev
           </button>
-          <span style={{ padding: "6px 14px", fontSize: 13, color: "#64748b" }}>{page} / {totalPages}</span>
+          <span style={{ padding: "6px 14px", fontSize: 13, color: C.muted }}>{page} / {totalPages}</span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: page === totalPages ? "#374151" : "#94a3b8", cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: 13 }}
+            style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: page === totalPages ? "rgba(255,255,255,0.15)" : C.secondary, cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: 13 }}
           >
             Next →
           </button>

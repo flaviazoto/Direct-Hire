@@ -317,7 +317,7 @@ function AcceptModal({
           Accept {name} for {jobTitle}?
         </div>
         <div style={{ fontSize: 13, color: "#71717a", lineHeight: 1.6, marginBottom: 24 }}>
-          You're about to accept this candidate. They'll be notified and their contact details will be available in your dashboard.
+          You&apos;re about to accept this candidate. They&apos;ll be notified and their contact details will be available in your dashboard.
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>

@@ -454,7 +454,8 @@ function ApplyModal({
 
   useEffect(() => {
     workerApi.getApplicationFee(job.id)
-      .then((res: { success: boolean; data?: FeeData }) => {
+      .then(raw => {
+        const res = raw as unknown as { success: boolean; data?: FeeData };
         if (res.success && res.data) setFee(res.data);
       })
       .catch(() => {/* non-blocking — still allow apply */})
@@ -901,7 +902,7 @@ function JobBoardContent() {
   const auth: AuthState = authLoading
     ? { loaded: false, isLoggedIn: false }
     : rawAuth.isLoggedIn
-      ? { loaded: true, isLoggedIn: true, role: rawAuth.role, accountStatus: rawAuth.user?.accountStatus }
+      ? { loaded: true, isLoggedIn: true, role: rawAuth.role ?? undefined, accountStatus: rawAuth.user?.accountStatus }
       : { loaded: true, isLoggedIn: false };
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

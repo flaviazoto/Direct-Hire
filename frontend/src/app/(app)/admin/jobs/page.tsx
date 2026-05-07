@@ -401,7 +401,6 @@ export default function AdminAllJobsPage() {
   };
 
   const fetchCounts = useCallback(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.getJobCounts() as any;
     if (res.success && res.data) setCounts(res.data as JobCounts);
   }, []);
@@ -416,7 +415,6 @@ export default function AdminAllJobsPage() {
     if (category)         params.category    = category;
     if (employer.trim())  params.employer_id = employer.trim(); // treated as search hint
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.getJobs(params) as any;
     setLoading(false);
     if (!res.success) return;
@@ -455,7 +453,6 @@ export default function AdminAllJobsPage() {
 
   const handleApprove = async (job: JobRow) => {
     setActionId(job.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.approveJob(job.id) as any;
     setActionId(null);
     if (!res.success) { showToast(res.error ?? "Approval failed", "err"); return; }
@@ -466,7 +463,6 @@ export default function AdminAllJobsPage() {
 
   const handleReject = async (job: JobRow) => {
     setActionId(job.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.rejectJob(job.id, "Rejected by admin") as any;
     setActionId(null);
     if (!res.success) { showToast(res.error ?? "Rejection failed", "err"); return; }
@@ -478,7 +474,6 @@ export default function AdminAllJobsPage() {
   const handleArchiveConfirm = async () => {
     if (!archiveJob) return;
     setActionId(archiveJob.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.archiveJobAdmin(archiveJob.id) as any;
     setArchiveJob(null);
     setActionId(null);
@@ -491,7 +486,6 @@ export default function AdminAllJobsPage() {
   const handleRestoreConfirm = async () => {
     if (!restoreJob) return;
     setActionId(restoreJob.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.restoreJob(restoreJob.id) as any;
     setRestoreJob(null);
     setActionId(null);
@@ -503,7 +497,6 @@ export default function AdminAllJobsPage() {
 
   const handleRevokeConfirm = async (reason: string) => {
     if (!revokeJob) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.revokePostingRights(revokeJob.employer.id, reason) as any;
     if (!res.success) throw new Error(res.error ?? "Revoke failed");
     // Mark all rows for this employer as revoked

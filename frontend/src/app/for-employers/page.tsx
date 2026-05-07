@@ -233,7 +233,7 @@ export default function ForEmployersPage() {
             padding: "60px",
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center",
             position: "relative", overflow: "hidden",
-          }} className2="lock-grid">
+          }}>
             <div style={{ position: "absolute", right: -60, top: -60, width: 400, height: 400, borderRadius: "50%", background: "rgba(0,144,255,0.05)", filter: "blur(80px)", pointerEvents: "none" }} />
             <div style={{ position: "relative" }}>
               <div style={{

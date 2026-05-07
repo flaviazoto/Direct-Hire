@@ -350,7 +350,7 @@ export default function ForWorkersPage() {
             textAlign: "left" as const,
           }}>
             <p style={{ fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.6)", fontFamily: "var(--font-body)", lineHeight: 1.6, margin: 0 }}>
-              "DirectHire matched me to a German engineering role in 48 hours."
+              &quot;DirectHire matched me to a German engineering role in 48 hours.&quot;
             </p>
             <footer style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontFamily: "var(--font-body)", marginTop: 8 }}>
               — Arjun K., Backend Engineer

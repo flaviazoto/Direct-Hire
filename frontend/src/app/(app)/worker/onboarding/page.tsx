@@ -238,7 +238,7 @@ export default function WorkerOnboardingPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             <div style={headingSt}>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Create your account</h2>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Your login details are already set — let's continue with your profile.</p>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Your login details are already set — let&apos;s continue with your profile.</p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 14, padding: "14px 16px" }}>
@@ -340,12 +340,12 @@ export default function WorkerOnboardingPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <label style={labelSt}>Father's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                <label style={labelSt}>Father&apos;s Full Name <span style={{ color: "#f87171" }}>*</span></label>
                 <input {...register("fatherName")} className={inputClass("fatherName")} placeholder="Arben Koci" />
                 {E("fatherName")}
               </div>
               <div>
-                <label style={labelSt}>Mother's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                <label style={labelSt}>Mother&apos;s Full Name <span style={{ color: "#f87171" }}>*</span></label>
                 <input {...register("motherName")} className={inputClass("motherName")} placeholder="Erjola Koci" />
                 {E("motherName")}
               </div>
@@ -369,7 +369,7 @@ export default function WorkerOnboardingPage() {
               </div>
               {hasSpouse && (
                 <div>
-                  <label style={labelSt}>Spouse's Full Name <span style={{ color: "#f87171" }}>*</span></label>
+                  <label style={labelSt}>Spouse&apos;s Full Name <span style={{ color: "#f87171" }}>*</span></label>
                   <input {...register("spouseName")} className={inputClass("spouseName")} placeholder="Full name" />
                   {E("spouseName")}
                 </div>

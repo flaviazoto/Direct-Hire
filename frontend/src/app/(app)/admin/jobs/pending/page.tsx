@@ -674,7 +674,6 @@ export default function AdminJobsPendingPage() {
     if (country)       params.country  = country;
     if (category)      params.category = category;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.getPendingJobs(params) as any;
     setLoading(false);
     if (!res.success) return;
@@ -727,7 +726,6 @@ export default function AdminJobsPendingPage() {
     setDrawerJob(job);
     setDrawerDetail(null);
     setDrawerLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.getAdminJobDetail(job.id) as any;
     setDrawerLoading(false);
     if (res.success && res.data) setDrawerDetail(res.data as JobDetail);
@@ -740,7 +738,6 @@ export default function AdminJobsPendingPage() {
 
   const handleApprove = async (jobId: string) => {
     setApproving(jobId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.approveJob(jobId) as any;
     setApproving(null);
     if (!res.success) { showToast(res.error ?? "Approval failed", "err"); return; }
@@ -750,7 +747,6 @@ export default function AdminJobsPendingPage() {
 
   const handleModalSubmit = async (text: string) => {
     if (!modal) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = (modal.type === "reject"
       ? await adminApi.rejectJob(modal.jobId, text)
       : await adminApi.requestJobChanges(modal.jobId, text)) as any;

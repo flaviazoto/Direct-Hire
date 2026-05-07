@@ -341,7 +341,7 @@ export default function EmployerOnboardingPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Company details</h2>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Help workers understand who they'd be working for.</p>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Help workers understand who they&apos;d be working for.</p>
             </div>
             <div>
               <label style={labelSt}>Industry <span style={{ color: "#f87171" }}>*</span></label>

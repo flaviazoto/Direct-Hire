@@ -117,7 +117,7 @@ export default function AboutPage() {
                   color: "rgba(255,255,255,0.6)",
                   fontFamily: "var(--font-body)", lineHeight: 1.55, margin: 0,
                 }}>
-                  "We didn't build another job board. We built employment infrastructure."
+                  &quot;We didn&apos;t build another job board. We built employment infrastructure.&quot;
                 </p>
               </blockquote>
             </div>

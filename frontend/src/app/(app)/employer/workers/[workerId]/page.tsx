@@ -797,7 +797,7 @@ function WorkerProfileContent() {
                   Documents under review
                 </div>
                 <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-                  This worker's documents are being reviewed by our team. They will become visible once approved.
+                  This worker&apos;s documents are being reviewed by our team. They will become visible once approved.
                 </div>
               </div>
             </div>
@@ -1188,7 +1188,7 @@ function WorkerProfileContent() {
             Message {worker.first_name ?? name}
           </h2>
           <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
-            Your message will be sent to the worker's email address.
+            Your message will be sent to the worker&apos;s email address.
           </p>
 
           {msgSent ? (

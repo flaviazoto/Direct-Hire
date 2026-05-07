@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { adminApi } from "@/lib/api-client";

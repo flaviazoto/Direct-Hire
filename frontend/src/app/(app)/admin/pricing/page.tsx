@@ -2,8 +2,10 @@
 // frontend/src/app/(app)/admin/pricing/page.tsx
 // Platform pricing configuration — worker lock rates + application fees.
 
-import { CSSProperties, useEffect, useState, useCallback } from "react";
+import type React from "react";
+import { useEffect, useState, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
+import { C } from "@/lib/admin-theme";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,60 +33,60 @@ function parseNum(v: string | undefined, fallback: number) {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
-const card: CSSProperties = {
-  background:   "var(--navy-2)",
-  border:       "1px solid var(--border)",
-  borderRadius: "var(--r-lg)",
+const card: React.CSSProperties = {
+  background:   C.card,
+  border:       `1px solid ${C.border}`,
+  borderRadius: 14,
   overflow:     "hidden",
   marginBottom: 24,
 };
 
-const cardHeader: CSSProperties = {
+const cardHeader: React.CSSProperties = {
   padding:        "16px 20px",
-  borderBottom:   "1px solid var(--border)",
+  borderBottom:   `1px solid ${C.border}`,
   display:        "flex",
   alignItems:     "center",
   justifyContent: "space-between",
 };
 
-const h2Style: CSSProperties = {
+const h2Style: React.CSSProperties = {
   fontFamily: "var(--font-display)",
   fontWeight: 700,
   fontSize:   15,
-  color:      "var(--white)",
+  color:      C.text,
   margin:     0,
 };
 
-const fieldRow: CSSProperties = {
+const fieldRow: React.CSSProperties = {
   display:        "flex",
   alignItems:     "center",
   justifyContent: "space-between",
   padding:        "16px 20px",
-  borderBottom:   "1px solid var(--border)",
+  borderBottom:   `1px solid ${C.border}`,
 };
 
-const labelCol: CSSProperties = { flex: 1 };
+const labelCol: React.CSSProperties = { flex: 1 };
 
-const labelTitle: CSSProperties = {
-  fontSize:   13,
-  fontWeight: 600,
-  color:      "var(--white)",
+const labelTitle: React.CSSProperties = {
+  fontSize:     13,
+  fontWeight:   600,
+  color:        C.text,
   marginBottom: 2,
 };
 
-const labelSub: CSSProperties = {
+const labelSub: React.CSSProperties = {
   fontSize: 12,
-  color:    "var(--muted)",
+  color:    C.muted,
 };
 
-const numInput: CSSProperties = {
+const numInput: React.CSSProperties = {
   width:        90,
   padding:      "7px 10px",
   borderRadius: 6,
   fontSize:     13,
-  background:   "var(--navy-1)",
-  border:       "1px solid var(--border)",
-  color:        "var(--white)",
+  background:   C.inputBg,
+  border:       `1px solid ${C.border}`,
+  color:        C.text,
   outline:      "none",
 };
 
@@ -99,8 +101,8 @@ function SaveBtn({ onClick, saving, disabled }: { onClick: () => void; saving: b
         borderRadius: 6,
         fontSize:     12,
         fontWeight:   600,
-        background:   saving || disabled ? "var(--border)" : "var(--admin-2)",
-        color:        saving || disabled ? "var(--muted)" : "var(--white)",
+        background:   saving || disabled ? C.border : C.accent,
+        color:        saving || disabled ? C.muted : C.text,
         border:       "none",
         cursor:       saving || disabled ? "not-allowed" : "pointer",
         transition:   "background 0.15s",
@@ -120,19 +122,17 @@ export default function AdminPricingPage() {
   const [toast,   setToast]   = useState<ToastState>(null);
 
   // ── Per-field draft state ──────────────────────────────────────────────────
-  // Worker lock
-  const [rateDollars,   setRateDollars]   = useState("");
-  const [maxConcurrent, setMaxConcurrent] = useState("");
-  const [maxDays,       setMaxDays]       = useState("");
-  const [rateSaving,    setRateSaving]    = useState(false);
-  const [concSaving,    setConcSaving]    = useState(false);
-  const [daysSaving,    setDaysSaving]    = useState(false);
+  const [rateDollars,    setRateDollars]    = useState("");
+  const [maxConcurrent,  setMaxConcurrent]  = useState("");
+  const [maxDays,        setMaxDays]        = useState("");
+  const [rateSaving,     setRateSaving]     = useState(false);
+  const [concSaving,     setConcSaving]     = useState(false);
+  const [daysSaving,     setDaysSaving]     = useState(false);
 
-  // Application fee
-  const [feeEnabled,    setFeeEnabled]    = useState(true);
+  const [feeEnabled,     setFeeEnabled]     = useState(true);
   const [feeBaseDollars, setFeeBaseDollars] = useState("");
-  const [toggleSaving,  setToggleSaving]  = useState(false);
-  const [feeSaving,     setFeeSaving]     = useState(false);
+  const [toggleSaving,   setToggleSaving]   = useState(false);
+  const [feeSaving,      setFeeSaving]      = useState(false);
 
   const showToast = useCallback((msg: string, ok: boolean) => {
     setToast({ msg, ok });
@@ -238,7 +238,7 @@ export default function AdminPricingPage() {
   if (loading) {
     return (
       <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
-        <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading…</div>
+        <div style={{ color: C.muted, fontSize: 14 }}>Loading…</div>
       </div>
     );
   }
@@ -266,10 +266,10 @@ export default function AdminPricingPage() {
         </div>
       )}
 
-      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "var(--white)", margin: "0 0 6px" }}>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: C.text, margin: "0 0 6px" }}>
         Platform pricing
       </h1>
-      <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 28px" }}>
+      <p style={{ fontSize: 13, color: C.muted, margin: "0 0 28px" }}>
         Configure worker lock rates and application fee settings.
       </p>
 
@@ -286,7 +286,7 @@ export default function AdminPricingPage() {
             <div style={labelSub}>Amount charged per day when an employer reserves a worker</div>
           </div>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--muted)", marginRight: 4 }}>$</span>
+            <span style={{ fontSize: 13, color: C.muted, marginRight: 4 }}>$</span>
             <input
               type="number"
               min={0.5}
@@ -296,7 +296,7 @@ export default function AdminPricingPage() {
               onChange={e => setRateDollars(e.target.value)}
               style={numInput}
             />
-            <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>USD / day</span>
+            <span style={{ fontSize: 12, color: C.muted, marginLeft: 6 }}>USD / day</span>
             <SaveBtn onClick={saveLockRate} saving={rateSaving} />
           </div>
         </div>
@@ -317,7 +317,7 @@ export default function AdminPricingPage() {
               onChange={e => setMaxConcurrent(e.target.value)}
               style={{ ...numInput, width: 70 }}
             />
-            <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>locks</span>
+            <span style={{ fontSize: 12, color: C.muted, marginLeft: 6 }}>locks</span>
             <SaveBtn onClick={saveMaxConcurrent} saving={concSaving} />
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function AdminPricingPage() {
               onChange={e => setMaxDays(e.target.value)}
               style={{ ...numInput, width: 70 }}
             />
-            <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>days</span>
+            <span style={{ fontSize: 12, color: C.muted, marginLeft: 6 }}>days</span>
             <SaveBtn onClick={saveMaxDays} saving={daysSaving} />
           </div>
         </div>
@@ -358,12 +358,12 @@ export default function AdminPricingPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{
-              fontSize:   12,
-              fontWeight: 700,
-              padding:    "3px 10px",
+              fontSize:     12,
+              fontWeight:   700,
+              padding:      "3px 10px",
               borderRadius: 20,
-              background: feeEnabled ? "rgba(34,197,94,0.15)" : "rgba(100,100,100,0.15)",
-              color:      feeEnabled ? "#4ade80" : "var(--muted)",
+              background:   feeEnabled ? "rgba(34,197,94,0.15)" : "rgba(100,100,100,0.15)",
+              color:        feeEnabled ? "#4ade80" : C.muted,
             }}>
               {feeEnabled ? "Enabled" : "Disabled"}
             </span>
@@ -375,8 +375,8 @@ export default function AdminPricingPage() {
                 borderRadius: 6,
                 fontSize:     12,
                 fontWeight:   600,
-                background:   "var(--border)",
-                color:        "var(--white)",
+                background:   C.border,
+                color:        C.text,
                 border:       "none",
                 cursor:       toggleSaving ? "not-allowed" : "pointer",
               }}
@@ -393,7 +393,7 @@ export default function AdminPricingPage() {
             <div style={labelSub}>Starting fee before regional and salary multipliers are applied ($0.50–$25.00)</div>
           </div>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--muted)", marginRight: 4 }}>$</span>
+            <span style={{ fontSize: 13, color: C.muted, marginRight: 4 }}>$</span>
             <input
               type="number"
               min={0.5}
@@ -403,7 +403,7 @@ export default function AdminPricingPage() {
               onChange={e => setFeeBaseDollars(e.target.value)}
               style={numInput}
             />
-            <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>USD</span>
+            <span style={{ fontSize: 12, color: C.muted, marginLeft: 6 }}>USD</span>
             <SaveBtn onClick={saveFeeBase} saving={feeSaving} />
           </div>
         </div>
@@ -412,11 +412,11 @@ export default function AdminPricingPage() {
       {/* Info note */}
       <div style={{
         fontSize:     12,
-        color:        "var(--muted)",
+        color:        C.muted,
         padding:      "12px 16px",
         background:   "rgba(255,255,255,0.03)",
         borderRadius: 8,
-        borderLeft:   "3px solid var(--admin-2)",
+        borderLeft:   `3px solid ${C.accent}`,
         lineHeight:   1.6,
       }}>
         Application fee formula: base × region multiplier (1×–2.5×) × salary tier (0.8×–1.4×).

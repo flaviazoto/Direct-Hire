@@ -454,7 +454,6 @@ export default function AdminJobDetailPage() {
   const fetchJob = useCallback(async () => {
     setLoading(true);
     setFetchErr(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.getAdminJobDetail(id) as any;
     setLoading(false);
     if (!res.success) {
@@ -479,7 +478,6 @@ export default function AdminJobDetailPage() {
   const handleApprove = async () => {
     if (!job) return;
     setActionId("approve");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.approveJob(job.id) as any;
     setActionId(null);
     if (!res.success) { showToast(res.error ?? "Approval failed", "err"); return; }
@@ -490,7 +488,6 @@ export default function AdminJobDetailPage() {
   const handleReject = async (reason: string) => {
     if (!job) return;
     setActionId("reject");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.rejectJob(job.id, reason) as any;
     setActionId(null);
     if (!res.success) throw new Error(res.error ?? "Rejection failed");
@@ -502,7 +499,6 @@ export default function AdminJobDetailPage() {
   const handleRequestChanges = async (notes: string) => {
     if (!job) return;
     setActionId("changes");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.requestJobChanges(job.id, notes) as any;
     setActionId(null);
     if (!res.success) throw new Error(res.error ?? "Request failed");
@@ -514,7 +510,6 @@ export default function AdminJobDetailPage() {
   const handleArchive = async () => {
     if (!job) return;
     setActionId("archive");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.archiveJobAdmin(job.id) as any;
     setActionId(null);
     if (!res.success) throw new Error(res.error ?? "Archive failed");
@@ -526,7 +521,6 @@ export default function AdminJobDetailPage() {
   const handleRevoke = async () => {
     if (!job) return;
     setActionId("revoke");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await adminApi.revokePostingRights(job.employer.id, `Revoked from job detail page — job ${job.id}`) as any;
     setActionId(null);
     if (!res.success) throw new Error(res.error ?? "Revoke failed");
@@ -726,7 +720,7 @@ export default function AdminJobDetailPage() {
             borderRadius: 10, padding: "8px 14px",
             fontSize: 12, color: "#fca5a5", lineHeight: 1.5,
           }}>
-            ⚠ This employer's posting rights have been revoked.
+            ⚠ This employer&apos;s posting rights have been revoked.
           </div>
         )}
       </div>

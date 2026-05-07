@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import type React from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi } from "@/lib/api-client";
 import { ToastDisplay, type ToastData } from "@/components/ui";
 import { C, inputStyle } from "@/lib/admin-theme";
@@ -123,16 +124,22 @@ function SkeletonRow() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminAuditLogPage() {
-  const [entries, setEntries]     = useState<AuditEntry[]>([]);
-  const [total, setTotal]         = useState(0);
-  const [loading, setLoading]     = useState(true);
-  const [page, setPage]           = useState(1);
-  const [actionFilter, setAction] = useState("");
-  const [dateFrom, setDateFrom]   = useState("");
-  const [dateTo, setDateTo]       = useState("");
-  const [search, setSearch]       = useState("");
-  const [expanded, setExpanded]   = useState<string | null>(null);
-  const [toast, setToast]         = useState<ToastData>(null);
+  const [entries,      setEntries]      = useState<AuditEntry[]>([]);
+  const [total,        setTotal]        = useState(0);
+  const [loading,      setLoading]      = useState(true);
+  const [page,         setPage]         = useState(1);
+  const [actionFilter, setAction]       = useState("");
+  const [dateFrom,     setDateFrom]     = useState("");
+  const [dateTo,       setDateTo]       = useState("");
+  const [actorInput,   setActorInput]   = useState("");
+  const [actorFilter,  setActorFilter]  = useState("");
+  const [targetInput,  setTargetInput]  = useState("");
+  const [targetFilter, setTargetFilter] = useState("");
+  const [expanded,     setExpanded]     = useState<string | null>(null);
+  const [toast,        setToast]        = useState<ToastData>(null);
+
+  const actorDebRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const targetDebRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +147,8 @@ export default function AdminAuditLogPage() {
     if (actionFilter) params.action = actionFilter;
     if (dateFrom)     params.from   = dateFrom;
     if (dateTo)       params.to     = dateTo;
+    if (actorFilter)  params.actor  = actorFilter;
+    if (targetFilter) params.target = targetFilter;
     const res = await adminApi.getAuditLog(params);
     if (res.success) {
       setEntries((res.data as AuditEntry[]) ?? []);
@@ -149,31 +158,37 @@ export default function AdminAuditLogPage() {
       setTimeout(() => setToast(null), 4000);
     }
     setLoading(false);
-  }, [page, actionFilter, dateFrom, dateTo]);
+  }, [page, actionFilter, dateFrom, dateTo, actorFilter, targetFilter]);
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return entries;
-    const q = search.toLowerCase();
-    return entries.filter(e =>
-      e.admin.email.toLowerCase().includes(q) ||
-      (e.admin.first_name  ?? "").toLowerCase().includes(q) ||
-      (e.admin.last_name   ?? "").toLowerCase().includes(q) ||
-      e.target_user.email.toLowerCase().includes(q) ||
-      (e.target_user.first_name ?? "").toLowerCase().includes(q) ||
-      (e.target_user.last_name  ?? "").toLowerCase().includes(q)
-    );
-  }, [entries, search]);
+  function handleActorInput(val: string) {
+    setActorInput(val);
+    if (actorDebRef.current) clearTimeout(actorDebRef.current);
+    actorDebRef.current = setTimeout(() => { setActorFilter(val); setPage(1); }, 400);
+  }
 
-  const resetFilters = () => { setAction(""); setDateFrom(""); setDateTo(""); setSearch(""); setPage(1); };
-  const hasFilters   = actionFilter || dateFrom || dateTo || search;
-  const totalPages   = Math.ceil(total / 20);
+  function handleTargetInput(val: string) {
+    setTargetInput(val);
+    if (targetDebRef.current) clearTimeout(targetDebRef.current);
+    targetDebRef.current = setTimeout(() => { setTargetFilter(val); setPage(1); }, 400);
+  }
+
+  const resetFilters = () => {
+    setAction(""); setDateFrom(""); setDateTo("");
+    setActorInput(""); setActorFilter("");
+    setTargetInput(""); setTargetFilter("");
+    setPage(1);
+  };
+
+  const hasFilters = actionFilter || dateFrom || dateTo || actorFilter || targetFilter;
+  const activeFilterCount = [actionFilter, actorFilter, targetFilter, dateFrom, dateTo].filter(Boolean).length;
+  const totalPages = Math.ceil(total / 20);
 
   const exportCSV = () => {
     const rows = [
       ["Timestamp", "Admin", "Action", "Target User", "Notes"],
-      ...filtered.map(e => [
+      ...entries.map(e => [
         e.created_at,
         `${userName(e.admin)} <${e.admin.email}>`,
         e.action,
@@ -205,6 +220,7 @@ export default function AdminAuditLogPage() {
 
   const dateInputStyle: React.CSSProperties = { ...inputStyle, width: 148, colorScheme: "dark" as unknown as undefined };
   const selectStyle: React.CSSProperties    = { ...inputStyle, width: "auto", minWidth: 160, cursor: "pointer" };
+  const textInputStyle: React.CSSProperties = { ...inputStyle, width: 180 };
 
   return (
     <div style={{ padding: 32, maxWidth: 1100 }}>
@@ -231,7 +247,8 @@ export default function AdminAuditLogPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20, alignItems: "flex-end" }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20, alignItems: "flex-end" }}>
+        {/* From date */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>From</label>
           <input
@@ -242,6 +259,7 @@ export default function AdminAuditLogPage() {
             style={dateInputStyle}
           />
         </div>
+        {/* To date */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>To</label>
           <input
@@ -253,26 +271,57 @@ export default function AdminAuditLogPage() {
             style={dateInputStyle}
           />
         </div>
-        <select
-          value={actionFilter}
-          onChange={e => { setAction(e.target.value); setPage(1); }}
-          style={selectStyle}
-        >
-          <option value="">All actions</option>
-          {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search admin or user…"
-          style={{ ...inputStyle, width: 220 }}
-        />
+        {/* Action */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Action</label>
+          <select
+            value={actionFilter}
+            onChange={e => { setAction(e.target.value); setPage(1); }}
+            style={selectStyle}
+          >
+            <option value="">All actions</option>
+            {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        {/* Actor filter */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Admin / actor</label>
+          <input
+            value={actorInput}
+            onChange={e => handleActorInput(e.target.value)}
+            placeholder="Filter by admin email…"
+            style={textInputStyle}
+          />
+        </div>
+        {/* Target filter */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>Target user</label>
+          <input
+            value={targetInput}
+            onChange={e => handleTargetInput(e.target.value)}
+            placeholder="Filter by user email…"
+            style={textInputStyle}
+          />
+        </div>
+        {/* Active filter count badge */}
+        {activeFilterCount > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, justifyContent: "flex-end" }}>
+            <span style={{
+              padding: "5px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
+              background: "rgba(220,38,38,0.15)", color: C.accent,
+              border: "1px solid rgba(220,38,38,0.3)",
+              whiteSpace: "nowrap",
+            }}>
+              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Stats strip */}
       {!loading && (
         <p style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>
-          Showing {filtered.length} of {total.toLocaleString()} events{hasFilters ? " (filtered)" : ""}
+          Showing {entries.length} of {total.toLocaleString()} events{hasFilters ? " (filtered)" : ""}
         </p>
       )}
 
@@ -292,7 +341,7 @@ export default function AdminAuditLogPage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-              ) : filtered.length === 0 ? (
+              ) : entries.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ padding: "64px 24px", textAlign: "center" }}>
                     <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>📋</div>
@@ -303,7 +352,7 @@ export default function AdminAuditLogPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map(entry => {
+                entries.map(entry => {
                   const badge  = ACTION_BADGE[entry.action] ?? { label: entry.action.replace(/_/g, " "), color: C.muted, bg: "rgba(113,113,122,0.12)" };
                   const isOpen = expanded === entry.id;
 

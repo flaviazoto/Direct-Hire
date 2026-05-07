@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
 import { LoadingPage } from "@/components/ui";
+import { C } from "@/lib/admin-theme";
 
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
 
@@ -30,12 +31,12 @@ interface PendingUser {
 }
 
 interface AuditEntry {
-  id:         string;
-  adminEmail: string;
-  action:     string;
-  targetId?:  string;
+  id:          string;
+  adminEmail:  string;
+  action:      string;
+  targetId?:   string;
   targetType?: string;
-  createdAt:  string;
+  createdAt:   string;
 }
 
 type ActionStatus = "idle" | "loading" | "done" | "error";
@@ -47,16 +48,16 @@ function KpiCard({
 }: { label: string; value: string | number; sub?: string; icon: string; accent: string }) {
   return (
     <div style={{
-      background: "var(--navy-2)",
+      background: C.card,
       border: `1px solid rgba(220,38,38,0.15)`,
-      borderRadius: "var(--r-lg)",
+      borderRadius: 14,
       padding: "20px 22px",
       display: "flex", flexDirection: "column", gap: 10,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
         <div style={{
-          width: 36, height: 36, borderRadius: "var(--r-sm)",
+          width: 36, height: 36, borderRadius: 7,
           background: accent,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 16,
@@ -65,10 +66,10 @@ function KpiCard({
       <div style={{
         fontFamily: "var(--font-display)",
         fontWeight: 800, fontSize: 28,
-        color: "var(--white)",
+        color: C.text,
         lineHeight: 1,
       }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
-      {sub && <div style={{ fontSize: 12, color: "var(--admin-2)" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: C.accent }}>{sub}</div>}
     </div>
   );
 }
@@ -81,7 +82,7 @@ function StatusPill({ status }: { status: string }) {
     REJECTED:       { label: "Rejected",       color: "#f87171", bg: "rgba(248,113,113,0.12)" },
     NEEDS_CHANGES:  { label: "Needs Changes",  color: "#fb923c", bg: "rgba(251,146,60,0.12)" },
   };
-  const cfg = map[status] ?? { label: status, color: "var(--muted)", bg: "rgba(255,255,255,0.06)" };
+  const cfg = map[status] ?? { label: status, color: C.muted, bg: "rgba(255,255,255,0.06)" };
   return (
     <span style={{
       padding: "3px 10px", borderRadius: 999, fontSize: 11,
@@ -107,20 +108,20 @@ function RiskBadge({ score }: { score: number }) {
 export default function AdminDashboardPage() {
   const router = useRouter();
 
-  const [stats,    setStats]    = useState<Stats | null>(null);
-  const [pending,  setPending]  = useState<PendingUser[]>([]);
-  const [audit,    setAudit]    = useState<AuditEntry[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [stats,     setStats]     = useState<Stats | null>(null);
+  const [pending,   setPending]   = useState<PendingUser[]>([]);
+  const [audit,     setAudit]     = useState<AuditEntry[]>([]);
+  const [loading,   setLoading]   = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [toast,    setToast]    = useState<{ msg: string; ok: boolean } | null>(null);
-  const [actMap,   setActMap]   = useState<Record<string, ActionStatus>>({});
+  const [toast,     setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
+  const [actMap,    setActMap]    = useState<Record<string, ActionStatus>>({});
 
   // ── Pricing config state ──────────────────────────────────────────────────
-  const [pricingEnabled,  setPricingEnabled]  = useState(true);
+  const [pricingEnabled,   setPricingEnabled]   = useState(true);
   const [pricingBaseCents, setPricingBaseCents] = useState(300);
-  const [pricingEditing,  setPricingEditing]  = useState(false);
-  const [pricingSaving,   setPricingSaving]   = useState(false);
-  const [pricingDraft,    setPricingDraft]    = useState<{ baseCents: number; enabled: boolean } | null>(null);
+  const [pricingEditing,   setPricingEditing]   = useState(false);
+  const [pricingSaving,    setPricingSaving]    = useState(false);
+  const [pricingDraft,     setPricingDraft]     = useState<{ baseCents: number; enabled: boolean } | null>(null);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -128,7 +129,8 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    adminApi.getPricingConfig().then((r: { success: boolean; data?: { enabled: boolean; baseCents: number } }) => {
+    adminApi.getPricingConfig().then(raw => {
+      const r = raw as unknown as { success: boolean; data?: { enabled: boolean; baseCents: number } };
       if (r.success && r.data) {
         setPricingEnabled(r.data.enabled);
         setPricingBaseCents(r.data.baseCents);
@@ -203,16 +205,15 @@ export default function AdminDashboardPage() {
   if (loadError) return (
     <div style={{ padding: "60px 40px", textAlign: "center" }}>
       <div style={{ fontSize: 14, color: "#f87171", marginBottom: 8, fontWeight: 600 }}>Failed to load admin dashboard</div>
-      <div style={{ fontSize: 12, color: "#71717a", fontFamily: "monospace" }}>{loadError}</div>
+      <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{loadError}</div>
       <div style={{ fontSize: 12, color: "#555", marginTop: 12 }}>Check the browser console and Network tab for details.</div>
     </div>
   );
-  if (!stats)  return null;
+  if (!stats) return null;
 
   const pendingCount = stats.verification.pending;
   const maxMonthly   = Math.max(...stats.monthly.map(m => m.count), 1);
 
-  /* ── Fraud flags: recentSubmissions with riskScore >= 70 ── */
   const fraudAlerts = (stats.recentSubmissions as (typeof stats.recentSubmissions[0] & { riskScore?: number })[])
     .filter(s => (s as { riskScore?: number }).riskScore != null && (s as { riskScore?: number }).riskScore! >= 70);
 
@@ -224,20 +225,20 @@ export default function AdminDashboardPage() {
         <div style={{
           marginBottom: 28,
           padding: "14px 20px",
-          borderRadius: "var(--r-md)",
+          borderRadius: 10,
           background: "rgba(220,38,38,0.08)",
           border: "1px solid rgba(220,38,38,0.35)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>🚨</span>
-            <span style={{ color: "var(--admin-3)", fontWeight: 600, fontSize: 14 }}>
-              <strong style={{ color: "var(--admin-2)" }}>{pendingCount} applications</strong> awaiting your review
+            <span style={{ color: C.secondary, fontWeight: 600, fontSize: 14 }}>
+              <strong style={{ color: C.accent }}>{pendingCount} applications</strong> awaiting your review
             </span>
           </div>
           <Link href="/admin/users/pending" style={{
-            padding: "7px 16px", borderRadius: "var(--r-sm)",
-            background: "var(--admin-primary)", color: "#fff",
+            padding: "7px 16px", borderRadius: 7,
+            background: C.accent, color: "#fff",
             fontSize: 13, fontWeight: 700, textDecoration: "none",
           }}>Review Now →</Link>
         </div>
@@ -246,18 +247,18 @@ export default function AdminDashboardPage() {
       {/* ── Page header ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{
-          width: 44, height: 44, borderRadius: "var(--r-md)",
-          background: "linear-gradient(135deg, var(--admin-primary), var(--admin-2))",
+          width: 44, height: 44, borderRadius: 10,
+          background: `linear-gradient(135deg, ${C.accent}, #b91c1c)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, boxShadow: "0 4px 18px var(--admin-glow)",
+          fontSize: 20, boxShadow: "0 4px 18px rgba(220,38,38,0.3)",
           flexShrink: 0,
         }}>⚡</div>
         <div>
           <h1 style={{
             fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24,
-            color: "var(--white)", margin: 0,
+            color: C.text, margin: 0,
           }}>Admin Control Center</h1>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>Platform oversight · real-time monitoring</p>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Platform oversight · real-time monitoring</p>
         </div>
       </div>
 
@@ -278,37 +279,36 @@ export default function AdminDashboardPage() {
 
         {/* Pending Approvals table */}
         <div style={{
-          background: "var(--navy-2)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", overflow: "hidden",
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, overflow: "hidden",
         }}>
           <div style={{
             padding: "16px 20px",
-            borderBottom: "1px solid var(--border)",
+            borderBottom: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>
               Pending Approvals
             </h2>
-            <Link href="/admin/approvals" style={{ fontSize: 12, fontWeight: 600, color: "var(--admin-2)", textDecoration: "none" }}>
+            <Link href="/admin/approvals" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>
               View all →
             </Link>
           </div>
 
           {pending.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+            <div style={{ padding: 40, textAlign: "center", color: C.muted, fontSize: 13 }}>
               ✓ No pending approvals
             </div>
           ) : (
             <>
-              {/* Table header */}
               <div style={{
                 display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
                 padding: "10px 20px",
                 background: "rgba(255,255,255,0.02)",
-                borderBottom: "1px solid var(--border)",
+                borderBottom: `1px solid ${C.border}`,
               }}>
                 {["User", "Role", "Risk", "Actions"].map(h => (
-                  <span key={h} style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
+                  <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
                 ))}
               </div>
 
@@ -318,44 +318,40 @@ export default function AdminDashboardPage() {
                   <div key={u.userId} style={{
                     display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
                     padding: "13px 20px", alignItems: "center",
-                    borderBottom: "1px solid var(--border)",
+                    borderBottom: `1px solid ${C.border}`,
                     transition: "background 0.15s",
                   }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
-                    {/* User info */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 12, fontWeight: 700, color: "#fff",
-                        background: u.role === "WORKER" ? "var(--worker-primary)" : "var(--employer-primary)",
+                        background: u.role === "WORKER" ? C.blue : C.teal,
                       }}>{(u.name || u.email)[0].toUpperCase()}</div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {u.name || u.email}
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{u.completionPct}% complete</div>
+                        <div style={{ fontSize: 11, color: C.muted }}>{u.completionPct}% complete</div>
                       </div>
                     </div>
 
-                    {/* Role */}
-                    <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{u.role}</span>
+                    <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{u.role}</span>
 
-                    {/* Risk */}
                     {u.riskScore != null
                       ? <RiskBadge score={u.riskScore} />
-                      : <span style={{ fontSize: 11, color: "var(--muted)" }}>—</span>
+                      : <span style={{ fontSize: 11, color: C.muted }}>—</span>
                     }
 
-                    {/* Actions */}
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         disabled={isLoading("approve")}
                         onClick={() => handleAction(u.userId, "approve")}
                         style={{
-                          padding: "5px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 700,
+                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
                           border: "none", cursor: "pointer",
                           background: isLoading("approve") ? "rgba(16,185,129,0.3)" : "rgba(16,185,129,0.18)",
                           color: "#34d399",
@@ -364,7 +360,7 @@ export default function AdminDashboardPage() {
                         disabled={isLoading("reject")}
                         onClick={() => handleAction(u.userId, "reject")}
                         style={{
-                          padding: "5px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 700,
+                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
                           border: "none", cursor: "pointer",
                           background: isLoading("reject") ? "rgba(220,38,38,0.3)" : "rgba(220,38,38,0.12)",
                           color: "#f87171",
@@ -373,14 +369,14 @@ export default function AdminDashboardPage() {
                         disabled={isLoading("suspend")}
                         onClick={() => handleAction(u.userId, "suspend")}
                         style={{
-                          padding: "5px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 700,
+                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
                           border: "none", cursor: "pointer",
                           background: isLoading("suspend") ? "rgba(245,158,11,0.3)" : "rgba(245,158,11,0.10)",
                           color: "#fbbf24",
                         }}>⊘ Suspend</button>
                       <Link href={`/admin/users/${u.userId}`} style={{
-                        padding: "5px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 700,
-                        background: "rgba(59,130,246,0.12)", color: "var(--blue-4)",
+                        padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+                        background: "rgba(59,130,246,0.12)", color: C.blue,
                         textDecoration: "none",
                       }}>View</Link>
                     </div>
@@ -393,9 +389,9 @@ export default function AdminDashboardPage() {
 
         {/* Fraud Alerts panel */}
         <div style={{
-          background: "var(--navy-2)",
+          background: C.card,
           border: "1px solid rgba(220,38,38,0.4)",
-          borderRadius: "var(--r-lg)", overflow: "hidden",
+          borderRadius: 14, overflow: "hidden",
           animation: "pulseBorderRed 2.5s ease-in-out infinite",
         }}>
           <style>{`
@@ -410,13 +406,13 @@ export default function AdminDashboardPage() {
             display: "flex", alignItems: "center", gap: 8,
           }}>
             <span style={{ fontSize: 15 }}>🛡</span>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--admin-3)", margin: 0 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: C.secondary, margin: 0 }}>
               Fraud Alerts
             </h2>
             {fraudAlerts.length > 0 && (
               <span style={{
                 marginLeft: "auto", padding: "2px 8px", borderRadius: 999,
-                fontSize: 10, fontWeight: 800, background: "var(--admin-primary)", color: "#fff",
+                fontSize: 10, fontWeight: 800, background: C.accent, color: "#fff",
               }}>{fraudAlerts.length}</span>
             )}
           </div>
@@ -424,7 +420,7 @@ export default function AdminDashboardPage() {
           {fraudAlerts.length === 0 ? (
             <div style={{ padding: 32, textAlign: "center" }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>No high-risk flags detected</div>
+              <div style={{ fontSize: 13, color: C.muted }}>No high-risk flags detected</div>
             </div>
           ) : (
             <div style={{ overflowY: "auto", maxHeight: 340 }}>
@@ -435,17 +431,17 @@ export default function AdminDashboardPage() {
                 }}>
                   <div style={{
                     width: 8, height: 8, borderRadius: "50%",
-                    background: "var(--admin-primary)",
-                    boxShadow: "0 0 6px var(--admin-primary)",
+                    background: C.accent,
+                    boxShadow: `0 0 6px ${C.accent}`,
                     flexShrink: 0,
                     animation: "pulseDot 1.5s ease-in-out infinite",
                   }} />
                   <style>{`@keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--white)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {s.email}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{s.role}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{s.role}</div>
                   </div>
                   <RiskBadge score={(s as { riskScore?: number }).riskScore ?? 0} />
                 </div>
@@ -456,8 +452,8 @@ export default function AdminDashboardPage() {
           <div style={{ padding: "12px 18px", borderTop: "1px solid rgba(220,38,38,0.15)" }}>
             <Link href="/admin/fraud" style={{
               display: "block", textAlign: "center", padding: "8px 16px",
-              borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 700,
-              background: "rgba(220,38,38,0.12)", color: "var(--admin-2)",
+              borderRadius: 7, fontSize: 12, fontWeight: 700,
+              background: "rgba(220,38,38,0.12)", color: C.accent,
               textDecoration: "none",
             }}>Open Fraud Console →</Link>
           </div>
@@ -469,28 +465,28 @@ export default function AdminDashboardPage() {
 
         {/* AI Performance mini cards */}
         <div style={{
-          background: "var(--navy-2)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", padding: "20px",
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, padding: "20px",
         }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", marginBottom: 16 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, marginBottom: 16 }}>
             AI Performance
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { label: "Match Accuracy",  value: "94.2%", icon: "🎯", color: "var(--blue-3)" },
-              { label: "Fraud Detection", value: "99.1%", icon: "🛡",  color: "var(--admin-2)" },
-              { label: "Avg Match Score", value: "87.4",  icon: "⭐", color: "var(--gold)" },
-              { label: "AI Reviews/Day",  value: "1,240", icon: "⚡", color: "var(--cyan)" },
+              { label: "Match Accuracy",  value: "94.2%", icon: "🎯", color: C.blue   },
+              { label: "Fraud Detection", value: "99.1%", icon: "🛡",  color: C.accent },
+              { label: "Avg Match Score", value: "87.4",  icon: "⭐", color: C.yellow  },
+              { label: "AI Reviews/Day",  value: "1,240", icon: "⚡", color: C.teal   },
             ].map(c => (
               <div key={c.label} style={{
-                background: "var(--navy-3)", borderRadius: "var(--r-md)", padding: "14px 16px",
+                background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "14px 16px",
               }}>
                 <div style={{ fontSize: 20, marginBottom: 6 }}>{c.icon}</div>
                 <div style={{
                   fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 22,
                   color: c.color, marginBottom: 4,
                 }}>{c.value}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>{c.label}</div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{c.label}</div>
               </div>
             ))}
           </div>
@@ -498,52 +494,52 @@ export default function AdminDashboardPage() {
 
         {/* Monthly registrations chart */}
         <div style={{
-          background: "var(--navy-2)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", padding: "20px",
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, padding: "20px",
         }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", marginBottom: 16 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, marginBottom: 16 }}>
             Registrations — Last 12 Months
           </h2>
           {stats.monthly.length > 0 ? (
             <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 120 }}>
               {stats.monthly.map(m => (
                 <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)" }}>{m.count}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.muted }}>{m.count}</div>
                   <div style={{
                     width: "100%", borderRadius: "3px 3px 0 0",
                     height: `${Math.max(Math.round((m.count / maxMonthly) * 90), 4)}px`,
-                    background: "linear-gradient(180deg, var(--admin-primary), rgba(220,38,38,0.4))",
+                    background: `linear-gradient(180deg, ${C.accent}, rgba(220,38,38,0.4))`,
                     minHeight: 4, transition: "height 0.3s ease",
                   }} />
-                  <div style={{ fontSize: 8, color: "var(--muted)" }}>{m.month.slice(5)}</div>
+                  <div style={{ fontSize: 8, color: C.muted }}>{m.month.slice(5)}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: "center", color: "var(--muted)", paddingTop: 40, fontSize: 13 }}>No data yet</div>
+            <div style={{ textAlign: "center", color: C.muted, paddingTop: 40, fontSize: 13 }}>No data yet</div>
           )}
         </div>
       </div>
 
       {/* ── Audit Log table ───────────────────────────────────────────────────── */}
       <div style={{
-        background: "var(--navy-2)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: 28,
+        background: C.card, border: `1px solid ${C.border}`,
+        borderRadius: 14, overflow: "hidden", marginBottom: 28,
       }}>
         <div style={{
-          padding: "16px 20px", borderBottom: "1px solid var(--border)",
+          padding: "16px 20px", borderBottom: `1px solid ${C.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>
             Recent Audit Log
           </h2>
-          <Link href="/admin/audit-log" style={{ fontSize: 12, fontWeight: 600, color: "var(--admin-2)", textDecoration: "none" }}>
+          <Link href="/admin/audit-log" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>
             Full log →
           </Link>
         </div>
 
         {audit.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+          <div style={{ padding: 32, textAlign: "center", color: C.muted, fontSize: 13 }}>
             No audit entries yet
           </div>
         ) : (
@@ -551,31 +547,31 @@ export default function AdminDashboardPage() {
             <div style={{
               display: "grid", gridTemplateColumns: "160px 1fr 140px 120px",
               padding: "9px 20px", background: "rgba(255,255,255,0.02)",
-              borderBottom: "1px solid var(--border)",
+              borderBottom: `1px solid ${C.border}`,
             }}>
               {["Admin", "Action", "Target", "Time"].map(h => (
-                <span key={h} style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
+                <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
               ))}
             </div>
             {audit.map(e => (
               <div key={e.id} style={{
                 display: "grid", gridTemplateColumns: "160px 1fr 140px 120px",
                 padding: "12px 20px", alignItems: "center",
-                borderBottom: "1px solid var(--border)",
-                fontSize: 13, color: "var(--white)",
+                borderBottom: `1px solid ${C.border}`,
+                fontSize: 13, color: C.text,
                 transition: "background 0.15s",
               }}
                 onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(255,255,255,0.02)")}
                 onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}
               >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)" }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.muted }}>
                   {e.adminEmail}
                 </span>
-                <span style={{ fontWeight: 600, color: "var(--white)" }}>{e.action}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)", fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: C.text }}>{e.action}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.muted, fontSize: 12 }}>
                   {e.targetType ? `${e.targetType} ${e.targetId?.slice(0, 8)}…` : "—"}
                 </span>
-                <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                <span style={{ color: C.muted, fontSize: 12 }}>
                   {new Date(e.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
@@ -586,20 +582,20 @@ export default function AdminDashboardPage() {
 
       {/* ── Application Fee Config ───────────────────────────────────────────── */}
       <div style={{
-        background: "var(--navy-2)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: 28,
+        background: C.card, border: `1px solid ${C.border}`,
+        borderRadius: 14, overflow: "hidden", marginBottom: 28,
       }}>
         <div style={{
-          padding: "16px 20px", borderBottom: "1px solid var(--border)",
+          padding: "16px 20px", borderBottom: `1px solid ${C.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>
             Application Fee Configuration
           </h2>
           {!pricingEditing ? (
             <button
               onClick={() => { setPricingDraft({ baseCents: pricingBaseCents, enabled: pricingEnabled }); setPricingEditing(true); }}
-              style={{ fontSize: 12, fontWeight: 600, color: "var(--admin-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              style={{ fontSize: 12, fontWeight: 600, color: C.accent, background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
               Edit
             </button>
@@ -607,7 +603,7 @@ export default function AdminDashboardPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => { setPricingEditing(false); setPricingDraft(null); }}
-                style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                style={{ fontSize: 12, fontWeight: 600, color: C.muted, background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
                 Cancel
               </button>
@@ -615,8 +611,8 @@ export default function AdminDashboardPage() {
                 onClick={handleSavePricing}
                 disabled={pricingSaving}
                 style={{
-                  fontSize: 12, fontWeight: 600, color: "var(--white)",
-                  background: "var(--admin-2)", border: "none", borderRadius: 6,
+                  fontSize: 12, fontWeight: 600, color: C.text,
+                  background: C.accent, border: "none", borderRadius: 6,
                   padding: "4px 12px", cursor: pricingSaving ? "not-allowed" : "pointer",
                   opacity: pricingSaving ? 0.7 : 1,
                 }}
@@ -631,8 +627,8 @@ export default function AdminDashboardPage() {
           {/* Fee enabled toggle */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)" }}>Application Fee</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Application Fee</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
                 Charge workers a fee when applying to jobs
               </div>
             </div>
@@ -641,13 +637,13 @@ export default function AdminDashboardPage() {
                 onClick={() => setPricingDraft(d => d ? { ...d, enabled: !d.enabled } : d)}
                 style={{
                   width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
-                  background: pricingDraft?.enabled ? "var(--admin-2)" : "var(--border)",
+                  background: pricingDraft?.enabled ? C.accent : C.border,
                   transition: "background 0.2s", position: "relative",
                 }}
               >
                 <span style={{
                   position: "absolute", top: 3, width: 18, height: 18, borderRadius: "50%",
-                  background: "var(--white)", transition: "left 0.2s",
+                  background: C.text, transition: "left 0.2s",
                   left: pricingDraft?.enabled ? 23 : 3,
                 }} />
               </button>
@@ -655,7 +651,7 @@ export default function AdminDashboardPage() {
               <span style={{
                 fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
                 background: pricingEnabled ? "rgba(34,197,94,0.15)" : "rgba(100,100,100,0.15)",
-                color: pricingEnabled ? "#4ade80" : "var(--muted)",
+                color: pricingEnabled ? "#4ade80" : C.muted,
               }}>
                 {pricingEnabled ? "Enabled" : "Disabled"}
               </span>
@@ -665,14 +661,14 @@ export default function AdminDashboardPage() {
           {/* Base fee */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)" }}>Base Fee</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Base Fee</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
                 Starting fee before regional/salary multipliers (50¢ – $25.00)
               </div>
             </div>
             {pricingEditing ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13, color: "var(--muted)" }}>$</span>
+                <span style={{ fontSize: 13, color: C.muted }}>$</span>
                 <input
                   type="number"
                   min={0.5}
@@ -690,13 +686,13 @@ export default function AdminDashboardPage() {
                   }}
                   style={{
                     width: 80, padding: "6px 10px", borderRadius: 6, fontSize: 13,
-                    background: "var(--navy-1)", border: "1px solid var(--border)",
-                    color: "var(--white)", outline: "none",
+                    background: C.inputBg, border: `1px solid ${C.border}`,
+                    color: C.text, outline: "none",
                   }}
                 />
               </div>
             ) : (
-              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--white)" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: C.text }}>
                 ${(pricingBaseCents / 100).toFixed(2)}
               </span>
             )}
@@ -704,9 +700,9 @@ export default function AdminDashboardPage() {
 
           {/* Info note */}
           <div style={{
-            fontSize: 12, color: "var(--muted)", padding: "10px 14px",
+            fontSize: 12, color: C.muted, padding: "10px 14px",
             background: "rgba(255,255,255,0.03)", borderRadius: 8,
-            borderLeft: "3px solid var(--admin-2)",
+            borderLeft: `3px solid ${C.accent}`,
           }}>
             Final fee = base × region multiplier (1×–2.5×) × salary tier (0.8×–1.4×). Clamped to $1.00–$25.00 and rounded to nearest $0.50.
           </div>
@@ -716,28 +712,28 @@ export default function AdminDashboardPage() {
       {/* ── Quick nav cards ───────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
         {[
-          { href: "/admin/approvals",     icon: "✅", label: "Approval Queue",   sub: `${pendingCount} pending`,    accent: "rgba(245,158,11,0.14)" },
-          { href: "/admin/fraud",         icon: "🛡",  label: "Fraud Console",   sub: "Risk monitoring",             accent: "rgba(220,38,38,0.14)" },
-          { href: "/admin/users",         icon: "👥", label: "User Management",  sub: "All accounts",                accent: "rgba(59,130,246,0.14)" },
-          { href: "/admin/audit-log",     icon: "📋", label: "Audit Log",        sub: "Full activity trail",         accent: "rgba(167,139,250,0.14)" },
+          { href: "/admin/approvals",  icon: "✅", label: "Approval Queue",  sub: `${pendingCount} pending`,  accent: "rgba(245,158,11,0.14)" },
+          { href: "/admin/fraud",      icon: "🛡",  label: "Fraud Console",  sub: "Risk monitoring",           accent: "rgba(220,38,38,0.14)" },
+          { href: "/admin/users",      icon: "👥", label: "User Management", sub: "All accounts",              accent: "rgba(59,130,246,0.14)" },
+          { href: "/admin/audit-log",  icon: "📋", label: "Audit Log",       sub: "Full activity trail",       accent: "rgba(167,139,250,0.14)" },
         ].map(({ href, icon, label, sub, accent }) => (
           <Link key={href} href={href} style={{
-            background: "var(--navy-2)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)", padding: "18px 20px",
+            background: C.card, border: `1px solid ${C.border}`,
+            borderRadius: 14, padding: "18px 20px",
             display: "flex", alignItems: "center", gap: 14,
             textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
           }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(220,38,38,0.35)"; e.currentTarget.style.background = "rgba(220,38,38,0.04)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--navy-2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
           >
             <div style={{
-              width: 42, height: 42, borderRadius: "var(--r-sm)",
+              width: 42, height: 42, borderRadius: 7,
               background: accent, display: "flex", alignItems: "center",
               justifyContent: "center", fontSize: 20, flexShrink: 0,
             }}>{icon}</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--white)" }}>{label}</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{sub}</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>{label}</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sub}</div>
             </div>
           </Link>
         ))}
@@ -747,7 +743,7 @@ export default function AdminDashboardPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 9999,
-          padding: "13px 20px", borderRadius: "var(--r-md)",
+          padding: "13px 20px", borderRadius: 10,
           background: toast.ok ? "rgba(16,185,129,0.15)" : "rgba(220,38,38,0.15)",
           border: `1px solid ${toast.ok ? "rgba(16,185,129,0.4)" : "rgba(220,38,38,0.4)"}`,
           color: toast.ok ? "#34d399" : "#f87171",

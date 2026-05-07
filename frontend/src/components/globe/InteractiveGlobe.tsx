@@ -283,7 +283,6 @@ export default function InteractiveGlobe() {
 
     try {
       // Dynamic require so a missing package doesn't crash the globe
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { CSS2DRenderer, CSS2DObject } = require("three/examples/jsm/renderers/CSS2DRenderer.js") as {
         CSS2DRenderer: new () => { setSize: (w: number, h: number) => void; render: (s: THREE.Scene, c: THREE.Camera) => void; domElement: HTMLElement };
         CSS2DObject:   new (el: HTMLElement) => THREE.Object3D & { element: HTMLElement };
