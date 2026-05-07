@@ -8,7 +8,7 @@ export async function getWorkerPayments(
 ) {
   try {
     const userId = req.user!.sub;
-    const { page, limit, skip } = getPagination(req);
+    const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
