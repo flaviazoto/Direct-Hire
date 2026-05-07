@@ -13,7 +13,7 @@ export async function stripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: "Missing stripe signature or webhook secret" });
   }
 
-  let event: Stripe.Event;
+  let event: any;
   try {
     event = stripe.webhooks.constructEvent(
       req.body as Buffer,
@@ -34,7 +34,7 @@ export async function stripeWebhook(req: Request, res: Response) {
 
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub      = event.data.object as Stripe.Subscription;
+        const sub      = event.data.object as any;
         const userId   = sub.metadata?.userId;
         if (!userId) { console.warn("[stripe-webhook] no userId in subscription metadata"); break; }
 
@@ -54,7 +54,7 @@ export async function stripeWebhook(req: Request, res: Response) {
       }
 
       case "customer.subscription.deleted": {
-        const sub    = event.data.object as Stripe.Subscription;
+        const sub    = event.data.object as any;
         const userId = sub.metadata?.userId;
         if (!userId) break;
 
@@ -72,9 +72,9 @@ export async function stripeWebhook(req: Request, res: Response) {
       // ── Payment succeeded ────────────────────────────────────────────────────
 
       case "invoice.payment_succeeded": {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as any;
         // Only process subscription renewals (not the first payment which may be $0)
-        if (!(invoice as any).subscription) break;
+        if (!invoice.subscription) break;
 
         // Retrieve sub to get userId from metadata
         const sub    = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
@@ -117,8 +117,8 @@ export async function stripeWebhook(req: Request, res: Response) {
       // ── Payment failed ────────────────────────────────────────────────────────
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        if (!(invoice as any).subscription) break;
+        const invoice = event.data.object as any;
+        if (!invoice.subscription) break;
 
         const sub    = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
         const userId = sub.metadata?.userId;
