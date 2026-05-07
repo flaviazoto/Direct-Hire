@@ -1,26 +1,31 @@
 -- CreateEnum
-CREATE TYPE "AuditAction" AS ENUM (
-  'USER_APPROVED',
-  'USER_REJECTED',
-  'USER_SUSPENDED',
-  'USER_REINSTATED',
-  'JOB_APPROVED',
-  'JOB_REJECTED',
-  'LOCK_OVERRIDDEN',
-  'AI_DECISION_OVERRIDDEN'
-);
+DO $$
+BEGIN
+  CREATE TYPE "AuditAction" AS ENUM (
+    'USER_APPROVED',
+    'USER_REJECTED',
+    'USER_SUSPENDED',
+    'USER_REINSTATED',
+    'JOB_APPROVED',
+    'JOB_REJECTED',
+    'LOCK_OVERRIDDEN',
+    'AI_DECISION_OVERRIDDEN'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterTable: add new user fields
 ALTER TABLE "User"
-  ADD COLUMN "verification_submitted_at" TIMESTAMP(3),
-  ADD COLUMN "approved_at"               TIMESTAMP(3),
-  ADD COLUMN "rejected_at"               TIMESTAMP(3),
-  ADD COLUMN "rejection_reason"          TEXT,
-  ADD COLUMN "suspended_at"              TIMESTAMP(3),
-  ADD COLUMN "reviewed_by"               TEXT;
+  ADD COLUMN IF NOT EXISTS "verification_submitted_at" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "approved_at"               TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "rejected_at"               TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "rejection_reason"          TEXT,
+  ADD COLUMN IF NOT EXISTS "suspended_at"              TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "reviewed_by"               TEXT;
 
 -- CreateTable: audit_log
-CREATE TABLE "audit_log" (
+CREATE TABLE IF NOT EXISTS "audit_log" (
   "id"             TEXT         NOT NULL,
   "admin_id"       TEXT         NOT NULL,
   "action"         "AuditAction" NOT NULL,
@@ -33,9 +38,9 @@ CREATE TABLE "audit_log" (
 );
 
 -- CreateIndex
-CREATE INDEX "audit_log_target_user_id_idx" ON "audit_log"("target_user_id");
-CREATE INDEX "audit_log_admin_id_idx"       ON "audit_log"("admin_id");
-CREATE INDEX "audit_log_created_at_idx"     ON "audit_log"("created_at");
+CREATE INDEX IF NOT EXISTS "audit_log_target_user_id_idx" ON "audit_log"("target_user_id");
+CREATE INDEX IF NOT EXISTS "audit_log_admin_id_idx"       ON "audit_log"("admin_id");
+CREATE INDEX IF NOT EXISTS "audit_log_created_at_idx"     ON "audit_log"("created_at");
 
 -- AddForeignKey
 ALTER TABLE "audit_log"

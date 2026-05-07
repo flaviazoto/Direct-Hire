@@ -1,6 +1,6 @@
 -- Migration: add_job_run_logs
 
-CREATE TABLE "job_run_logs" (
+CREATE TABLE IF NOT EXISTS "job_run_logs" (
     "id"                TEXT         NOT NULL,
     "job_name"          TEXT         NOT NULL,
     "status"            TEXT         NOT NULL,
@@ -14,5 +14,5 @@ CREATE TABLE "job_run_logs" (
     CONSTRAINT "job_run_logs_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "job_run_logs_job_name_idx" ON "job_run_logs"("job_name");
-CREATE INDEX "job_run_logs_started_at_idx" ON "job_run_logs"("started_at");
+CREATE INDEX IF NOT EXISTS "job_run_logs_job_name_idx" ON "job_run_logs"("job_name");
+CREATE INDEX IF NOT EXISTS "job_run_logs_started_at_idx" ON "job_run_logs"("started_at");

@@ -14,15 +14,20 @@ DROP TABLE IF EXISTS "applications";
 -- ── Step 3: Replace ApplicationStatus enum ───────────────────────────────────
 -- PostgreSQL cannot remove enum values in-place; create a new type, drop the
 -- old one (safe now that both tables using it are gone), then rename.
-CREATE TYPE "ApplicationStatus_new" AS ENUM (
-  'APPLIED',
-  'VIEWED',
-  'SHORTLISTED',
-  'INTERVIEWED',
-  'ACCEPTED',
-  'REJECTED',
-  'WITHDRAWN'
-);
+DO $$
+BEGIN
+  CREATE TYPE "ApplicationStatus_new" AS ENUM (
+    'APPLIED',
+    'VIEWED',
+    'SHORTLISTED',
+    'INTERVIEWED',
+    'ACCEPTED',
+    'REJECTED',
+    'WITHDRAWN'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 DROP TYPE IF EXISTS "ApplicationStatus";
 ALTER TYPE "ApplicationStatus_new" RENAME TO "ApplicationStatus";
@@ -33,7 +38,7 @@ ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'APPLICATION_STATUS_CHANGED';
 ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'CONTACT_DETAILS_ACCESSED';
 
 -- ── Step 5: Create applications table ────────────────────────────────────────
-CREATE TABLE "applications" (
+CREATE TABLE IF NOT EXISTS "applications" (
   "id"                         TEXT        NOT NULL,
   "worker_id"                  TEXT        NOT NULL,
   "job_id"                     TEXT        NOT NULL,
@@ -58,15 +63,15 @@ CREATE TABLE "applications" (
 );
 
 -- ── Step 6: Unique constraint ─────────────────────────────────────────────────
-CREATE UNIQUE INDEX "applications_worker_id_job_id_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "applications_worker_id_job_id_key"
   ON "applications"("worker_id", "job_id");
 
 -- ── Step 7: Indexes ───────────────────────────────────────────────────────────
-CREATE INDEX "applications_worker_id_idx"   ON "applications"("worker_id");
-CREATE INDEX "applications_job_id_idx"      ON "applications"("job_id");
-CREATE INDEX "applications_employer_id_idx" ON "applications"("employer_id");
-CREATE INDEX "applications_status_idx"      ON "applications"("status");
-CREATE INDEX "applications_created_at_idx"  ON "applications"("created_at");
+CREATE INDEX IF NOT EXISTS "applications_worker_id_idx"   ON "applications"("worker_id");
+CREATE INDEX IF NOT EXISTS "applications_job_id_idx"      ON "applications"("job_id");
+CREATE INDEX IF NOT EXISTS "applications_employer_id_idx" ON "applications"("employer_id");
+CREATE INDEX IF NOT EXISTS "applications_status_idx"      ON "applications"("status");
+CREATE INDEX IF NOT EXISTS "applications_created_at_idx"  ON "applications"("created_at");
 
 -- ── Step 8: Foreign key constraints ──────────────────────────────────────────
 ALTER TABLE "applications"

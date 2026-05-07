@@ -1,19 +1,29 @@
 -- CreateEnum
-CREATE TYPE "AccountStatus" AS ENUM ('PENDING_EMAIL_VERIFICATION', 'PENDING_REVIEW', 'VERIFIED', 'REJECTED', 'SUSPENDED');
+DO $$
+BEGIN
+  CREATE TYPE "AccountStatus" AS ENUM ('PENDING_EMAIL_VERIFICATION', 'PENDING_REVIEW', 'VERIFIED', 'REJECTED', 'SUSPENDED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "VerificationCodeType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
+DO $$
+BEGIN
+  CREATE TYPE "VerificationCodeType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterTable: add OTP fields to User
 ALTER TABLE "User"
-  ADD COLUMN "account_status"                  "AccountStatus" NOT NULL DEFAULT 'PENDING_EMAIL_VERIFICATION',
-  ADD COLUMN "email_verification_code_hash"    TEXT,
-  ADD COLUMN "email_verification_expires_at"   TIMESTAMP(3),
-  ADD COLUMN "email_verification_attempts"     INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN "email_verification_sent_at"      TIMESTAMP(3);
+  ADD COLUMN IF NOT EXISTS "account_status"                  "AccountStatus" NOT NULL DEFAULT 'PENDING_EMAIL_VERIFICATION',
+  ADD COLUMN IF NOT EXISTS "email_verification_code_hash"    TEXT,
+  ADD COLUMN IF NOT EXISTS "email_verification_expires_at"   TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "email_verification_attempts"     INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "email_verification_sent_at"      TIMESTAMP(3);
 
 -- CreateTable
-CREATE TABLE "verification_codes" (
+CREATE TABLE IF NOT EXISTS "verification_codes" (
     "id"         TEXT NOT NULL,
     "userId"     TEXT NOT NULL,
     "type"       "VerificationCodeType" NOT NULL,
@@ -27,7 +37,7 @@ CREATE TABLE "verification_codes" (
 );
 
 -- CreateIndex
-CREATE INDEX "verification_codes_userId_type_idx" ON "verification_codes"("userId", "type");
+CREATE INDEX IF NOT EXISTS "verification_codes_userId_type_idx" ON "verification_codes"("userId", "type");
 
 -- AddForeignKey
 ALTER TABLE "verification_codes"

@@ -3,17 +3,22 @@
 -- creates Message table with named relations.
 
 -- Step 1: Create the NotificationType enum
-CREATE TYPE "NotificationType" AS ENUM (
-  'MESSAGE_RECEIVED',
-  'APPLICATION_UPDATE',
-  'PROFILE_APPROVED',
-  'PROFILE_REJECTED',
-  'JOB_MATCH',
-  'GENERAL'
-);
+DO $$
+BEGIN
+  CREATE TYPE "NotificationType" AS ENUM (
+    'MESSAGE_RECEIVED',
+    'APPLICATION_UPDATE',
+    'PROFILE_APPROVED',
+    'PROFILE_REJECTED',
+    'JOB_MATCH',
+    'GENERAL'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Step 2: Add a new typed column (nullable so existing rows aren't blocked)
-ALTER TABLE "Notification" ADD COLUMN "type_new" "NotificationType";
+ALTER TABLE "Notification" ADD COLUMN IF NOT EXISTS "type_new" "NotificationType";
 
 -- Step 3: Map all existing rows to GENERAL (old string values don't match new enum)
 UPDATE "Notification" SET "type_new" = 'GENERAL';
@@ -34,7 +39,7 @@ ALTER TABLE "Notification" ADD COLUMN "metadata" JSONB;
 CREATE INDEX IF NOT EXISTS "Notification_createdAt_idx" ON "Notification"("createdAt");
 
 -- Step 9: Create Message table
-CREATE TABLE "Message" (
+CREATE TABLE IF NOT EXISTS "Message" (
     "id"          TEXT         NOT NULL,
     "senderId"    TEXT         NOT NULL,
     "recipientId" TEXT         NOT NULL,
@@ -59,6 +64,6 @@ ALTER TABLE "Message"
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Step 11: Indexes for Message
-CREATE INDEX "Message_recipientId_idx" ON "Message"("recipientId");
-CREATE INDEX "Message_senderId_idx"    ON "Message"("senderId");
-CREATE INDEX "Message_createdAt_idx"   ON "Message"("createdAt");
+CREATE INDEX IF NOT EXISTS "Message_recipientId_idx" ON "Message"("recipientId");
+CREATE INDEX IF NOT EXISTS "Message_senderId_idx"    ON "Message"("senderId");
+CREATE INDEX IF NOT EXISTS "Message_createdAt_idx"   ON "Message"("createdAt");

@@ -4,31 +4,53 @@
 
 -- ── 1. New enums ──────────────────────────────────────────────────────────────
 
-CREATE TYPE "JobPostStatus" AS ENUM (
-  'DRAFT',
-  'PENDING_MODERATION',
-  'APPROVED',
-  'REJECTED',
-  'ARCHIVED'
-);
+DO $$
+BEGIN
+  CREATE TYPE "JobPostStatus" AS ENUM (
+    'DRAFT',
+    'PENDING_MODERATION',
+    'APPROVED',
+    'REJECTED',
+    'ARCHIVED'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE "ContractType" AS ENUM (
-  'FULL_TIME',
-  'PART_TIME',
-  'CONTRACT',
-  'TEMPORARY',
-  'INTERNSHIP',
-  'FREELANCE'
-);
+DO $$
+BEGIN
+  CREATE TYPE "ContractType" AS ENUM (
+    'FULL_TIME',
+    'PART_TIME',
+    'CONTRACT',
+    'TEMPORARY',
+    'INTERNSHIP',
+    'FREELANCE'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── 2. Clear referencing data before dropping source table ───────────────────
 -- Application and SavedJob rows reference old "JobPost" ids that won't exist
 -- in the new "job_posts" table. Purge them so FK re-creation succeeds.
 -- WorkerLock.jobPostId is nullable — just NULL it out.
 
-DELETE FROM "Application" WHERE "jobPostId" IS NOT NULL;
+DO $$
+BEGIN
+  DELETE FROM "Application" WHERE "jobPostId" IS NOT NULL;
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+END $$;
+
 DELETE FROM "SavedJob";
-UPDATE "WorkerLock" SET "jobPostId" = NULL WHERE "jobPostId" IS NOT NULL;
+
+DO $$
+BEGIN
+  UPDATE "WorkerLock" SET "jobPostId" = NULL WHERE "jobPostId" IS NOT NULL;
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+END $$;
 
 -- ── 3. Drop old dependent table ───────────────────────────────────────────────
 -- JobRequiredSkill has FK → "JobPost", drop it first to avoid constraint errors.
@@ -43,7 +65,7 @@ DROP TABLE IF EXISTS "JobPost" CASCADE;
 
 -- ── 5. Create new job_posts table ─────────────────────────────────────────────
 
-CREATE TABLE "job_posts" (
+CREATE TABLE IF NOT EXISTS "job_posts" (
   "id"                   TEXT         NOT NULL,
   "employer_id"          TEXT         NOT NULL,
 
@@ -91,11 +113,11 @@ CREATE TABLE "job_posts" (
 
 -- ── 6. Indexes ────────────────────────────────────────────────────────────────
 
-CREATE INDEX "job_posts_employer_id_idx" ON "job_posts"("employer_id");
-CREATE INDEX "job_posts_status_idx"      ON "job_posts"("status");
-CREATE INDEX "job_posts_country_idx"     ON "job_posts"("country");
-CREATE INDEX "job_posts_category_idx"    ON "job_posts"("category");
-CREATE INDEX "job_posts_created_at_idx"  ON "job_posts"("created_at");
+CREATE INDEX IF NOT EXISTS "job_posts_employer_id_idx" ON "job_posts"("employer_id");
+CREATE INDEX IF NOT EXISTS "job_posts_status_idx"      ON "job_posts"("status");
+CREATE INDEX IF NOT EXISTS "job_posts_country_idx"     ON "job_posts"("country");
+CREATE INDEX IF NOT EXISTS "job_posts_category_idx"    ON "job_posts"("category");
+CREATE INDEX IF NOT EXISTS "job_posts_created_at_idx"  ON "job_posts"("created_at");
 
 -- ── 7. FK: job_posts → User ───────────────────────────────────────────────────
 

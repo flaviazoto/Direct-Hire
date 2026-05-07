@@ -1,14 +1,14 @@
 // frontend/next.config.js
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-console.log(`[next.config.js] Proxying /api/* → ${BACKEND_URL}`);
+console.log(`[next.config.js] Proxying /api/* → ${API_URL}`);
 
 const nextConfig = {
   async rewrites() {
     return [
       {
         source:      "/api/:path*",
-        destination: `${BACKEND_URL}/api/:path*`,
+        destination: `${API_URL}/api/:path*`,
       },
     ];
   },
