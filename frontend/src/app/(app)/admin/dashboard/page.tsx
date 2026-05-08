@@ -271,26 +271,27 @@ export default function AdminDashboardPage() {
               ✓ No pending approvals
             </div>
           ) : (
-            <>
+            <div style={{ overflowX: "auto" }}>
               <div style={{
                 display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
                 padding: "10px 20px",
                 background: "rgba(255,255,255,0.02)",
                 borderBottom: `1px solid ${C.border}`,
+                minWidth: 480,
               }}>
                 {["User", "Role", "Risk", "Actions"].map(h => (
                   <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
                 ))}
               </div>
 
-              {pending.slice(0, 8).map(u => {
+              <div>{pending.slice(0, 8).map(u => {
                 const isLoading = (a: string) => actMap[u.userId + a] === "loading";
                 return (
                   <div key={u.userId} style={{
                     display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
                     padding: "13px 20px", alignItems: "center",
                     borderBottom: `1px solid ${C.border}`,
-                    transition: "background 0.15s",
+                    transition: "background 0.15s", minWidth: 480,
                   }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -353,8 +354,8 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 );
-              })}
-            </>
+              })}</div>
+            </div>
           )}
         </div>
 
@@ -514,11 +515,11 @@ export default function AdminDashboardPage() {
             No audit entries yet
           </div>
         ) : (
-          <>
+          <div style={{ overflowX: "auto" }}>
             <div style={{
               display: "grid", gridTemplateColumns: "160px 1fr 140px 120px",
               padding: "9px 20px", background: "rgba(255,255,255,0.02)",
-              borderBottom: `1px solid ${C.border}`,
+              borderBottom: `1px solid ${C.border}`, minWidth: 520,
             }}>
               {["Admin", "Action", "Target", "Time"].map(h => (
                 <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
@@ -530,7 +531,7 @@ export default function AdminDashboardPage() {
                 padding: "12px 20px", alignItems: "center",
                 borderBottom: `1px solid ${C.border}`,
                 fontSize: 13, color: C.text,
-                transition: "background 0.15s",
+                transition: "background 0.15s", minWidth: 520,
               }}
                 onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(255,255,255,0.02)")}
                 onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}
@@ -547,7 +548,7 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
             ))}
-          </>
+          </div>
         )}
       </div>
 
@@ -681,7 +682,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Quick nav cards ───────────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+      <div className="admin-quick-nav" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
         {[
           { href: "/admin/approvals",  icon: "✅", label: "Approval Queue",  sub: `${pendingCount} pending`,  accent: "rgba(245,158,11,0.14)" },
           { href: "/admin/fraud",      icon: "🛡",  label: "Fraud Console",  sub: "Risk monitoring",           accent: "rgba(220,38,38,0.14)" },

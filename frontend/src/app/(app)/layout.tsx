@@ -982,6 +982,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "row", minHeight: "100vh", background: "var(--navy, #05080f)" }}>
+      <style>{`
+        @media (max-width: 1023px) {
+          .app-sidebar       { display: none !important; }
+          .app-mobile-header { display: flex !important; }
+          .app-mobile-drawer { display: block !important; }
+          .app-bottom-nav    { display: grid !important; }
+          .worker-topbar     { display: none !important; }
+          .app-main          { padding-bottom: calc(max(10px, env(safe-area-inset-bottom, 10px)) + 74px) !important; }
+        }
+        @media (min-width: 1024px) {
+          .app-mobile-header { display: none !important; }
+          .app-bottom-nav    { display: none !important; }
+        }
+        @media (max-width: 768px) {
+          .admin-page-root { padding: 16px !important; }
+          .admin-quick-nav { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 480px) {
+          .admin-quick-nav { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
       <Sidebar role={role} />
       <main className="app-main" style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <MobileShellNav

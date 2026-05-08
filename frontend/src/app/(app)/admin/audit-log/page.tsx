@@ -223,16 +223,16 @@ export default function AdminAuditLogPage() {
   const textInputStyle: React.CSSProperties = { ...inputStyle, width: 180 };
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
+    <div className="admin-page-root" style={{ padding: 32, maxWidth: 1100 }}>
       <ToastDisplay toast={toast} />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: C.text }}>Audit Log</h1>
           <p style={{ margin: "6px 0 0", color: C.muted, fontSize: 14 }}>All admin actions across the platform</p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {hasFilters && (
             <button onClick={resetFilters} style={ghostBtn}>✕ Clear</button>
           )}

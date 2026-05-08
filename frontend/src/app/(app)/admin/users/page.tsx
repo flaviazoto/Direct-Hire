@@ -272,11 +272,11 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
+    <div className="admin-page-root" style={{ padding: 32, maxWidth: 1100 }}>
       <ToastDisplay toast={toast} />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: C.text }}>User Management</h1>
           <p style={{ margin: "6px 0 0", color: C.muted, fontSize: 14 }}>{total.toLocaleString()} users total</p>
