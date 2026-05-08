@@ -188,47 +188,23 @@ export default function LandingPage() {
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section style={{
-        position: "relative", minHeight: "auto",
-        display: "flex", alignItems: "center",
-        paddingTop: 70, paddingBottom: 80, overflow: "hidden",
-        background: "#010913",
-      }}>
+      <section className="relative flex items-center bg-[#010913] overflow-hidden py-16 sm:py-20 md:py-24 lg:py-28 min-h-auto">
         {/* Blue orb top-left */}
-        <div aria-hidden style={{
-          position: "absolute", top: -200, left: -150,
-          width: 900, height: 900, borderRadius: "50%",
+        <div aria-hidden className="absolute -top-48 -left-32 sm:-left-40 md:-left-48 w-96 h-96 sm:w-[36rem] sm:h-[36rem] md:w-[56rem] md:h-[56rem] rounded-full pointer-events-none" style={{
           background: "radial-gradient(circle, rgba(0,144,255,0.10) 0%, transparent 70%)",
-          pointerEvents: "none", filter: "blur(80px)",
+          filter: "blur(80px)",
         }} />
         {/* Purple orb top-right */}
-        <div aria-hidden style={{
-          position: "absolute", top: -100, right: -100,
-          width: 600, height: 600, borderRadius: "50%",
+        <div aria-hidden className="absolute -top-24 -right-20 sm:-right-28 md:-right-32 w-64 h-64 sm:w-80 sm:h-80 md:w-[30rem] md:h-[30rem] rounded-full pointer-events-none" style={{
           background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
-          pointerEvents: "none", filter: "blur(80px)",
+          filter: "blur(80px)",
         }} />
-        <div style={{
-          position: "relative", zIndex: 1,
-          maxWidth: 1280, margin: "0 auto",
-          padding: "32px 40px", width: "100%",
-          display: "grid", gridTemplateColumns: "52% 48%",
-          gap: 48, alignItems: "center",
-        }} className="hero-grid">
+        <div className="hero-grid relative z-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
 
           {/* LEFT: text */}
-          <div style={{ maxWidth: 560 }}>
+          <div className="max-w-2xl md:max-w-xl">
             {/* H1 */}
-            <h1 className="dh-reveal" style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(2.75rem, 4.5vw, 4.5rem)",
-              fontWeight: 900,
-              lineHeight: 1.12,
-              letterSpacing: "-1.5px",
-              color: "#fff",
-              margin: "0 0 24px",
-              maxWidth: 560,
-            }}>
+            <h1 className="dh-reveal font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight sm:leading-tight md:leading-tight lg:leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8 max-w-sm md:max-w-md lg:max-w-2xl">
               Find World-Class Talent<br />
               <span style={{
                 background: "linear-gradient(135deg, #0090FF 0%, #818cf8 50%, #6366F1 100%)",
@@ -241,12 +217,7 @@ export default function LandingPage() {
             </h1>
 
             {/* Subheadline */}
-            <p className="dh-reveal" style={{
-              fontSize: 17, color: "rgba(255,255,255,0.6)",
-              lineHeight: 1.8, maxWidth: 520,
-              fontFamily: "var(--font-body)", fontWeight: 400,
-              margin: "0 0 36px",
-            }}>
+            <p className="dh-reveal text-base sm:text-lg text-white/60 leading-relaxed max-w-sm md:max-w-md mb-6 md:mb-8">
               DirectHire&apos;s AI matches verified global workers with top employers across 190+ countries — intelligently, securely, at scale.
             </p>
 

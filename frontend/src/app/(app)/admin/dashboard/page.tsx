@@ -47,29 +47,17 @@ function KpiCard({
   label, value, sub, icon, accent,
 }: { label: string; value: string | number; sub?: string; icon: string; accent: string }) {
   return (
-    <div style={{
-      background: C.card,
-      border: `1px solid rgba(220,38,38,0.15)`,
-      borderRadius: 14,
-      padding: "20px 22px",
-      display: "flex", flexDirection: "column", gap: 10,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
-        <div style={{
-          width: 36, height: 36, borderRadius: 7,
-          background: accent,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16,
-        }}>{icon}</div>
+    <div className="bg-card border border-red-600/15 rounded-2xl p-5 sm:p-6 md:p-7 flex flex-col gap-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs sm:text-xs font-semibold text-muted uppercase tracking-wider">{label}</span>
+        <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg flex items-center justify-center text-base sm:text-lg" style={{ background: accent }}>
+          {icon}
+        </div>
       </div>
-      <div style={{
-        fontFamily: "var(--font-display)",
-        fontWeight: 800, fontSize: 28,
-        color: C.text,
-        lineHeight: 1,
-      }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
-      {sub && <div style={{ fontSize: 12, color: C.accent }}>{sub}</div>}
+      <div className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-text leading-none">
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </div>
+      {sub && <div className="text-xs sm:text-sm text-accent">{sub}</div>}
     </div>
   );
 }
@@ -218,52 +206,38 @@ export default function AdminDashboardPage() {
     .filter(s => (s as { riskScore?: number }).riskScore != null && (s as { riskScore?: number }).riskScore! >= 70);
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
+    <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-12 max-w-6xl mx-auto font-body">
 
       {/* ── Alert banner ─────────────────────────────────────────────────────── */}
       {pendingCount > 0 && (
-        <div style={{
-          marginBottom: 28,
-          padding: "14px 20px",
-          borderRadius: 10,
-          background: "rgba(220,38,38,0.08)",
-          border: "1px solid rgba(220,38,38,0.35)",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🚨</span>
-            <span style={{ color: C.secondary, fontWeight: 600, fontSize: 14 }}>
-              <strong style={{ color: C.accent }}>{pendingCount} applications</strong> awaiting your review
+        <div className="mb-6 md:mb-7 px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-red-600/8 border border-red-600/35 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            <span className="text-lg sm:text-2xl flex-shrink-0">🚨</span>
+            <span className="text-sm sm:text-base text-secondary font-semibold">
+              <strong className="text-accent">{pendingCount} applications</strong> awaiting your review
             </span>
           </div>
-          <Link href="/admin/users/pending" style={{
-            padding: "7px 16px", borderRadius: 7,
-            background: C.accent, color: "#fff",
-            fontSize: 13, fontWeight: 700, textDecoration: "none",
-          }}>Review Now →</Link>
+          <Link href="/admin/users/pending" className="px-4 py-2 rounded-lg bg-accent text-white text-xs sm:text-sm font-bold no-underline hover:opacity-90 transition-opacity flex-shrink-0">
+            Review Now →
+          </Link>
         </div>
       )}
 
       {/* ── Page header ──────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 10,
+      <div className="mb-6 md:mb-7 flex items-start gap-3 sm:gap-4">
+        <div className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-lg" style={{
           background: `linear-gradient(135deg, ${C.accent}, #b91c1c)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, boxShadow: "0 4px 18px rgba(220,38,38,0.3)",
-          flexShrink: 0,
         }}>⚡</div>
-        <div>
-          <h1 style={{
-            fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24,
-            color: C.text, margin: 0,
-          }}>Admin Control Center</h1>
-          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Platform oversight · real-time monitoring</p>
+        <div className="min-w-0">
+          <h1 className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-text m-0">
+            Admin Control Center
+          </h1>
+          <p className="text-xs sm:text-sm text-muted m-0 mt-1">Platform oversight · real-time monitoring</p>
         </div>
       </div>
 
-      {/* ── KPI grid (8 cards, 4 × 2) ─────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 }}>
+      {/* ── KPI grid (8 cards, 2×2 on mobile, 4×2 on desktop) ─────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 mb-6 md:mb-7">
         <KpiCard label="Total Workers"    value={stats.users.workers}             icon="👷" accent="rgba(59,130,246,0.15)"  sub={`+${stats.users.newToday} today`} />
         <KpiCard label="Total Employers"  value={stats.users.employers}           icon="🏢" accent="rgba(99,102,241,0.15)"  />
         <KpiCard label="Pending Review"   value={stats.verification.pending}      icon="🔍" accent="rgba(220,38,38,0.18)"   />
@@ -275,13 +249,10 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Two-column: pending approvals + fraud alerts ───────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 mb-6 md:mb-7">
 
         {/* Pending Approvals table */}
-        <div style={{
-          background: C.card, border: `1px solid ${C.border}`,
-          borderRadius: 14, overflow: "hidden",
-        }}>
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
           <div style={{
             padding: "16px 20px",
             borderBottom: `1px solid ${C.border}`,
@@ -461,7 +432,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── AI Performance panels + Registration chart ─────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-6 md:mb-7">
 
         {/* AI Performance mini cards */}
         <div style={{

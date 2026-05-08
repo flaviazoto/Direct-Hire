@@ -100,23 +100,13 @@ function KpiCard({
   label, value, icon, sub,
 }: { label: string; value: string | number; icon: string; sub?: string }) {
   return (
-    <div style={{
-      background: "var(--navy-2)",
-      border: "1px solid var(--border)",
-      borderLeft: "3px solid var(--worker-primary)",
-      borderRadius: "var(--r-lg)",
-      padding: "18px 20px",
-      display: "flex", flexDirection: "column", gap: 8,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--font-body)" }}>{label}</span>
-        <span style={{ fontSize: 18 }}>{icon}</span>
+    <div className="bg-navy-2 border border-border rounded-xl p-4 sm:p-5 md:p-6 flex flex-col gap-2 hover:border-purple-500/35 transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="text-xs sm:text-xs font-semibold text-muted uppercase tracking-wider">{label}</span>
+        <span className="text-lg sm:text-xl">{icon}</span>
       </div>
-      <span style={{
-        fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 30,
-        color: "var(--white)", lineHeight: 1,
-      }}>{value}</span>
-      {sub && <span style={{ fontSize: 12, color: "var(--worker-3)", fontFamily: "var(--font-body)" }}>{sub}</span>}
+      <span className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-white leading-none">{value}</span>
+      {sub && <span className="text-xs sm:text-sm text-worker-3 font-body">{sub}</span>}
     </div>
   );
 }
@@ -289,52 +279,38 @@ function WorkerDashboardContent() {
       <ToastDisplay toast={toast} />
 
       {/* ── Welcome hero ─────────────────────────────────────────────────────── */}
-      <div style={{
-        padding: "36px 40px 32px",
-        background: "radial-gradient(ellipse 80% 120% at 70% 0%, rgba(124,58,237,0.12) 0%, transparent 65%)",
-        borderBottom: "1px solid var(--border)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
-          <div>
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-9 bg-gradient-to-b from-purple-500/5 to-transparent border-b border-border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 md:gap-8 flex-wrap">
+          <div className="w-full">
             {/* Pill badge */}
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)", borderRadius: 20, padding: "5px 13px", marginBottom: 14 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--worker-primary)", boxShadow: "0 0 8px var(--worker-primary)" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--worker-3)", fontFamily: "var(--font-body)" }}>Worker Portal</span>
+            <div className="inline-flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/25 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 mb-2 sm:mb-3 md:mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-worker-primary shadow-glow" />
+              <span className="text-xs sm:text-xs font-semibold uppercase tracking-wider text-worker-3">Worker Portal</span>
             </div>
-            <h1 style={{
-              fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(24px, 3vw, 32px)",
-              color: "var(--white)", margin: "0 0 10px", letterSpacing: "-1px",
-            }}>{greeting()}, {firstName} 👋</h1>
-            <p style={{ fontSize: 14, color: "var(--muted)", margin: 0, lineHeight: 1.6 }}>
+            <h1 className="font-display font-bold text-2xl sm:text-3xl md:text-4xl text-white mb-1.5 sm:mb-2 md:mb-3 tracking-tight">
+              {greeting()}, {firstName} 👋
+            </h1>
+            <p className="text-sm sm:text-base text-muted leading-relaxed max-w-md">
               {isApproved
                 ? "Your AI engine is actively matching you to global opportunities."
                 : statusInfo.desc}
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             {needsAction && (
-              <Link href="/worker/onboarding" style={{
-                padding: "11px 24px", borderRadius: 10,
-                background: "var(--worker-primary)", color: "#fff",
-                fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600,
-                textDecoration: "none", boxShadow: "0 4px 18px var(--worker-glow)",
-              }}>{statusInfo.cta ?? "Continue Setup"} →</Link>
+              <Link href="/worker/onboarding" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg bg-worker-primary text-white text-sm sm:text-base font-semibold shadow-glow hover:opacity-90 transition-opacity">
+                {statusInfo.cta ?? "Continue Setup"} →
+              </Link>
             )}
             {isApproved && (
-              <Link href="/worker/jobs" style={{
-                padding: "11px 24px", borderRadius: 10,
-                background: "var(--worker-primary)", color: "#fff",
-                fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600,
-                textDecoration: "none", boxShadow: "0 4px 18px var(--worker-glow)",
-              }}>Browse Job Matches →</Link>
+              <Link href="/worker/jobs" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg bg-worker-primary text-white text-sm sm:text-base font-semibold shadow-glow hover:opacity-90 transition-opacity">
+                Browse Job Matches →
+              </Link>
             )}
-            <Link href="/worker/profile" style={{
-              padding: "11px 24px", borderRadius: 10, border: "1px solid var(--border)",
-              background: "transparent", color: "var(--white)",
-              fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600,
-              textDecoration: "none",
-            }}>View Profile</Link>
+            <Link href="/worker/profile" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg border border-border bg-transparent text-white text-sm sm:text-base font-semibold hover:bg-white/5 transition-colors">
+              View Profile
+            </Link>
           </div>
         </div>
       </div>
@@ -344,10 +320,10 @@ function WorkerDashboardContent() {
         <LockStatusBanner />
       </div>
 
-      <div style={{ padding: "28px 40px 48px", display: "flex", flexDirection: "column", gap: 28 }}>
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-12 flex flex-col gap-6 md:gap-7">
 
         {/* ── KPI row ──────────────────────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
           <KpiCard label="Profile Score"      value={`${profileScore}%`} icon="⭐" sub={profileScore >= 80 ? "Excellent" : "Keep improving"} />
           <KpiCard label="Applications Sent"  value={appsSent}           icon="📋" sub={appsSent > 0 ? "Track in Applications" : "Start applying"} />
           <KpiCard label="Interview Requests" value={interviewCount}     icon="📅" sub={interviewCount > 0 ? "Check your schedule" : "Keep applying"} />
@@ -416,32 +392,27 @@ function WorkerDashboardContent() {
         {/* ── Recommended Jobs ─────────────────────────────────────────────────── */}
         {jobs.length > 0 && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{
-                fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18,
-                color: "var(--white)", margin: 0,
-              }}>Recommended Jobs</h2>
-              <Link href="/worker/jobs" style={{
-                fontSize: 13, fontWeight: 600, color: "var(--worker-3)",
-                textDecoration: "none", fontFamily: "var(--font-body)",
-              }}>View all matches →</Link>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 md:mb-5">
+              <h2 className="font-display font-bold text-xl sm:text-2xl text-white">
+                Recommended Jobs
+              </h2>
+              <Link href="/worker/jobs" className="text-sm font-semibold text-worker-3 hover:text-worker-primary transition-colors">
+                View all matches →
+              </Link>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
               {jobs.map(job => <JobCard key={job.id} job={job} />)}
             </div>
           </div>
         )}
 
         {/* ── Status + Notifications two-col ──────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 
           {/* Application status timeline */}
-          <div style={{
-            background: "var(--navy-2)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)", overflow: "hidden",
-          }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>
+          <div className="bg-navy-2 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
+              <h3 className="font-display font-bold text-base sm:text-lg text-white">
                 Application Status
               </h3>
             </div>
@@ -513,26 +484,18 @@ function WorkerDashboardContent() {
         </div>
 
         {/* ── Quick links ───────────────────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
           {[
             { href: "/worker/jobs",         icon: "💼", label: "Browse Jobs",    sub: "Find new matches" },
             { href: "/worker/applications", icon: "📋", label: "My Applications",sub: `${appsSent} sent` },
             { href: "/worker/profile",      icon: "👤", label: "My Profile",     sub: `${completePct}% complete` },
             { href: "/worker/documents",    icon: "📁", label: "Documents",      sub: "Uploads & IDs" },
           ].map(({ href, icon, label, sub }) => (
-            <Link key={href} href={href} style={{
-              background: "var(--navy-2)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-lg)", padding: "16px 18px",
-              display: "flex", alignItems: "center", gap: 12,
-              textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.35)"; e.currentTarget.style.background = "rgba(124,58,237,0.04)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--navy-2)"; }}
-            >
-              <div style={{ width: 38, height: 38, borderRadius: "var(--r-sm)", background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-body)" }}>{label}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>{sub}</div>
+            <Link key={href} href={href} className="bg-navy-2 border border-border rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 no-underline transition-all hover:border-purple-500/35 hover:bg-purple-500/5">
+              <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-md bg-purple-500/12 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">{icon}</div>
+              <div className="min-w-0">
+                <div className="text-sm sm:text-base font-semibold text-white truncate">{label}</div>
+                <div className="text-xs sm:text-sm text-muted line-clamp-1">{sub}</div>
               </div>
             </Link>
           ))}
