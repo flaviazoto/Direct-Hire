@@ -29,8 +29,8 @@ export function PremiumTable<T extends Record<string, unknown>>({
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   return (
-    <div style={{ overflowX: "auto", width: "100%" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+    <div className="dh-table-scroll" style={{ overflowX: "auto", width: "100%", WebkitOverflowScrolling: "touch" }}>
+      <table style={{ width: "100%", minWidth: "720px", borderCollapse: "collapse", fontSize: "0.875rem" }}>
         <thead style={{
           position: stickyHead ? "sticky" : "static",
           top: 0,

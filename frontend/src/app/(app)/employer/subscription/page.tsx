@@ -258,7 +258,8 @@ export default function SubscriptionPage() {
               <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
                 Payment history
               </h2>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
                     {["Date", "Amount", "Description", "Status"].map(h => (
@@ -288,7 +289,8 @@ export default function SubscriptionPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </>

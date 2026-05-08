@@ -625,12 +625,49 @@ export default function EmployerOnboardingPage() {
         .employer-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.35); }
         .employer-textarea:focus { border-color: #0E7490 !important; outline: none; }
         .employer-textarea::placeholder { color: rgba(255,255,255,0.25); }
+        .employer-onboarding-card,
+        .employer-onboarding-card * {
+          max-width: 100%;
+        }
+        @media (max-width: 640px) {
+          .employer-onboarding-topbar {
+            padding: 12px 1rem !important;
+          }
+          .employer-onboarding-topbar > div:last-child {
+            gap: 8px !important;
+          }
+          .employer-onboarding-stepper {
+            padding: 14px 1rem 12px !important;
+          }
+          .employer-onboarding-scroll {
+            padding: 1rem 0.75rem 0.5rem !important;
+          }
+          .employer-onboarding-card {
+            border-radius: 16px !important;
+            padding: 1.25rem 1rem !important;
+          }
+          .employer-onboarding-actions {
+            padding: 0.85rem 0.75rem calc(0.85rem + env(safe-area-inset-bottom)) !important;
+          }
+          .employer-onboarding-actions-inner {
+            flex-direction: column-reverse !important;
+            gap: 10px !important;
+          }
+          .employer-onboarding-actions-inner button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .employer-input,
+          .employer-textarea {
+            font-size: 16px !important;
+          }
+        }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#010913", display: "flex", flexDirection: "column", fontFamily: "var(--font-body)" }}>
 
         {/* ── Header ──────────────────────────────────────────────── */}
-        <div style={{
+        <div className="employer-onboarding-topbar" style={{
           background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.07)",
           padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
           position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(12px)",
@@ -654,7 +691,7 @@ export default function EmployerOnboardingPage() {
         </div>
 
         {/* ── Premium Stepper ──────────────────────────────────────── */}
-        <div style={{ padding: "16px 20px 14px", background: "rgba(255,255,255,0.015)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="employer-onboarding-stepper" style={{ padding: "16px 20px 14px", background: "rgba(255,255,255,0.015)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", maxWidth: 380, margin: "0 auto" }}>
             {STEP_LABELS.map((_, i) => {
               const isCompleted = i < uiStep;
@@ -695,8 +732,8 @@ export default function EmployerOnboardingPage() {
         </div>
 
         {/* ── Step Content ─────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 8px" }}>
-          <div style={{
+        <div className="employer-onboarding-scroll" style={{ flex: 1, overflowY: "auto", padding: "24px 16px 8px" }}>
+          <div className="employer-onboarding-card" style={{
             background: "rgba(255,255,255,0.03)",
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 20,
@@ -708,9 +745,9 @@ export default function EmployerOnboardingPage() {
         </div>
 
         {/* ── Sticky Footer ────────────────────────────────────────── */}
-        <div style={{ position: "sticky", bottom: 0, background: "rgba(1,9,19,0.96)", backdropFilter: "blur(16px)", borderTop: "1px solid rgba(255,255,255,0.08)", padding: "16px 16px 20px" }}>
+        <div className="employer-onboarding-actions" style={{ position: "sticky", bottom: 0, background: "rgba(1,9,19,0.96)", backdropFilter: "blur(16px)", borderTop: "1px solid rgba(255,255,255,0.08)", padding: "16px 16px 20px" }}>
           {stepErrors._form && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8, fontWeight: 500 }}>⚠ {stepErrors._form}</div>}
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="employer-onboarding-actions-inner" style={{ display: "flex", gap: 10 }}>
             {uiStep > 0 && (
               <button type="button" onClick={goBack}
                 style={{ padding: "14px 20px", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, background: "rgba(255,255,255,0.04)", cursor: "pointer" }}>

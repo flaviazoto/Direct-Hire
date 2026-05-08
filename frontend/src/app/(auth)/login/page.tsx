@@ -220,11 +220,16 @@ function LoginPageContent() {
         .login-oauth-btn:hover:not(:disabled) { background: #f9fafb; border-color: #9ca3af; }
         .login-oauth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .login-right-panel { display: flex; }
-        @media (max-width: 768px) { .login-right-panel { display: none !important; } .login-left { width: 100% !important; } }
+        @media (max-width: 768px) {
+          .login-shell { min-height: 100dvh !important; height: auto !important; overflow: visible !important; }
+          .login-right-panel { display: none !important; }
+          .login-left { width: 100% !important; min-height: 100dvh !important; align-items: flex-start !important; padding: 32px 18px !important; }
+          .login-left > div { max-width: 420px !important; margin: 0 auto !important; }
+        }
         input::placeholder { color: #9ca3af; }
       ` }} />
 
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <div className="login-shell" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
 
         {/* ── LEFT COLUMN ─────────────────────────────────────────────────────── */}
         <div className="login-left" style={{

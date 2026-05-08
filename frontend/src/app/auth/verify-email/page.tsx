@@ -82,9 +82,10 @@ function OtpInput({ value, onChange, disabled }: OtpInputProps) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+    <div className="otp-row" style={{ display: "flex", gap: 10, justifyContent: "center" }}>
       {[0, 1, 2, 3, 4, 5].map((idx) => (
         <input
+          className="otp-digit"
           key={idx}
           ref={(el) => { refs.current[idx] = el; }}
           type="text"
@@ -197,6 +198,16 @@ function VerifyEmailOtpContent() {
         input[type="text"]:focus {
           border-color: #0090FF !important;
           box-shadow: 0 0 0 3px rgba(0,144,255,0.15) !important;
+        }
+        @media (max-width: 480px) {
+          .otp-fade > div:last-of-type { padding: 30px 18px !important; border-radius: 16px !important; }
+          .otp-row { gap: 6px !important; }
+          .otp-digit {
+            width: min(42px, calc((100vw - 84px) / 6)) !important;
+            height: 54px !important;
+            font-size: 20px !important;
+            border-radius: 10px !important;
+          }
         }
       `}</style>
 

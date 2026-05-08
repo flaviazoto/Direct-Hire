@@ -208,7 +208,8 @@ export default function AdminFraudPage() {
               <div style={{ color: C.muted, fontSize: 14 }}>No high-risk users detected</div>
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table style={{ width: "100%", minWidth: 720, borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
                   {["User", "Role", "Risk Score", "Status", "Joined"].map(h => (
@@ -243,7 +244,8 @@ export default function AdminFraudPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
       </div>
@@ -271,7 +273,8 @@ export default function AdminFraudPage() {
         </div>
       ) : (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
                 {["User", "Role", "Status", "Joined", "Actions"].map(h => (
@@ -310,7 +313,8 @@ export default function AdminFraudPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
 

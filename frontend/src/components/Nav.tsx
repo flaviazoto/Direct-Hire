@@ -30,6 +30,10 @@ export function Nav() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
   const isLoggedIn = auth.isLoggedIn;
   const role       = isLoggedIn ? auth.role      : undefined;
   const firstName  = isLoggedIn ? auth.firstName : undefined;
@@ -123,6 +127,7 @@ export function Nav() {
         display: "grid",
         gridTemplateColumns: "200px 1fr 200px",
         alignItems: "center",
+        minWidth: 0,
       }}>
 
         {/* LEFT: Logo */}
@@ -242,11 +247,14 @@ export function Nav() {
       )}
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .nav-inner     { display: flex !important; justify-content: space-between !important; }
           .nav-links     { display: none !important; }
           .nav-auth      { display: none !important; }
           .nav-hamburger { display: flex !important; }
+        }
+        @media (max-width: 640px) {
+          .nav-inner { padding: 0 16px !important; }
         }
       `}</style>
     </header>

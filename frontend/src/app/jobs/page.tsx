@@ -1194,9 +1194,12 @@ function JobBoardContent() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .desktop-sidebar { display: none !important; }
           .mobile-filter-bar { display: block !important; }
+        }
+        @media (max-width: 640px) {
+          .mobile-filter-bar + div { padding-top: 20px !important; padding-bottom: 32px !important; }
         }
       `}</style>
     </div>

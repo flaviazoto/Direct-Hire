@@ -294,7 +294,8 @@ function EmployerApplicationsContent() {
         <EmptyState icon="📬" title="No applications yet" description="Applications matching this filter will appear here." />
       ) : (
         <div style={{ background: "var(--navy-2)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" as const }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <table style={{ width: "100%", minWidth: 920, borderCollapse: "collapse" as const }}>
             <thead>
               <tr style={{ background: "var(--navy-3)" }}>
                 {["Applicant", "Applied For", "Match Score", "Status", "Applied Date", "Actions"].map(h => (
@@ -409,7 +410,8 @@ function EmployerApplicationsContent() {
                 );
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
 
           {/* Pagination */}
           {total > 20 && (

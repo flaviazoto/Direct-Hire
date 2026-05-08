@@ -11,18 +11,20 @@ interface DataCardProps {
 
 export function DataCard({ title, action, children, style, noPad }: DataCardProps) {
   return (
-    <div style={{
+    <div className="dh-data-card" style={{
       background: "var(--dh-navy-2, #0b1120)",
       border: "1px solid var(--dh-border, rgba(59,130,246,0.15))",
       borderRadius: "var(--dh-radius-lg, 16px)",
       overflow: "hidden",
+      minWidth: 0,
       ...style,
     }}>
       {/* Header */}
-      <div style={{
+      <div className="dh-data-card-header" style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: 12,
         padding: "16px 20px",
         borderBottom: "1px solid var(--dh-border, rgba(59,130,246,0.15))",
       }}>
@@ -37,14 +39,14 @@ export function DataCard({ title, action, children, style, noPad }: DataCardProp
           {title}
         </h3>
         {action && (
-          <div style={{ fontSize: "0.8125rem" }}>
+          <div style={{ fontSize: "0.8125rem", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
             {action}
           </div>
         )}
       </div>
 
       {/* Body */}
-      <div style={{ padding: noPad ? 0 : 20 }}>
+      <div style={{ padding: noPad ? 0 : 20, minWidth: 0 }}>
         {children}
       </div>
     </div>

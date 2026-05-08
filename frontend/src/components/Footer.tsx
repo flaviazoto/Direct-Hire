@@ -81,7 +81,7 @@ export function Footer() {
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 2rem" }}>
 
         {/* Top section */}
-        <div style={{
+        <div className="footer-grid" style={{
           display: "grid",
           gridTemplateColumns: "30% repeat(4, 17.5%)",
           gap: "2rem",
@@ -210,7 +210,7 @@ export function Footer() {
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "3rem 0 0" }} />
 
         {/* Bottom bar */}
-        <div style={{
+        <div className="footer-bottom" style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",

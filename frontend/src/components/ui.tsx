@@ -136,10 +136,12 @@ export function Button({
     fontWeight: 600,
     cursor: "pointer",
     userSelect: "none",
-    whiteSpace: "nowrap",
+    whiteSpace: "normal",
     transition: "all 0.15s ease",
     outline: "none",
-    flexShrink: 0,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: "100%",
     opacity: props.disabled || loading ? 0.4 : 1,
     pointerEvents: props.disabled || loading ? "none" : undefined,
     ...sizeStyle,
@@ -161,7 +163,7 @@ export function Button({
   return (
     <button
       style={combinedStyle}
-      className={className}
+      className={cn("dh-page-header", className)}
       disabled={props.disabled || loading}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -997,17 +999,19 @@ export function PageHeader({
           {title}
         </h1>
         {description && (
-          <p style={{ fontSize: "14px", color: "#71717a", margin: "4px 0 0 0", lineHeight: 1.5 }}>
+          <p style={{ fontSize: "14px", color: "#71717a", margin: "4px 0 0 0", lineHeight: 1.5, maxWidth: 720 }}>
             {description}
           </p>
         )}
       </div>
       {actions && (
         <div
+          className="dh-page-header-actions"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
+            flexWrap: "wrap",
             flexShrink: 0,
             marginTop: "2px",
           }}

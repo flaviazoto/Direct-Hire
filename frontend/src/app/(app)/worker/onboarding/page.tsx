@@ -277,7 +277,7 @@ export default function WorkerOnboardingPage() {
               <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>All data is securely stored and used only for employment matching.</p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="onboarding-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={labelSt}>First Name <span style={{ color: "#f87171" }}>*</span></label>
                   <input {...register("firstName")} className={inputClass("firstName")} placeholder="Ana" />
@@ -651,7 +651,45 @@ export default function WorkerOnboardingPage() {
     <>
       <style>{`
         @media (min-width: 640px) { .step-label { display: block !important; } }
-        @media (max-width: 640px) { .onboarding-card { border-radius: 16px !important; } }
+        @media (max-width: 640px) {
+          .onboarding-topbar {
+            padding: 0 1rem !important;
+          }
+          .onboarding-topbar > span {
+            display: none !important;
+          }
+          .onboarding-stepper {
+            padding: 1rem !important;
+            overflow-x: hidden !important;
+          }
+          .onboarding-scroll {
+            padding: 1rem 0.75rem !important;
+          }
+          .onboarding-card {
+            border-radius: 16px !important;
+          }
+          .onboarding-card-body {
+            padding: 1.25rem 1rem 1.5rem !important;
+          }
+          .onboarding-actions {
+            padding: 0.85rem 0.75rem calc(0.85rem + env(safe-area-inset-bottom)) !important;
+          }
+          .onboarding-actions-inner {
+            flex-direction: column-reverse !important;
+            gap: 10px !important;
+          }
+          .onboarding-actions-inner button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .onboarding-grid-2 {
+            grid-template-columns: 1fr !important;
+          }
+          .worker-input,
+          .worker-textarea {
+            font-size: 16px !important;
+          }
+        }
         .worker-input::placeholder { color: rgba(255,255,255,0.25) !important; }
         .worker-input:focus { border-color: #0090FF !important; background: rgba(0,144,255,0.06) !important; }
         .worker-input option { background: #0a1628; color: #ffffff; }
@@ -664,7 +702,7 @@ export default function WorkerOnboardingPage() {
       <div style={{ minHeight: "100vh", background: "#010913", display: "flex", flexDirection: "column", fontFamily: "var(--font-body)" }}>
 
         {/* ── Header ──────────────────────────────────────────────── */}
-        <header style={{
+        <header className="onboarding-topbar" style={{
           position: "sticky", top: 0, zIndex: 50,
           background: "rgba(5,13,26,0.95)",
           backdropFilter: "blur(20px)",
@@ -687,7 +725,7 @@ export default function WorkerOnboardingPage() {
         </header>
 
         {/* ── Premium Stepper ──────────────────────────────────────── */}
-        <div style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1.25rem 2rem" }}>
+        <div className="onboarding-stepper" style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1.25rem 2rem" }}>
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginBottom: "1rem" }}>
               {STEP_LABELS.map((label, i) => (
@@ -749,7 +787,7 @@ export default function WorkerOnboardingPage() {
         </div>
 
         {/* ── Step Content ─────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "2rem 1rem" }}>
+        <div className="onboarding-scroll" style={{ flex: 1, overflowY: "auto", padding: "2rem 1rem" }}>
           <div className="onboarding-card" style={{
             maxWidth: 680, margin: "0 auto",
             background: "rgba(255,255,255,0.03)",
@@ -757,14 +795,14 @@ export default function WorkerOnboardingPage() {
             borderRadius: 24,
             overflow: "hidden",
           }}>
-            <div style={{ padding: "1.75rem 2rem 2rem" }}>
+            <div className="onboarding-card-body" style={{ padding: "1.75rem 2rem 2rem" }}>
               {renderStep()}
             </div>
           </div>
         </div>
 
         {/* ── Sticky Footer ────────────────────────────────────────── */}
-        <div style={{
+        <div className="onboarding-actions" style={{
           position: "sticky", bottom: 0,
           background: "rgba(5,13,26,0.95)",
           backdropFilter: "blur(20px)",
@@ -774,7 +812,7 @@ export default function WorkerOnboardingPage() {
           {stepErrors._form && (
             <div style={{ maxWidth: 680, margin: "0 auto 8px", fontSize: 12, color: "#f87171" }}>⚠ {stepErrors._form}</div>
           )}
-          <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 12 }}>
+          <div className="onboarding-actions-inner" style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 12 }}>
             {uiStep > 0 && (
               <button type="button" onClick={goBack} style={{
                 padding: "14px 24px",

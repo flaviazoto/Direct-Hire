@@ -35,7 +35,7 @@ export function PublicFooter() {
       padding:"64px 0 32px",
     }}>
       <div className="container">
-        <div style={{
+        <div className="public-footer-grid" style={{
           display:"grid",
           gridTemplateColumns:"2fr 1fr 1fr 1fr",
           gap:48, marginBottom:48,
@@ -95,7 +95,7 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div style={{
+        <div className="public-footer-bottom" style={{
           borderTop:"1px solid var(--surface-border,#1E3258)",
           paddingTop:24,
           display:"flex", justifyContent:"space-between",
@@ -117,6 +117,15 @@ export function PublicFooter() {
           </p>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 900px) {
+          .public-footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
+        }
+        @media (max-width: 640px) {
+          .public-footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; margin-bottom: 36px !important; }
+          .public-footer-bottom { flex-direction: column !important; align-items: flex-start !important; }
+        }
+      `}</style>
     </footer>
   );
 }

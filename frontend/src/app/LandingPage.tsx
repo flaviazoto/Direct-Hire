@@ -246,7 +246,7 @@ export default function LandingPage() {
             </div>
 
             {/* CTA buttons */}
-            <div className="dh-reveal" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, marginBottom: 52 }}>
+            <div className="dh-reveal hero-cta-row" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, marginBottom: 52 }}>
               <Link href="/register?role=employer" style={{
                 display: "inline-flex", alignItems: "center",
                 padding: "14px 28px",
@@ -300,14 +300,14 @@ export default function LandingPage() {
               <span style={{ fontFamily: "var(--font-body)", display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "rgba(255,255,255,0.2)", marginBottom: 12, width: "100%" }}>
                 Platform stats
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+              <div className="hero-stats-row" style={{ display: "flex", alignItems: "center", gap: 0 }}>
                 {[
                   { n: "2.4M+", l: "Workers"   },
                   { n: "190+",  l: "Countries" },
                   { n: "847K",  l: "Jobs"       },
                 ].map((s, i) => (
                   <div key={s.l} style={{ display: "flex", alignItems: "center" }}>
-                    {i > 0 && <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.1)", margin: "0 28px", flexShrink: 0 }} />}
+                    {i > 0 && <div className="hero-stat-divider" style={{ width: 1, height: 48, background: "rgba(255,255,255,0.1)", margin: "0 28px", flexShrink: 0 }} />}
                     <div>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.n}</div>
                       <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{s.l}</div>
@@ -402,7 +402,11 @@ export default function LandingPage() {
             .hero-globe-col { display: none !important; }
           }
           @media (max-width: 540px) {
-            .hero-grid h1   { font-size: 2.75rem !important; letter-spacing: -2px !important; }
+            .hero-grid h1   { font-size: 2.2rem !important; letter-spacing: 0 !important; }
+            .hero-cta-row > a { width: 100% !important; justify-content: center !important; }
+            .hero-stats-row { align-items: stretch !important; justify-content: space-between !important; gap: 12px !important; }
+            .hero-stats-row > div { flex: 1 1 0 !important; min-width: 0 !important; }
+            .hero-stat-divider { display: none !important; }
           }
         `}</style>
       </section>

@@ -101,7 +101,7 @@ export default function PricingPage() {
       {/* PLANS */}
       <section style={{ padding:"20px 32px 100px", background:"var(--navy-950,#060B18)" }}>
         <div className="container">
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24, alignItems:"start" }}>
+          <div className="pricing-plans-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24, alignItems:"start" }}>
             {PLANS.map(plan => (
               <div key={plan.id} style={{
                 background:"var(--surface,#0F1C35)",
@@ -162,15 +162,15 @@ export default function PricingPage() {
       <section className="section-sm" style={{ background:"var(--navy-900,#0A1628)", borderTop:"1px solid var(--surface-border,#1E3258)" }}>
         <div className="container">
           <h2 className="text-display-md" style={{ color:"var(--text-primary,#F0F4FF)", marginBottom:40, textAlign:"center" }}>Full comparison</h2>
-          <div style={{ maxWidth:900, margin:"0 auto", border:"1px solid var(--surface-border,#1E3258)", borderRadius:20, overflow:"hidden" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", background:"var(--surface,#0F1C35)", padding:"14px 24px", borderBottom:"1px solid var(--surface-border,#1E3258)" }}>
+          <div className="pricing-table-shell" style={{ maxWidth:900, margin:"0 auto", border:"1px solid var(--surface-border,#1E3258)", borderRadius:20, overflow:"hidden" }}>
+            <div className="pricing-table-row" style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", background:"var(--surface,#0F1C35)", padding:"14px 24px", borderBottom:"1px solid var(--surface-border,#1E3258)" }}>
               <div style={{ fontSize:12, fontWeight:700, color:"var(--text-muted,#4A5980)", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-body,'DM Sans',system-ui,sans-serif)" }}>Feature</div>
               {["Starter","Growth","Enterprise"].map(n => (
                 <div key={n} style={{ fontSize:13, fontWeight:700, color:"var(--text-primary,#F0F4FF)", textAlign:"center", fontFamily:"var(--font-body,'DM Sans',system-ui,sans-serif)" }}>{n}</div>
               ))}
             </div>
             {COMPARE.map((row, i) => (
-              <div key={i} style={{
+              <div key={i} className="pricing-table-row" style={{
                 display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
                 padding:"14px 24px",
                 borderBottom:i < COMPARE.length - 1 ? "1px solid rgba(30,50,88,0.5)" : "none",
@@ -198,7 +198,7 @@ export default function PricingPage() {
           <p className="text-body" style={{ maxWidth:640, margin:"0 auto 32px" }}>
             Registering and building your profile is completely free. A small application fee applies when you apply to a specific job post. This fee varies based on the region, job salary level, and market demand — typically between <strong style={{ color:"var(--text-primary,#F0F4FF)" }}>€8 and €85</strong>.
           </p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, maxWidth:600, margin:"0 auto" }}>
+          <div className="worker-pricing-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, maxWidth:600, margin:"0 auto" }}>
             {[
               { label:"Profile creation", value:"Free",   color:"#34D399" },
               { label:"AI job matching",  value:"Free",   color:"#34D399" },
@@ -247,6 +247,17 @@ export default function PricingPage() {
       </section>
 
       <Footer />
+      <style>{`
+        @media (max-width: 1024px) {
+          .pricing-plans-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 700px) {
+          .pricing-plans-grid,
+          .worker-pricing-grid { grid-template-columns: 1fr !important; }
+          .pricing-table-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .pricing-table-row { min-width: 680px; }
+        }
+      `}</style>
     </main>
   );
 }

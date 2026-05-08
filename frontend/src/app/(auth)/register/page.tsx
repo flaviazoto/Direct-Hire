@@ -241,15 +241,21 @@ export default function RegisterPage() {
         .reg-oauth-btn:hover:not(:disabled) { background: #f9fafb; border-color: #9ca3af; }
         .reg-oauth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .reg-right-panel { display: flex; }
-        @media (max-width: 768px) { .reg-right-panel { display: none !important; } .reg-left { width: 100% !important; } }
+        @media (max-width: 768px) {
+          .reg-shell { min-height: 100dvh !important; height: auto !important; overflow: visible !important; }
+          .reg-right-panel { display: none !important; }
+          .reg-left { width: 100% !important; min-height: 100dvh !important; padding: 32px 18px !important; }
+          .reg-left > div { max-width: 420px !important; margin: 0 auto !important; }
+          .reg-name-grid { grid-template-columns: 1fr !important; }
+        }
         input::placeholder { color: #9ca3af; }
       ` }} />
 
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <div className="reg-shell" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
 
         {/* ── LEFT COLUMN ─────────────────────────────────────────────────────── */}
         <div className="reg-left" style={{
-          width: "45%", background: "#dark blue",
+          width: "45%", background: "#05080f",
           display: "flex", justifyContent: "center",
           padding: "3rem 2rem",
         }}>
@@ -325,7 +331,7 @@ export default function RegisterPage() {
             <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 14 }}>
 
               {/* Name row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="reg-name-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <input
                     type="text" value={firstName}
