@@ -73,14 +73,14 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer style={{
+    <footer className="footer-root" style={{
       background: "var(--surface)",
       borderTop: "1px solid var(--surface-border)",
-      padding: "5rem 0 2.5rem",
+      paddingTop: "5rem",
     }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 2rem" }}>
 
-        {/* Top section */}
+        {/* Top section — brand col + 4 link cols */}
         <div className="footer-grid" style={{
           display: "grid",
           gridTemplateColumns: "30% repeat(4, 17.5%)",
@@ -121,7 +121,7 @@ export function Footer() {
               The AI-powered global employment platform.
             </p>
 
-            {/* Social icons */}
+            {/* Social icons — 44×44 touch targets */}
             <div style={{ display: "flex", gap: 10, marginBottom: "1.5rem" }}>
               {SOCIALS.map(({ label, href, Icon }) => (
                 <a
@@ -129,7 +129,7 @@ export function Footer() {
                   href={href}
                   aria-label={label}
                   style={{
-                    width: 36, height: 36, borderRadius: "50%",
+                    width: 44, height: 44, borderRadius: "50%",
                     background: "transparent",
                     border: "1px solid rgba(255,255,255,0.1)",
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -192,8 +192,10 @@ export function Footer() {
                       fontSize: 14,
                       color: "var(--text-secondary)",
                       textDecoration: "none",
-                      lineHeight: 2.2,
+                      lineHeight: 2.4,
                       transition: "color 0.15s",
+                      display: "block",
+                      minHeight: 44,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.color = "var(--blue-400)")}
                     onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
@@ -215,6 +217,7 @@ export function Footer() {
           justifyContent: "space-between",
           alignItems: "center",
           paddingTop: "1.5rem",
+          paddingBottom: "1.5rem",
           flexWrap: "wrap",
           gap: "1rem",
         }}>
@@ -222,7 +225,7 @@ export function Footer() {
             © {new Date().getFullYear()} DirectHire Ltd. All rights reserved.
           </span>
 
-          <div style={{ display: "flex", gap: "1.5rem" }}>
+          <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" as const }}>
             {BOTTOM_LINKS.map(l => (
               <Link
                 key={l.href}
@@ -233,6 +236,7 @@ export function Footer() {
                   color: "var(--text-muted)",
                   textDecoration: "none",
                   transition: "color 0.15s",
+                  minHeight: 44, display: "inline-flex", alignItems: "center",
                 }}
                 onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
                 onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
@@ -249,12 +253,27 @@ export function Footer() {
       </div>
 
       <style>{`
+        /* Desktop: 5-col grid (brand + 4 link cols) */
+
+        /* Tablet: 2-col */
         @media (max-width: 1024px) {
           .footer-grid { grid-template-columns: 1fr 1fr !important; }
         }
+
+        /* Mobile: 1-col, centered bottom bar */
         @media (max-width: 640px) {
-          .footer-grid { grid-template-columns: 1fr !important; }
-          .footer-bottom { flex-direction: column !important; align-items: flex-start !important; }
+          .footer-grid   { grid-template-columns: 1fr !important; }
+          .footer-bottom {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
+          .footer-bottom > div { justify-content: center !important; }
+        }
+
+        /* Safe area for mobile home bar */
+        .footer-root {
+          padding-bottom: env(safe-area-inset-bottom, 0px);
         }
       `}</style>
     </footer>

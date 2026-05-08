@@ -229,7 +229,7 @@ export default function ForEmployersPage() {
       {/* ── WORKER LOCK SPOTLIGHT ────────────────────────────────────────────── */}
       <section className="section-sm" style={{ background: "var(--navy-900,#0A1628)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
         <div className="container">
-          <div className="card-surface" style={{
+          <div className="card-surface lock-grid" style={{
             padding: "60px",
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center",
             position: "relative", overflow: "hidden",

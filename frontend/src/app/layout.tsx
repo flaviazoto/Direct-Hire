@@ -1,5 +1,5 @@
 // frontend/src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Sora, DM_Sans } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
@@ -18,6 +18,11 @@ const dmSans = DM_Sans({
   variable: "--font-body",
   display:  "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
