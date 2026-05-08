@@ -37,10 +37,11 @@ function Logo() {
 interface OtpInputProps {
   value: string[];
   onChange: (next: string[]) => void;
+  onComplete?: () => void;
   disabled?: boolean;
 }
 
-function OtpInput({ value, onChange, disabled }: OtpInputProps) {
+function OtpInput({ value, onChange, onComplete, disabled }: OtpInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Auto-focus first box on mount
@@ -51,7 +52,11 @@ function OtpInput({ value, onChange, disabled }: OtpInputProps) {
     const next = [...value];
     next[idx] = digit;
     onChange(next);
-    if (digit && idx < 5) refs.current[idx + 1]?.focus();
+    if (digit && idx < 5) {
+      refs.current[idx + 1]?.focus();
+    } else if (digit && idx === 5 && next.every(d => d !== "")) {
+      onComplete?.();
+    }
   };
 
   const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -79,10 +84,11 @@ function OtpInput({ value, onChange, disabled }: OtpInputProps) {
     onChange(next);
     const focusIdx = Math.min(pasted.length, 5);
     refs.current[focusIdx]?.focus();
+    if (pasted.length === 6) onComplete?.();
   };
 
   return (
-    <div className="otp-row" style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+    <div className="otp-row" style={{ display: "flex", gap: 12, justifyContent: "center" }}>
       {[0, 1, 2, 3, 4, 5].map((idx) => (
         <input
           className="otp-digit"
@@ -98,10 +104,10 @@ function OtpInput({ value, onChange, disabled }: OtpInputProps) {
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           style={{
-            width: 52,
-            height: 60,
+            width: 56,
+            height: 64,
             textAlign: "center",
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: 700,
             fontFamily: "'Courier New', Courier, monospace",
             color: value[idx] ? "#ffffff" : "#444",
@@ -199,15 +205,19 @@ function VerifyEmailOtpContent() {
           border-color: #0090FF !important;
           box-shadow: 0 0 0 3px rgba(0,144,255,0.15) !important;
         }
-        @media (max-width: 480px) {
-          .otp-fade > div:last-of-type { padding: 30px 18px !important; border-radius: 16px !important; }
+        @media (max-width: 600px) {
+          .otp-row { gap: 8px !important; }
+          .otp-digit { width: 48px !important; height: 56px !important; font-size: 22px !important; }
+        }
+        @media (max-width: 420px) {
           .otp-row { gap: 6px !important; }
           .otp-digit {
-            width: min(42px, calc((100vw - 84px) / 6)) !important;
-            height: 54px !important;
+            width: min(48px, calc((100vw - 48px - 30px) / 6)) !important;
+            height: 56px !important;
             font-size: 20px !important;
             border-radius: 10px !important;
           }
+          .otp-fade > div:last-of-type { padding: 32px 20px !important; border-radius: 16px !important; }
         }
       `}</style>
 
@@ -298,7 +308,7 @@ function VerifyEmailOtpContent() {
 
             {/* OTP inputs */}
             <div style={{ marginBottom: 24 }}>
-              <OtpInput value={digits} onChange={setDigits} disabled={loading} />
+              <OtpInput value={digits} onChange={setDigits} onComplete={handleVerify} disabled={loading} />
             </div>
 
             {/* Error */}
@@ -342,13 +352,13 @@ function VerifyEmailOtpContent() {
               disabled={!allFilled || loading}
               style={{
                 width: "100%",
-                padding: "13px 20px",
+                height: 52,
                 borderRadius: 12,
                 background: allFilled
                   ? "linear-gradient(135deg, #0090FF, #0070cc)"
                   : "rgba(255,255,255,0.04)",
                 color: "white",
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: 700,
                 border: allFilled ? "none" : "1px solid rgba(255,255,255,0.08)",
                 cursor: allFilled && !loading ? "pointer" : "not-allowed",

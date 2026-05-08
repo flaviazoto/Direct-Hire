@@ -7,7 +7,7 @@ import { authApi } from "@/lib/api-client";
 
 function EyeOpen() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
     </svg>
   );
@@ -15,7 +15,7 @@ function EyeOpen() {
 
 function EyeOff() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
       <line x1="1" y1="1" x2="23" y2="23"/>
     </svg>
@@ -160,7 +160,8 @@ export default function RegisterPage() {
 
   const inputStyle = (name: string): React.CSSProperties => ({
     width: "100%",
-    padding: "10px 14px",
+    padding: "12px 14px",
+    minHeight: 48,
     background: errors[name] ? "#fff5f5" : "#ffffff",
     border: errors[name]
       ? "1px solid #fca5a5"
@@ -169,7 +170,7 @@ export default function RegisterPage() {
         : "1px solid #d1d5db",
     borderRadius: 8,
     color: "#111827",
-    fontSize: 14,
+    fontSize: 16,
     outline: "none",
     transition: "border-color 0.2s, box-shadow 0.2s",
     boxSizing: "border-box" as const,
@@ -178,12 +179,12 @@ export default function RegisterPage() {
   });
 
   const labelStyle: React.CSSProperties = {
-    display: "block", fontSize: 13, fontWeight: 500,
+    display: "block", fontSize: 14, fontWeight: 500,
     color: "#374151", marginBottom: 6, fontFamily: "var(--font-body)",
   };
 
   const errStyle: React.CSSProperties = {
-    fontSize: 12, color: "#dc2626", marginTop: 4, fontFamily: "var(--font-body)",
+    fontSize: 13, color: "#dc2626", marginTop: 4, fontFamily: "var(--font-body)",
   };
 
   const validate = (): Record<string, string> => {
@@ -230,11 +231,11 @@ export default function RegisterPage() {
         .reg-left::-webkit-scrollbar { width: 4px; }
         .reg-left::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
         .reg-oauth-btn {
-          width: 100%; padding: 10px 16px;
+          width: 100%; min-height: 48px; padding: 10px 16px;
           background: #ffffff; border: 1px solid #d1d5db;
           border-radius: 8px; display: flex; align-items: center;
           justify-content: center; gap: 8px;
-          color: #374151; font-size: 14px; font-weight: 500;
+          color: #374151; font-size: 16px; font-weight: 500;
           cursor: pointer; transition: background 0.15s, border-color 0.15s;
           font-family: var(--font-body);
         }
@@ -244,8 +245,8 @@ export default function RegisterPage() {
         @media (max-width: 768px) {
           .reg-shell { min-height: 100dvh !important; height: auto !important; overflow: visible !important; }
           .reg-right-panel { display: none !important; }
-          .reg-left { width: 100% !important; min-height: 100dvh !important; padding: 32px 18px !important; }
-          .reg-left > div { max-width: 420px !important; margin: 0 auto !important; }
+          .reg-left { width: 100% !important; min-height: 100dvh !important; padding: 32px 24px !important; }
+          .reg-left > div { max-width: 440px !important; margin: 0 auto !important; }
           .reg-name-grid { grid-template-columns: 1fr !important; }
         }
         input::placeholder { color: #9ca3af; }
@@ -259,7 +260,7 @@ export default function RegisterPage() {
           display: "flex", justifyContent: "center",
           padding: "3rem 2rem",
         }}>
-          <div style={{ width: "100%", maxWidth: 400 }}>
+          <div style={{ width: "100%", maxWidth: 440 }}>
 
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -299,7 +300,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={() => setRole(r)}
                   style={{
-                    flex: 1, height: 44, borderRadius: 8,
+                    flex: 1, height: 48, borderRadius: 8,
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     fontSize: 14, fontWeight: 600, cursor: "pointer",
                     transition: "all 0.2s", fontFamily: "var(--font-body)",
@@ -487,14 +488,14 @@ export default function RegisterPage() {
                 onClick={handleSubmit}
                 disabled={loading}
                 style={{
-                  width: "100%", padding: "11px",
+                  width: "100%", height: 52,
                   background: "#0090FF", border: "none", borderRadius: 8,
-                  color: "#fff", fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600,
+                  color: "#fff", fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.8 : 1,
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   transition: "filter 0.15s",
-                  marginTop: 4,
+                  marginTop: 8,
                 }}
                 onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.1)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)"; }}

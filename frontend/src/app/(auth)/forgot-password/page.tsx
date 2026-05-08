@@ -11,7 +11,7 @@ const font = "'Plus Jakarta Sans', system-ui, sans-serif";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 12,
+  fontSize: 14,
   fontWeight: 600,
   color: "#a1a1aa",
   marginBottom: 6,
@@ -38,12 +38,13 @@ export default function ForgotPasswordPage() {
 
   const inp = (name: string): React.CSSProperties => ({
     width: "100%",
+    minHeight: 48,
     background: "#111111",
     border: focusedField === name ? "1px solid #0090FF" : "1px solid rgba(255,255,255,0.08)",
     boxShadow: focusedField === name ? "0 0 0 3px rgba(0,144,255,0.12)" : "none",
     borderRadius: 10,
-    padding: "11px 14px",
-    fontSize: 14,
+    padding: "12px 14px",
+    fontSize: 16,
     color: "#ffffff",
     outline: "none",
     transition: "border-color 0.2s, box-shadow 0.2s",
@@ -70,8 +71,10 @@ export default function ForgotPasswordPage() {
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .auth-fade { animation: fadeUp 0.45s ease both; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 768px) { .auth-left { display: none !important; } }
         @media (min-width: 769px) { .auth-mobile-logo { display: none !important; } }
+        @media (max-width: 640px) { .auth-form-panel { padding: 32px 24px !important; } }
       `}</style>
 
       <div style={{ display: "flex", minHeight: "100vh", background: "#0A0A0A", fontFamily: font }}>
@@ -184,13 +187,13 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* ── Right form panel ── */}
-        <div style={{
+        <div className="auth-form-panel" style={{
           flex: 1,
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: "40px 32px",
           background: "#0A0A0A",
         }}>
-          <div className="auth-fade" style={{ width: "100%", maxWidth: 420 }}>
+          <div className="auth-fade" style={{ width: "100%", maxWidth: 440 }}>
 
             {/* Mobile logo */}
             <div className="auth-mobile-logo" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
@@ -309,11 +312,11 @@ export default function ForgotPasswordPage() {
                     disabled={loading}
                     style={{
                       width: "100%",
-                      padding: "13px 20px",
+                      height: 52,
                       borderRadius: 12,
                       background: "linear-gradient(135deg, #0090FF, #0070cc)",
                       color: "white",
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: 700,
                       border: "none",
                       cursor: loading ? "not-allowed" : "pointer",
