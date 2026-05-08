@@ -188,7 +188,7 @@ export default function LandingPage() {
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="relative flex items-center bg-[#010913] overflow-hidden py-16 sm:py-20 md:py-24 lg:py-28 min-h-auto">
+      <section className="relative flex items-center bg-[#010913] overflow-hidden pt-20 pb-16 lg:pt-32 lg:pb-24 min-h-auto">
         {/* Blue orb top-left */}
         <div aria-hidden className="absolute -top-48 -left-32 sm:-left-40 md:-left-48 w-96 h-96 sm:w-[36rem] sm:h-[36rem] md:w-[56rem] md:h-[56rem] rounded-full pointer-events-none" style={{
           background: "radial-gradient(circle, rgba(0,144,255,0.10) 0%, transparent 70%)",
@@ -204,7 +204,7 @@ export default function LandingPage() {
           {/* LEFT: text */}
           <div className="max-w-2xl md:max-w-xl">
             {/* H1 */}
-            <h1 className="dh-reveal font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight sm:leading-tight md:leading-tight lg:leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8 max-w-sm md:max-w-md lg:max-w-2xl">
+            <h1 className="dh-reveal hero-h1 font-display font-black leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8">
               Find World-Class Talent<br />
               <span style={{
                 background: "linear-gradient(135deg, #0090FF 0%, #818cf8 50%, #6366F1 100%)",
@@ -217,7 +217,7 @@ export default function LandingPage() {
             </h1>
 
             {/* Subheadline */}
-            <p className="dh-reveal text-base sm:text-lg text-white/60 leading-relaxed max-w-sm md:max-w-md mb-6 md:mb-8">
+            <p className="dh-reveal hero-sub text-white/60 leading-relaxed max-w-sm md:max-w-md mb-6 md:mb-8">
               DirectHire&apos;s AI matches verified global workers with top employers across 190+ countries — intelligently, securely, at scale.
             </p>
 
@@ -309,7 +309,7 @@ export default function LandingPage() {
                   <div key={s.l} style={{ display: "flex", alignItems: "center" }}>
                     {i > 0 && <div className="hero-stat-divider" style={{ width: 1, height: 48, background: "rgba(255,255,255,0.1)", margin: "0 28px", flexShrink: 0 }} />}
                     <div>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.n}</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{s.n}</div>
                       <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{s.l}</div>
                     </div>
                   </div>
@@ -319,7 +319,7 @@ export default function LandingPage() {
           </div>
 
           {/* RIGHT: Globe + floating cards */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 720 }} className="hero-globe-col">
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", maxWidth: 600, aspectRatio: "1" }} className="hero-globe-col">
             {/* Glow behind globe */}
             <div aria-hidden style={{
               position: "absolute", width: 600, height: 600, borderRadius: "50%",
@@ -397,12 +397,14 @@ export default function LandingPage() {
             70%   { box-shadow: 0 0 0 6px rgba(129,140,248,0); }
             100%  { box-shadow: 0 0 0 0 rgba(129,140,248,0); }
           }
+          .hero-h1  { font-size: clamp(28px, 5vw, 64px) !important; }
+          .hero-sub { font-size: clamp(16px, 2vw, 22px) !important; }
           @media (max-width: 900px) {
             .hero-grid      { grid-template-columns: 1fr !important; }
             .hero-globe-col { display: none !important; }
           }
-          @media (max-width: 540px) {
-            .hero-grid h1   { font-size: 2.2rem !important; letter-spacing: 0 !important; }
+          @media (max-width: 640px) {
+            .hero-cta-row { flex-direction: column !important; }
             .hero-cta-row > a { width: 100% !important; justify-content: center !important; }
             .hero-stats-row { align-items: stretch !important; justify-content: space-between !important; gap: 12px !important; }
             .hero-stats-row > div { flex: 1 1 0 !important; min-width: 0 !important; }
@@ -418,7 +420,7 @@ export default function LandingPage() {
         borderBottom: "1px solid rgba(255,255,255,0.05)",
         padding: "1.5rem 0",
       }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px", display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" as const }}>
+        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" as const }}>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: "var(--font-body)", whiteSpace: "nowrap" as const, letterSpacing: "0.1em", textTransform: "uppercase" as const, flexShrink: 0, marginRight: "0.5rem" }}>
             Trusted by global employers
           </span>
@@ -447,8 +449,8 @@ export default function LandingPage() {
       </div>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "#010913" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px" }}>
+      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "5rem" }}>
             <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>
               Simple. Intelligent. Global.
@@ -507,15 +509,18 @@ export default function LandingPage() {
 
         <style>{`
           @media (max-width: 900px) {
-            .how-grid { grid-template-columns: 1fr !important; }
+            .how-grid { grid-template-columns: repeat(2, 1fr) !important; }
             .how-line { display: none !important; }
+          }
+          @media (max-width: 640px) {
+            .how-grid { grid-template-columns: 1fr !important; }
           }
         `}</style>
       </section>
 
       {/* ── AI FEATURES ──────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "rgba(255,255,255,0.012)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px" }}>
+      <section className="lp-section" style={{ background: "rgba(255,255,255,0.012)", overflowX: "hidden" }}>
+        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ marginBottom: "3.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
             <div>
               <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>
@@ -577,20 +582,11 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <style>{`
-          @media (max-width: 900px) {
-            .ai-features-grid { grid-template-columns: repeat(2,1fr) !important; }
-            .ai-see-all       { display: none !important; }
-          }
-          @media (max-width: 540px) {
-            .ai-features-grid { grid-template-columns: 1fr !important; }
-          }
-        `}</style>
       </section>
 
       {/* ── FOR WORKERS ──────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "#010913" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }} className="alt-grid">
+      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+        <div className="lp-container alt-grid" style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }}>
           {/* LEFT: text */}
           <div style={{ maxWidth: 480 }}>
             <div className="dh-reveal" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", fontFamily: "var(--font-body)", marginBottom: 16 }}>
@@ -678,14 +674,11 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <style>{`
-          @media (max-width: 900px) { .alt-grid { grid-template-columns: 1fr !important; gap: 2.5rem !important; } }
-        `}</style>
       </section>
 
       {/* ── FOR EMPLOYERS ────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "rgba(255,255,255,0.012)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }} className="alt-grid">
+      <section className="lp-section" style={{ background: "rgba(255,255,255,0.012)", overflowX: "hidden" }}>
+        <div className="lp-container alt-grid" style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }}>
 
           {/* LEFT: AI ranked candidates card */}
           <div className="dh-reveal" style={{ ...CARD, padding: "2rem" }}>
@@ -773,8 +766,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "#010913" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 40px" }}>
+      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+        <div className="lp-container" style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "4rem" }}>
             <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>Pricing</div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "#fff", margin: "0 0 1rem" }}>
@@ -881,14 +874,11 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <style>{`
-          @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr !important; } }
-        `}</style>
       </section>
 
       {/* ── TESTIMONIALS ─────────────────────────────────────────────────────── */}
-      <section style={{ padding: "8rem 0", background: "rgba(255,255,255,0.012)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px" }}>
+      <section className="lp-section" style={{ background: "rgba(255,255,255,0.012)", overflowX: "hidden" }}>
+        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "4rem" }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "#fff", margin: 0 }}>
               Trusted by thousands worldwide
@@ -897,7 +887,7 @@ export default function LandingPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.5rem" }} className="testimonials-grid">
             {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="dh-reveal" style={{
+              <div key={i} className="dh-reveal testimonial-card" style={{
                 ...CARD, padding: "2rem", position: "relative" as const, overflow: "hidden",
                 transition: "border-color 0.2s, box-shadow 0.2s",
               }}
@@ -926,7 +916,24 @@ export default function LandingPage() {
         </div>
 
         <style>{`
-          @media (max-width: 900px) { .testimonials-grid { grid-template-columns: 1fr !important; } }
+          @media (max-width: 768px) {
+            .testimonials-grid {
+              display: flex !important;
+              overflow-x: auto !important;
+              scroll-snap-type: x mandatory !important;
+              -webkit-overflow-scrolling: touch;
+              padding-bottom: 1rem !important;
+              gap: 1rem !important;
+            }
+            .testimonial-card {
+              scroll-snap-align: start !important;
+              min-width: 280px !important;
+              flex-shrink: 0 !important;
+            }
+          }
+          @media (max-width: 900px) and (min-width: 769px) {
+            .testimonials-grid { grid-template-columns: 1fr !important; }
+          }
         `}</style>
       </section>
 
@@ -976,7 +983,7 @@ export default function LandingPage() {
             <p style={{ fontFamily: "var(--font-body)", fontSize: 17, color: "rgba(255,255,255,0.75)", margin: "0 0 2.5rem" }}>
               Join 12,000+ employers and 2.4M workers building the future of global work.
             </p>
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" as const }}>
+            <div className="cta-banner-buttons" style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" as const }}>
               <Link href="/register" style={{
                 display: "inline-flex", alignItems: "center", padding: "15px 36px",
                 background: "#fff", color: "#0070CC", borderRadius: 12,
@@ -1007,7 +1014,7 @@ export default function LandingPage() {
 
       {/* ── BRANDS ROW ───────────────────────────────────────────────────────── */}
       <div style={{ padding: "3rem 0", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px", textAlign: "center" as const }}>
+        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" as const }}>
           <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(255,255,255,0.25)", textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: "1.5rem" }}>
             Integrated with tools you already use
           </div>
@@ -1048,9 +1055,45 @@ export default function LandingPage() {
           50%       { transform: translateY(-10px); }
         }
         @media (max-width: 768px) {
-          .cta-float-card  { display: none !important; }
+          .cta-float-card   { display: none !important; }
           .globe-float-card { display: none !important; }
         }
+
+        /* ── Responsive container padding ── */
+        .lp-container { padding-left: 2.5rem !important; padding-right: 2.5rem !important; }
+        @media (min-width: 641px) and (max-width: 1023px) {
+          .lp-container { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+        }
+        @media (max-width: 640px) {
+          .lp-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+        }
+
+        /* ── Section padding: py-16 mobile → py-24 desktop ── */
+        .lp-section { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+        @media (min-width: 1024px) {
+          .lp-section { padding-top: 6rem !important; padding-bottom: 6rem !important; }
+        }
+
+        /* ── CTA buttons full-width on mobile ── */
+        @media (max-width: 640px) {
+          .cta-banner-buttons { flex-direction: column !important; align-items: stretch !important; }
+          .cta-banner-buttons > a { width: 100% !important; justify-content: center !important; }
+        }
+
+        /* ── AI features grid ── */
+        @media (max-width: 900px) {
+          .ai-features-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .ai-see-all       { display: none !important; }
+        }
+        @media (max-width: 640px) {
+          .ai-features-grid { grid-template-columns: 1fr !important; }
+        }
+
+        /* ── Pricing grid ── */
+        @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr !important; } }
+
+        /* ── Alt grid (Workers / Employers) ── */
+        @media (max-width: 900px) { .alt-grid { grid-template-columns: 1fr !important; gap: 2.5rem !important; } }
       `}</style>
     </div>
   );
