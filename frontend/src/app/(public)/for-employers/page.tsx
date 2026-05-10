@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 const FAQ = [
@@ -41,8 +40,6 @@ export default function ForEmployersPage() {
 
   return (
     <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)", overflowX: "hidden" }}>
-      <Nav />
-
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section className="pub-hero" style={{ background: "var(--navy-950,#060B18)", padding: "140px 32px 100px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "-10%", right: "0", width: 600, height: 600, borderRadius: "50%", background: "rgba(0,100,220,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />

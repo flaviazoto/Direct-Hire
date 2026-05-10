@@ -1,6 +1,5 @@
 // frontend/src/app/pricing/page.tsx
 import Link from "next/link";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 function Check({ color = "#34D399" }: { color?: string }) {
@@ -74,8 +73,6 @@ const COMPARE = [
 export default function PricingPage() {
   return (
     <main style={{ background:"var(--navy-950,#060B18)", minHeight:"100vh", color:"var(--text-primary,#F0F4FF)", overflowX:"hidden" }}>
-      <Nav />
-
       {/* HERO */}
       <section className="pub-hero" style={{ padding:"140px 32px 80px", textAlign:"center", background:"var(--navy-950,#060B18)", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:700, height:500, borderRadius:"50%", background:"rgba(0,144,255,0.07)", filter:"blur(120px)", pointerEvents:"none" }}/>

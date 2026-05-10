@@ -3,7 +3,6 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 const InteractiveGlobe = dynamic(
@@ -184,8 +183,6 @@ export default function LandingPage() {
 
   return (
     <div ref={pageRef} style={{ background: "#010913", minHeight: "100vh", overflowX: "hidden" }}>
-
-      <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section className="relative flex items-center bg-[#010913] overflow-hidden pt-20 pb-16 lg:pt-32 lg:pb-24 min-h-auto">

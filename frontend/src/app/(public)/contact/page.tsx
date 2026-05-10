@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 // ── Social icons (same paths as Footer.tsx) ───────────────────────────────────
@@ -91,8 +90,6 @@ export default function ContactPage() {
 
   return (
     <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
-      <Nav />
-
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{ padding: "140px 32px 80px", background: "var(--navy-950,#060B18)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "-10%", left: "50%", transform: "translateX(-50%)", width: 600, height: 500, borderRadius: "50%", background: "rgba(0,144,255,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />

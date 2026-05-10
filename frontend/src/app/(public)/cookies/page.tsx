@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 const TOC_ITEMS = [
@@ -62,8 +61,6 @@ export default function CookiesPage() {
 
   return (
     <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
-      <Nav />
-
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
         background: "var(--navy-950,#060B18)",

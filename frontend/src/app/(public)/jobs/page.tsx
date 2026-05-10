@@ -17,7 +17,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { publicJobsApi, workerApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Nav } from "@/components/Nav";
 import { ToastDisplay, type ToastData } from "@/components/ui";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -1050,7 +1049,6 @@ function JobBoardContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      <Nav />
       <ToastDisplay toast={toast} />
 
       {/* Apply modal */}
