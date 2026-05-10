@@ -5,6 +5,9 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authApi, adminApi, employerApi, workerApi } from "@/lib/api-client";
+import WorkerBottomNav   from "@/components/dashboard/WorkerBottomNav";
+import EmployerBottomNav from "@/components/dashboard/EmployerBottomNav";
+import AdminBottomNav    from "@/components/dashboard/AdminBottomNav";
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -519,7 +522,6 @@ function MobileShellNav({
   onLogout: () => void;
 }) {
   const { nav, accent, accentRgb, portalLabel } = ROLE_CONFIG[role];
-  const primaryNav = nav.slice(0, role === "admin" ? 4 : 5);
 
   const isActiveHref = (href: string) =>
     pathname === href || (href !== `/${role}/dashboard` && pathname.startsWith(href));
@@ -760,56 +762,6 @@ function MobileShellNav({
         </div>
       )}
 
-      <nav
-        className="app-bottom-nav"
-        style={{
-          position: "fixed",
-          left: 10,
-          right: 10,
-          bottom: "max(10px, env(safe-area-inset-bottom))",
-          zIndex: 90,
-          display: "none",
-          gridTemplateColumns: `repeat(${primaryNav.length}, minmax(0, 1fr))`,
-          gap: 4,
-          padding: 6,
-          borderRadius: 18,
-          background: "rgba(8,13,26,0.94)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-        }}
-      >
-        {primaryNav.map((item) => {
-          const active = isActiveHref(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-label={item.label}
-              style={{
-                minWidth: 0,
-                minHeight: 48,
-                borderRadius: 14,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                color: active ? "#f8fafc" : "rgba(248,250,252,0.5)",
-                background: active ? `rgba(${accentRgb},0.18)` : "transparent",
-                textDecoration: "none",
-                fontFamily: "var(--font-body)",
-              }}
-            >
-              <div style={{ width: 18, height: 18, color: active ? accent : "rgba(248,250,252,0.52)" }}>{item.icon}</div>
-              <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10, fontWeight: 700 }}>
-                {item.label.replace("Dashboard", "Home").replace("Applications", "Apps").replace("Reservations", "Locks")}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
     </>
   );
 }
@@ -987,13 +939,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           .app-sidebar       { display: none !important; }
           .app-mobile-header { display: flex !important; }
           .app-mobile-drawer { display: block !important; }
-          .app-bottom-nav    { display: grid !important; }
           .worker-topbar     { display: none !important; }
           .app-main          { padding-bottom: calc(max(10px, env(safe-area-inset-bottom, 10px)) + 74px) !important; }
         }
         @media (min-width: 1024px) {
           .app-mobile-header { display: none !important; }
-          .app-bottom-nav    { display: none !important; }
         }
         @media (max-width: 768px) {
           .admin-page-root { padding: 16px !important; }
@@ -1017,6 +967,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {role === "worker"   && <WorkerBottomNav   />}
+      {role === "employer" && <EmployerBottomNav  />}
+      {role === "admin"    && <AdminBottomNav     />}
     </div>
   );
 }
