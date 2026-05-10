@@ -22,6 +22,7 @@ const dmSans = DM_Sans({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -38,10 +39,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark">
-      <body className={`${sora.variable} ${dmSans.variable}`}>
+    <html lang="en" data-theme="dark" className="scroll-smooth">
+      <body className={`${sora.variable} ${dmSans.variable} antialiased`} style={{ overflowX: 'hidden' }}>
         <AuthProvider>
-          <div style={{ overflowX: 'hidden' }}>{children}</div>
+          {children}
         </AuthProvider>
       </body>
     </html>
