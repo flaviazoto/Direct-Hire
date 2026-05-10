@@ -5,9 +5,6 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authApi, adminApi, employerApi, workerApi } from "@/lib/api-client";
-import WorkerBottomNav   from "@/components/dashboard/WorkerBottomNav";
-import EmployerBottomNav from "@/components/dashboard/EmployerBottomNav";
-import AdminBottomNav    from "@/components/dashboard/AdminBottomNav";
 import DashboardHeader   from "@/components/dashboard/DashboardHeader";
 import WorkerHeader      from "@/components/dashboard/WorkerHeader";
 
@@ -676,7 +673,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         @media (max-width: 1023px) {
           .app-sidebar   { display: none !important; }
           .worker-topbar { display: none !important; }
-          .app-main      { padding-top: 56px !important; padding-bottom: calc(max(10px, env(safe-area-inset-bottom, 10px)) + 74px) !important; }
+          .app-main      { padding-top: 56px !important; }
         }
         @media (max-width: 768px) {
           .admin-page-root { padding: 16px !important; }
@@ -698,9 +695,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {role === "worker"   && <WorkerBottomNav   />}
-      {role === "employer" && <EmployerBottomNav  />}
-      {role === "admin"    && <AdminBottomNav     />}
     </div>
   );
 }
