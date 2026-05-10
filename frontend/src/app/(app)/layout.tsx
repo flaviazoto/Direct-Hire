@@ -8,6 +8,7 @@ import { authApi, adminApi, employerApi, workerApi } from "@/lib/api-client";
 import WorkerBottomNav   from "@/components/dashboard/WorkerBottomNav";
 import EmployerBottomNav from "@/components/dashboard/EmployerBottomNav";
 import AdminBottomNav    from "@/components/dashboard/AdminBottomNav";
+import DashboardHeader   from "@/components/dashboard/DashboardHeader";
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -508,264 +509,6 @@ function Sidebar({ role }: { role: Role }) {
 
 // ─── WorkerTopBar ─────────────────────────────────────────────────────────────
 
-function MobileShellNav({
-  role,
-  pathname,
-  open,
-  onOpenChange,
-  onLogout,
-}: {
-  role: Role;
-  pathname: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onLogout: () => void;
-}) {
-  const { nav, accent, accentRgb, portalLabel } = ROLE_CONFIG[role];
-
-  const isActiveHref = (href: string) =>
-    pathname === href || (href !== `/${role}/dashboard` && pathname.startsWith(href));
-
-  const linkStyle = (href: string): React.CSSProperties => {
-    const active = isActiveHref(href);
-    return {
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      minHeight: 46,
-      padding: "10px 12px",
-      borderRadius: 12,
-      color: active ? "#f8fafc" : "rgba(248,250,252,0.68)",
-      background: active ? `rgba(${accentRgb},0.16)` : "rgba(255,255,255,0.03)",
-      border: active ? `1px solid rgba(${accentRgb},0.32)` : "1px solid rgba(255,255,255,0.06)",
-      textDecoration: "none",
-      fontSize: 14,
-      fontWeight: active ? 700 : 600,
-      fontFamily: "var(--font-body)",
-    };
-  };
-
-  return (
-    <>
-      <header
-        className="app-mobile-header"
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 80,
-          display: "none",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "10px 14px",
-          minHeight: 60,
-          background: "rgba(5,8,15,0.94)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          borderBottom: `1px solid rgba(${accentRgb},0.18)`,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => onOpenChange(true)}
-          aria-label="Open navigation menu"
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: `rgba(${accentRgb},0.10)`,
-            color: "#f8fafc",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="4" y1="7" x2="20" y2="7" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="17" x2="20" y2="17" />
-          </svg>
-        </button>
-
-        <Link
-          href={`/${role}/dashboard`}
-          style={{
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textDecoration: "none",
-            lineHeight: 1.15,
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16, color: "#fff", letterSpacing: "-0.03em" }}>
-            DirectHire
-          </span>
-          <span style={{ color: accent, fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            {portalLabel}
-          </span>
-        </Link>
-
-        <Link
-          href={role === "worker" ? "/worker/notifications" : `/${role}/dashboard`}
-          aria-label={role === "worker" ? "Notifications" : "Dashboard"}
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.04)",
-            color: "#f8fafc",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textDecoration: "none",
-          }}
-        >
-          <div style={{ width: 19, height: 19 }}>{role === "worker" ? icons.bell : icons.dashboard}</div>
-        </Link>
-      </header>
-
-      {open && (
-        <div
-          className="app-mobile-drawer"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 120,
-            display: "none",
-            background: "rgba(2,6,14,0.72)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-        >
-          <div
-            style={{
-              width: "min(360px, calc(100vw - 28px))",
-              height: "100dvh",
-              background: "var(--navy-2, #0b1120)",
-              borderRight: `1px solid rgba(${accentRgb},0.22)`,
-              borderLeft: `3px solid ${accent}`,
-              padding: "16px 14px max(22px, env(safe-area-inset-bottom))",
-              display: "flex",
-              flexDirection: "column",
-              gap: 14,
-              overflowY: "auto",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <Link
-                href={`/${role}/dashboard`}
-                onClick={() => onOpenChange(false)}
-                style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", minWidth: 0 }}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${accent}, var(--blue-2))`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 900 }}>DH</span>
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, fontFamily: "var(--font-display)" }}>DirectHire</div>
-                  <div style={{ color: accent, fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>{portalLabel}</div>
-                </div>
-              </Link>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                aria-label="Close navigation menu"
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.04)",
-                  color: "#f8fafc",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <nav style={{ display: "grid", gap: 8 }}>
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => onOpenChange(false)}
-                  style={linkStyle(item.href)}
-                >
-                  <div style={{ width: 18, height: 18, color: isActiveHref(item.href) ? accent : "rgba(248,250,252,0.55)", flexShrink: 0 }}>
-                    {item.icon}
-                  </div>
-                  <span style={{ minWidth: 0 }}>{item.label}</span>
-                </Link>
-              ))}
-              {role === "admin" && (
-                <>
-                  <div style={{ color: "rgba(248,250,252,0.38)", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "10px 4px 0" }}>
-                    Job Posts
-                  </div>
-                  {ADMIN_JOB_NAV.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => onOpenChange(false)}
-                      style={linkStyle(item.href)}
-                    >
-                      <div style={{ width: 18, height: 18, color: isActiveHref(item.href) ? accent : "rgba(248,250,252,0.55)", flexShrink: 0 }}>
-                        {icons.briefcase}
-                      </div>
-                      <span>{item.label}</span>
-                    </Link>
-                  ))}
-                </>
-              )}
-            </nav>
-
-            <button
-              type="button"
-              onClick={() => {
-                onOpenChange(false);
-                onLogout();
-              }}
-              style={{
-                marginTop: "auto",
-                minHeight: 46,
-                borderRadius: 12,
-                border: "1px solid rgba(239,68,68,0.22)",
-                background: "rgba(239,68,68,0.08)",
-                color: "#fca5a5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "var(--font-body)",
-              }}
-            >
-              <div style={{ width: 17, height: 17 }}>{icons.logout}</div>
-              Log out
-            </button>
-          </div>
-        </div>
-      )}
-
-    </>
-  );
-}
-
 interface NotifItem {
   id: string; title: string; body: string; isRead: boolean; link?: string; createdAt: string;
 }
@@ -904,8 +647,6 @@ function WorkerTopBar() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
     if (!token) router.push("/login");
@@ -916,10 +657,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     : pathname.startsWith("/employer")
     ? "employer"
     : "worker";
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
 
   if (pathname.includes("/onboarding")) {
     return <>{children}</>;
@@ -936,14 +673,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="app-shell" style={{ display: "flex", flexDirection: "row", minHeight: "100vh", background: "var(--navy, #05080f)" }}>
       <style>{`
         @media (max-width: 1023px) {
-          .app-sidebar       { display: none !important; }
-          .app-mobile-header { display: flex !important; }
-          .app-mobile-drawer { display: block !important; }
-          .worker-topbar     { display: none !important; }
-          .app-main          { padding-bottom: calc(max(10px, env(safe-area-inset-bottom, 10px)) + 74px) !important; }
-        }
-        @media (min-width: 1024px) {
-          .app-mobile-header { display: none !important; }
+          .app-sidebar   { display: none !important; }
+          .worker-topbar { display: none !important; }
+          .app-main      { padding-top: 56px !important; padding-bottom: calc(max(10px, env(safe-area-inset-bottom, 10px)) + 74px) !important; }
         }
         @media (max-width: 768px) {
           .admin-page-root { padding: 16px !important; }
@@ -955,13 +687,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       `}</style>
       <Sidebar role={role} />
       <main className="app-main" style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-        <MobileShellNav
-          role={role}
-          pathname={pathname}
-          open={mobileNavOpen}
-          onOpenChange={setMobileNavOpen}
-          onLogout={handleLogout}
-        />
+        <DashboardHeader role={role} onLogout={handleLogout} />
         {role === "worker" && <WorkerTopBar />}
         <div key={pathname} data-page-root style={{ flex: 1, minWidth: 0 }}>
           {children}
