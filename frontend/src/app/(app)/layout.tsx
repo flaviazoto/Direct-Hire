@@ -9,6 +9,7 @@ import WorkerBottomNav   from "@/components/dashboard/WorkerBottomNav";
 import EmployerBottomNav from "@/components/dashboard/EmployerBottomNav";
 import AdminBottomNav    from "@/components/dashboard/AdminBottomNav";
 import DashboardHeader   from "@/components/dashboard/DashboardHeader";
+import WorkerHeader      from "@/components/dashboard/WorkerHeader";
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -687,7 +688,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       `}</style>
       <Sidebar role={role} />
       <main className="app-main" style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-        <DashboardHeader role={role} onLogout={handleLogout} />
+        {role === 'worker'
+          ? <WorkerHeader onLogout={handleLogout} />
+          : <DashboardHeader role={role} onLogout={handleLogout} />
+        }
         {role === "worker" && <WorkerTopBar />}
         <div key={pathname} data-page-root style={{ flex: 1, minWidth: 0 }}>
           {children}
