@@ -7,7 +7,6 @@ import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
-  type LucideIcon,
 } from 'lucide-react'
 
 type Role = 'worker' | 'employer' | 'admin'
@@ -15,7 +14,7 @@ type Role = 'worker' | 'employer' | 'admin'
 type NavLink = {
   href: string
   label: string
-  Icon: LucideIcon
+  Icon: React.ElementType
 }
 
 const ROLE_LINKS: Record<Role, NavLink[]> = {
