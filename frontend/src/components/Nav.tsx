@@ -32,29 +32,16 @@ const OVERLAY_LINKS = [
 
 export function Nav() {
   const [scrolled,  setScrolled]  = useState(false);
-  const [visible,   setVisible]   = useState(true);
-  const [lastY,     setLastY]     = useState(0);
   const [menuOpen,  setMenuOpen]  = useState(false);
   const pathname                  = usePathname();
   const { auth, loading, logout } = useAuth();
 
-  // Scroll hide/show + scrolled shadow
+  // Scrolled shadow
   useEffect(() => {
-    const handleScroll = () => {
-      const y = window.scrollY;
-      setScrolled(y > 20);
-      if (y < 10) {
-        setVisible(true);
-      } else if (y > lastY) {
-        setVisible(false);
-      } else {
-        setVisible(true);
-      }
-      setLastY(y);
-    };
+    const handleScroll = () => { setScrolled(window.scrollY > 20); };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastY]);
+  }, []);
 
   // Lock body scroll when overlay open
   useEffect(() => {
@@ -189,9 +176,8 @@ export function Nav() {
         backdropFilter: "blur(24px) saturate(200%)",
         WebkitBackdropFilter: "blur(24px) saturate(200%)",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
-        transition: "box-shadow 0.3s ease, transform 0.3s ease",
+        transition: "box-shadow 0.3s ease",
         boxShadow: scrolled ? "0 1px 40px rgba(0,0,0,0.5)" : "none",
-        transform: visible ? "translateY(0)" : "translateY(-100%)",
       }}>
 
         {/* ── Nav inner ── */}

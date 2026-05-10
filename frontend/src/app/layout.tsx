@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="dark">
       <body className={`${sora.variable} ${dmSans.variable}`}>
         <AuthProvider>
-          {children}
+          <div style={{ overflowX: 'hidden' }}>{children}</div>
         </AuthProvider>
       </body>
     </html>
