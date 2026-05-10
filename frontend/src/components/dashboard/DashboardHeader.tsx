@@ -42,10 +42,42 @@ const ROLE_LINKS: Record<Role, NavLink[]> = {
   ],
 }
 
-const ACCENT_BORDER: Record<Role, string> = {
-  worker:   'rgba(124,58,237,0.22)',
-  employer: 'rgba(13,148,136,0.22)',
-  admin:    'rgba(220,38,38,0.22)',
+const ROLE_THEME: Record<Role, {
+  border:      string
+  activeBg:    string
+  activeText:  string
+  activeIcon:  string
+  inactiveIcon:string
+  logoBg:      string
+  hamburger:   string
+}> = {
+  worker: {
+    border:       'rgba(168,85,247,0.22)',
+    activeBg:     'rgba(168,85,247,0.15)',
+    activeText:   '#c084fc',
+    activeIcon:   'rgba(168,85,247,0.20)',
+    inactiveIcon: 'rgba(255,255,255,0.06)',
+    logoBg:       '#9333ea',
+    hamburger:    '#c084fc',
+  },
+  employer: {
+    border:       'rgba(59,130,246,0.22)',
+    activeBg:     'rgba(59,130,246,0.15)',
+    activeText:   '#60a5fa',
+    activeIcon:   'rgba(59,130,246,0.20)',
+    inactiveIcon: 'rgba(255,255,255,0.06)',
+    logoBg:       '#2563eb',
+    hamburger:    '#60a5fa',
+  },
+  admin: {
+    border:       'rgba(245,158,11,0.22)',
+    activeBg:     'rgba(245,158,11,0.15)',
+    activeText:   '#fbbf24',
+    activeIcon:   'rgba(245,158,11,0.20)',
+    inactiveIcon: 'rgba(255,255,255,0.06)',
+    logoBg:       '#d97706',
+    hamburger:    '#fbbf24',
+  },
 }
 
 export default function DashboardHeader({
@@ -66,6 +98,7 @@ export default function DashboardHeader({
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
   const links = ROLE_LINKS[role]
+  const theme = ROLE_THEME[role]
 
   const isActive = (href: string) =>
     href === `/${role}/dashboard`
@@ -95,7 +128,7 @@ export default function DashboardHeader({
           background: 'rgba(11,17,32,0.97)',
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
-          borderBottom: `1px solid ${ACCENT_BORDER[role]}`,
+          borderBottom: `1px solid ${theme.border}`,
         }}
       >
         {/* Logo */}
@@ -132,7 +165,7 @@ export default function DashboardHeader({
             aria-label="Open menu"
             style={btnStyle}
           >
-            <Menu size={19} strokeWidth={1.75} />
+            <Menu size={19} strokeWidth={1.75} color={theme.hamburger} />
           </button>
         </div>
       </header>
@@ -159,7 +192,7 @@ export default function DashboardHeader({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              background: 'linear-gradient(135deg, #0090FF, #6366F1)',
+              background: theme.logoBg,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: '#fff' }}>DH</span>
@@ -204,16 +237,16 @@ export default function DashboardHeader({
                   display: 'flex', alignItems: 'center', gap: 16,
                   padding: '12px 12px', borderRadius: 16, marginBottom: 4,
                   textDecoration: 'none',
-                  background: active ? 'rgba(0,144,255,0.1)' : 'transparent',
-                  color: active ? '#60A5FA' : 'rgba(255,255,255,0.8)',
+                  background: active ? theme.activeBg : 'transparent',
+                  color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
                   transition: 'background 0.15s',
                 }}
               >
                 <div style={{
                   width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                  background: active ? 'rgba(0,144,255,0.15)' : 'rgba(255,255,255,0.06)',
+                  background: active ? theme.activeIcon : theme.inactiveIcon,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: active ? '#60A5FA' : 'rgba(255,255,255,0.55)',
+                  color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
                 }}>
                   <Icon size={20} strokeWidth={1.75} />
                 </div>
