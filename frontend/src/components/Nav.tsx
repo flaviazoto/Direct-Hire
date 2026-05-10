@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -19,36 +19,28 @@ const NAV_LINKS = [
 ];
 
 export function Nav() {
-  const [scrolled,  setScrolled]  = useState(false);
-  const [menuOpen,  setMenuOpen]  = useState(false);
-  const pathname                  = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [visible,  setVisible]  = useState(true);
+  const [lastY,    setLastY]    = useState(0);
+  const pathname                = usePathname();
   const { auth, loading, logout } = useAuth();
-  const menuRef                   = useRef<HTMLDivElement>(null);
-  const btnRef                    = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
-  }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
-
-  // Close mobile menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        menuRef.current && !menuRef.current.contains(e.target as Node) &&
-        btnRef.current  && !btnRef.current.contains(e.target as Node)
-      ) {
-        setMenuOpen(false);
+    const handleScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      if (y < 10) {
+        setVisible(true);
+      } else if (y > lastY) {
+        setVisible(false);
+      } else {
+        setVisible(true);
       }
+      setLastY(y);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastY]);
 
   const isLoggedIn = auth.isLoggedIn;
   const role       = isLoggedIn ? auth.role      : undefined;
@@ -173,11 +165,12 @@ export function Nav() {
       backdropFilter: "blur(24px) saturate(200%)",
       WebkitBackdropFilter: "blur(24px) saturate(200%)",
       borderBottom: "1px solid rgba(255,255,255,0.07)",
-      transition: "box-shadow 0.3s ease",
+      transition: "box-shadow 0.3s ease, transform 0.3s ease",
       boxShadow: scrolled ? "0 1px 40px rgba(0,0,0,0.5)" : "none",
+      transform: visible ? "translateY(0)" : "translateY(-100%)",
     }}>
 
-      {/* ── Nav inner (desktop: 3-col grid; tablet: flex; mobile: flex) ───── */}
+      {/* ── Nav inner (desktop: 3-col grid; tablet: flex; mobile: flex center) ── */}
       <div className="nav-inner" style={{
         maxWidth: 1280, margin: "0 auto",
         height: "100%",
@@ -245,8 +238,8 @@ export function Nav() {
           })}
         </nav>
 
-        {/* Right col: tablet CTA | desktop auth | hamburger */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+        {/* Right col: tablet CTA | desktop auth */}
+        <div className="nav-right" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
 
           {/* Tablet-only CTA (768–1024px) */}
           <div className="nav-tablet-cta" style={{ display: "none" }}>
@@ -257,143 +250,25 @@ export function Nav() {
           <div className="nav-auth" style={{ display: "none" }}>
             {!loading && (isLoggedIn ? <LoggedInCTAs /> : <LoggedOutCTAs />)}
           </div>
-
-          {/* Hamburger (<768px) */}
-          <button
-            ref={btnRef}
-            onClick={() => setMenuOpen(o => !o)}
-            className="nav-hamburger"
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "rgba(255,255,255,0.7)", borderRadius: 8,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              minWidth: 44, minHeight: 44, padding: 0,
-            }}
-            aria-label="Toggle menu"
-            aria-expanded={menuOpen}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              {menuOpen
-                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
-                : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>
-              }
-            </svg>
-          </button>
         </div>
       </div>
 
-      {/* ── Mobile dropdown menu (<768px) ────────────────────────────────────── */}
-      {menuOpen && (
-        <div
-          ref={menuRef}
-          style={{
-            position: "fixed", top: 64, left: 0, right: 0, bottom: 0,
-            background: "rgba(5,13,26,0.98)",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            zIndex: 50, overflowY: "auto",
-            display: "flex", flexDirection: "column",
-            animation: "navSlideDown 0.2s ease both",
-          }}
-        >
-          {/* Nav links */}
-          <div style={{ padding: "8px 0" }}>
-            {NAV_LINKS.map(l => {
-              const isActive = pathname === l.href;
-              return (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "0 24px", minHeight: 56,
-                    fontSize: 17, fontWeight: 600,
-                    color: isActive ? "#60A5FA" : "rgba(255,255,255,0.8)",
-                    textDecoration: "none",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    transition: "color 0.15s, background 0.15s",
-                    background: isActive ? "rgba(0,144,255,0.05)" : "transparent",
-                  }}
-                >
-                  {l.label}
-                  {isActive && <span style={{ fontSize: 8, color: "#60A5FA" }}>●</span>}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Auth buttons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "20px 24px" }}>
-            {!loading && isLoggedIn ? (
-              <>
-                <Link href={dashHref} onClick={() => setMenuOpen(false)} style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  minHeight: 52, borderRadius: 10, textDecoration: "none",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.85)", fontSize: 15, fontWeight: 600,
-                  fontFamily: "var(--font-body)",
-                }}>
-                  Dashboard
-                </Link>
-                <button
-                  onClick={() => { setMenuOpen(false); handleLogout(); }}
-                  style={{
-                    minHeight: 52, borderRadius: 10, border: "none", cursor: "pointer",
-                    background: "linear-gradient(135deg, #0090FF, #6366F1)",
-                    color: "#fff", fontSize: 15, fontWeight: 700,
-                    fontFamily: "var(--font-body)", width: "100%",
-                  }}
-                >
-                  {greeting ? `Log out (${greeting})` : "Log out"}
-                </button>
-              </>
-            ) : !loading ? (
-              <>
-                <Link href="/login" onClick={() => setMenuOpen(false)} style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  minHeight: 52, borderRadius: 10, textDecoration: "none",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.85)", fontSize: 15, fontWeight: 600,
-                  fontFamily: "var(--font-body)",
-                }}>
-                  Sign in
-                </Link>
-                <Link href="/register" onClick={() => setMenuOpen(false)} style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  minHeight: 52, borderRadius: 10, textDecoration: "none",
-                  background: "linear-gradient(135deg, #0090FF, #6366F1)",
-                  color: "#fff", fontSize: 15, fontWeight: 700,
-                  fontFamily: "var(--font-body)",
-                }}>
-                  Get started
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
-
       <style>{`
-        @keyframes navSlideDown {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
         /* ── Mobile default (<768px) ── */
         .nav-header  { height: 64px; }
-        .nav-inner   { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 0 16px !important; }
-        .nav-links       { display: none !important; }
-        .nav-auth        { display: none !important; }
-        .nav-tablet-cta  { display: none !important; }
-        .nav-hamburger   { display: flex !important; }
+        .nav-inner   { display: flex !important; justify-content: center !important; align-items: center !important; padding: 0 16px !important; }
+        .nav-links      { display: none !important; }
+        .nav-auth       { display: none !important; }
+        .nav-tablet-cta { display: none !important; }
+        .nav-right      { display: none !important; }
 
         /* ── Tablet (768px–1024px) ── */
         @media (min-width: 768px) {
           .nav-header  { height: 68px; }
           .nav-inner   { display: grid !important; grid-template-columns: auto 1fr auto !important; gap: 1.5rem !important; padding: 0 32px !important; align-items: center !important; }
           .nav-links      { display: flex !important; }
+          .nav-right      { display: flex !important; }
           .nav-tablet-cta { display: flex !important; }
-          .nav-hamburger  { display: none !important; }
         }
 
         /* ── Desktop (>1024px) ── */
@@ -402,10 +277,6 @@ export function Nav() {
           .nav-inner  { display: grid !important; grid-template-columns: 200px 1fr 200px !important; gap: 0 !important; padding: 0 40px !important; }
           .nav-tablet-cta { display: none !important; }
           .nav-auth       { display: flex !important; }
-        }
-
-        @media (max-width: 640px) {
-          .nav-inner { padding: 0 12px !important; }
         }
       `}</style>
     </header>
