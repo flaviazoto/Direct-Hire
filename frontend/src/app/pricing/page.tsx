@@ -73,11 +73,11 @@ const COMPARE = [
 
 export default function PricingPage() {
   return (
-    <main style={{ background:"var(--navy-950,#060B18)", minHeight:"100vh", color:"var(--text-primary,#F0F4FF)" }}>
+    <main style={{ background:"var(--navy-950,#060B18)", minHeight:"100vh", color:"var(--text-primary,#F0F4FF)", overflowX:"hidden" }}>
       <Nav />
 
       {/* HERO */}
-      <section style={{ padding:"140px 32px 80px", textAlign:"center", background:"var(--navy-950,#060B18)", position:"relative", overflow:"hidden" }}>
+      <section className="pub-hero" style={{ padding:"140px 32px 80px", textAlign:"center", background:"var(--navy-950,#060B18)", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"-20%", left:"50%", transform:"translateX(-50%)", width:700, height:500, borderRadius:"50%", background:"rgba(0,144,255,0.07)", filter:"blur(120px)", pointerEvents:"none" }}/>
         <div className="container" style={{ position:"relative" }}>
           <div style={{
@@ -99,7 +99,7 @@ export default function PricingPage() {
       </section>
 
       {/* PLANS */}
-      <section style={{ padding:"20px 32px 100px", background:"var(--navy-950,#060B18)" }}>
+      <section style={{ padding:"20px 0 100px", background:"var(--navy-950,#060B18)" }}>
         <div className="container">
           <div className="pricing-plans-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24, alignItems:"start" }}>
             {PLANS.map(plan => (
@@ -247,6 +247,18 @@ export default function PricingPage() {
       </section>
 
       <Footer />
+
+      <style>{`
+        @media (max-width: 767px) {
+          .pricing-plans-grid  { grid-template-columns: 1fr !important; }
+          .worker-pricing-grid { grid-template-columns: 1fr !important; }
+          .pricing-table-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .pricing-table-row   { min-width: 580px !important; }
+        }
+        @media (max-width: 900px) and (min-width: 768px) {
+          .pricing-plans-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
       <style>{`
         @media (max-width: 1024px) {
           .pricing-plans-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }

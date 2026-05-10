@@ -699,6 +699,27 @@
   }
 }
 
+/* ─── Public marketing pages — hero side-padding reset on mobile ─────────── */
+/* Hero sections use inline padding:"140px 32px 100px"; on mobile we strip    */
+/* the 32px sides so only .container's 16px padding remains (343px content).  */
+@media (max-width: 640px) {
+  .pub-hero {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 90px !important;
+    padding-bottom: 56px !important;
+  }
+  /* Stat rows: tighter gap so 4 items wrap into 2×2 cleanly */
+  .pub-stats {
+    gap: 16px 20px !important;
+  }
+  /* Feature / benefit grids: always 1 col on small phones */
+  .pub-grid-2,
+  .pub-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

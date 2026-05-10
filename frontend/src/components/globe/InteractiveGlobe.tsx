@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-// ── Country data (existing tooltip markers) ────────────────────────────────────
+// ── Country data ───────────────────────────────────────────────────────────────
 
 const COUNTRIES = [
   { code: "DE", name: "Germany",        lat: 51.16, lng: 10.45,   jobs: "94K",  cats: "Engineering, Finance, Ops"    },
@@ -23,15 +23,15 @@ type Country = typeof COUNTRIES[number];
 
 // ── Connection arc pairs ───────────────────────────────────────────────────────
 
-const ARCS = [
-  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 24.0,  lng:  54.0 } }, // London → Dubai
-  { from: { lat: 24.0,  lng:  54.0 }, to: { lat:  1.3,  lng: 103.8 } }, // Dubai → Singapore
-  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 37.1,  lng: -95.7 } }, // London → US
-  { from: { lat: 37.1,  lng: -95.7 }, to: { lat: 56.1,  lng: -106.3} }, // US → Canada
-  { from: { lat: 51.2,  lng:  10.4 }, to: { lat: 41.9,  lng:  12.5 } }, // Germany → Italy
+const ARCS_ALL = [
+  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 24.0,  lng:  54.0 } },
+  { from: { lat: 24.0,  lng:  54.0 }, to: { lat:  1.3,  lng: 103.8 } },
+  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 37.1,  lng: -95.7 } },
+  { from: { lat: 37.1,  lng: -95.7 }, to: { lat: 56.1,  lng: -106.3} },
+  { from: { lat: 51.2,  lng:  10.4 }, to: { lat: 41.9,  lng:  12.5 } },
 ];
 
-// ── HTML pill markers (CSS2DRenderer) ─────────────────────────────────────────
+// ── HTML pill markers ──────────────────────────────────────────────────────────
 
 const HTML_MARKERS = [
   { code: "GB", lat: 51.5,  lng: -0.1,   label: "GB · 145K" },
@@ -52,12 +52,9 @@ interface TooltipState {
 }
 
 const GLOBE_RADIUS    = 100;
-const CANVAS_SIZE     = 520;
-const AUTO_ROTATE     = 0.004;   // rad/frame ≈ "speed 0.4"
-const DAMPING         = 0.9;     // velocity multiplier ≈ dampingFactor 0.1
-const RESUME_DELAY_MS = 4000;    // ms before auto-rotate resumes after drag
-
-// ── lat/lng → 3D vector ────────────────────────────────────────────────────────
+const AUTO_ROTATE     = 0.004;
+const DAMPING         = 0.9;
+const RESUME_DELAY_MS = 4000;
 
 function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
   const phi   = (90 - lat)  * (Math.PI / 180);
@@ -71,7 +68,6 @@ function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
 
 // ── Shaders ────────────────────────────────────────────────────────────────────
 
-// Atmosphere glow (spec: scale 1.08, BackSide, AdditiveBlending)
 const ATM_VERT = `
   varying vec3 vNormal;
   void main() {
@@ -88,7 +84,6 @@ const ATM_FRAG = `
   }
 `;
 
-// Outer halo (limb brightening)
 const HALO_VERT = ATM_VERT;
 
 const HALO_FRAG = `
@@ -125,11 +120,16 @@ export default function InteractiveGlobe() {
     const el = mountRef.current;
     if (!el) return;
 
+    const isMobile = window.innerWidth < 768;
+    const ARCS     = isMobile ? ARCS_ALL.slice(0, 3) : ARCS_ALL;
+
     // ── Renderer ───────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(CANVAS_SIZE, CANVAS_SIZE);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
+    renderer.domElement.style.width   = "100%";
+    renderer.domElement.style.height  = "100%";
+    renderer.domElement.style.display = "block";
     el.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -139,6 +139,25 @@ export default function InteractiveGlobe() {
     camera.position.z = 290;
     cameraRef.current = camera;
 
+    // Declare early so updateSize (below) can reference via closure
+    let css2dRenderer: {
+      setSize: (w: number, h: number) => void;
+      render: (s: THREE.Scene, c: THREE.Camera) => void;
+      domElement: HTMLElement;
+    } | null = null;
+
+    // ── Responsive size updater ────────────────────────────────────────────────
+    const updateSize = () => {
+      if (!el) return;
+      const w = el.clientWidth  || 520;
+      const h = el.clientHeight || 520;
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      if (css2dRenderer) css2dRenderer.setSize(w, h);
+    };
+
     // ── Lights ─────────────────────────────────────────────────────────────────
     scene.add(new THREE.AmbientLight(0x3b6fcc, 0.9));
     const sun = new THREE.DirectionalLight(0x7aafff, 1.5);
@@ -147,8 +166,6 @@ export default function InteractiveGlobe() {
     const rim = new THREE.DirectionalLight(0x062050, 0.6);
     rim.position.set(-4, -1, -3);
     scene.add(rim);
-
-
 
     // ── Globe group ────────────────────────────────────────────────────────────
     const globeGroup = new THREE.Group();
@@ -164,48 +181,47 @@ export default function InteractiveGlobe() {
       emissive:          new THREE.Color(0x060e22),
       emissiveIntensity: 0.45,
     });
-    const earth = new THREE.Mesh(earthGeo, earthMat);
-    globeGroup.add(earth);
+    globeGroup.add(new THREE.Mesh(earthGeo, earthMat));
 
-    // Earth texture (non-blocking — plain colour globe if it fails)
     const textureLoader = new THREE.TextureLoader();
     const earthTexture  = textureLoader.load(
       "https://unpkg.com/three-globe/example/img/earth-night.jpg",
       (tex) => { earthMat.map = tex; earthMat.needsUpdate = true; },
       undefined,
-      () => { /* texture failed — solid colour fallback is fine */ },
+      () => { /* texture failed — solid colour fallback */ },
     );
-    void earthTexture; // referenced above
+    void earthTexture;
 
-    // ── Atmosphere glow (scale 1.08, BackSide, AdditiveBlending) ──────────────
-    const atmMat = new THREE.ShaderMaterial({
-      vertexShader:   ATM_VERT,
-      fragmentShader: ATM_FRAG,
-      side:        THREE.BackSide,
-      blending:    THREE.AdditiveBlending,
-      transparent: true,
-      depthWrite:  false,
-    });
+    // ── Atmosphere glow ────────────────────────────────────────────────────────
     globeGroup.add(new THREE.Mesh(
       new THREE.SphereGeometry(GLOBE_RADIUS * 1.08, 48, 48),
-      atmMat,
+      new THREE.ShaderMaterial({
+        vertexShader:   ATM_VERT,
+        fragmentShader: ATM_FRAG,
+        side:        THREE.BackSide,
+        blending:    THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite:  false,
+      }),
     ));
 
-    // ── Outer halo (limb brightening) ──────────────────────────────────────────
-    const haloMat = new THREE.ShaderMaterial({
-      uniforms: {
-        glowColor:   { value: new THREE.Color(0x0d3b8c) },
-        coefficient: { value: 0.28 },
-        power:       { value: 5.5 },
-      },
-      vertexShader:   HALO_VERT,
-      fragmentShader: HALO_FRAG,
-      side:        THREE.FrontSide,
-      blending:    THREE.AdditiveBlending,
-      transparent: true,
-      depthWrite:  false,
-    });
-    scene.add(new THREE.Mesh(new THREE.SphereGeometry(GLOBE_RADIUS + 14, 48, 48), haloMat));
+    // ── Outer halo ─────────────────────────────────────────────────────────────
+    scene.add(new THREE.Mesh(
+      new THREE.SphereGeometry(GLOBE_RADIUS + 14, 48, 48),
+      new THREE.ShaderMaterial({
+        uniforms: {
+          glowColor:   { value: new THREE.Color(0x0d3b8c) },
+          coefficient: { value: 0.28 },
+          power:       { value: 5.5 },
+        },
+        vertexShader:   HALO_VERT,
+        fragmentShader: HALO_FRAG,
+        side:        THREE.FrontSide,
+        blending:    THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite:  false,
+      }),
+    ));
 
     // ── Grid lines ─────────────────────────────────────────────────────────────
     const gridMat    = new THREE.LineBasicMaterial({ color: 0x1e54b7, transparent: true, opacity: 0.18 });
@@ -227,10 +243,11 @@ export default function InteractiveGlobe() {
       addLine(pts, gridMat);
     }
 
-    // ── Wireframe dot-grid overlay ─────────────────────────────────────────────
-    const wireGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.001, 36, 18);
-    const wireMat = new THREE.MeshBasicMaterial({ color: 0x0090FF, wireframe: true, transparent: true, opacity: 0.04 });
-    globeGroup.add(new THREE.Mesh(wireGeo, wireMat));
+    // ── Wireframe overlay ──────────────────────────────────────────────────────
+    globeGroup.add(new THREE.Mesh(
+      new THREE.SphereGeometry(GLOBE_RADIUS * 1.001, 36, 18),
+      new THREE.MeshBasicMaterial({ color: 0x0090FF, wireframe: true, transparent: true, opacity: 0.04 }),
+    ));
 
     // ── Connection arcs ────────────────────────────────────────────────────────
     const arcLines: THREE.Line[] = [];
@@ -238,17 +255,15 @@ export default function InteractiveGlobe() {
       const start = latLngToVec3(arc.from.lat, arc.from.lng, GLOBE_RADIUS);
       const end   = latLngToVec3(arc.to.lat,   arc.to.lng,   GLOBE_RADIUS);
       const mid   = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(GLOBE_RADIUS * 1.4);
-      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-      const points = curve.getPoints(60);
-      const geo = new THREE.BufferGeometry().setFromPoints(points);
-      const mat = new THREE.LineBasicMaterial({ color: 0x0090FF, transparent: true, opacity: 0.35 });
-      const line = new THREE.Line(geo, mat);
+      const geo   = new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(start, mid, end).getPoints(60));
+      const mat   = new THREE.LineBasicMaterial({ color: 0x0090FF, transparent: true, opacity: 0.35 });
+      const line  = new THREE.Line(geo, mat);
       globeGroup.add(line);
       arcLines.push(line);
     });
     arcLinesRef.current = arcLines;
 
-    // ── Three.js country dot + ring markers ────────────────────────────────────
+    // ── Country dot + ring markers ─────────────────────────────────────────────
     const dotData:  typeof dotRefs.current  = [];
     const ringData: typeof ringRefs.current = [];
 
@@ -277,66 +292,69 @@ export default function InteractiveGlobe() {
     dotRefs.current  = dotData;
     ringRefs.current = ringData;
 
-    // ── CSS2D HTML pill markers ────────────────────────────────────────────────
-    let css2dRenderer: { setSize: (w: number, h: number) => void; render: (s: THREE.Scene, c: THREE.Camera) => void; domElement: HTMLElement } | null = null;
-    const css2dObjects: { obj: THREE.Object3D & { element: HTMLElement }; localPos: THREE.Vector3 }[] = [];
+    // ── CSS2D HTML pill markers (desktop only — too cluttered on mobile) ────────
+    if (!isMobile) {
+      try {
+        const { CSS2DRenderer, CSS2DObject } = require("three/examples/jsm/renderers/CSS2DRenderer.js") as {
+          CSS2DRenderer: new () => {
+            setSize: (w: number, h: number) => void;
+            render: (s: THREE.Scene, c: THREE.Camera) => void;
+            domElement: HTMLElement;
+          };
+          CSS2DObject: new (el: HTMLElement) => THREE.Object3D & { element: HTMLElement };
+        };
 
-    try {
-      // Dynamic require so a missing package doesn't crash the globe
-      const { CSS2DRenderer, CSS2DObject } = require("three/examples/jsm/renderers/CSS2DRenderer.js") as {
-        CSS2DRenderer: new () => { setSize: (w: number, h: number) => void; render: (s: THREE.Scene, c: THREE.Camera) => void; domElement: HTMLElement };
-        CSS2DObject:   new (el: HTMLElement) => THREE.Object3D & { element: HTMLElement };
-      };
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.domElement.style.cssText =
+          "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;";
+        el.appendChild(labelRenderer.domElement);
+        css2dRenderer = labelRenderer;
 
-      const labelRenderer = new CSS2DRenderer();
-      labelRenderer.setSize(CANVAS_SIZE, CANVAS_SIZE);
-      labelRenderer.domElement.style.position = "absolute";
-      labelRenderer.domElement.style.top      = "0";
-      labelRenderer.domElement.style.left     = "0";
-      labelRenderer.domElement.style.pointerEvents = "none";
-      el.appendChild(labelRenderer.domElement);
-      css2dRenderer = labelRenderer;
+        HTML_MARKERS.forEach(m => {
+          const div = document.createElement("div");
+          div.textContent = m.label;
+          div.style.cssText = `
+            background: rgba(1,9,19,0.88);
+            border: 1px solid rgba(0,144,255,0.35);
+            border-radius: 20px;
+            padding: 4px 11px;
+            font-family: 'DM Sans', system-ui, sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #60A5FA;
+            white-space: nowrap;
+            cursor: pointer;
+            letter-spacing: 0.04em;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,144,255,0.1);
+            transition: all 0.2s;
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+            user-select: none;
+          `;
+          div.addEventListener("mouseenter", () => {
+            div.style.background  = "rgba(0,144,255,0.15)";
+            div.style.borderColor = "rgba(0,144,255,0.6)";
+            div.style.color       = "#93C5FD";
+          });
+          div.addEventListener("mouseleave", () => {
+            div.style.background  = "rgba(1,9,19,0.88)";
+            div.style.borderColor = "rgba(0,144,255,0.35)";
+            div.style.color       = "#60A5FA";
+          });
 
-      HTML_MARKERS.forEach(m => {
-        const div = document.createElement("div");
-        div.textContent = m.label;
-        div.style.cssText = `
-          background: rgba(1,9,19,0.88);
-          border: 1px solid rgba(0,144,255,0.35);
-          border-radius: 20px;
-          padding: 4px 11px;
-          font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-          color: #60A5FA;
-          white-space: nowrap;
-          cursor: pointer;
-          letter-spacing: 0.04em;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,144,255,0.1);
-          transition: all 0.2s;
-          pointer-events: auto;
-          backdrop-filter: blur(8px);
-          user-select: none;
-        `;
-        div.addEventListener("mouseenter", () => {
-          div.style.background    = "rgba(0,144,255,0.15)";
-          div.style.borderColor   = "rgba(0,144,255,0.6)";
-          div.style.color         = "#93C5FD";
+          const label = new CSS2DObject(div);
+          label.position.copy(latLngToVec3(m.lat, m.lng, GLOBE_RADIUS + 6));
+          globeGroup.add(label);
         });
-        div.addEventListener("mouseleave", () => {
-          div.style.background    = "rgba(1,9,19,0.88)";
-          div.style.borderColor   = "rgba(0,144,255,0.35)";
-          div.style.color         = "#60A5FA";
-        });
-
-        const label = new CSS2DObject(div);
-        label.position.copy(latLngToVec3(m.lat, m.lng, GLOBE_RADIUS + 6));
-        globeGroup.add(label);
-        css2dObjects.push({ obj: label, localPos: latLngToVec3(m.lat, m.lng, GLOBE_RADIUS + 6) });
-      });
-    } catch {
-      // CSS2DRenderer unavailable — dot markers remain visible as fallback
+      } catch {
+        // CSS2DRenderer unavailable — dot markers remain as fallback
+      }
     }
+
+    // ── Apply initial size + start resize listener ─────────────────────────────
+    // (css2dRenderer is now assigned above if desktop, so updateSize will resize it)
+    updateSize();
+    window.addEventListener("resize", updateSize);
 
     // ── Raycaster ──────────────────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
@@ -347,12 +365,14 @@ export default function InteractiveGlobe() {
       if (idx < 0) { setTooltip({ visible: false, x: 0, y: 0, country: null }); return; }
       const { country, mesh } = dotData[idx];
       const v  = mesh.position.clone().project(camera);
-      const sx = ( v.x * 0.5 + 0.5) * CANVAS_SIZE;
-      const sy = (-v.y * 0.5 + 0.5) * CANVAS_SIZE;
+      const w  = el!.clientWidth  || 520;
+      const h  = el!.clientHeight || 520;
+      const sx = ( v.x * 0.5 + 0.5) * w;
+      const sy = (-v.y * 0.5 + 0.5) * h;
       setTooltip({ visible: true, x: sx, y: sy, country });
     }
 
-    // ── Event handlers ─────────────────────────────────────────────────────────
+    // ── Mouse handlers ─────────────────────────────────────────────────────────
 
     function onMouseMove(e: MouseEvent) {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -394,14 +414,14 @@ export default function InteractiveGlobe() {
     }
 
     function onMouseDown(e: MouseEvent) {
-      isDragging.current    = true;
-      prevMouse.current     = { x: e.clientX, y: e.clientY };
-      velocity.current      = { x: 0, y: 0 };
+      isDragging.current   = true;
+      prevMouse.current    = { x: e.clientX, y: e.clientY };
+      velocity.current     = { x: 0, y: 0 };
       renderer.domElement.style.cursor = "grabbing";
     }
 
     function onMouseUp() {
-      isDragging.current = false;
+      isDragging.current   = false;
       lastDragTime.current = Date.now();
       renderer.domElement.style.cursor = "grab";
     }
@@ -422,12 +442,43 @@ export default function InteractiveGlobe() {
       camera.position.z = Math.max(200, Math.min(400, camera.position.z + e.deltaY * 0.18));
     }
 
+    // ── Touch handlers ─────────────────────────────────────────────────────────
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      isDragging.current   = true;
+      prevMouse.current    = { x: t.clientX, y: t.clientY };
+      velocity.current     = { x: 0, y: 0 };
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!isDragging.current || e.touches.length !== 1) return;
+      e.preventDefault();
+      const t  = e.touches[0];
+      const dx = t.clientX - prevMouse.current.x;
+      const dy = t.clientY - prevMouse.current.y;
+      velocity.current = { x: dx * 0.007, y: dy * 0.004 };
+      globeGroup.rotation.y += dx * 0.007;
+      globeGroup.rotation.x  = Math.max(-Math.PI / 4,
+        Math.min(Math.PI / 4, globeGroup.rotation.x + dy * 0.004));
+      prevMouse.current = { x: t.clientX, y: t.clientY };
+    }
+
+    function onTouchEnd() {
+      isDragging.current   = false;
+      lastDragTime.current = Date.now();
+    }
+
     renderer.domElement.addEventListener("mousemove",  onMouseMove);
     renderer.domElement.addEventListener("mousedown",  onMouseDown);
     renderer.domElement.addEventListener("mouseup",    onMouseUp);
     renderer.domElement.addEventListener("mouseleave", onMouseUp);
     renderer.domElement.addEventListener("click",      onClick);
-    renderer.domElement.addEventListener("wheel",      onWheel, { passive: false });
+    renderer.domElement.addEventListener("wheel",      onWheel,      { passive: false });
+    renderer.domElement.addEventListener("touchstart", onTouchStart, { passive: true });
+    renderer.domElement.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    renderer.domElement.addEventListener("touchend",   onTouchEnd);
     renderer.domElement.style.cursor = "grab";
 
     // ── Animation loop ─────────────────────────────────────────────────────────
@@ -437,8 +488,8 @@ export default function InteractiveGlobe() {
       frameRef.current = requestAnimationFrame(animate);
       time += 0.016;
 
-      const msSinceDrag  = Date.now() - lastDragTime.current;
-      const autoResumed  = lastDragTime.current === 0 || msSinceDrag > RESUME_DELAY_MS;
+      const msSinceDrag = Date.now() - lastDragTime.current;
+      const autoResumed = lastDragTime.current === 0 || msSinceDrag > RESUME_DELAY_MS;
 
       if (!isDragging.current) {
         if (targetRot.current) {
@@ -449,25 +500,21 @@ export default function InteractiveGlobe() {
             Math.abs(globeGroup.rotation.x - targetRot.current.x) < 0.002
           ) targetRot.current = null;
         } else if (Math.abs(velocity.current.x) > 0.0005 || Math.abs(velocity.current.y) > 0.0005) {
-          // Decelerate with damping
           globeGroup.rotation.y += velocity.current.x;
           globeGroup.rotation.x  = Math.max(-Math.PI / 4,
             Math.min(Math.PI / 4, globeGroup.rotation.x + velocity.current.y));
           velocity.current.x *= DAMPING;
           velocity.current.y *= DAMPING;
         } else if (autoResumed) {
-          // Auto-rotate resumes 4s after last drag
           globeGroup.rotation.y += AUTO_ROTATE;
         }
       }
 
-      // Update dot + ring world positions
       const camDir = camera.position.clone().normalize();
 
       dotData.forEach(({ mesh, localPos }, i) => {
         const worldPos = localPos.clone().applyEuler(globeGroup.rotation);
         mesh.position.copy(worldPos);
-
         const facing = worldPos.clone().normalize().dot(camDir) > 0.05;
         mesh.visible = facing;
 
@@ -483,7 +530,6 @@ export default function InteractiveGlobe() {
         (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
       });
 
-      // Animate arc opacity
       arcLinesRef.current.forEach((line, i) => {
         (line.material as THREE.LineBasicMaterial).opacity =
           0.15 + 0.3 * Math.abs(Math.sin(Date.now() * 0.001 + i * 1.2));
@@ -498,12 +544,16 @@ export default function InteractiveGlobe() {
     // ── Cleanup ────────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(frameRef.current);
+      window.removeEventListener("resize", updateSize);
       renderer.domElement.removeEventListener("mousemove",  onMouseMove);
       renderer.domElement.removeEventListener("mousedown",  onMouseDown);
       renderer.domElement.removeEventListener("mouseup",    onMouseUp);
       renderer.domElement.removeEventListener("mouseleave", onMouseUp);
       renderer.domElement.removeEventListener("click",      onClick);
       renderer.domElement.removeEventListener("wheel",      onWheel);
+      renderer.domElement.removeEventListener("touchstart", onTouchStart);
+      renderer.domElement.removeEventListener("touchmove",  onTouchMove);
+      renderer.domElement.removeEventListener("touchend",   onTouchEnd);
 
       scene.traverse(obj => {
         if (obj instanceof THREE.Mesh) {
@@ -521,12 +571,13 @@ export default function InteractiveGlobe() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const ttX = Math.min(tooltip.x, CANVAS_SIZE - 220);
+  const canvasW = mountRef.current?.clientWidth ?? 520;
+  const ttX = Math.min(tooltip.x, canvasW - 220);
   const ttY = Math.max(tooltip.y - 90, 8);
 
   return (
-    <div style={{ position: "relative", width: CANVAS_SIZE, height: CANVAS_SIZE, flexShrink: 0 }}>
-      <div ref={mountRef} style={{ width: CANVAS_SIZE, height: CANVAS_SIZE }} />
+    <div className="relative w-full aspect-square max-w-[340px] sm:max-w-[480px] md:max-w-[600px] mx-auto touch-none">
+      <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
 
       {/* Drag hint */}
       <div style={{
@@ -540,7 +591,9 @@ export default function InteractiveGlobe() {
         display: "flex", alignItems: "center", gap: 5,
         pointerEvents: "none",
       }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
         Drag to explore
       </div>
 

@@ -4,6 +4,7 @@ import { Sora, DM_Sans } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
 import { AuthProvider } from "@/context/AuthContext";
+import BottomNav from "@/components/BottomNav";
 
 const sora = Sora({
   subsets:  ["latin"],
@@ -41,7 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="dark">
       <body className={`${sora.variable} ${dmSans.variable}`}>
         <AuthProvider>
-          {children}
+          <div className="pb-[72px] md:pb-0">
+            {children}
+          </div>
+          <BottomNav />
         </AuthProvider>
       </body>
     </html>

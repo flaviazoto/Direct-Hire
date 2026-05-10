@@ -40,11 +40,11 @@ export default function ForEmployersPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
+    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)", overflowX: "hidden" }}>
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section style={{ background: "var(--navy-950,#060B18)", padding: "140px 32px 100px", position: "relative", overflow: "hidden" }}>
+      <section className="pub-hero" style={{ background: "var(--navy-950,#060B18)", padding: "140px 32px 100px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "-10%", right: "0", width: 600, height: 600, borderRadius: "50%", background: "rgba(0,100,220,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: "-20%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "rgba(96,165,250,0.05)", filter: "blur(120px)", pointerEvents: "none" }} />
 
@@ -76,7 +76,7 @@ export default function ForEmployersPage() {
                 <Link href="/pricing" className="btn-secondary">See Pricing</Link>
               </div>
 
-              <div style={{ display: "flex", gap: 32, marginTop: 40, flexWrap: "wrap" as const }}>
+              <div className="pub-stats" style={{ display: "flex", gap: 32, marginTop: 40, flexWrap: "wrap" as const }}>
                 {[
                   { v: "2,800+",  l: "Verified companies"   },
                   { v: "94",      l: "Source countries"      },

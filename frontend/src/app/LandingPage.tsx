@@ -183,7 +183,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div ref={pageRef} style={{ background: "#010913", minHeight: "100vh" }}>
+    <div ref={pageRef} style={{ background: "#010913", minHeight: "100vh", overflowX: "hidden" }}>
 
       <Nav />
 
@@ -201,8 +201,8 @@ export default function LandingPage() {
         }} />
         <div className="hero-grid relative z-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
 
-          {/* LEFT: text */}
-          <div className="max-w-2xl md:max-w-xl">
+          {/* LEFT: text — below globe on mobile, left column on desktop */}
+          <div className="order-2 md:order-1 max-w-2xl md:max-w-xl">
             {/* H1 */}
             <h1 className="dh-reveal hero-h1 font-display font-black leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8">
               Find World-Class Talent<br />
@@ -318,8 +318,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* RIGHT: Globe + floating cards */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", maxWidth: 600, aspectRatio: "1" }} className="hero-globe-col">
+          {/* RIGHT: Globe + floating cards — above text on mobile, right column on desktop */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }} className="hero-globe-col order-1 md:order-2">
             {/* Glow behind globe */}
             <div aria-hidden style={{
               position: "absolute", width: 600, height: 600, borderRadius: "50%",
@@ -400,8 +400,10 @@ export default function LandingPage() {
           .hero-h1  { font-size: clamp(28px, 5vw, 64px) !important; }
           .hero-sub { font-size: clamp(16px, 2vw, 22px) !important; }
           @media (max-width: 900px) {
-            .hero-grid      { grid-template-columns: 1fr !important; }
-            .hero-globe-col { display: none !important; }
+            .hero-grid { grid-template-columns: 1fr !important; }
+          }
+          @media (max-width: 640px) {
+            .globe-float-card { display: none !important; }
           }
           @media (max-width: 640px) {
             .hero-cta-row { flex-direction: column !important; }
