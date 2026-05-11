@@ -14,9 +14,9 @@ const InteractiveGlobe = dynamic(
 
 function GlobePlaceholder() {
   return (
-    <div style={{ position: "relative", width: 540, height: 540, flexShrink: 0 }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: 540, aspectRatio: "1", flexShrink: 0, margin: "0 auto" }}>
       <div style={{
-        width: 540, height: 540, borderRadius: "50%",
+        width: "100%", height: "100%", borderRadius: "50%",
         background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #010913 100%)",
         position: "relative", overflow: "hidden",
         boxShadow: "0 0 80px rgba(30,84,183,0.2), 0 0 160px rgba(99,102,241,0.08)",

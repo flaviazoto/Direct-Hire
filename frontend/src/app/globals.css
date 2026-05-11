@@ -536,24 +536,8 @@ input, button, textarea, select { font: inherit; }
     display: none !important;
   }
 
-  .app-mobile-header {
-    display: flex !important;
-  }
-
-  .app-mobile-drawer {
-    display: block !important;
-  }
-
-  .app-bottom-nav {
-    display: grid !important;
-  }
-
   .app-main {
     min-height: 100dvh !important;
-  }
-
-  [data-page-root] {
-    padding-bottom: max(88px, calc(72px + env(safe-area-inset-bottom))) !important;
   }
 }
 

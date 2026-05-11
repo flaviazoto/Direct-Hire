@@ -246,25 +246,14 @@ export default function PricingPage() {
       <Footer />
 
       <style>{`
-        @media (max-width: 767px) {
-          .pricing-plans-grid  { grid-template-columns: 1fr !important; }
-          .worker-pricing-grid { grid-template-columns: 1fr !important; }
-          .pricing-table-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-          .pricing-table-row   { min-width: 580px !important; }
-        }
-        @media (max-width: 900px) and (min-width: 768px) {
-          .pricing-plans-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-      <style>{`
         @media (max-width: 1024px) {
           .pricing-plans-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
-        @media (max-width: 700px) {
+        @media (max-width: 767px) {
           .pricing-plans-grid,
           .worker-pricing-grid { grid-template-columns: 1fr !important; }
           .pricing-table-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-          .pricing-table-row { min-width: 680px; }
+          .pricing-table-row   { min-width: 620px !important; }
         }
       `}</style>
     </main>
