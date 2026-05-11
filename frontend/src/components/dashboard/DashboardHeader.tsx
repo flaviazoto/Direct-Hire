@@ -7,6 +7,7 @@ import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
+  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag,
 } from 'lucide-react'
 
 type Role = 'worker' | 'employer' | 'admin'
@@ -17,6 +18,7 @@ type NavLink = {
   Icon: React.ElementType
 }
 
+// Flat links used only by the desktop sidebar
 const ROLE_LINKS: Record<Role, NavLink[]> = {
   worker: [
     { href: '/worker/dashboard',    label: 'Dashboard',       Icon: LayoutGrid    },
@@ -41,6 +43,47 @@ const ROLE_LINKS: Record<Role, NavLink[]> = {
     { href: '/admin/revenue',   label: 'Revenue',           Icon: Settings   },
   ],
 }
+
+// Grouped links used only in the admin mobile overlay
+const ADMIN_LINKS = [
+  {
+    section: 'Overview',
+    links: [
+      { href: '/admin/dashboard', label: 'Overview', Icon: LayoutGrid },
+      { href: '/admin/revenue',   label: 'Revenue',  Icon: TrendingUp },
+    ],
+  },
+  {
+    section: 'Users',
+    links: [
+      { href: '/admin/users/pending',   label: 'Pending Review',  Icon: Clock        },
+      { href: '/admin/approvals',       label: 'Approvals',       Icon: CheckCircle  },
+      { href: '/admin/document-review', label: 'Document Review', Icon: FileSearch   },
+      { href: '/admin/users',           label: 'All Users',       Icon: Users        },
+    ],
+  },
+  {
+    section: 'Logs & Compliance',
+    links: [
+      { href: '/admin/audit-log',  label: 'Audit Log',      Icon: FileText   },
+      { href: '/admin/fraud',      label: 'Fraud Console',  Icon: ShieldAlert },
+      { href: '/admin/email-logs', label: 'Email Logs',     Icon: Mail        },
+    ],
+  },
+  {
+    section: 'Job Posts',
+    links: [
+      { href: '/admin/jobs/pending', label: 'Pending Review', Icon: Clock     },
+      { href: '/admin/jobs',         label: 'All Job Posts',  Icon: Briefcase },
+    ],
+  },
+  {
+    section: 'Settings',
+    links: [
+      { href: '/admin/pricing', label: 'Pricing', Icon: Tag },
+    ],
+  },
+]
 
 const ROLE_THEME: Record<Role, {
   border:      string
@@ -119,7 +162,6 @@ export default function DashboardHeader({
     <>
       {/* ── Mobile header (hidden at md+) ── */}
       <header className="fixed top-0 left-0 right-0 z-40 h-14 md:hidden flex items-center justify-between px-4 bg-background border-b border-border">
-        {/* Logo */}
         <Link
           href={`/${role}/dashboard`}
           style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
@@ -131,36 +173,23 @@ export default function DashboardHeader({
           }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, color: '#fff' }}>DH</span>
           </div>
-          <span style={{
-            fontFamily: 'var(--font-display)', fontWeight: 700,
-            fontSize: 15, color: '#fff', letterSpacing: '-0.02em',
-          }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#fff', letterSpacing: '-0.02em' }}>
             DirectHire
           </span>
         </Link>
 
-        {/* Right: bell + hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Link
-            href={`/${role}/dashboard`}
-            aria-label="Notifications"
-            style={btnStyle}
-          >
+          <Link href={`/${role}/dashboard`} aria-label="Notifications" style={btnStyle}>
             <Bell size={17} strokeWidth={1.75} />
           </Link>
-          <button
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            style={btnStyle}
-          >
+          <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
             <Menu size={19} strokeWidth={1.75} color={theme.hamburger} />
           </button>
         </div>
       </header>
 
-      {/* ── Desktop sidebar (shown at md+) ── */}
+      {/* ── Desktop sidebar (shown at md+) — DO NOT TOUCH ── */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 bg-background border-r border-border z-30 pt-6 pb-8 px-4">
-        {/* Logo */}
         <Link
           href={`/${role}/dashboard`}
           style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 28 }}
@@ -172,15 +201,11 @@ export default function DashboardHeader({
           }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, color: '#fff' }}>DH</span>
           </div>
-          <span style={{
-            fontFamily: 'var(--font-display)', fontWeight: 700,
-            fontSize: 16, color: '#fff', letterSpacing: '-0.02em',
-          }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: '#fff', letterSpacing: '-0.02em' }}>
             DirectHire
           </span>
         </Link>
 
-        {/* Nav links */}
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {links.map(({ href, label, Icon }) => {
             const active = isActive(href)
@@ -204,7 +229,6 @@ export default function DashboardHeader({
           })}
         </nav>
 
-        {/* Logout */}
         <button
           onClick={onLogout}
           style={{
@@ -223,14 +247,7 @@ export default function DashboardHeader({
 
       {/* ── Fullscreen overlay — slides up from bottom ── */}
       <div
-        className="lg:hidden"
-        style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: '#06091A',
-          display: 'flex', flexDirection: 'column',
-          transform: menuOpen ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
-        }}
+        className={`fixed inset-0 z-[200] bg-background flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
         aria-hidden={!menuOpen}
       >
         {/* Top bar: logo + close */}
@@ -267,51 +284,85 @@ export default function DashboardHeader({
           </button>
         </div>
 
-        {/* Nav links */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          <p style={{
-            fontSize: 11, fontWeight: 700,
-            color: 'rgba(255,255,255,0.3)',
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-            padding: '0 8px', marginBottom: 8,
-            fontFamily: 'var(--font-body)',
-          }}>
-            Menu
-          </p>
-          {links.map(({ href, label, Icon }) => {
-            const active = isActive(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 16,
-                  padding: '12px 12px', borderRadius: 16, marginBottom: 4,
-                  textDecoration: 'none',
-                  background: active ? theme.activeBg : 'transparent',
-                  color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
-                  transition: 'background 0.15s',
-                }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                  background: active ? theme.activeIcon : theme.inactiveIcon,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
-                }}>
-                  <Icon size={20} strokeWidth={1.75} />
-                </div>
-                <span style={{
-                  fontFamily: 'var(--font-body)', fontWeight: 500,
-                  fontSize: 16, flex: 1,
-                }}>
-                  {label}
-                </span>
-                <ChevronRight size={16} color="rgba(255,255,255,0.25)" />
-              </Link>
-            )
-          })}
-        </div>
+        {/* Nav links — grouped for admin, flat for worker/employer */}
+        {role === 'admin' ? (
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+              <div key={section} className="mb-4">
+                <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-1"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {section}
+                </p>
+                {sectionLinks.map(({ href, label, Icon }) => {
+                  const active = pathname === href || pathname.startsWith(href + '/')
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm"
+                      style={{
+                        textDecoration: 'none',
+                        background: active ? theme.activeBg : 'transparent',
+                        color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
+                      }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: active ? theme.activeIcon : theme.inactiveIcon }}
+                      >
+                        <Icon size={16} strokeWidth={1.75} />
+                      </div>
+                      <span className="font-medium flex-1">{label}</span>
+                      <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+            <p style={{
+              fontSize: 11, fontWeight: 700,
+              color: 'rgba(255,255,255,0.3)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              padding: '0 8px', marginBottom: 8,
+              fontFamily: 'var(--font-body)',
+            }}>
+              Menu
+            </p>
+            {links.map(({ href, label, Icon }) => {
+              const active = isActive(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    padding: '12px 12px', borderRadius: 16, marginBottom: 4,
+                    textDecoration: 'none',
+                    background: active ? theme.activeBg : 'transparent',
+                    color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                    background: active ? theme.activeIcon : theme.inactiveIcon,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
+                  }}>
+                    <Icon size={20} strokeWidth={1.75} />
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 16, flex: 1 }}>
+                    {label}
+                  </span>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.25)" />
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
         {/* Log out pinned at bottom */}
         <div style={{
