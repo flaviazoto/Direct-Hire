@@ -1138,13 +1138,13 @@ function WorkerJobsContent() {
                 You can browse and apply now — your profile ranks better after approval.
               </div>
             </div>
-            <Link href="/worker/onboarding" style={{
+            <Link href="/worker/profile/edit" style={{
               display: "inline-flex", alignItems: "center", gap: 5,
               height: 34, padding: "0 16px", borderRadius: 8,
               background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)",
               color: "#f59e0b", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
             }}>
-              Continue onboarding →
+              Edit Profile →
             </Link>
           </div>
         )}

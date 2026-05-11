@@ -22,7 +22,7 @@ type NavLink = {
 // Flat links — desktop sidebar only
 const ROLE_LINKS: Record<Role, NavLink[]> = {
   worker: [
-    { href: '/worker/dashboard',    label: 'Dashboard',       Icon: LayoutGrid    },
+    { href: '/worker',              label: 'Dashboard',       Icon: LayoutGrid    },
     { href: '/worker/jobs',         label: 'Browse Jobs',     Icon: Search        },
     { href: '/worker/applications', label: 'My Applications', Icon: ClipboardList },
     { href: '/worker/profile',      label: 'My Profile',      Icon: User          },
@@ -191,10 +191,12 @@ export default function DashboardHeader({
   const sidebarTheme = SIDEBAR_THEME[role]
   const theme = ROLE_THEME[role]
 
-  const isActive = (href: string) =>
-    href === `/${role}/dashboard`
-      ? pathname === href
-      : pathname.startsWith(href)
+  const isActive = (href: string) => {
+    if (href === `/${role}/dashboard` || href === `/${role}`) {
+      return pathname === href || pathname === `/${role}/dashboard`
+    }
+    return pathname.startsWith(href)
+  }
 
   const btnStyle: React.CSSProperties = {
     width: 36, height: 36, borderRadius: '50%', flexShrink: 0,

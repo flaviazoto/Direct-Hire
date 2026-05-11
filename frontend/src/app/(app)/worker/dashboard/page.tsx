@@ -332,7 +332,7 @@ function WorkerDashboardContent() {
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0 }}>
                   Complete your profile to start applying
                 </p>
-                <Link href="/worker/onboarding" style={{
+                <Link href="/worker/profile/edit" style={{
                   fontSize: 12, fontWeight: 600, color: '#c084fc',
                   textDecoration: 'none', flexShrink: 0,
                 }}>

@@ -229,7 +229,7 @@ export default function WorkerProfilePage() {
           {/* Continue onboarding CTA — only shown when not yet approved */}
           {stepPct < 100 && !isFullyApproved && (
             <Link
-              href="/worker/onboarding"
+              href="/worker/profile/edit"
               style={{
                 display: "flex",
                 alignItems: "center",
