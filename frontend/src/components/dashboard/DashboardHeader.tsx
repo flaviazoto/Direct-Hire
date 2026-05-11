@@ -167,21 +167,25 @@ export default function DashboardHeader({
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Fix 5 — position:fixed scroll lock prevents any bleed-through
   useEffect(() => {
     if (menuOpen) {
       document.body.style.overflow = 'hidden'
       document.body.style.position = 'fixed'
-      document.body.style.width = '100%'
+      document.body.style.width    = '100%'
+      document.body.style.top      = `-${window.scrollY}px`
     } else {
+      const scrollY = document.body.style.top
       document.body.style.overflow = ''
       document.body.style.position = ''
-      document.body.style.width = ''
+      document.body.style.width    = ''
+      document.body.style.top      = ''
+      if (scrollY) window.scrollTo(0, -parseInt(scrollY))
     }
     return () => {
       document.body.style.overflow = ''
       document.body.style.position = ''
-      document.body.style.width = ''
+      document.body.style.width    = ''
+      document.body.style.top      = ''
     }
   }, [menuOpen])
 
@@ -210,7 +214,7 @@ export default function DashboardHeader({
   // Fix 4 — portal escapes any parent stacking context / transform
   const overlay = (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      className={`fixed inset-0 z-[9999] flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
       style={{ background: '#06091A' }}
       aria-hidden={!menuOpen}
     >
