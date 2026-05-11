@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
-import { decrypt } from "../lib/encrypt";
+import { decrypt, encrypt } from "../lib/encrypt";
 
 export async function getProfile(req: Request, res: Response, next: NextFunction) {
   try {
@@ -112,22 +112,26 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     }
 
     if (role === "WORKER") {
+      const rawPassport = asTrimmedString(body.passportNumber);
       const data = {
         firstName:          asTrimmedString(body.firstName),
         lastName:           asTrimmedString(body.lastName),
+        nationality:        asTrimmedString(body.nationality),
         profession:         asTrimmedString(body.profession),
         countryOfResidence: asTrimmedString(body.countryOfResidence),
         city:               asTrimmedString(body.city),
         yearsExperience:    asTrimmedString(body.yearsExperience),
         expectedSalary:     asTrimmedString(body.expectedSalary),
         additionalNotes:    asTrimmedString(body.additionalNotes),
+        passportNumber:     rawPassport !== undefined ? encrypt(rawPassport) : undefined,
       };
 
       const updateData = stripUndefined(data);
       if (Object.keys(updateData).length > 0) {
-        await prisma.workerProfile.update({
-          where: { userId },
-          data: updateData,
+        await prisma.workerProfile.upsert({
+          where:  { userId },
+          create: { userId, ...updateData },
+          update: updateData,
         });
       }
     }
