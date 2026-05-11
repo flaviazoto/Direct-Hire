@@ -576,14 +576,14 @@ function ApplicationsContent() {
   };
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 860, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 860, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Lock status banner */}
       <LockStatusBanner />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 28 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#fff" }}>My applications</div>
           <div style={{ fontSize: 13, color: "#71717a", marginTop: 4 }}>

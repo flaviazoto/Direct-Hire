@@ -95,7 +95,7 @@ export default function WorkerProfilePage() {
   const isSearchableOrApproved = profile?.isSearchable || isFullyApproved;
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1200, margin: "0 auto" }}>
+    <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <PageHeader
         title="My Profile"
         actions={
@@ -105,9 +105,9 @@ export default function WorkerProfilePage() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT COLUMN */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-1">
           {/* Hero card */}
           <div style={{
             background: "linear-gradient(135deg, #0d0d0d 0%, #111827 100%)",
@@ -286,7 +286,7 @@ export default function WorkerProfilePage() {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Skills */}
           {profile?.skills && profile.skills.length > 0 && (
             <Card>

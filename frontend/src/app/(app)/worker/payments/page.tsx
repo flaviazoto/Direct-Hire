@@ -119,7 +119,7 @@ export default function WorkerPaymentsPage() {
   const successCount = payments.filter(p => p.status === "SUCCEEDED").length;
 
   return (
-    <div style={{ padding: "32px", maxWidth: "900px" }}>
+    <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8 mx-auto" style={{ maxWidth: "900px" }}>
 
       {/* Header */}
       <div style={{ marginBottom: "32px" }}>
@@ -132,7 +132,7 @@ export default function WorkerPaymentsPage() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "32px" }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         {[
           {
             label: "Total Spent",
@@ -173,11 +173,10 @@ export default function WorkerPaymentsPage() {
       </div>
 
       {/* Table */}
-      <div style={{
+      <div className="overflow-x-auto" style={{
         background:   "rgba(255,255,255,0.03)",
         border:       "1px solid rgba(255,255,255,0.08)",
         borderRadius: "14px",
-        overflow:     "hidden",
       }}>
         {loading ? (
           <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.3)" }}>
@@ -192,7 +191,7 @@ export default function WorkerPaymentsPage() {
             </div>
           </div>
         ) : (
-          <>
+          <div style={{ minWidth: 520 }}>
             {/* Table header */}
             <div style={{
               display:         "grid",
@@ -273,7 +272,7 @@ export default function WorkerPaymentsPage() {
                 </div>
               </div>
             ))}
-          </>
+          </div>
         )}
       </div>
 

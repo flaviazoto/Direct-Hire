@@ -100,7 +100,7 @@ function KpiCard({
   label, value, icon, sub,
 }: { label: string; value: string | number; icon: string; sub?: string }) {
   return (
-    <div className="bg-navy-2 border border-border rounded-xl p-4 sm:p-5 md:p-6 flex flex-col gap-2 hover:border-purple-500/35 transition-colors">
+    <div className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] hover:border-purple-500/35 transition-colors">
       <div className="flex items-center justify-between">
         <span className="text-xs sm:text-xs font-semibold text-muted uppercase tracking-wider">{label}</span>
         <span className="text-lg sm:text-xl">{icon}</span>
@@ -316,14 +316,14 @@ function WorkerDashboardContent() {
       </div>
 
       {/* ── Lock banner ──────────────────────────────────────────────────────── */}
-      <div style={{ padding: "0 40px" }}>
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10">
         <LockStatusBanner />
       </div>
 
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-12 flex flex-col gap-6 md:gap-7">
 
         {/* ── KPI row ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard label="Profile Score"      value={`${profileScore}%`} icon="⭐" sub={profileScore >= 80 ? "Excellent" : "Keep improving"} />
           <KpiCard label="Applications Sent"  value={appsSent}           icon="📋" sub={appsSent > 0 ? "Track in Applications" : "Start applying"} />
           <KpiCard label="Interview Requests" value={interviewCount}     icon="📅" sub={interviewCount > 0 ? "Check your schedule" : "Keep applying"} />
@@ -331,10 +331,10 @@ function WorkerDashboardContent() {
         </div>
 
         {/* ── AI Profile Score card ─────────────────────────────────────────────── */}
-        <div style={{
+        <div className="p-4 sm:p-6 md:p-7" style={{
           background: "var(--navy-2)", border: "1px solid var(--border)",
           borderLeft: "3px solid var(--worker-primary)",
-          borderRadius: "var(--r-lg)", padding: "28px 32px",
+          borderRadius: "var(--r-lg)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 40, flexWrap: "wrap" }}>
 
@@ -484,18 +484,18 @@ function WorkerDashboardContent() {
         </div>
 
         {/* ── Quick links ───────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { href: "/worker/jobs",         icon: "💼", label: "Browse Jobs",    sub: "Find new matches" },
             { href: "/worker/applications", icon: "📋", label: "My Applications",sub: `${appsSent} sent` },
             { href: "/worker/profile",      icon: "👤", label: "My Profile",     sub: `${completePct}% complete` },
             { href: "/worker/documents",    icon: "📁", label: "Documents",      sub: "Uploads & IDs" },
           ].map(({ href, icon, label, sub }) => (
-            <Link key={href} href={href} className="bg-navy-2 border border-border rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 no-underline transition-all hover:border-purple-500/35 hover:bg-purple-500/5">
-              <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-md bg-purple-500/12 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">{icon}</div>
-              <div className="min-w-0">
-                <div className="text-sm sm:text-base font-semibold text-white truncate">{label}</div>
-                <div className="text-xs sm:text-sm text-muted line-clamp-1">{sub}</div>
+            <Link key={href} href={href} className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] no-underline transition-all hover:border-purple-500/35 hover:bg-purple-500/5">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/12 flex items-center justify-center text-xl">{icon}</div>
+              <div>
+                <div className="text-sm font-semibold text-white">{label}</div>
+                <div className="text-xs text-muted mt-0.5">{sub}</div>
               </div>
             </Link>
           ))}

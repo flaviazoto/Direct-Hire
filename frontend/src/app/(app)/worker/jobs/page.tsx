@@ -1079,10 +1079,9 @@ function WorkerJobsContent() {
       )}
 
       {/* ── Page Header ── */}
-      <div style={{
+      <div className="px-4 sm:px-6 md:px-10 py-6 md:py-9" style={{
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         background: "linear-gradient(180deg, rgba(0,144,255,0.04) 0%, transparent 100%)",
-        padding: "36px 40px 28px",
       }}>
         <div style={{ maxWidth: 1300, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
@@ -1121,7 +1120,7 @@ function WorkerJobsContent() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 40px 60px" }}>
+      <div className="px-4 sm:px-6 md:px-10 py-6 pb-16" style={{ maxWidth: 1300, margin: "0 auto" }}>
 
         {/* ── Onboarding Banner ── */}
         {!isSearchable && (
@@ -1169,8 +1168,8 @@ function WorkerJobsContent() {
               style={{
                 width: "100%", boxSizing: "border-box",
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 10, padding: "9px 12px 9px 34px",
-                fontSize: 13, color: "#e4e4e7", outline: "none", fontFamily: "inherit",
+                borderRadius: 10, height: 48, padding: "0 12px 0 34px",
+                fontSize: 15, color: "#e4e4e7", outline: "none", fontFamily: "inherit",
               }}
             />
           </div>
@@ -1308,7 +1307,7 @@ function WorkerJobsContent() {
                 )}
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {jobs.map(job => (
                   <JobCard
                     key={job.id}
@@ -1377,10 +1376,6 @@ function WorkerJobsContent() {
 
       <style>{`
         @media (min-width: 900px) { .filter-sidebar { display: block !important; } }
-        @media (max-width: 640px) {
-          div[style*="padding: 36px 40px"] { padding: 24px 16px 20px !important; }
-          div[style*="padding: 28px 40px"] { padding: 20px 16px 40px !important; }
-        }
         * { box-sizing: border-box; }
         input::placeholder { color: #3a3a3a; }
         select option { background: #111; }

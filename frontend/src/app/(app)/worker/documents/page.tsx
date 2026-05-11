@@ -161,14 +161,14 @@ export default function WorkerDocumentsPage() {
   const getUpload = (fileType: string) => uploads.find(u => u.fileType === fileType && u.status !== "DELETED");
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1400, margin: "0 auto" }}>
+    <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1400, margin: "0 auto" }}>
       <ToastDisplay toast={toast} />
       <PageHeader
         title="My Documents"
         description="Upload and manage your verification documents"
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {Object.entries(FILE_TYPE_LABELS).map(([fileType, meta]) => {
           const existing = getUpload(fileType);
           const isUploading = uploading === fileType;
