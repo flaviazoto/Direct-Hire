@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -18,7 +19,7 @@ type NavLink = {
   Icon: React.ElementType
 }
 
-// Flat links used only by the desktop sidebar
+// Flat links — desktop sidebar only
 const ROLE_LINKS: Record<Role, NavLink[]> = {
   worker: [
     { href: '/worker/dashboard',    label: 'Dashboard',       Icon: LayoutGrid    },
@@ -44,7 +45,7 @@ const ROLE_LINKS: Record<Role, NavLink[]> = {
   ],
 }
 
-// Grouped links used only in the admin mobile overlay
+// Grouped links — admin mobile overlay only
 const ADMIN_LINKS = [
   {
     section: 'Overview',
@@ -56,18 +57,18 @@ const ADMIN_LINKS = [
   {
     section: 'Users',
     links: [
-      { href: '/admin/users/pending',   label: 'Pending Review',  Icon: Clock        },
-      { href: '/admin/approvals',       label: 'Approvals',       Icon: CheckCircle  },
-      { href: '/admin/document-review', label: 'Document Review', Icon: FileSearch   },
-      { href: '/admin/users',           label: 'All Users',       Icon: Users        },
+      { href: '/admin/users/pending',   label: 'Pending Review',  Icon: Clock       },
+      { href: '/admin/approvals',       label: 'Approvals',       Icon: CheckCircle },
+      { href: '/admin/document-review', label: 'Document Review', Icon: FileSearch  },
+      { href: '/admin/users',           label: 'All Users',       Icon: Users       },
     ],
   },
   {
     section: 'Logs & Compliance',
     links: [
-      { href: '/admin/audit-log',  label: 'Audit Log',      Icon: FileText   },
-      { href: '/admin/fraud',      label: 'Fraud Console',  Icon: ShieldAlert },
-      { href: '/admin/email-logs', label: 'Email Logs',     Icon: Mail        },
+      { href: '/admin/audit-log',  label: 'Audit Log',     Icon: FileText    },
+      { href: '/admin/fraud',      label: 'Fraud Console', Icon: ShieldAlert },
+      { href: '/admin/email-logs', label: 'Email Logs',    Icon: Mail        },
     ],
   },
   {
@@ -79,47 +80,77 @@ const ADMIN_LINKS = [
   },
   {
     section: 'Settings',
-    links: [
-      { href: '/admin/pricing', label: 'Pricing', Icon: Tag },
-    ],
+    links: [{ href: '/admin/pricing', label: 'Pricing', Icon: Tag }],
   },
 ]
 
-const ROLE_THEME: Record<Role, {
-  border:      string
+// CSS values — desktop sidebar (DO NOT TOUCH)
+const SIDEBAR_THEME: Record<Role, {
   activeBg:    string
   activeText:  string
   activeIcon:  string
   inactiveIcon:string
   logoBg:      string
-  hamburger:   string
 }> = {
   worker: {
-    border:       'rgba(168,85,247,0.22)',
     activeBg:     'rgba(168,85,247,0.15)',
     activeText:   '#c084fc',
     activeIcon:   'rgba(168,85,247,0.20)',
     inactiveIcon: 'rgba(255,255,255,0.06)',
     logoBg:       '#9333ea',
-    hamburger:    '#c084fc',
   },
   employer: {
-    border:       'rgba(59,130,246,0.22)',
     activeBg:     'rgba(59,130,246,0.15)',
     activeText:   '#60a5fa',
     activeIcon:   'rgba(59,130,246,0.20)',
     inactiveIcon: 'rgba(255,255,255,0.06)',
     logoBg:       '#2563eb',
-    hamburger:    '#60a5fa',
   },
   admin: {
-    border:       'rgba(245,158,11,0.22)',
     activeBg:     'rgba(245,158,11,0.15)',
     activeText:   '#fbbf24',
     activeIcon:   'rgba(245,158,11,0.20)',
     inactiveIcon: 'rgba(255,255,255,0.06)',
     logoBg:       '#d97706',
-    hamburger:    '#fbbf24',
+  },
+}
+
+// Tailwind classes — mobile overlay only
+const OVERLAY_THEME: Record<Role, {
+  activeBg:      string
+  activeText:    string
+  activeIcon:    string
+  logoBg:        string
+  hamburger:     string
+  sectionLabel:  string
+  overlayAccent: string
+}> = {
+  worker: {
+    activeBg:      'bg-purple-600/20',
+    activeText:    'text-purple-300',
+    activeIcon:    'bg-purple-600/30',
+    logoBg:        'bg-purple-600',
+    hamburger:     'text-purple-400',
+    sectionLabel:  'text-purple-400/70',
+    overlayAccent: 'border-purple-600/20',
+  },
+  employer: {
+    activeBg:      'bg-blue-600/20',
+    activeText:    'text-blue-300',
+    activeIcon:    'bg-blue-600/30',
+    logoBg:        'bg-blue-600',
+    hamburger:     'text-blue-400',
+    sectionLabel:  'text-blue-400/70',
+    overlayAccent: 'border-blue-600/20',
+  },
+  admin: {
+    activeBg:      'bg-amber-500/15',
+    activeText:    'text-amber-400',
+    activeIcon:    'bg-amber-500/20',
+    logoBg:        'bg-amber-600',
+    hamburger:     'text-amber-400',
+    sectionLabel:  'text-amber-400/70',
+    overlayAccent: 'border-amber-600/20',
   },
 }
 
@@ -131,17 +162,34 @@ export default function DashboardHeader({
   onLogout: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
+  useEffect(() => { setMounted(true) }, [])
+
+  // Fix 5 — position:fixed scroll lock prevents any bleed-through
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+    } else {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
   }, [menuOpen])
 
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
   const links = ROLE_LINKS[role]
-  const theme = ROLE_THEME[role]
+  const sidebarTheme = SIDEBAR_THEME[role]
+  const overlayTheme = OVERLAY_THEME[role]
 
   const isActive = (href: string) =>
     href === `/${role}/dashboard`
@@ -153,10 +201,116 @@ export default function DashboardHeader({
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.08)',
-    color: 'rgba(248,250,252,0.75)',
     cursor: 'pointer',
     textDecoration: 'none',
   }
+
+  // Fix 4 — portal escapes any parent stacking context / transform
+  const overlay = (
+    <div
+      className={`fixed inset-0 z-[9999] bg-background flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      aria-hidden={!menuOpen}
+    >
+      {/* Top bar: logo + close */}
+      <div className={`flex items-center justify-between px-5 pt-14 pb-5 border-b ${overlayTheme.overlayAccent} flex-shrink-0`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl ${overlayTheme.logoBg} flex items-center justify-center text-white font-bold text-sm`}>
+            DH
+          </div>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#F0F4FF' }}>
+            DirectHire
+          </span>
+        </div>
+        <button
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close menu"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Nav links — grouped for admin, flat list for worker/employer */}
+      {role === 'admin' ? (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+            <div key={section} className="mb-4">
+              <p className={`text-[10px] font-semibold ${overlayTheme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
+                {section}
+              </p>
+              {sectionLinks.map(({ href, label, Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + '/')
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : 'text-foreground hover:bg-muted'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : 'bg-muted'}`}>
+                      <Icon size={16} strokeWidth={1.75} />
+                    </div>
+                    <span className="font-medium flex-1">{label}</span>
+                    <ChevronRight size={14} className="text-muted-foreground" />
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <p className={`text-[10px] font-semibold ${overlayTheme.sectionLabel} uppercase tracking-widest px-3 mb-2`}>
+            Menu
+          </p>
+          {links.map(({ href, label, Icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : 'text-foreground hover:bg-muted'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : 'bg-muted'}`}>
+                  <Icon size={20} strokeWidth={1.75} />
+                </div>
+                <span className="font-medium flex-1" style={{ fontFamily: 'var(--font-body)', fontSize: 15 }}>{label}</span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Log out pinned at bottom */}
+      <div style={{
+        padding: '16px 16px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        flexShrink: 0,
+      }}>
+        <button
+          onClick={() => { setMenuOpen(false); onLogout() }}
+          style={{
+            width: '100%', height: 48, borderRadius: 16,
+            border: '1px solid rgba(239,68,68,0.28)',
+            background: 'rgba(239,68,68,0.08)',
+            color: '#fca5a5',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          <LogOut size={16} /> Log out
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <>
@@ -180,10 +334,10 @@ export default function DashboardHeader({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Link href={`/${role}/dashboard`} aria-label="Notifications" style={btnStyle}>
-            <Bell size={17} strokeWidth={1.75} />
+            <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
           </Link>
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
-            <Menu size={19} strokeWidth={1.75} color={theme.hamburger} />
+            <Menu size={20} className={overlayTheme.hamburger} />
           </button>
         </div>
       </header>
@@ -196,7 +350,7 @@ export default function DashboardHeader({
         >
           <div style={{
             width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-            background: theme.logoBg,
+            background: sidebarTheme.logoBg,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, color: '#fff' }}>DH</span>
@@ -217,8 +371,8 @@ export default function DashboardHeader({
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 12px', borderRadius: 10,
                   textDecoration: 'none', fontSize: 13, fontWeight: 500,
-                  background: active ? theme.activeBg : 'transparent',
-                  color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
+                  background: active ? sidebarTheme.activeBg : 'transparent',
+                  color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
                   transition: 'background 0.15s, color 0.15s',
                 }}
               >
@@ -245,148 +399,8 @@ export default function DashboardHeader({
         </button>
       </aside>
 
-      {/* ── Fullscreen overlay — slides up from bottom ── */}
-      <div
-        className={`fixed inset-0 z-[200] bg-background flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
-        aria-hidden={!menuOpen}
-      >
-        {/* Top bar: logo + close */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '56px 20px 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              background: theme.logoBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: '#fff' }}>DH</span>
-            </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#F0F4FF' }}>
-              DirectHire
-            </span>
-          </div>
-          <button
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close menu"
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.08)',
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(255,255,255,0.7)',
-            }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Nav links — grouped for admin, flat for worker/employer */}
-        {role === 'admin' ? (
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
-              <div key={section} className="mb-4">
-                <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-1"
-                  style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {section}
-                </p>
-                {sectionLinks.map(({ href, label, Icon }) => {
-                  const active = pathname === href || pathname.startsWith(href + '/')
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className="flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm"
-                      style={{
-                        textDecoration: 'none',
-                        background: active ? theme.activeBg : 'transparent',
-                        color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
-                      }}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: active ? theme.activeIcon : theme.inactiveIcon }}
-                      >
-                        <Icon size={16} strokeWidth={1.75} />
-                      </div>
-                      <span className="font-medium flex-1">{label}</span>
-                      <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.25)' }} />
-                    </Link>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-            <p style={{
-              fontSize: 11, fontWeight: 700,
-              color: 'rgba(255,255,255,0.3)',
-              textTransform: 'uppercase', letterSpacing: '0.08em',
-              padding: '0 8px', marginBottom: 8,
-              fontFamily: 'var(--font-body)',
-            }}>
-              Menu
-            </p>
-            {links.map(({ href, label, Icon }) => {
-              const active = isActive(href)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 16,
-                    padding: '12px 12px', borderRadius: 16, marginBottom: 4,
-                    textDecoration: 'none',
-                    background: active ? theme.activeBg : 'transparent',
-                    color: active ? theme.activeText : 'rgba(255,255,255,0.8)',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                    background: active ? theme.activeIcon : theme.inactiveIcon,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
-                  }}>
-                    <Icon size={20} strokeWidth={1.75} />
-                  </div>
-                  <span style={{ fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 16, flex: 1 }}>
-                    {label}
-                  </span>
-                  <ChevronRight size={16} color="rgba(255,255,255,0.25)" />
-                </Link>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Log out pinned at bottom */}
-        <div style={{
-          padding: '16px 16px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          flexShrink: 0,
-        }}>
-          <button
-            onClick={() => { setMenuOpen(false); onLogout(); }}
-            style={{
-              width: '100%', height: 48, borderRadius: 16,
-              border: '1px solid rgba(239,68,68,0.28)',
-              background: 'rgba(239,68,68,0.08)',
-              color: '#fca5a5',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14,
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={16} /> Log out
-          </button>
-        </div>
-      </div>
+      {/* ── Fullscreen overlay via portal — escapes all parent stacking contexts ── */}
+      {mounted && createPortal(overlay, document.body)}
     </>
   )
 }
