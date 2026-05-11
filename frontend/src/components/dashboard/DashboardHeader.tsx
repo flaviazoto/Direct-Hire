@@ -208,7 +208,8 @@ export default function DashboardHeader({
   // Fix 4 — portal escapes any parent stacking context / transform
   const overlay = (
     <div
-      className={`fixed inset-0 z-[9999] bg-background flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      className={`fixed inset-0 z-[9999] flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      style={{ background: '#06091A' }}
       aria-hidden={!menuOpen}
     >
       {/* Top bar: logo + close */}
@@ -250,13 +251,17 @@ export default function DashboardHeader({
                   <Link
                     key={href}
                     href={href}
-                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : 'text-foreground hover:bg-muted'}`}
+                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : ''}`}
+                    style={{ color: active ? undefined : 'rgba(255,255,255,0.8)' }}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : 'bg-muted'}`}>
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : ''}`}
+                      style={{ background: active ? undefined : 'rgba(255,255,255,0.06)' }}
+                    >
                       <Icon size={16} strokeWidth={1.75} />
                     </div>
                     <span className="font-medium flex-1">{label}</span>
-                    <ChevronRight size={14} className="text-muted-foreground" />
+                    <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.25)' }} />
                   </Link>
                 )
               })}
@@ -274,13 +279,17 @@ export default function DashboardHeader({
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : 'text-foreground hover:bg-muted'}`}
+                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : ''}`}
+                style={{ color: active ? undefined : 'rgba(255,255,255,0.8)' }}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : 'bg-muted'}`}>
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : ''}`}
+                  style={{ background: active ? undefined : 'rgba(255,255,255,0.06)' }}
+                >
                   <Icon size={20} strokeWidth={1.75} />
                 </div>
                 <span className="font-medium flex-1" style={{ fontFamily: 'var(--font-body)', fontSize: 15 }}>{label}</span>
-                <ChevronRight size={16} className="text-muted-foreground" />
+                <ChevronRight size={16} style={{ color: 'rgba(255,255,255,0.25)' }} />
               </Link>
             )
           })}
@@ -315,7 +324,10 @@ export default function DashboardHeader({
   return (
     <>
       {/* ── Mobile header (hidden at md+) ── */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-14 md:hidden flex items-center justify-between px-4 bg-background border-b border-border">
+      <header
+        className="fixed top-0 left-0 right-0 z-40 h-14 md:hidden flex items-center justify-between px-4"
+        style={{ background: 'rgba(6,9,26,0.97)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+      >
         <Link
           href={`/${role}/dashboard`}
           style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
@@ -343,7 +355,10 @@ export default function DashboardHeader({
       </header>
 
       {/* ── Desktop sidebar (shown at md+) — DO NOT TOUCH ── */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 bg-background border-r border-border z-30 pt-6 pb-8 px-4">
+      <aside
+        className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 z-30 pt-6 pb-8 px-4"
+        style={{ background: '#0b1120', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+      >
         <Link
           href={`/${role}/dashboard`}
           style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 28 }}
