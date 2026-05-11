@@ -34,11 +34,11 @@ const ROLE_LINKS: Record<Role, NavLink[]> = {
     { href: '/employer/profile',      label: 'Account',      Icon: Settings      },
   ],
   admin: [
-    { href: '/admin/dashboard', label: 'Dashboard',        Icon: LayoutGrid },
-    { href: '/admin/users',     label: 'All Users',        Icon: Users      },
-    { href: '/admin/approvals', label: 'Pending Approvals',Icon: Clock      },
-    { href: '/admin/audit-log', label: 'Audit Log',        Icon: FileText   },
-    { href: '/admin/revenue',   label: 'Revenue',          Icon: Settings   },
+    { href: '/admin/dashboard', label: 'Dashboard',         Icon: LayoutGrid },
+    { href: '/admin/users',     label: 'All Users',         Icon: Users      },
+    { href: '/admin/approvals', label: 'Pending Approvals', Icon: Clock      },
+    { href: '/admin/audit-log', label: 'Audit Log',         Icon: FileText   },
+    { href: '/admin/revenue',   label: 'Revenue',           Icon: Settings   },
   ],
 }
 
@@ -117,20 +117,8 @@ export default function DashboardHeader({
 
   return (
     <>
-      {/* ── Fixed mobile header (hidden at lg+) ── */}
-      <header
-        className="lg:hidden"
-        style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-          height: 56,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 16px',
-          background: 'rgba(11,17,32,0.97)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
-          borderBottom: `1px solid ${theme.border}`,
-        }}
-      >
+      {/* ── Mobile header (hidden at md+) ── */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-14 md:hidden flex items-center justify-between px-4 bg-background border-b border-border">
         {/* Logo */}
         <Link
           href={`/${role}/dashboard`}
@@ -154,7 +142,7 @@ export default function DashboardHeader({
         {/* Right: bell + hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Link
-            href={role === 'worker' ? '/worker/notifications' : `/${role}/dashboard`}
+            href={`/${role}/dashboard`}
             aria-label="Notifications"
             style={btnStyle}
           >
@@ -169,6 +157,69 @@ export default function DashboardHeader({
           </button>
         </div>
       </header>
+
+      {/* ── Desktop sidebar (shown at md+) ── */}
+      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 bg-background border-r border-border z-30 pt-6 pb-8 px-4">
+        {/* Logo */}
+        <Link
+          href={`/${role}/dashboard`}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 28 }}
+        >
+          <div style={{
+            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+            background: theme.logoBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, color: '#fff' }}>DH</span>
+          </div>
+          <span style={{
+            fontFamily: 'var(--font-display)', fontWeight: 700,
+            fontSize: 16, color: '#fff', letterSpacing: '-0.02em',
+          }}>
+            DirectHire
+          </span>
+        </Link>
+
+        {/* Nav links */}
+        <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {links.map(({ href, label, Icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 12px', borderRadius: 10,
+                  textDecoration: 'none', fontSize: 13, fontWeight: 500,
+                  background: active ? theme.activeBg : 'transparent',
+                  color: active ? theme.activeText : 'rgba(255,255,255,0.55)',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                <Icon size={16} strokeWidth={1.75} />
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Logout */}
+        <button
+          onClick={onLogout}
+          style={{
+            width: '100%', height: 40, borderRadius: 10,
+            border: '1px solid rgba(239,68,68,0.28)',
+            background: 'rgba(239,68,68,0.08)',
+            color: '#fca5a5',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          <LogOut size={15} /> Log out
+        </button>
+      </aside>
 
       {/* ── Fullscreen overlay — slides up from bottom ── */}
       <div

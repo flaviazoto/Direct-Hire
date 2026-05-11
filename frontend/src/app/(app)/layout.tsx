@@ -673,18 +673,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         @media (max-width: 1023px) {
           .app-sidebar   { display: none !important; }
           .worker-topbar { display: none !important; }
-          .app-main      { padding-top: 56px !important; }
+          .worker-main   { padding-top: 56px !important; }
         }
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
+          .employer-admin-main { padding-top: 56px !important; }
           .admin-page-root { padding: 16px !important; }
           .admin-quick-nav { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (min-width: 768px) {
+          .employer-admin-main { padding-left: 256px !important; }
         }
         @media (max-width: 480px) {
           .admin-quick-nav { grid-template-columns: 1fr !important; }
         }
       `}</style>
-      <Sidebar role={role} />
-      <main className="app-main" style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      {role === 'worker' && <Sidebar role={role} />}
+      <main className={`app-main ${role === 'worker' ? 'worker-main' : 'employer-admin-main'}`} style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {role === 'worker'
           ? <WorkerHeader onLogout={handleLogout} />
           : <DashboardHeader role={role} onLogout={handleLogout} />
