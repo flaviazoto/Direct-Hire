@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 
 const OVERLAY_LINKS = [
-  { href: '/worker',              label: 'Dashboard',       Icon: LayoutGrid    },
+  { href: '/worker/dashboard',    label: 'Dashboard',       Icon: LayoutGrid    },
   { href: '/worker/jobs',         label: 'Browse Jobs',     Icon: Search        },
   { href: '/worker/applications', label: 'My Applications', Icon: ClipboardList },
   { href: '/worker/profile',      label: 'My Profile',      Icon: User          },
@@ -129,9 +129,7 @@ export default function WorkerHeader({ onLogout }: { onLogout: () => void }) {
         {/* Nav links */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           {OVERLAY_LINKS.map(({ href, label, Icon }) => {
-            const isActive = href === '/worker'
-              ? pathname === '/worker' || pathname === '/worker/dashboard'
-              : pathname === href || pathname.startsWith(href + '/')
+            const isActive = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link
                 key={href}
