@@ -116,7 +116,7 @@ const SIDEBAR_THEME: Record<Role, {
 }
 
 // Tailwind classes — mobile overlay only
-const OVERLAY_THEME: Record<Role, {
+const ROLE_THEME: Record<Role, {
   activeBg:      string
   activeText:    string
   activeIcon:    string
@@ -189,7 +189,7 @@ export default function DashboardHeader({
 
   const links = ROLE_LINKS[role]
   const sidebarTheme = SIDEBAR_THEME[role]
-  const overlayTheme = OVERLAY_THEME[role]
+  const theme = ROLE_THEME[role]
 
   const isActive = (href: string) =>
     href === `/${role}/dashboard`
@@ -213,9 +213,9 @@ export default function DashboardHeader({
       aria-hidden={!menuOpen}
     >
       {/* Top bar: logo + close */}
-      <div className={`flex items-center justify-between px-5 pt-14 pb-5 border-b ${overlayTheme.overlayAccent} flex-shrink-0`}>
+      <div className={`flex items-center justify-between px-5 pt-14 pb-5 border-b ${theme.overlayAccent} flex-shrink-0`}>
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl ${overlayTheme.logoBg} flex items-center justify-center text-white font-bold text-sm`}>
+          <div className={`w-9 h-9 rounded-xl ${theme.logoBg} flex items-center justify-center text-white font-bold text-sm`}>
             DH
           </div>
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#F0F4FF' }}>
@@ -242,7 +242,7 @@ export default function DashboardHeader({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
             <div key={section} className="mb-4">
-              <p className={`text-[10px] font-semibold ${overlayTheme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
+              <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
                 {section}
               </p>
               {sectionLinks.map(({ href, label, Icon }) => {
@@ -251,11 +251,11 @@ export default function DashboardHeader({
                   <Link
                     key={href}
                     href={href}
-                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : ''}`}
+                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
                     style={{ color: active ? undefined : 'rgba(255,255,255,0.8)' }}
                   >
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : ''}`}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? theme.activeIcon : ''}`}
                       style={{ background: active ? undefined : 'rgba(255,255,255,0.06)' }}
                     >
                       <Icon size={16} strokeWidth={1.75} />
@@ -270,7 +270,7 @@ export default function DashboardHeader({
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <p className={`text-[10px] font-semibold ${overlayTheme.sectionLabel} uppercase tracking-widest px-3 mb-2`}>
+          <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-2`}>
             Menu
           </p>
           {links.map(({ href, label, Icon }) => {
@@ -279,11 +279,11 @@ export default function DashboardHeader({
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${overlayTheme.activeBg} ${overlayTheme.activeText}` : ''}`}
+                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
                 style={{ color: active ? undefined : 'rgba(255,255,255,0.8)' }}
               >
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? overlayTheme.activeIcon : ''}`}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? theme.activeIcon : ''}`}
                   style={{ background: active ? undefined : 'rgba(255,255,255,0.06)' }}
                 >
                   <Icon size={20} strokeWidth={1.75} />
@@ -349,7 +349,7 @@ export default function DashboardHeader({
             <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
           </Link>
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
-            <Menu size={20} className={overlayTheme.hamburger} />
+            <Menu size={20} className={theme.hamburger} />
           </button>
         </div>
       </header>
