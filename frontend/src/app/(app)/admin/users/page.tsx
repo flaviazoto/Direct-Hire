@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="admin-page-root" style={{ padding: 32, maxWidth: 1100 }}>
+    <div className="admin-page-root min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1100 }}>
       <ToastDisplay toast={toast} />
 
       {/* Header */}
@@ -323,7 +323,7 @@ export default function AdminUsersPage() {
       {/* Table */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
                 {["Name", "Email", "Role", "Status", "Docs", "Joined", "Actions"].map(h => (
@@ -408,10 +408,13 @@ export default function AdminUsersPage() {
 
       {/* Pagination */}
       {!loading && totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 24 }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtnStyle(page === 1)}>Previous</button>
-          <span style={{ color: C.muted, fontSize: 13 }}>Page {page} of {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={pageBtnStyle(page >= totalPages)}>Next</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 24, flexWrap: "wrap" }}>
+          <span style={{ color: C.muted, fontSize: 13 }}>Showing {users.length} of {total.toLocaleString()}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtnStyle(page === 1)}>Previous</button>
+            <span style={{ color: C.muted, fontSize: 13 }}>Page {page} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={pageBtnStyle(page >= totalPages)}>Next</button>
+          </div>
         </div>
       )}
 

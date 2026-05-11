@@ -245,7 +245,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>{title}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {children}
       </div>
     </div>
@@ -387,7 +387,7 @@ function NewJobContent() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 860, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div className="px-4 sm:px-6 md:px-10 pt-6 pb-16" style={{ maxWidth: 860, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <ToastDisplay toast={toast} />
 
       {/* Header */}
@@ -411,7 +411,7 @@ function NewJobContent() {
 
         {/* ── STEP 1 ─────────────────────────────────────────────────────────── */}
         {step === 1 && (
-          <div style={{ padding: 32 }}>
+          <div className="p-4 sm:p-6 md:p-8">
             <Section title="Job Details">
               <FullRow>
                 <Input
@@ -485,7 +485,7 @@ function NewJobContent() {
 
         {/* ── STEP 2 ─────────────────────────────────────────────────────────── */}
         {step === 2 && (
-          <div style={{ padding: 32 }}>
+          <div className="p-4 sm:p-6 md:p-8">
             <Section title="Compensation">
               <Input
                 label="Salary min *"
@@ -596,11 +596,11 @@ function NewJobContent() {
 
         {/* ── STEP 3 ─────────────────────────────────────────────────────────── */}
         {step === 3 && (
-          <div style={{ padding: 32 }}>
+          <div className="p-4 sm:p-6 md:p-8">
             <div style={{ color: "#ffffff", fontSize: 16, fontWeight: 700, marginBottom: 24 }}>Review your job post</div>
 
             {/* Summary grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 32 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
               <ReviewRow label="Job title" value={form.title} />
               <ReviewRow label="Company" value={form.companyName} />
               <ReviewRow label="Category" value={form.category} />
@@ -659,7 +659,7 @@ function NewJobContent() {
         )}
 
         {/* ── Footer nav ─────────────────────────────────────────────────────── */}
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="px-4 sm:px-6 md:px-8" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button
             onClick={() => step > 1 ? setStep(step - 1) : router.push("/employer/jobs")}
             style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 20px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", fontWeight: 600 }}

@@ -314,7 +314,7 @@ function WorkersContent() {
   }
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1400, margin: "0 auto" }}>
+    <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1400, margin: "0 auto" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <ToastDisplay toast={toast} />
 
@@ -342,12 +342,13 @@ function WorkersContent() {
           onChange={e => setSearch(e.target.value)}
           style={{
             flex:         "1 1 260px",
-            padding:      "9px 14px",
+            height:       48,
+            padding:      "0 14px",
             background:   "rgba(255,255,255,0.04)",
             border:       "1px solid rgba(255,255,255,0.1)",
             borderRadius: 10,
             color:        "#e4e4e7",
-            fontSize:     13,
+            fontSize:     15,
             fontFamily:   "inherit",
             outline:      "none",
             minWidth:     0,
@@ -362,12 +363,13 @@ function WorkersContent() {
           onChange={e => setCountry(e.target.value)}
           style={{
             flex:         "0 1 160px",
-            padding:      "9px 14px",
+            height:       48,
+            padding:      "0 14px",
             background:   "rgba(255,255,255,0.04)",
             border:       "1px solid rgba(255,255,255,0.1)",
             borderRadius: 10,
             color:        "#e4e4e7",
-            fontSize:     13,
+            fontSize:     14,
             fontFamily:   "inherit",
             outline:      "none",
           }}
@@ -427,15 +429,15 @@ function WorkersContent() {
 
       {/* Grid */}
       {loading ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : workers.length === 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <EmptyState availableOnly={availableOnly} />
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {workers.map(w => <WorkerCard key={w.userId} worker={w} />)}
         </div>
       )}

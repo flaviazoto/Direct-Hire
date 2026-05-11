@@ -237,7 +237,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── KPI grid (8 cards, 2×2 on mobile, 4×2 on desktop) ─────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 mb-6 md:mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 md:mb-7">
         <KpiCard label="Total Workers"    value={stats.users.workers}             icon="👷" accent="rgba(59,130,246,0.15)"  sub={`+${stats.users.newToday} today`} />
         <KpiCard label="Total Employers"  value={stats.users.employers}           icon="🏢" accent="rgba(99,102,241,0.15)"  />
         <KpiCard label="Pending Review"   value={stats.verification.pending}      icon="🔍" accent="rgba(220,38,38,0.18)"   />
@@ -682,7 +682,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Quick nav cards ───────────────────────────────────────────────────── */}
-      <div className="admin-quick-nav" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+      <div className="admin-quick-nav grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         {[
           { href: "/admin/approvals",  icon: "✅", label: "Approval Queue",  sub: `${pendingCount} pending`,  accent: "rgba(245,158,11,0.14)" },
           { href: "/admin/fraud",      icon: "🛡",  label: "Fraud Console",  sub: "Risk monitoring",           accent: "rgba(220,38,38,0.14)" },
