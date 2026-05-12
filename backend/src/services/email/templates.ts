@@ -202,6 +202,35 @@ export function onboardingSubmittedTemplate(vars: {
   };
 }
 
+export function emailVerifiedTemplate(vars: {
+  firstName: string;
+  role: "WORKER" | "EMPLOYER";
+}): TemplateResult {
+  const dashboardUrl = `${APP_URL}/${vars.role === "WORKER" ? "worker" : "employer"}/dashboard`;
+  const html = layout(`
+    ${badge("✓ EMAIL VERIFIED", "#059669")}
+    <br/><br/>
+    ${h1("Your email is verified!")}
+    ${p(`Hi ${vars.firstName}, your email address has been confirmed. Your account is now under review by our team.`)}
+    <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
+      <tr>
+        <td>
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">What's next</p>
+          <p style="margin:0 0 8px;font-size:14px;color:#334155;">🔍 &nbsp;Our team reviews your application (24–48 hrs)</p>
+          <p style="margin:0 0 8px;font-size:14px;color:#334155;">📋 &nbsp;Complete your profile while you wait</p>
+          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;We'll email you once your account is approved</p>
+        </td>
+      </tr>
+    </table>
+    ${btn(dashboardUrl, "Go to Dashboard")}
+  `);
+  return {
+    subject: `Email verified — your account is under review`,
+    html,
+    text: `Hi ${vars.firstName}, your email has been verified. Your account is now under review. We'll notify you once approved.`,
+  };
+}
+
 export function accountApprovedTemplate(vars: {
   firstName: string;
   role: "WORKER" | "EMPLOYER";
@@ -1086,5 +1115,75 @@ export function applicationConfirmationTemplate(vars: {
     subject: `Application submitted — ${vars.jobTitle} at ${vars.companyName}`,
     html,
     text: `Hi ${vars.firstName}, your application for "${vars.jobTitle}" at ${vars.companyName} has been submitted successfully. We will notify you as soon as the employer reviews it. Track your applications at: ${trackUrl}`,
+  };
+}
+
+// ── Contact form templates ─────────────────────────────────────
+
+export function contactFormTemplate(vars: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): TemplateResult {
+  const safeMessage = vars.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = layout(`
+    ${badge("📬 NEW CONTACT FORM SUBMISSION")}
+    <br/><br/>
+    ${h1("New message received")}
+    <table width="100%" cellpadding="14" cellspacing="0" style="background:#F7F9FF;border-radius:12px;border:1px solid #E2E8F0;margin:20px 0;">
+      <tr style="border-bottom:1px solid #E2E8F0;">
+        <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
+          <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">From</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;font-weight:600;">${vars.name} &lt;${vars.email}&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
+          <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Subject</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;">${vars.subject}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px;">
+          <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Message</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;white-space:pre-wrap;line-height:1.7;">${safeMessage}</p>
+        </td>
+      </tr>
+    </table>
+    ${btn(`mailto:${vars.email}`, `Reply to ${vars.name}`)}
+  `);
+  return {
+    subject: `[Contact] ${vars.subject} — ${vars.name}`,
+    html,
+    text: `New contact form submission\nFrom: ${vars.name} <${vars.email}>\nSubject: ${vars.subject}\n\n${vars.message}`,
+  };
+}
+
+export function contactConfirmationTemplate(vars: {
+  name: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("✓ MESSAGE RECEIVED", "#059669")}
+    <br/><br/>
+    ${h1("We got your message!")}
+    ${p(`Hi ${vars.name}, thanks for reaching out to DirectHire. We've received your message and will get back to you within 24 hours on business days.`)}
+    <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
+      <tr>
+        <td>
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">While you wait</p>
+          <p style="margin:0 0 8px;font-size:14px;color:#334155;">🌍 &nbsp;Learn how DirectHire connects <a href="${APP_URL}/for-employers" style="color:${BRAND_COLOR};">employers</a> and <a href="${APP_URL}/for-workers" style="color:${BRAND_COLOR};">workers</a> globally</p>
+          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;Urgent? Email us directly at <a href="mailto:hello@directhire.io" style="color:${BRAND_COLOR};">hello@directhire.io</a></p>
+        </td>
+      </tr>
+    </table>
+    ${btn(APP_URL, "Visit DirectHire")}
+    ${divider()}
+    ${p("If you didn't send this message, you can safely ignore this email.")}
+  `);
+  return {
+    subject: `We received your message — ${APP_NAME}`,
+    html,
+    text: `Hi ${vars.name}, thanks for reaching out! We've received your message and will get back to you within 24 hours on business days. If urgent, email hello@directhire.io.`,
   };
 }

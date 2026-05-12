@@ -12,7 +12,7 @@ import { ok, err } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { z } from "zod";
 import { generateOTP, hashOTP, verifyOTP } from "../common/utils/otp.util";
-import { sendEmail, sendOtpVerification } from "../services/email";
+import { sendOtpVerification, sendEmailVerified } from "../services/email";
 import { insertAuditLog } from "../lib/audit";
 
 // ── Schemas ───────────────────────────────────────────────────
@@ -416,7 +416,10 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
   try {
     const { email, code } = VerifyCodeSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { workerProfile: true, employerProfile: true },
+    });
     if (!user) return err(res, "User not found", 404);
 
     // Latest unused code for this user
@@ -461,14 +464,8 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
     ]);
 
     // Notify user — fire-and-forget
-    sendEmail({
-      userId:    user.id,
-      to:        email,
-      emailType: "EMAIL_VERIFICATION",
-      subject:   "Your email has been verified",
-      html: `<p>Your email has been verified. Your account is now under review. We'll notify you once approved.</p>`,
-      text: "Your email has been verified. Your account is now under review.",
-    }).catch((e) => console.error("[verifyEmailCode] email error:", e));
+    sendEmailVerified(user.id, email, user.workerProfile?.firstName ?? user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there", user.role as "WORKER" | "EMPLOYER")
+      .catch((e) => console.error("[verifyEmailCode] email error:", e));
 
     return ok(res, { accountStatus: "PENDING_REVIEW" }, "Email verified. Your account is under review.");
   } catch (e) { next(e); }

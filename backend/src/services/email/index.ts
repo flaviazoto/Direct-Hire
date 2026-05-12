@@ -182,6 +182,17 @@ export async function sendPasswordReset(
   await sendEmail({ userId, to, emailType: "PASSWORD_RESET", subject, html, text });
 }
 
+export async function sendEmailVerified(
+  userId: string,
+  to: string,
+  firstName: string,
+  role: "WORKER" | "EMPLOYER"
+) {
+  const { emailVerifiedTemplate } = await import("./templates");
+  const { subject, html, text } = emailVerifiedTemplate({ firstName, role });
+  await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text });
+}
+
 export async function sendOnboardingSubmitted(
   userId: string,
   to: string,
@@ -652,4 +663,29 @@ export async function sendLockExpiredEmployerEmail(
   });
   await sendEmail({ userId, to, emailType: "GENERAL", subject, html, text,
     templateId: "lock_expired_employer" });
+}
+
+// ── Contact form ──────────────────────────────────────────────
+
+export async function sendContactFormEmail(
+  adminTo: string,
+  senderName: string,
+  senderEmail: string,
+  subject: string,
+  message: string,
+) {
+  const { contactFormTemplate } = await import("./templates");
+  const tpl = contactFormTemplate({ name: senderName, email: senderEmail, subject, message });
+  await sendEmail({ to: adminTo, emailType: "GENERAL", subject: tpl.subject, html: tpl.html, text: tpl.text,
+    templateId: "contact_form" });
+}
+
+export async function sendContactConfirmationEmail(
+  to: string,
+  name: string,
+) {
+  const { contactConfirmationTemplate } = await import("./templates");
+  const { subject, html, text } = contactConfirmationTemplate({ name });
+  await sendEmail({ to, emailType: "GENERAL", subject, html, text,
+    templateId: "contact_confirmation" });
 }
