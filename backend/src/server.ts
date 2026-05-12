@@ -20,6 +20,15 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
+// Email env warnings — logged at startup so they're visible in Railway/Render logs
+if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
+  console.error("FATAL: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set");
+  process.exit(1);
+}
+if (!process.env.OWNER_EMAIL) {
+  console.warn("WARNING: OWNER_EMAIL not set — owner notifications will go to directhire1977@gmail.com (default)");
+}
+
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";

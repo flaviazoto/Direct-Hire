@@ -11,21 +11,17 @@ const ContactSchema = z.object({
   message: z.string().trim().min(1).max(5000),
 });
 
-// All contact types land in your personal inbox.
-// Set PERSONAL_EMAIL in .env to your real Gmail / personal address.
-const PERSONAL_EMAIL = process.env.PERSONAL_EMAIL!;
-
 export async function submitContact(req: Request, res: Response, next: NextFunction) {
   try {
     const input = ContactSchema.parse(req.body);
 
-    // Notification to your inbox — replyTo lets you hit Reply and go straight to the sender
-    sendContactFormEmail(PERSONAL_EMAIL, input.name, input.email, input.subject, input.message)
-      .catch((e) => console.error("[contact] notification email error:", e));
+    // Sends to OWNER_EMAIL with replyTo set — hit Reply in Gmail to respond directly
+    sendContactFormEmail(input.name, input.email, input.subject, input.message)
+      .catch((e) => console.error("[contact] notification error:", e));
 
     // Auto-reply confirmation to the sender
     sendContactConfirmationEmail(input.email, input.name)
-      .catch((e) => console.error("[contact] confirmation email error:", e));
+      .catch((e) => console.error("[contact] confirmation error:", e));
 
     return ok(res, null, "Message received. We'll be in touch within 24 hours.");
   } catch (e) { next(e); }

@@ -273,16 +273,10 @@ export function accountRejectedTemplate(vars: {
     <br/><br/>
     ${h1(`Hi ${vars.firstName}, we've reviewed your application`)}
     ${p("We appreciate you taking the time to apply to DirectHire.")}
-    ${p("Unfortunately, we're unable to approve your account at this time.")}
-    <table width="100%" cellpadding="16" cellspacing="0" style="background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0;margin:20px 0;">
-      <tr><td>
-        <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
-        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.reason}</p>
-      </td></tr>
-    </table>
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p("After careful review, we're unable to approve your account at this time.")}
+    ${p(`If you have questions or believe this decision was made in error, please reach out to us directly at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
     ${divider()}
-    ${p(`<small>You may re-apply once you have addressed the issues above.</small>`)}
+    ${p(`<small>You are welcome to re-apply in the future.</small>`)}
   `);
   return {
     subject: `Update on your DirectHire application`,
