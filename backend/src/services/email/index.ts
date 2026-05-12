@@ -12,6 +12,7 @@ interface SendParams {
   subject: string;
   html: string;
   text?: string;
+  replyTo?: string;
 }
 
 interface EmailProvider {
@@ -33,6 +34,7 @@ class SmtpProvider implements EmailProvider {
     const info = await transporter.sendMail({
       from:    `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
       to:      params.to,
+      replyTo: params.replyTo,
       subject: params.subject,
       html:    params.html,
       text:    params.text,
@@ -49,6 +51,7 @@ class ResendProvider implements EmailProvider {
     const { data, error } = await resend.emails.send({
       from:    `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM_ADDRESS}>`,
       to:      params.to,
+      replyTo: params.replyTo,
       subject: params.subject,
       html:    params.html,
     });
@@ -79,14 +82,15 @@ function getProvider(): EmailProvider {
 
 // ── Main send function ────────────────────────────────────────
 export interface SendEmailOptions {
-  userId?:    string;
-  to:         string;
-  emailType:  EmailType;
-  subject:    string;
-  html:       string;
-  text?:      string;
+  userId?:     string;
+  to:          string;
+  replyTo?:    string;
+  emailType:   EmailType;
+  subject:     string;
+  html:        string;
+  text?:       string;
   templateId?: string;
-  variables?: Record<string, unknown>;
+  variables?:  Record<string, unknown>;
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
@@ -114,6 +118,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
     const provider = getProvider();
     const result   = await provider.send({
       to:      opts.to,
+      replyTo: opts.replyTo,
       subject: opts.subject,
       html:    opts.html,
       text:    opts.text,
@@ -676,8 +681,15 @@ export async function sendContactFormEmail(
 ) {
   const { contactFormTemplate } = await import("./templates");
   const tpl = contactFormTemplate({ name: senderName, email: senderEmail, subject, message });
-  await sendEmail({ to: adminTo, emailType: "GENERAL", subject: tpl.subject, html: tpl.html, text: tpl.text,
-    templateId: "contact_form" });
+  await sendEmail({
+    to:         adminTo,
+    replyTo:    senderEmail,
+    emailType:  "GENERAL",
+    subject:    tpl.subject,
+    html:       tpl.html,
+    text:       tpl.text,
+    templateId: "contact_form",
+  });
 }
 
 export async function sendContactConfirmationEmail(
