@@ -255,7 +255,7 @@ export function accountApprovedTemplate(vars: {
     )}
     ${btn(loginUrl, "Log in to DirectHire", "#059669")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account is approved`,
@@ -280,14 +280,14 @@ export function accountRejectedTemplate(vars: {
         <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.reason}</p>
       </td></tr>
     </table>
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
     ${divider()}
     ${p(`<small>You may re-apply once you have addressed the issues above.</small>`)}
   `);
   return {
     subject: `Update on your DirectHire application`,
     html,
-    text: `Hi ${vars.firstName}, we've reviewed your application and are unable to approve it at this time. Reason: ${vars.reason}. Questions? Contact support@directhire.io`,
+    text: `Hi ${vars.firstName}, we've reviewed your application and are unable to approve it at this time. Reason: ${vars.reason}. Questions? Contact support@directhire.cc`,
   };
 }
 
@@ -300,14 +300,14 @@ export function accountSuspendedTemplate(vars: {
     ${h1(`Hi ${vars.firstName}, your account has been suspended`)}
     ${p("Your access to DirectHire has been temporarily suspended pending a review of your account.")}
     ${p("If you believe this is an error, please reach out to our support team and we will look into it as quickly as possible.")}
-    ${btn("mailto:support@directhire.io", "Contact Support", "#64748B")}
+    ${btn("mailto:support@directhire.cc", "Contact Support", "#64748B")}
     ${divider()}
-    ${p(`Email us directly at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Email us directly at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account has been suspended`,
     html,
-    text: `Hi ${vars.firstName}, your DirectHire account has been temporarily suspended. If you believe this is an error, contact support@directhire.io`,
+    text: `Hi ${vars.firstName}, your DirectHire account has been temporarily suspended. If you believe this is an error, contact support@directhire.cc`,
   };
 }
 
@@ -322,7 +322,7 @@ export function accountReinstatedTemplate(vars: {
     ${p("Your DirectHire account is active again. You can now log in and access all platform features.")}
     ${btn(loginUrl, "Log in to DirectHire", "#0090FF")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account has been reinstated`,
@@ -402,7 +402,7 @@ export function jobSubmittedTemplate(vars: {
     </table>
     ${btn(`${APP_URL}/employer/jobs`, "View My Jobs", "#7C3AED")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Job post submitted for review — "${vars.jobTitle}"`,
@@ -464,7 +464,7 @@ export function jobApprovedTemplate(vars: {
     ${p("Workers who match your requirements will be notified automatically. You can manage applications from your dashboard.")}
     ${btn(dashboardUrl, "Go to my dashboard")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your job post '${vars.jobTitle}' is now live`,
@@ -493,12 +493,12 @@ export function jobRejectedTemplate(vars: {
     ${p("You can edit your post and resubmit from your dashboard.")}
     ${btn(editUrl, "Edit and resubmit")}
     ${divider()}
-    ${p(`Questions? Contact <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Update on your job post '${vars.jobTitle}'`,
     html,
-    text: `We reviewed your job post "${vars.jobTitle}" and are unable to approve it at this time.\nReason: ${vars.reason}\nEdit and resubmit: ${editUrl}\nQuestions? Contact support@directhire.io`,
+    text: `We reviewed your job post "${vars.jobTitle}" and are unable to approve it at this time.\nReason: ${vars.reason}\nEdit and resubmit: ${editUrl}\nQuestions? Contact support@directhire.cc`,
   };
 }
 
@@ -585,7 +585,7 @@ export function applicationShortlistedTemplate(vars: {
     ${p("Our hiring team will be reviewing your profile and will be in touch soon.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#D97706")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `You've been shortlisted for ${vars.jobTitle}`,
@@ -626,7 +626,7 @@ export function applicationInterviewedTemplate(vars: {
     ${instructionsBlock}
     ${btn(contactUrl, "View contact details", "#0D9488")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Interview invitation — ${vars.jobTitle} at ${vars.companyName}`,
@@ -707,7 +707,7 @@ export function hireConfirmationEmployerTemplate(vars: {
     ${p(`${vars.workerName} has been notified and their profile is now available to other employers. Their full contact details are in your dashboard.`)}
     ${btn(`${APP_URL}/employer/applications`, "View all applications", "#16A34A")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Hire confirmed — ${vars.workerName} for ${vars.jobTitle}`,
@@ -729,7 +729,7 @@ export function applicationRejectedWorkerTemplate(vars: {
     ${p("We encourage you to keep applying — new opportunities are added to DirectHire daily.")}
     ${btn(`${APP_URL}/jobs`, "Browse more jobs")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Update on your application — ${vars.jobTitle}`,
@@ -753,7 +753,7 @@ export function newApplicationTemplate(vars: {
     ${p("View their profile and take action from your dashboard.")}
     ${btn(appUrl, "Review applicant", "#7C3AED")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `New application — ${vars.jobTitle}`,
@@ -791,14 +791,14 @@ export function postingRightsRevokedTemplate(): TemplateResult {
     ${p("Your ability to post and submit jobs on DirectHire has been suspended pending a review of your account activity.")}
     ${p("You can still log in, view your existing job posts, and manage applications.")}
     ${p("If you believe this is an error or would like to appeal, please contact our support team.")}
-    ${btn("mailto:support@directhire.io", "Contact Support", "#DC2626")}
+    ${btn("mailto:support@directhire.cc", "Contact Support", "#DC2626")}
     ${divider()}
-    ${p(`Email us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a> with your account details.`)}
+    ${p(`Email us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a> with your account details.`)}
   `);
   return {
     subject: `Your DirectHire job posting rights have been suspended`,
     html,
-    text: `Your ability to post jobs on DirectHire has been suspended. Contact support@directhire.io to appeal.`,
+    text: `Your ability to post jobs on DirectHire has been suspended. Contact support@directhire.cc to appeal.`,
   };
 }
 
@@ -810,7 +810,7 @@ export function postingRightsRestoredTemplate(): TemplateResult {
     ${p("Good news — your ability to post and submit jobs on DirectHire has been restored. You can now create and submit new job posts from your dashboard.")}
     ${btn(`${APP_URL}/employer/jobs/new`, "Post a New Job", "#16A34A")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire job posting rights have been restored`,
@@ -856,7 +856,7 @@ export function workerLockedWorkerTemplate(vars: {
     ${p("If you have any concerns, please contact our support team.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `You have a new reservation on DirectHire`,
@@ -891,7 +891,7 @@ export function workerLockedEmployerTemplate(vars: {
     ${p("You can manage your reservations from your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation confirmed — ${vars.workerFirstName}`,
@@ -913,7 +913,7 @@ export function workerLockExtendedWorkerTemplate(vars: {
     ${summaryTable(summaryRow("New expiry date", expiry))}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your Direct Hire profile reservation has been extended`,
@@ -945,7 +945,7 @@ export function workerLockExtendedEmployerTemplate(vars: {
     )}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation extended — ${vars.workerFirstName}`,
@@ -964,7 +964,7 @@ export function workerLockReleasedWorkerTemplate(vars: {
     ${p("Your profile reservation has ended. You are now available to be contacted and hired by other employers on Direct Hire.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your reservation has ended`,
@@ -991,7 +991,7 @@ export function workerLockReleasedEmployerTemplate(vars: {
     )}
     ${btn(`${APP_URL}/employer/locks`, "View All Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation released — ${vars.workerName}`,
@@ -1014,7 +1014,7 @@ export function lockExpiryWarningTemplate(vars: {
     ${p("If you would like to continue the reservation, extend it from your dashboard before it expires. Once expired, the worker will become available to other employers.")}
     ${btn(`${APP_URL}/employer/locks`, "Extend Reservation", "#D97706")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation expiring in 48 hours — ${vars.workerFirstName}`,
@@ -1034,7 +1034,7 @@ export function lockExpiredWorkerTemplate(vars: {
     ${p("Other employers can now contact and proceed with hiring you.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your reservation has ended`,
@@ -1062,7 +1062,7 @@ export function lockExpiredEmployerTemplate(vars: {
     ${p("You can view your reservation history in your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation expired — ${vars.workerName}`,
@@ -1082,15 +1082,15 @@ export function lockOverrideEmployerTemplate(vars: {
     ${h1(`Your reservation on ${vars.workerName} has ended`)}
     ${p(`Your reservation on <strong>${vars.workerName}</strong> has been ended by the DirectHire moderation team.`)}
     ${p("The worker is no longer reserved to your account.")}
-    ${p(`If you have questions about this decision, please contact our support team at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>.`)}
+    ${p(`If you have questions about this decision, please contact our support team at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
     ${btn(`${APP_URL}/employer/locks`, "View My Reservations")}
     ${divider()}
-    ${p(`<a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`<a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire reservation has been ended by our moderation team`,
     html,
-    text: `Your reservation on ${vars.workerName} has been ended by the DirectHire moderation team. Contact support@directhire.io with any questions.`,
+    text: `Your reservation on ${vars.workerName} has been ended by the DirectHire moderation team. Contact support@directhire.cc with any questions.`,
   };
 }
 
@@ -1109,7 +1109,7 @@ export function applicationConfirmationTemplate(vars: {
     ${p("We will notify you as soon as the employer reviews your profile. In the meantime, you can track all your applications from your dashboard.")}
     ${btn(trackUrl, "Track my applications", "#0D9488")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.io" style="color:${BRAND_COLOR};">support@directhire.io</a>`)}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Application submitted — ${vars.jobTitle} at ${vars.companyName}`,
@@ -1173,7 +1173,7 @@ export function contactConfirmationTemplate(vars: {
         <td>
           <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">While you wait</p>
           <p style="margin:0 0 8px;font-size:14px;color:#334155;">🌍 &nbsp;Learn how DirectHire connects <a href="${APP_URL}/for-employers" style="color:${BRAND_COLOR};">employers</a> and <a href="${APP_URL}/for-workers" style="color:${BRAND_COLOR};">workers</a> globally</p>
-          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;Urgent? Email us directly at <a href="mailto:hello@directhire.io" style="color:${BRAND_COLOR};">hello@directhire.io</a></p>
+          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;Urgent? Email us directly at <a href="mailto:hello@directhire.cc" style="color:${BRAND_COLOR};">hello@directhire.cc</a></p>
         </td>
       </tr>
     </table>
@@ -1184,6 +1184,6 @@ export function contactConfirmationTemplate(vars: {
   return {
     subject: `We received your message — ${APP_NAME}`,
     html,
-    text: `Hi ${vars.name}, thanks for reaching out! We've received your message and will get back to you within 24 hours on business days. If urgent, email hello@directhire.io.`,
+    text: `Hi ${vars.name}, thanks for reaching out! We've received your message and will get back to you within 24 hours on business days. If urgent, email hello@directhire.cc.`,
   };
 }

@@ -21,9 +21,9 @@ const FacebookIcon = () => (
 );
 
 const CHANNELS = [
-  { icon: "📧", label: "Email",   value: "hello@directhire.io",   desc: "General enquiries" },
-  { icon: "🏢", label: "Sales",   value: "sales@directhire.io",   desc: "Enterprise & partnership" },
-  { icon: "🛟", label: "Support", value: "support@directhire.io", desc: "Technical & account help" },
+  { icon: "📧", label: "Email",   value: "hello@directhire.cc",   desc: "General enquiries" },
+  { icon: "🏢", label: "Sales",   value: "sales@directhire.cc",   desc: "Enterprise & partnership" },
+  { icon: "🛟", label: "Support", value: "support@directhire.cc", desc: "Technical & account help" },
 ];
 
 const SOCIALS = [
@@ -60,7 +60,7 @@ export default function ContactPage() {
       if (!res.ok) throw new Error("Failed");
       setSent(true);
     } catch {
-      alert("Failed to send message. Please email hello@directhire.io directly.");
+      alert("Failed to send message. Please email hello@directhire.cc directly.");
     } finally {
       setLoading(false);
     }
