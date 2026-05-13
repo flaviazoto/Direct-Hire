@@ -6,6 +6,7 @@ import { verifyAccessToken, JwtPayload, Role } from "../lib/auth";
 import { COOKIE_ACCESS } from "../lib/auth";
 import { err } from "../lib/response";
 import prisma from "../lib/prisma";
+import { isTokenBlocklisted, isUserTokenRevoked } from "../lib/token-blocklist";
 
 // Extend Express Request to carry the authenticated user
 declare global {
@@ -28,6 +29,10 @@ export function requireAuth(allowedRoles?: Role[], options?: { requireVerified?:
 
     try {
       const payload = await verifyAccessToken(token);
+
+      if (await isTokenBlocklisted(token) || await isUserTokenRevoked(payload.sub, payload.iat)) {
+        return err(res, "Unauthorized - invalid or expired token", 401);
+      }
 
       const user = await prisma.user.findUnique({
         where: { id: payload.sub },

@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import Stripe from "stripe";
 import stripe, { mapStripeStatus } from "../services/stripe";
 import prisma from "../lib/prisma";
-import { sendEmail } from "../services/email";
+import { escapeHtml, sendEmail } from "../services/email";
 
 export async function stripeWebhook(req: Request, res: Response) {
   const sig = req.headers["stripe-signature"];
@@ -162,6 +162,8 @@ export async function stripeWebhook(req: Request, res: Response) {
 // ── Email templates ────────────────────────────────────────────────────────────
 
 function confirmEmail(name: string, amount: string): string {
+  const safeName = escapeHtml(name);
+  const safeAmount = escapeHtml(amount);
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
 <body style="margin:0;padding:0;background:#f7f9ff;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
@@ -173,9 +175,9 @@ function confirmEmail(name: string, amount: string): string {
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488;text-transform:uppercase;">Payment confirmed</p>
-          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${name} ✓</h1>
+          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeName} ✓</h1>
           <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
-            Your DirectHire Employer subscription payment of <strong>${amount}</strong> was successful.
+            Your DirectHire Employer subscription payment of <strong>${safeAmount}</strong> was successful.
           </p>
           <p style="margin:0;font-size:13px;color:#64748b;">
             Your access is active and uninterrupted. Log in anytime to find and connect with workers.
@@ -193,6 +195,7 @@ function confirmEmail(name: string, amount: string): string {
 }
 
 function failEmail(name: string): string {
+  const safeName = escapeHtml(name);
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
 <body style="margin:0;padding:0;background:#f7f9ff;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
@@ -204,7 +207,7 @@ function failEmail(name: string): string {
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#dc2626;text-transform:uppercase;">Action required</p>
-          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${name}, payment failed</h1>
+          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeName}, payment failed</h1>
           <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
             We were unable to process your DirectHire subscription payment. Please update your payment method to keep your account active.
           </p>

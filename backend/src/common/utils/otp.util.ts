@@ -8,7 +8,7 @@ const SALT_ROUNDS = 10;
  * Generate a cryptographically secure 6-digit OTP string.
  */
 export function generateOTP(): string {
-  return crypto.randomInt(100000, 999999).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 /**

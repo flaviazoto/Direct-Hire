@@ -1,7 +1,57 @@
 // src/services/email/index.ts
 import type { Prisma } from "@prisma/client";
 import prisma from "../../lib/prisma";
+import { redis } from "../../lib/redis";
 import type { EmailType } from "../../types";
+
+export async function checkEmailRateLimit(
+  key: string,
+  maxAttempts: number,
+  windowSeconds: number
+): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const current = await redis.incr(key);
+  if (current === 1) {
+    await redis.expire(key, windowSeconds);
+  }
+  if (current > maxAttempts) {
+    const ttl = await redis.ttl(key);
+    return { allowed: false, retryAfter: ttl > 0 ? ttl : windowSeconds };
+  }
+  return { allowed: true };
+}
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    && email.length <= 254
+    && !email.includes("..");
+}
+
+export function stripHtml(str: string): string {
+  return str.replace(/<[^>]*>/g, "").trim();
+}
+
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+export function maskEmail(email: string): string {
+  const [user = "", domain = "unknown"] = email.split("@");
+  return `${user[0] ?? "*"}***@${domain}`;
+}
+
+export function logEmailRateLimited(emailType: string, rateLimitKey: string) {
+  console.warn(JSON.stringify({
+    event: "email_rate_limited",
+    type: emailType,
+    key: rateLimitKey,
+    ts: new Date().toISOString(),
+  }));
+}
 
 // ── Constants ─────────────────────────────────────────────────
 export const OWNER_EMAIL   = process.env.OWNER_EMAIL   ?? "directhire1977@gmail.com";
@@ -100,6 +150,11 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
+  if (!isValidEmail(opts.to)) {
+    console.warn("[Email blocked] Invalid email address:", opts.to);
+    return;
+  }
+
   let logId: string | undefined;
   try {
     const logRecord = await prisma.emailLog.create({
@@ -128,7 +183,13 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
       html:    opts.html,
       text:    opts.text,
     });
-    console.log(`[Email sent] "${opts.subject}" → ${opts.to}`);
+    console.log(JSON.stringify({
+      event: "email_sent",
+      type: opts.emailType,
+      to: maskEmail(opts.to),
+      success: true,
+      ts: new Date().toISOString(),
+    }));
     if (logId) {
       await prisma.emailLog.update({
         where: { id: logId },
@@ -136,7 +197,13 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
       }).catch((e: Error) => console.error("[sendEmail] Failed to update log to SENT:", e.message));
     }
   } catch (error) {
-    console.error(`[Email failed] "${opts.subject}" → ${opts.to}:`, error instanceof Error ? error.message : error);
+    console.error(JSON.stringify({
+      event: "email_failed",
+      type: opts.emailType,
+      to: maskEmail(opts.to),
+      error: error instanceof Error ? error.message : "Unknown error",
+      ts: new Date().toISOString(),
+    }));
     if (logId) {
       await prisma.emailLog.update({
         where: { id: logId },
@@ -165,14 +232,24 @@ export async function sendOtpVerification(
 export async function sendWelcomeEmail(
   userId: string, to: string, firstName: string, role: "WORKER" | "EMPLOYER",
 ) {
+  const existingWelcome = await prisma.emailLog.findFirst({
+    where: {
+      userId,
+      emailType: "WELCOME",
+      status: { in: ["QUEUED", "SENT"] },
+    },
+    select: { id: true },
+  });
+  if (existingWelcome) return;
+
   const { welcomeTemplate } = await import("./templates");
   const { subject, html, text } = welcomeTemplate({ firstName, role });
   await sendEmail({ userId, to, from: FROM_HELLO, emailType: "WELCOME", subject, html, text });
   // Notify owner of every new registration
   notifyOwner(
     `New registration: ${firstName} (${role})`,
-    `<p>New ${role.toLowerCase()} registered on DirectHire.</p>
-     <p><strong>Name:</strong> ${firstName}<br/><strong>Email:</strong> ${to}<br/><strong>Role:</strong> ${role}</p>`,
+    `<p>New ${escapeHtml(role.toLowerCase())} registered on DirectHire.</p>
+     <p><strong>Name:</strong> ${escapeHtml(firstName)}<br/><strong>Email:</strong> ${escapeHtml(to)}<br/><strong>Role:</strong> ${escapeHtml(role)}</p>`,
     `New ${role} registered: ${firstName} <${to}>`,
   ).catch(() => {});
 }

@@ -82,7 +82,7 @@ externalJobsRouter.post("/admin", requireAdmin, async (req: Request, res: Respon
       include: { admin: { select: { id: true, email: true } } },
     });
 
-    return ok(res, { job }, 201);
+    return ok(res, { job }, undefined, 201);
   } catch (error) {
     console.error("Error creating external job:", error);
     return err(res, "Internal server error", 500);

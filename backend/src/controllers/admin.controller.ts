@@ -942,6 +942,7 @@ export async function getPendingUsers(req: Request, res: Response, next: NextFun
 // POST /admin/users/:id/approve
 export async function approveUser(req: Request, res: Response, next: NextFunction) {
   try {
+    if (req.user?.role !== "ADMIN") return err(res, "Forbidden - admin only", 403);
     const adminId = req.user!.sub;
     const { id }  = req.params;
 
@@ -1005,6 +1006,7 @@ const RejectSchema = z.object({ reason: z.string().min(10).max(2000) });
 
 export async function rejectUser(req: Request, res: Response, next: NextFunction) {
   try {
+    if (req.user?.role !== "ADMIN") return err(res, "Forbidden - admin only", 403);
     const adminId      = req.user!.sub;
     const { id }       = req.params;
     const { reason }   = RejectSchema.parse(req.body);
@@ -1055,6 +1057,7 @@ const SuspendSchema = z.object({ reason: z.string().min(1).max(2000) });
 
 export async function suspendUserAccount(req: Request, res: Response, next: NextFunction) {
   try {
+    if (req.user?.role !== "ADMIN") return err(res, "Forbidden - admin only", 403);
     const adminId    = req.user!.sub;
     const { id }     = req.params;
     const { reason } = SuspendSchema.parse(req.body);
@@ -1229,4 +1232,3 @@ export async function getEmailStats(_req: Request, res: Response, next: NextFunc
     });
   } catch (e) { next(e); }
 }
-

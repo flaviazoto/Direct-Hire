@@ -8,8 +8,41 @@ interface TemplateResult {
   text: string;
 }
 
-const APP_NAME    = process.env.APP_NAME    ?? "Direct Hire";
-const APP_URL     = process.env.FRONTEND_URL ?? "https://directhire.io";
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+function safeUrl(url: string): string {
+  const fallback = "https://www.directhire.cc";
+  try {
+    if (url.startsWith("/")) return `${fallback}${url}`;
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function allowBasicHtml(str: string): string {
+  return escapeHtml(str)
+    .replace(/&lt;(\/?strong)&gt;/g, "<$1>")
+    .replace(/&lt;(\/?small)&gt;/g, "<$1>")
+    .replace(/&lt;(\/?em)&gt;/g, "<$1>")
+    .replace(/&lt;br\/?&gt;/g, "<br/>")
+    .replace(
+      /&lt;a href=&quot;(https:\/\/[^"&]+)&quot; style=&quot;([^"&]*)&quot;&gt;(.+?)&lt;\/a&gt;/g,
+      (_match, url: string, style: string, label: string) =>
+        `<a href="${escapeHtml(url)}" style="${escapeHtml(style)}">${label}</a>`,
+    );
+}
+
+const APP_NAME    = escapeHtml(process.env.APP_NAME ?? "Direct Hire");
+const APP_URL     = safeUrl(process.env.FRONTEND_URL ?? "https://www.directhire.cc").replace(/\/$/, "");
 const BRAND_COLOR = "#1848CC";
 const BRAND_BG    = "#08142A";
 
@@ -59,21 +92,22 @@ function layout(body: string): string {
 }
 
 function btn(url: string, label: string, color = BRAND_COLOR): string {
+  const href = safeUrl(url);
   return `<table cellpadding="0" cellspacing="0" style="margin:28px 0;">
     <tr>
       <td style="background:${color};border-radius:12px;">
-        <a href="${url}" style="display:inline-block;padding:14px 32px;color:#fff;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:0.2px;">${label} →</a>
+        <a href="${href}" style="display:inline-block;padding:14px 32px;color:#fff;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:0.2px;">${escapeHtml(label)} →</a>
       </td>
     </tr>
   </table>`;
 }
 
 function h1(text: string): string {
-  return `<h1 style="margin:0 0 16px;font-size:26px;font-weight:800;color:#08142A;letter-spacing:-0.5px;line-height:1.2;">${text}</h1>`;
+  return `<h1 style="margin:0 0 16px;font-size:26px;font-weight:800;color:#08142A;letter-spacing:-0.5px;line-height:1.2;">${escapeHtml(text)}</h1>`;
 }
 
 function p(text: string): string {
-  return `<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.7;">${text}</p>`;
+  return `<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.7;">${allowBasicHtml(text)}</p>`;
 }
 
 function divider(): string {
@@ -81,7 +115,7 @@ function divider(): string {
 }
 
 function badge(text: string, color = BRAND_COLOR): string {
-  return `<span style="display:inline-block;background:${color}15;color:${color};font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:0.5px;">${text}</span>`;
+  return `<span style="display:inline-block;background:${color}15;color:${color};font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:0.5px;">${escapeHtml(text)}</span>`;
 }
 
 // ── Templates ─────────────────────────────────────────────────
@@ -137,39 +171,41 @@ export function otpVerificationTemplate(vars: { code: string; expiresMinutes: nu
 }
 
 export function emailVerificationTemplate(vars: { verifyUrl: string }): TemplateResult {
+  const verifyUrl = safeUrl(vars.verifyUrl);
   const html = layout(`
     ${badge("EMAIL VERIFICATION")}
     <br/><br/>
     ${h1("Verify your email address")}
     ${p("Please click the button below to verify your email address and activate your account.")}
     ${p("<strong>This link expires in 24 hours.</strong>")}
-    ${btn(vars.verifyUrl, "Verify Email Address")}
+    ${btn(verifyUrl, "Verify Email Address")}
     ${divider()}
-    ${p(`Or copy this link: <br/><a href="${vars.verifyUrl}" style="color:${BRAND_COLOR};font-size:13px;word-break:break-all;">${vars.verifyUrl}</a>`)}
+    ${p(`Or copy this link: <br/><a href="${verifyUrl}" style="color:${BRAND_COLOR};font-size:13px;word-break:break-all;">${verifyUrl}</a>`)}
     ${p("If you didn't create an account, you can safely ignore this email.")}
   `);
   return {
     subject: `Verify your ${APP_NAME} email address`,
     html,
-    text: `Verify your email: ${vars.verifyUrl}`,
+    text: `Verify your email: ${verifyUrl}`,
   };
 }
 
 export function passwordResetTemplate(vars: { resetUrl: string }): TemplateResult {
+  const resetUrl = safeUrl(vars.resetUrl);
   const html = layout(`
     ${badge("PASSWORD RESET")}
     <br/><br/>
     ${h1("Reset your password")}
     ${p("We received a request to reset your password. Click the button below to create a new password.")}
     ${p("<strong>This link expires in 1 hour.</strong>")}
-    ${btn(vars.resetUrl, "Reset Password", "#DC2626")}
+    ${btn(resetUrl, "Reset Password", "#DC2626")}
     ${divider()}
     ${p("If you didn't request a password reset, please ignore this email. Your password will not be changed.")}
   `);
   return {
     subject: `Reset your ${APP_NAME} password`,
     html,
-    text: `Reset your password: ${vars.resetUrl}`,
+    text: `Reset your password: ${resetUrl}`,
   };
 }
 
@@ -255,7 +291,7 @@ export function accountApprovedTemplate(vars: {
     )}
     ${btn(loginUrl, "Log in to DirectHire", "#059669")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account is approved`,
@@ -274,7 +310,7 @@ export function accountRejectedTemplate(vars: {
     ${h1(`Hi ${vars.firstName}, we've reviewed your application`)}
     ${p("We appreciate you taking the time to apply to DirectHire.")}
     ${p("After careful review, we're unable to approve your account at this time.")}
-    ${p(`If you have questions or believe this decision was made in error, please reach out to us directly at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
+    ${p(`If you have questions or believe this decision was made in error, please reach out to us directly at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
     ${divider()}
     ${p(`<small>You are welcome to re-apply in the future.</small>`)}
   `);
@@ -294,9 +330,9 @@ export function accountSuspendedTemplate(vars: {
     ${h1(`Hi ${vars.firstName}, your account has been suspended`)}
     ${p("Your access to DirectHire has been temporarily suspended pending a review of your account.")}
     ${p("If you believe this is an error, please reach out to our support team and we will look into it as quickly as possible.")}
-    ${btn("mailto:support@directhire.cc", "Contact Support", "#64748B")}
+    ${btn(`${APP_URL}/contact`, "Contact Support", "#64748B")}
     ${divider()}
-    ${p(`Email us directly at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Email us directly at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account has been suspended`,
@@ -316,7 +352,7 @@ export function accountReinstatedTemplate(vars: {
     ${p("Your DirectHire account is active again. You can now log in and access all platform features.")}
     ${btn(loginUrl, "Log in to DirectHire", "#0090FF")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire account has been reinstated`,
@@ -336,7 +372,7 @@ export function needsChangesTemplate(vars: {
     ${p("Our review team has requested the following changes before your account can be approved:")}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#FFFBEB;border-radius:12px;border-left:4px solid #D97706;margin:20px 0;">
       <tr><td>
-        <p style="margin:0;font-size:14px;color:#78350F;line-height:1.7;">${vars.changes}</p>
+        <p style="margin:0;font-size:14px;color:#78350F;line-height:1.7;">${escapeHtml(vars.changes)}</p>
       </td></tr>
     </table>
     ${btn(`${APP_URL}/worker/onboarding`, "Update My Profile", "#D97706")}
@@ -361,9 +397,9 @@ export function adminNewSubmissionTemplate(vars: {
     ${h1("New application requires review")}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr><td>
-        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Name:</strong> ${vars.submitterName}</p>
-        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Email:</strong> ${vars.submitterEmail}</p>
-        <p style="margin:0;font-size:14px;color:#334155;"><strong>Role:</strong> ${vars.submitterRole}</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Name:</strong> ${escapeHtml(vars.submitterName)}</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Email:</strong> ${escapeHtml(vars.submitterEmail)}</p>
+        <p style="margin:0;font-size:14px;color:#334155;"><strong>Role:</strong> ${escapeHtml(vars.submitterRole)}</p>
       </td></tr>
     </table>
     ${btn(vars.adminUrl, "Review in Admin Panel", "#7C3AED")}
@@ -396,7 +432,7 @@ export function jobSubmittedTemplate(vars: {
     </table>
     ${btn(`${APP_URL}/employer/jobs`, "View My Jobs", "#7C3AED")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Job post submitted for review — "${vars.jobTitle}"`,
@@ -458,7 +494,7 @@ export function jobApprovedTemplate(vars: {
     ${p("Workers who match your requirements will be notified automatically. You can manage applications from your dashboard.")}
     ${btn(dashboardUrl, "Go to my dashboard")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your job post '${vars.jobTitle}' is now live`,
@@ -481,13 +517,13 @@ export function jobRejectedTemplate(vars: {
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
-        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.reason}</p>
+        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${escapeHtml(vars.reason)}</p>
       </td></tr>
     </table>
     ${p("You can edit your post and resubmit from your dashboard.")}
     ${btn(editUrl, "Edit and resubmit")}
     ${divider()}
-    ${p(`Questions? Contact <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Update on your job post '${vars.jobTitle}'`,
@@ -517,7 +553,7 @@ export function jobChangesRequestedTemplate(vars: {
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Changes needed</p>
-        <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${vars.notes}</p>
+        <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${escapeHtml(vars.notes)}</p>
       </td></tr>
     </table>
     ${p("Please make these updates and resubmit.")}
@@ -545,7 +581,7 @@ export function jobResubmittedNotificationTemplate(vars: {
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Original rejection reason</p>
-        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.notes}</p>
+        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${escapeHtml(vars.notes)}</p>
       </td></tr>
     </table>
     ${btn(pendingUrl, "Review in Admin Panel", "#7C3AED")}
@@ -579,7 +615,7 @@ export function applicationShortlistedTemplate(vars: {
     ${p("Our hiring team will be reviewing your profile and will be in touch soon.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#D97706")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `You've been shortlisted for ${vars.jobTitle}`,
@@ -600,7 +636,7 @@ export function applicationInterviewedTemplate(vars: {
     ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
         <tr><td>
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Interview instructions</p>
-          <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${vars.interviewInstructions}</p>
+          <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${escapeHtml(vars.interviewInstructions)}</p>
         </td></tr>
        </table>`
     : "";
@@ -620,7 +656,7 @@ export function applicationInterviewedTemplate(vars: {
     ${instructionsBlock}
     ${btn(contactUrl, "View contact details", "#0D9488")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Interview invitation — ${vars.jobTitle} at ${vars.companyName}`,
@@ -683,9 +719,9 @@ export function hireConfirmationEmployerTemplate(vars: {
   offeredCurrency?: string;
 }): TemplateResult {
   const detailRows = [
-    vars.offeredSalary ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;width:140px;">Offered salary</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${vars.offeredCurrency ?? "USD"} ${parseFloat(vars.offeredSalary).toLocaleString()}/month</td></tr>` : "",
+    vars.offeredSalary ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;width:140px;">Offered salary</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${escapeHtml(vars.offeredCurrency ?? "USD")} ${parseFloat(vars.offeredSalary).toLocaleString()}/month</td></tr>` : "",
     vars.startDate    ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;">Start date</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${new Date(vars.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</td></tr>` : "",
-    vars.contractType ? `<tr><td style="padding:10px 0;font-size:14px;color:#64748B;">Contract type</td><td style="padding:10px 0;font-size:14px;font-weight:600;color:#08142A;">${vars.contractType}</td></tr>` : "",
+    vars.contractType ? `<tr><td style="padding:10px 0;font-size:14px;color:#64748B;">Contract type</td><td style="padding:10px 0;font-size:14px;font-weight:600;color:#08142A;">${escapeHtml(vars.contractType)}</td></tr>` : "",
   ].filter(Boolean).join("");
 
   const detailsBlock = detailRows
@@ -701,7 +737,7 @@ export function hireConfirmationEmployerTemplate(vars: {
     ${p(`${vars.workerName} has been notified and their profile is now available to other employers. Their full contact details are in your dashboard.`)}
     ${btn(`${APP_URL}/employer/applications`, "View all applications", "#16A34A")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Hire confirmed — ${vars.workerName} for ${vars.jobTitle}`,
@@ -723,7 +759,7 @@ export function applicationRejectedWorkerTemplate(vars: {
     ${p("We encourage you to keep applying — new opportunities are added to DirectHire daily.")}
     ${btn(`${APP_URL}/jobs`, "Browse more jobs")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Update on your application — ${vars.jobTitle}`,
@@ -747,7 +783,7 @@ export function newApplicationTemplate(vars: {
     ${p("View their profile and take action from your dashboard.")}
     ${btn(appUrl, "Review applicant", "#7C3AED")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `New application — ${vars.jobTitle}`,
@@ -785,9 +821,9 @@ export function postingRightsRevokedTemplate(): TemplateResult {
     ${p("Your ability to post and submit jobs on DirectHire has been suspended pending a review of your account activity.")}
     ${p("You can still log in, view your existing job posts, and manage applications.")}
     ${p("If you believe this is an error or would like to appeal, please contact our support team.")}
-    ${btn("mailto:support@directhire.cc", "Contact Support", "#DC2626")}
+    ${btn(`${APP_URL}/contact`, "Contact Support", "#DC2626")}
     ${divider()}
-    ${p(`Email us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a> with your account details.`)}
+    ${p(`Email us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a> with your account details.`)}
   `);
   return {
     subject: `Your DirectHire job posting rights have been suspended`,
@@ -804,7 +840,7 @@ export function postingRightsRestoredTemplate(): TemplateResult {
     ${p("Good news — your ability to post and submit jobs on DirectHire has been restored. You can now create and submit new job posts from your dashboard.")}
     ${btn(`${APP_URL}/employer/jobs/new`, "Post a New Job", "#16A34A")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire job posting rights have been restored`,
@@ -821,8 +857,8 @@ function fmtDate(d: Date): string {
 
 function summaryRow(label: string, value: string): string {
   return `<tr>
-    <td style="padding:10px 16px;font-size:14px;color:#64748B;border-bottom:1px solid #E2E8F0;">${label}</td>
-    <td style="padding:10px 16px;font-size:14px;font-weight:600;color:#08142A;text-align:right;border-bottom:1px solid #E2E8F0;">${value}</td>
+    <td style="padding:10px 16px;font-size:14px;color:#64748B;border-bottom:1px solid #E2E8F0;">${escapeHtml(label)}</td>
+    <td style="padding:10px 16px;font-size:14px;font-weight:600;color:#08142A;text-align:right;border-bottom:1px solid #E2E8F0;">${escapeHtml(value)}</td>
   </tr>`;
 }
 
@@ -850,7 +886,7 @@ export function workerLockedWorkerTemplate(vars: {
     ${p("If you have any concerns, please contact our support team.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `You have a new reservation on DirectHire`,
@@ -885,7 +921,7 @@ export function workerLockedEmployerTemplate(vars: {
     ${p("You can manage your reservations from your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation confirmed — ${vars.workerFirstName}`,
@@ -907,7 +943,7 @@ export function workerLockExtendedWorkerTemplate(vars: {
     ${summaryTable(summaryRow("New expiry date", expiry))}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your Direct Hire profile reservation has been extended`,
@@ -939,7 +975,7 @@ export function workerLockExtendedEmployerTemplate(vars: {
     )}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation extended — ${vars.workerFirstName}`,
@@ -958,7 +994,7 @@ export function workerLockReleasedWorkerTemplate(vars: {
     ${p("Your profile reservation has ended. You are now available to be contacted and hired by other employers on Direct Hire.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your reservation has ended`,
@@ -985,7 +1021,7 @@ export function workerLockReleasedEmployerTemplate(vars: {
     )}
     ${btn(`${APP_URL}/employer/locks`, "View All Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation released — ${vars.workerName}`,
@@ -1008,7 +1044,7 @@ export function lockExpiryWarningTemplate(vars: {
     ${p("If you would like to continue the reservation, extend it from your dashboard before it expires. Once expired, the worker will become available to other employers.")}
     ${btn(`${APP_URL}/employer/locks`, "Extend Reservation", "#D97706")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation expiring in 48 hours — ${vars.workerFirstName}`,
@@ -1028,7 +1064,7 @@ export function lockExpiredWorkerTemplate(vars: {
     ${p("Other employers can now contact and proceed with hiring you.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your reservation has ended`,
@@ -1056,7 +1092,7 @@ export function lockExpiredEmployerTemplate(vars: {
     ${p("You can view your reservation history in your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
-    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Reservation expired — ${vars.workerName}`,
@@ -1076,10 +1112,10 @@ export function lockOverrideEmployerTemplate(vars: {
     ${h1(`Your reservation on ${vars.workerName} has ended`)}
     ${p(`Your reservation on <strong>${vars.workerName}</strong> has been ended by the DirectHire moderation team.`)}
     ${p("The worker is no longer reserved to your account.")}
-    ${p(`If you have questions about this decision, please contact our support team at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
+    ${p(`If you have questions about this decision, please contact our support team at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
     ${btn(`${APP_URL}/employer/locks`, "View My Reservations")}
     ${divider()}
-    ${p(`<a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`<a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Your DirectHire reservation has been ended by our moderation team`,
@@ -1103,7 +1139,7 @@ export function applicationConfirmationTemplate(vars: {
     ${p("We will notify you as soon as the employer reviews your profile. In the meantime, you can track all your applications from your dashboard.")}
     ${btn(trackUrl, "Track my applications", "#0D9488")}
     ${divider()}
-    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+    ${p(`Questions? Contact us at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
     subject: `Application submitted — ${vars.jobTitle} at ${vars.companyName}`,
@@ -1120,7 +1156,10 @@ export function contactFormTemplate(vars: {
   subject: string;
   message: string;
 }): TemplateResult {
-  const safeMessage = vars.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeName = escapeHtml(vars.name);
+  const safeEmail = escapeHtml(vars.email);
+  const safeSubject = escapeHtml(vars.subject);
+  const safeMessage = escapeHtml(vars.message);
   const html = layout(`
     ${badge("📬 NEW CONTACT FORM SUBMISSION")}
     <br/><br/>
@@ -1129,13 +1168,13 @@ export function contactFormTemplate(vars: {
       <tr style="border-bottom:1px solid #E2E8F0;">
         <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
           <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">From</p>
-          <p style="margin:4px 0 0;font-size:15px;color:#334155;font-weight:600;">${vars.name} &lt;${vars.email}&gt;</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;font-weight:600;">${safeName} &lt;${safeEmail}&gt;</p>
         </td>
       </tr>
       <tr>
         <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
           <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Subject</p>
-          <p style="margin:4px 0 0;font-size:15px;color:#334155;">${vars.subject}</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;">${safeSubject}</p>
         </td>
       </tr>
       <tr>
@@ -1145,7 +1184,7 @@ export function contactFormTemplate(vars: {
         </td>
       </tr>
     </table>
-    ${btn(`mailto:${vars.email}`, `Reply to ${vars.name}`)}
+    ${btn(`${APP_URL}/contact`, `Reply to ${vars.name}`)}
   `);
   return {
     subject: `[Contact] ${vars.subject} — ${vars.name}`,
@@ -1167,7 +1206,7 @@ export function contactConfirmationTemplate(vars: {
         <td>
           <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">While you wait</p>
           <p style="margin:0 0 8px;font-size:14px;color:#334155;">🌍 &nbsp;Learn how DirectHire connects <a href="${APP_URL}/for-employers" style="color:${BRAND_COLOR};">employers</a> and <a href="${APP_URL}/for-workers" style="color:${BRAND_COLOR};">workers</a> globally</p>
-          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;Urgent? Email us directly at <a href="mailto:hello@directhire.cc" style="color:${BRAND_COLOR};">hello@directhire.cc</a></p>
+          <p style="margin:0;font-size:14px;color:#334155;">📧 &nbsp;Urgent? Email us directly at <a href="${APP_URL}/contact" style="color:${BRAND_COLOR};">hello@directhire.cc</a></p>
         </td>
       </tr>
     </table>

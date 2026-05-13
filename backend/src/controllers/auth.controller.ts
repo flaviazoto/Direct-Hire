@@ -1,10 +1,11 @@
 // backend/src/controllers/auth.controller.ts
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import prisma from "../lib/prisma";
 import {
   signAccessToken, signRefreshToken, verifyRefreshToken,
-  setAuthCookies, clearAuthCookies, generateSecureToken,
+  setAuthCookies, clearAuthCookies,
   tokenExpiresAt, COOKIE_REFRESH, verifyHandoffToken,
   type Role,
 } from "../lib/auth";
@@ -12,8 +13,22 @@ import { ok, err } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { z } from "zod";
 import { generateOTP, hashOTP, verifyOTP } from "../common/utils/otp.util";
-import { sendOtpVerification, sendEmailVerified } from "../services/email";
+import {
+  checkEmailRateLimit,
+  logEmailRateLimited,
+  sendOtpVerification,
+  sendEmailVerified,
+} from "../services/email";
 import { insertAuditLog } from "../lib/audit";
+import { redis } from "../lib/redis";
+import {
+  blocklistToken,
+  blocklistTokens,
+  isTokenBlocklisted,
+  isUserTokenRevoked,
+  revokeAllUserTokens,
+  REFRESH_TOKEN_TTL_SECONDS,
+} from "../lib/token-blocklist";
 
 // ── Schemas ───────────────────────────────────────────────────
 const RegisterSchema = z.object({
@@ -46,10 +61,53 @@ const VerifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+const GENERIC_OTP_SENT_MESSAGE = "If this email is registered, a code has been sent.";
+
+function getClientIp(req: Request): string {
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function retryMinutes(seconds?: number): number {
+  return Math.max(1, Math.ceil((seconds ?? 60) / 60));
+}
+
+function hashResetToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function passwordResetUrl(rawToken: string): string {
+  return `https://www.directhire.cc/reset-password?token=${encodeURIComponent(rawToken)}`;
+}
+
+async function rateLimitOrError(
+  res: Response,
+  key: string,
+  type: "otp" | "reset",
+  message: (minutes: number) => string,
+  maxAttempts: number,
+  windowSeconds: number,
+) {
+  const limit = await checkEmailRateLimit(key, maxAttempts, windowSeconds);
+  if (limit.allowed) return false;
+  logEmailRateLimited(type, key);
+  return err(res, message(retryMinutes(limit.retryAfter)), 429);
+}
+
 // ── register ──────────────────────────────────────────────────
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const input = RegisterSchema.parse(req.body);
+    const ip = getClientIp(req);
+    const otpIpKey = `email_rate:otp:${ip}`;
+    const limited = await rateLimitOrError(
+      res,
+      otpIpKey,
+      "otp",
+      (minutes) => `Too many OTP requests. Try again in ${minutes} minutes.`,
+      3,
+      600,
+    );
+    if (limited) return limited;
 
     const existing = await prisma.user.findUnique({ where: { email: input.email } });
     if (existing) return err(res, "An account with this email already exists", 409);
@@ -122,8 +180,9 @@ export async function register(req: Request, res: Response, next: NextFunction) 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.$transaction([
-      prisma.verificationCode.deleteMany({
+      prisma.verificationCode.updateMany({
         where: { userId: result.user.id, type: "EMAIL_VERIFICATION", usedAt: null },
+        data:  { usedAt: new Date() },
       }),
       prisma.verificationCode.create({
         data: { userId: result.user.id, type: "EMAIL_VERIFICATION", codeHash: hash, expiresAt, attempts: 0 },
@@ -243,6 +302,10 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
       clearAuthCookies(res);
       return err(res, "Invalid or expired refresh token", 401);
     }
+    if (await isTokenBlocklisted(token) || await isUserTokenRevoked(payload.sub, payload.iat)) {
+      clearAuthCookies(res);
+      return err(res, "Session expired", 401);
+    }
 
     const session = await prisma.session.findUnique({ where: { refreshToken: token } });
     if (!session || session.expiresAt < new Date()) {
@@ -278,6 +341,18 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
 export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = ForgotSchema.parse(req.body);
+    const normalizedEmail = email.toLowerCase();
+    const resetKey = `email_rate:reset:${normalizedEmail}`;
+    const limited = await rateLimitOrError(
+      res,
+      resetKey,
+      "reset",
+      (minutes) => `Too many reset requests. Try again in ${minutes} minutes.`,
+      3,
+      3600,
+    );
+    if (limited) return limited;
+
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
@@ -285,10 +360,11 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
         where: { userId: user.id, usedAt: null },
         data:  { usedAt: new Date() },
       });
-      const token    = generateSecureToken();
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+      const token    = crypto.randomBytes(32).toString("hex");
+      const tokenHash = hashResetToken(token);
+      const resetUrl = passwordResetUrl(token);
       await prisma.passwordResetToken.create({
-        data: { userId: user.id, token, expiresAt: tokenExpiresAt(1) },
+        data: { userId: user.id, token: tokenHash, expiresAt: tokenExpiresAt(1) },
       });
       await enqueue("email.passwordReset", { userId: user.id, to: email, resetUrl });
     }
@@ -302,20 +378,32 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
 export async function resetPassword(req: Request, res: Response, next: NextFunction) {
   try {
     const input  = ResetSchema.parse(req.body);
+    const tokenHash = hashResetToken(input.token);
     const record = await prisma.passwordResetToken.findUnique({
-      where: { token: input.token },
+      where: { token: tokenHash },
     });
 
     if (!record)                       return err(res, "Invalid or expired reset token", 400);
     if (record.usedAt)                 return err(res, "Reset link already used", 400);
     if (record.expiresAt < new Date()) return err(res, "Reset link has expired", 400);
 
+    const sessions = await prisma.session.findMany({
+      where: { userId: record.userId },
+      select: { refreshToken: true },
+    });
+
     const passwordHash = await bcrypt.hash(input.password, 12);
     await prisma.$transaction([
       prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
-      prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+      prisma.passwordResetToken.delete({ where: { id: record.id } }),
       prisma.session.deleteMany({ where: { userId: record.userId } }),
     ]);
+    await Promise.all([
+      blocklistTokens(sessions.map((session) => session.refreshToken), REFRESH_TOKEN_TTL_SECONDS),
+      blocklistToken(input.token, 3600),
+      revokeAllUserTokens(record.userId),
+    ]);
+    clearAuthCookies(res);
 
     return ok(res, null, "Password reset successfully. Please log in.");
   } catch (e) { next(e); }
@@ -349,32 +437,41 @@ export async function verifyEmail(req: Request, res: Response, next: NextFunctio
 
 // ── Schemas for OTP endpoints ─────────────────────────────────
 const SendCodeSchema   = z.object({ email: z.string().email() });
-const VerifyCodeSchema = z.object({ email: z.string().email(), code: z.string().length(6) });
+const VerifyCodeSchema = z.object({ email: z.string().email(), code: z.string().regex(/^\d{6}$/) });
 
 // ── sendVerificationCode ──────────────────────────────────────
 export async function sendVerificationCode(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = SendCodeSchema.parse(req.body);
+    const ip = getClientIp(req);
+    const otpIpKey = `email_rate:otp:${ip}`;
+    const ipLimited = await rateLimitOrError(
+      res,
+      otpIpKey,
+      "otp",
+      (minutes) => `Too many OTP requests. Try again in ${minutes} minutes.`,
+      3,
+      600,
+    );
+    if (ipLimited) return ipLimited;
 
     const user = await prisma.user.findUnique({ where: { email } });
 
     // Generic success even when user not found — prevents email enumeration
-    if (!user) return ok(res, null, "Verification code sent");
+    if (!user) return ok(res, null, GENERIC_OTP_SENT_MESSAGE);
 
-    if (user.isEmailVerified) return err(res, "Email already verified", 400);
+    if (user.isEmailVerified) return ok(res, null, GENERIC_OTP_SENT_MESSAGE);
 
-    // Per-user rate limit: max 3 codes in the last hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentCount = await prisma.verificationCode.count({
-      where: {
-        userId:    user.id,
-        type:      "EMAIL_VERIFICATION",
-        createdAt: { gt: oneHourAgo },
-      },
-    });
-    if (recentCount >= 3) {
-      return err(res, "Too many requests. Try again in an hour.", 429);
-    }
+    const otpUserKey = `email_rate:otp:${user.id}`;
+    const userLimited = await rateLimitOrError(
+      res,
+      otpUserKey,
+      "otp",
+      (minutes) => `Too many OTP requests. Try again in ${minutes} minutes.`,
+      3,
+      600,
+    );
+    if (userLimited) return userLimited;
 
     const code = generateOTP();
     const hash = await hashOTP(code);
@@ -382,8 +479,9 @@ export async function sendVerificationCode(req: Request, res: Response, next: Ne
 
     await prisma.$transaction([
       // Delete any existing unused codes for this user+type
-      prisma.verificationCode.deleteMany({
+      prisma.verificationCode.updateMany({
         where: { userId: user.id, type: "EMAIL_VERIFICATION", usedAt: null },
+        data:  { usedAt: new Date() },
       }),
       // Insert new code
       prisma.verificationCode.create({
@@ -407,7 +505,7 @@ export async function sendVerificationCode(req: Request, res: Response, next: Ne
       console.error("[sendVerificationCode] email error:", e)
     );
 
-    return ok(res, null, "Verification code sent");
+    return ok(res, null, GENERIC_OTP_SENT_MESSAGE);
   } catch (e) { next(e); }
 }
 
@@ -430,10 +528,20 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
     if (!record) return err(res, "No pending verification. Request a new code.", 400);
 
     if (record.expiresAt < new Date()) {
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data:  { usedAt: new Date() },
+      });
       return err(res, "Code expired. Request a new one.", 400);
     }
 
-    if (record.attempts >= 5) {
+    const attemptsKey = `otp_attempts:${user.id}`;
+    const existingAttempts = parseInt((await redis.get(attemptsKey)) ?? "0", 10);
+    if (record.attempts >= 5 || existingAttempts >= 5) {
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data:  { usedAt: new Date() },
+      });
       return err(res, "Too many failed attempts. Request a new code.", 429);
     }
 
@@ -444,7 +552,18 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
     });
 
     const valid = await verifyOTP(code, record.codeHash);
-    if (!valid) return err(res, "Invalid code.", 400);
+    if (!valid) {
+      const attempts = await redis.incr(attemptsKey);
+      if (attempts === 1) await redis.expire(attemptsKey, 10 * 60);
+      if (attempts >= 5) {
+        await prisma.verificationCode.update({
+          where: { id: record.id },
+          data:  { usedAt: new Date(), attempts: 5 },
+        });
+        return err(res, "Too many failed attempts. Request a new code.", 429);
+      }
+      return err(res, "Invalid code.", 400);
+    }
 
     // Success — mark code used and update user
     await prisma.$transaction([
@@ -462,6 +581,7 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
         },
       }),
     ]);
+    await redis.del(attemptsKey);
 
     // Notify user — fire-and-forget
     sendEmailVerified(user.id, email, user.workerProfile?.firstName ?? user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there", user.role as "WORKER" | "EMPLOYER")

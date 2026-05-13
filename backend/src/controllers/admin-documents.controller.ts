@@ -5,7 +5,7 @@ import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { decrypt } from "../lib/encrypt";
 import { insertAdminAuditLog } from "../lib/audit";
-import { sendEmail } from "../services/email";
+import { escapeHtml, sendEmail } from "../services/email";
 
 const BatchReviewSchema = z.object({
   photoStatus:    z.enum(["APPROVED", "REJECTED", "PENDING"]),
@@ -307,6 +307,8 @@ export async function reviewWorkerDocuments(
 
     // Send email
     const firstName = user.workerProfile.firstName ?? "there";
+    const safeFirstName = escapeHtml(firstName);
+    const safeNotes = body.notes ? escapeHtml(body.notes) : "";
     await sendEmail({
       userId:    adminId,
       to:        user.email,
@@ -321,7 +323,7 @@ export async function reviewWorkerDocuments(
                 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
                   <tr><td style="background:#08142a;padding:24px 32px;"><span style="font-size:18px;font-weight:800;color:#fff;">DirectHire</span></td></tr>
                   <tr><td style="padding:32px;">
-                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${firstName},</h1>
+                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeFirstName},</h1>
                     <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">Great news — your documents have been <strong style="color:#16a34a;">verified</strong> by our team. Your profile is now visible to employers on DirectHire.</p>
                     <p style="margin:0;font-size:13px;color:#64748b;">Log in to view your profile and start receiving opportunities.</p>
                   </td></tr>
@@ -337,10 +339,10 @@ export async function reviewWorkerDocuments(
                 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
                   <tr><td style="background:#08142a;padding:24px 32px;"><span style="font-size:18px;font-weight:800;color:#fff;">DirectHire</span></td></tr>
                   <tr><td style="padding:32px;">
-                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${firstName},</h1>
+                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeFirstName},</h1>
                     <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">Our team reviewed your documents. The following item${rejectedDocs.length !== 1 ? "s" : ""} need attention:</p>
                     <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;color:#374151;line-height:1.8;">${rejectedDocs.map(d => `<li><strong>${d}</strong></li>`).join("")}</ul>
-                    <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">Please log in, re-upload the affected document${rejectedDocs.length !== 1 ? "s" : ""}, and resubmit for review.${body.notes ? ` Note from reviewer: <em>${body.notes}</em>` : ""}</p>
+                    <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">Please log in, re-upload the affected document${rejectedDocs.length !== 1 ? "s" : ""}, and resubmit for review.${body.notes ? ` Note from reviewer: <em>${safeNotes}</em>` : ""}</p>
                     <p style="margin:0;font-size:13px;color:#64748b;">If you have questions, contact support.</p>
                   </td></tr>
                   <tr><td style="background:#f7f9ff;padding:20px 32px;border-top:1px solid #e2e8f0;">

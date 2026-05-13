@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
-import { sendEmail } from "../services/email";
+import { escapeHtml, sendEmail } from "../services/email";
 
 // Job CRUD is handled by employer-jobs.controller.ts
 
@@ -315,7 +315,9 @@ export async function messageWorker(req: Request, res: Response, next: NextFunct
       employer?.employerProfile?.companyName ??
       "An employer";
     const workerFirstName = worker.workerProfile?.firstName ?? "there";
-    const safeMessage     = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeMessage     = escapeHtml(message);
+    const safeEmployerName = escapeHtml(employerName);
+    const safeWorkerFirstName = escapeHtml(workerFirstName);
 
     const notifBody  = message.slice(0, 100) + (message.length > 100 ? "…" : "");
     const notifTitle = `New message from ${employerName}`;
@@ -367,9 +369,9 @@ export async function messageWorker(req: Request, res: Response, next: NextFunct
                 <tr>
                   <td style="padding:32px;">
                     <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488;text-transform:uppercase;letter-spacing:0.05em;">New message</p>
-                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${workerFirstName},</h1>
+                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeWorkerFirstName},</h1>
                     <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
-                      <strong>${employerName}</strong> has sent you a message on DirectHire:
+                      <strong>${safeEmployerName}</strong> has sent you a message on DirectHire:
                     </p>
                     <div style="background:#f8fafc;border-left:3px solid #0d9488;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
                       <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;white-space:pre-line;">${safeMessage}</p>
