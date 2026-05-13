@@ -1,6 +1,7 @@
 // frontend/src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Sora, DM_Sans } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </AuthProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
