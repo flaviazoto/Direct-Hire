@@ -42,25 +42,60 @@ export default function ContactPage() {
   const [form, setForm]       = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+
+  const getContactType = (subject: string): "general" | "sales" | "support" => {
+    const value = subject.toLowerCase();
+    if (value.includes("sales") || value.includes("employer") || value.includes("partnership")) return "sales";
+    if (value.includes("support") || value.includes("technical")) return "support";
+    return "general";
+  };
+
+  const getValidationError = () => {
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const message = form.message.trim();
+
+    if (name.length < 2) return "Please enter your name.";
+    if (/<[^>]*>/.test(name)) return "Please remove HTML from your name.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.includes("..")) return "Please enter a valid email address.";
+    if (message.length < 10) return "Please write at least 10 characters so we know how to help.";
+    if (message.length > 2000) return "Please keep your message under 2000 characters.";
+    return "";
+  };
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.message) return;
+    const validationError = getValidationError();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
+          name: form.name.trim(),
+          email: form.email.trim(),
           subject: form.subject || "General enquiry",
-          message: form.message,
+          message: form.message.trim(),
+          type: getContactType(form.subject),
+          website: "",
         }),
       });
-      if (!res.ok) throw new Error("Failed");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const fieldErrors = data?.fieldErrors as Record<string, string> | undefined;
+        const firstFieldError = fieldErrors ? Object.values(fieldErrors)[0] : undefined;
+        throw new Error(firstFieldError || data?.error || "Message could not be sent. Please try again.");
+      }
       setSent(true);
-    } catch {
-      alert("Failed to send message. Please email hello@directhire.cc directly.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Message could not be sent. Please email hello@directhire.cc directly.");
     } finally {
       setLoading(false);
     }
@@ -184,6 +219,23 @@ export default function ContactPage() {
                 <>
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "var(--text-primary,#F0F4FF)", marginBottom: 28 }}>Send a message</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                    {error && (
+                      <div
+                        role="alert"
+                        style={{
+                          border: "1px solid rgba(248,113,113,0.35)",
+                          background: "rgba(127,29,29,0.22)",
+                          color: "#fecaca",
+                          borderRadius: 10,
+                          padding: "12px 14px",
+                          fontSize: 14,
+                          lineHeight: 1.5,
+                          fontFamily: "var(--font-body)",
+                        }}
+                      >
+                        {error}
+                      </div>
+                    )}
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="name-email-grid">
                       <div>

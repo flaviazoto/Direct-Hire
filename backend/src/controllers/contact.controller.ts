@@ -23,7 +23,19 @@ const ContactSchema = z.object({
 const SPAM_PATTERNS = [/viagra/i, /casino/i, /click here/i, /\$\$\$/];
 
 function getClientIp(req: Request): string {
-  return req.ip || req.socket.remoteAddress || "unknown";
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const forwardedIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : forwardedFor?.split(",")[0]?.trim();
+  const realIp = req.headers["x-real-ip"];
+  const cfIp = req.headers["cf-connecting-ip"];
+
+  return forwardedIp
+    || (Array.isArray(realIp) ? realIp[0] : realIp)
+    || (Array.isArray(cfIp) ? cfIp[0] : cfIp)
+    || req.ip
+    || req.socket.remoteAddress
+    || "unknown";
 }
 
 export async function submitContact(req: Request, res: Response, next: NextFunction) {
