@@ -332,7 +332,7 @@ export default function EmployerBrowseJobsPage() {
                 {/* Details row */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <MapPin size={11} /> {job.location || job.city}
+                    <MapPin size={11} /> {job.type === "external" ? job.location : job.city}
                   </span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock size={11} />
