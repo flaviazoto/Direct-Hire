@@ -267,6 +267,7 @@ model User {
   sentMessages          Message[]         @relation("SentMessages")
   receivedMessages      Message[]         @relation("ReceivedMessages")
   payments              Payment[]
+  externalJobsPosted    ExternalJob[]     @relation("AdminPostedExternalJobs")
 
   @@index([email])
   @@index([role])
@@ -925,4 +926,33 @@ model PlatformConfig {
   updatedBy   String?  @map("updated_by")
 
   @@map("platform_config")
+}
+
+// ─────────────────────────────────────────────
+// EXTERNAL JOBS
+// ─────────────────────────────────────────────
+
+model ExternalJob {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  location    String
+  country     String   @default("")
+  salaryMin   Int?
+  salaryMax   Int?
+  currency    String   @default("USD")
+  jobType     String   @default("Full-time")
+  description String?
+  externalUrl String
+  source      String?
+  isActive    Boolean  @default(true)
+  isPinned    Boolean  @default(false)
+  skills      String[] @default([])
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  admin       User     @relation("AdminPostedExternalJobs", fields: [createdBy], references: [id])
+
+  @@map("external_jobs")
 }

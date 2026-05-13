@@ -8,7 +8,7 @@ import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
-  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock,
+  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink,
 } from 'lucide-react'
 
 type Role = 'worker' | 'employer' | 'admin'
@@ -68,8 +68,9 @@ const ADMIN_LINKS = [
   {
     section: 'Job Posts',
     links: [
-      { href: '/admin/jobs/pending', label: 'Pending Review', Icon: Clock     },
-      { href: '/admin/jobs',         label: 'All Job Posts',  Icon: Briefcase },
+      { href: '/admin/jobs/pending',    label: 'Pending Review', Icon: Clock         },
+      { href: '/admin/jobs',            label: 'All Job Posts',  Icon: Briefcase     },
+      { href: '/admin/external-jobs',   label: 'External Links', Icon: ExternalLink  },
     ],
   },
   {

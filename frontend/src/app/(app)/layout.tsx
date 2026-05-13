@@ -128,6 +128,16 @@ const ADMIN_JOB_NAV = [
   { label: "All job posts",  href: "/admin/jobs",        badgeKey: null },
 ];
 
+const EMPLOYER_NAV = [
+  { icon: icons.dashboard,  label: "Dashboard",    href: "/employer/dashboard" },
+  { icon: icons.search,     label: "Browse Jobs",  href: "/employer/browse-jobs" },
+  { icon: icons.briefcase,  label: "My Job Posts", href: "/employer/jobs" },
+  { icon: icons.users,      label: "Workers",      href: "/employer/workers" },
+  { icon: icons.clipboard,  label: "Applications", href: "/employer/applications" },
+  { icon: icons.creditcard, label: "Billing",      href: "/employer/billing" },
+  { icon: icons.user,       label: "Profile",      href: "/employer/profile" },
+];
+
 type Role = "worker" | "employer" | "admin";
 
 const ROLE_CONFIG: Record<Role, {
@@ -138,9 +148,9 @@ const ROLE_CONFIG: Record<Role, {
   badge?: string;
   portalLabel: string;
 }> = {
-  worker:   { nav: WORKER_NAV,   accent: "#7c3aed", accentRgb: "124,58,237",  label: "Worker Portal",   portalLabel: "Worker Portal"   },
-  employer: { nav: [],           accent: "#0d9488", accentRgb: "13,148,136",  label: "Employer Portal", portalLabel: "Employer Portal" },
-  admin:    { nav: [],           accent: "#dc2626", accentRgb: "220,38,38",   label: "Admin Panel",     portalLabel: "Admin Control", badge: "Admin" },
+  worker:   { nav: WORKER_NAV,     accent: "#7c3aed", accentRgb: "124,58,237",  label: "Worker Portal",   portalLabel: "Worker Portal"   },
+  employer: { nav: EMPLOYER_NAV,   accent: "#0d9488", accentRgb: "13,148,136",  label: "Employer Portal", portalLabel: "Employer Portal" },
+  admin:    { nav: [],             accent: "#dc2626", accentRgb: "220,38,38",   label: "Admin Panel",     portalLabel: "Admin Control", badge: "Admin" },
 };
 
 // ─── NavItem (handles hover state internally) ────────────────────────────────

@@ -44,6 +44,7 @@ import { cronRouter }        from "./routes/cron.routes";
 import { workerRouter }      from "./routes/worker.routes";
 import { employerRouter }    from "./routes/employer.routes";
 import { publicJobsRouter }  from "./routes/public-jobs.routes";
+import { externalJobsRouter } from "./routes/externalJobs";
 import { contactRouter }       from "./routes/contact.routes";
 import { stripeWebhook }     from "./controllers/webhook.controller";
 import { errorHandler }      from "./middleware/error.middleware";
@@ -99,6 +100,7 @@ app.use("/api/admin",       adminRouter);
 app.use("/api/cron",        cronRouter);
 app.use("/api/contact",     contactRouter);    // public contact form
 app.use("/api/public/jobs", publicJobsRouter); // public job search — no auth required
+app.use("/api/external-jobs", externalJobsRouter);
 app.use("/api/employer",    employerRouter);  // /api/employer/* — must precede generic /api
 app.use("/api",             workerRouter);    // /api/jobs (auth), /api/applications
 
