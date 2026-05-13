@@ -122,29 +122,6 @@ const WORKER_NAV = [
   { icon: icons.bell,      label: "Notifications", href: "/worker/notifications" },
 ];
 
-const EMPLOYER_NAV = [
-  { icon: icons.dashboard,  label: "Dashboard",    href: "/employer/dashboard" },
-  { icon: icons.search,     label: "Find Workers", href: "/employer/workers" },
-  { icon: icons.briefcase,  label: "Job Posts",    href: "/employer/jobs" },
-  { icon: icons.clipboard,  label: "Applications", href: "/employer/applications" },
-  { icon: icons.building,   label: "Company",      href: "/employer/profile" },
-  { icon: icons.lock,       label: "Reservations", href: "/employer/locks", badgeKey: "active_locks" as const },
-  { icon: icons.creditcard, label: "Billing",      href: "/employer/billing" },
-];
-
-const ADMIN_NAV = [
-  { icon: icons.chart,      label: "Overview",         href: "/admin/dashboard" },
-  { icon: icons.chart,      label: "Revenue",          href: "/admin/revenue" },
-  { icon: icons.clock,      label: "Pending Review",   href: "/admin/users/pending" },
-  { icon: icons.check,      label: "Approvals",        href: "/admin/approvals" },
-  { icon: icons.clipboard,  label: "Document Review",  href: "/admin/document-review" },
-  { icon: icons.users,      label: "Users",            href: "/admin/users" },
-  { icon: icons.list,       label: "Audit Log",        href: "/admin/audit-log" },
-  { icon: icons.shield,     label: "Fraud Console",    href: "/admin/fraud" },
-  { icon: icons.mail,       label: "Email Logs",       href: "/admin/email-logs" },
-  { icon: icons.creditcard, label: "Pricing",          href: "/admin/pricing" },
-];
-
 // Job posts section — rendered separately as a collapsible group
 const ADMIN_JOB_NAV = [
   { label: "Pending review", href: "/admin/jobs/pending", badgeKey: "pending_jobs" as const },
@@ -162,8 +139,8 @@ const ROLE_CONFIG: Record<Role, {
   portalLabel: string;
 }> = {
   worker:   { nav: WORKER_NAV,   accent: "#7c3aed", accentRgb: "124,58,237",  label: "Worker Portal",   portalLabel: "Worker Portal"   },
-  employer: { nav: EMPLOYER_NAV, accent: "#0d9488", accentRgb: "13,148,136",  label: "Employer Portal", portalLabel: "Employer Portal" },
-  admin:    { nav: ADMIN_NAV,    accent: "#dc2626", accentRgb: "220,38,38",   label: "Admin Panel",     portalLabel: "Admin Control", badge: "Admin" },
+  employer: { nav: [],           accent: "#0d9488", accentRgb: "13,148,136",  label: "Employer Portal", portalLabel: "Employer Portal" },
+  admin:    { nav: [],           accent: "#dc2626", accentRgb: "220,38,38",   label: "Admin Panel",     portalLabel: "Admin Control", badge: "Admin" },
 };
 
 // ─── NavItem (handles hover state internally) ────────────────────────────────
@@ -669,26 +646,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "row", minHeight: "100vh", background: "var(--navy, #05080f)" }}>
-      <style>{`
-        @media (max-width: 1023px) {
-          .app-sidebar   { display: none !important; }
-          .worker-topbar { display: none !important; }
-          .worker-main   { padding-top: 56px !important; }
-        }
-        @media (max-width: 767px) {
-          .employer-admin-main { padding-top: 56px !important; }
-          .admin-page-root { padding: 16px !important; }
-          .admin-quick-nav { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (min-width: 768px) {
-          .employer-admin-main { padding-left: 256px !important; }
-        }
-        @media (max-width: 480px) {
-          .admin-quick-nav { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
       {role === 'worker' && <Sidebar role={role} />}
-      <main className={`app-main ${role === 'worker' ? 'worker-main' : 'employer-admin-main'}`} style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <main className={`app-main ${role === 'worker' ? 'pt-14 lg:pt-0' : 'pt-14 md:pt-0 md:pl-64'}`} style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {role === 'worker'
           ? <WorkerHeader onLogout={handleLogout} />
           : <DashboardHeader role={role} onLogout={handleLogout} />

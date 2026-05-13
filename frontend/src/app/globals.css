@@ -542,6 +542,22 @@ input, button, textarea, select { font: inherit; }
 }
 
 @media (max-width: 767px) {
+  .admin-page-root {
+    padding: 16px !important;
+  }
+
+  .admin-quick-nav {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-quick-nav {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 767px) {
   .container,
   .dh-container {
     width: 100%;

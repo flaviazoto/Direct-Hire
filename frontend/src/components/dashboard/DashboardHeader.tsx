@@ -8,7 +8,7 @@ import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
-  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag,
+  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock,
 } from 'lucide-react'
 
 type Role = 'worker' | 'employer' | 'admin'
@@ -19,22 +19,16 @@ type NavLink = {
   Icon: React.ElementType
 }
 
-// Flat links — desktop sidebar only
-const ROLE_LINKS: Record<Role, NavLink[]> = {
-  worker: [
-    { href: '/worker',              label: 'Dashboard',       Icon: LayoutGrid    },
-    { href: '/worker/jobs',         label: 'Browse Jobs',     Icon: Search        },
-    { href: '/worker/applications', label: 'My Applications', Icon: ClipboardList },
-    { href: '/worker/profile',      label: 'My Profile',      Icon: User          },
-    { href: '/worker/documents',    label: 'Documents',       Icon: FolderOpen    },
-    { href: '/worker/payments',     label: 'Payments',        Icon: CreditCard    },
-  ],
+// Flat links — desktop sidebar only (worker role uses layout.tsx Sidebar instead)
+const ROLE_LINKS: Record<'employer' | 'admin', NavLink[]> = {
   employer: [
     { href: '/employer/dashboard',    label: 'Dashboard',    Icon: LayoutGrid    },
     { href: '/employer/jobs',         label: 'My Jobs',      Icon: Briefcase     },
     { href: '/employer/workers',      label: 'Candidates',   Icon: Users         },
     { href: '/employer/applications', label: 'Applications', Icon: ClipboardList },
     { href: '/employer/profile',      label: 'Account',      Icon: Settings      },
+    { href: '/employer/locks',        label: 'Locks',        Icon: Lock          },
+    { href: '/employer/billing',      label: 'Billing',      Icon: CreditCard    },
   ],
   admin: [
     { href: '/admin/dashboard', label: 'Dashboard',         Icon: LayoutGrid },
@@ -191,7 +185,7 @@ export default function DashboardHeader({
 
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  const links = ROLE_LINKS[role]
+  const links = ROLE_LINKS[role as 'employer' | 'admin']
   const sidebarTheme = SIDEBAR_THEME[role]
   const theme = ROLE_THEME[role]
 
@@ -351,9 +345,15 @@ export default function DashboardHeader({
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Link href={`/${role}/dashboard`} aria-label="Notifications" style={btnStyle}>
-            <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
-          </Link>
+          {role === 'worker' ? (
+            <Link href="/worker/notifications" aria-label="Notifications" style={btnStyle}>
+              <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
+            </Link>
+          ) : (
+            <button aria-label="Notifications" style={btnStyle}>
+              <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
+            </button>
+          )}
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
             <Menu size={20} className={theme.hamburger} />
           </button>

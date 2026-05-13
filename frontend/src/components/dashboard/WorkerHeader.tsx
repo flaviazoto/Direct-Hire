@@ -8,15 +8,19 @@ import {
   Menu, X, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList,
   User, FolderOpen, CreditCard,
+  CalendarClock, MessageSquare, Bell,
 } from 'lucide-react'
 
 const OVERLAY_LINKS = [
-  { href: '/worker/dashboard',    label: 'Dashboard',       Icon: LayoutGrid    },
-  { href: '/worker/jobs',         label: 'Browse Jobs',     Icon: Search        },
-  { href: '/worker/applications', label: 'My Applications', Icon: ClipboardList },
-  { href: '/worker/profile',      label: 'My Profile',      Icon: User          },
-  { href: '/worker/documents',    label: 'Documents',       Icon: FolderOpen    },
-  { href: '/worker/payments',     label: 'Payments',        Icon: CreditCard    },
+  { href: '/worker/dashboard',     label: 'Dashboard',       Icon: LayoutGrid    },
+  { href: '/worker/jobs',          label: 'Browse Jobs',     Icon: Search        },
+  { href: '/worker/applications',  label: 'My Applications', Icon: ClipboardList },
+  { href: '/worker/profile',       label: 'My Profile',      Icon: User          },
+  { href: '/worker/documents',     label: 'Documents',       Icon: FolderOpen    },
+  { href: '/worker/payments',      label: 'Payments',        Icon: CreditCard    },
+  { href: '/worker/reservations',  label: 'Reservations',    Icon: CalendarClock },
+  { href: '/worker/messages',      label: 'Messages',        Icon: MessageSquare },
+  { href: '/worker/notifications', label: 'Notifications',   Icon: Bell          },
 ]
 
 export default function WorkerHeader({ onLogout }: { onLogout: () => void }) {
