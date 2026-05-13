@@ -382,26 +382,59 @@ export default function DashboardHeader({
         </Link>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {links.map(({ href, label, Icon }) => {
-            const active = isActive(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 12px', borderRadius: 10,
-                  textDecoration: 'none', fontSize: 13, fontWeight: 500,
-                  background: active ? sidebarTheme.activeBg : 'transparent',
-                  color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                <Icon size={16} strokeWidth={1.75} />
-                {label}
-              </Link>
-            )
-          })}
+          {role === 'admin'
+            ? ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+                <div key={section} style={{ marginBottom: 12 }}>
+                  <p style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                    textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+                    padding: '0 12px', marginBottom: 4, margin: '0 0 4px',
+                  }}>
+                    {section}
+                  </p>
+                  {sectionLinks.map(({ href, label, Icon }) => {
+                    const active = isActive(href)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '9px 12px', borderRadius: 10,
+                          textDecoration: 'none', fontSize: 13, fontWeight: 500,
+                          background: active ? sidebarTheme.activeBg : 'transparent',
+                          color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
+                          transition: 'background 0.15s, color 0.15s',
+                        }}
+                      >
+                        <Icon size={16} strokeWidth={1.75} />
+                        {label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))
+            : links.map(({ href, label, Icon }) => {
+                const active = isActive(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 12px', borderRadius: 10,
+                      textDecoration: 'none', fontSize: 13, fontWeight: 500,
+                      background: active ? sidebarTheme.activeBg : 'transparent',
+                      color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    <Icon size={16} strokeWidth={1.75} />
+                    {label}
+                  </Link>
+                )
+              })
+          }
         </nav>
 
         <button
