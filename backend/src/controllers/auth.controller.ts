@@ -206,13 +206,24 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 
     console.log('[Register] Step 4 — Calling sendOtpVerification for:', input.email.slice(0, 3) + '***');
 
+    // Idempotency lock: if this endpoint is somehow called twice for the same user
+    // within 60 seconds, only send one OTP email.
+    const otpSendLockKey = `otp_sending:${result.user.id}`;
+    const alreadySent    = await redis.get(otpSendLockKey);
+
     let emailSent = true;
-    try {
-      await sendOtpVerification(result.user.id, input.email, code, 10);
-      console.log('[Register] Step 4 ✅ sendOtpVerification resolved without error');
-    } catch (e) {
-      emailSent = false;
-      console.error("[register] OTP email failed ❌:", e instanceof Error ? e.message : e);
+    if (alreadySent) {
+      console.log('[Register] OTP already sent for user:', result.user.id, '— skipping duplicate send');
+    } else {
+      await redis.set(otpSendLockKey, "1", "EX", 60);
+      try {
+        await sendOtpVerification(result.user.id, input.email, code, 10);
+        console.log('[Register] Step 4 ✅ sendOtpVerification resolved without error');
+      } catch (e) {
+        await redis.del(otpSendLockKey);
+        emailSent = false;
+        console.error("[register] OTP email failed ❌:", e instanceof Error ? e.message : e);
+      }
     }
 
     setAuthCookies(res, accessToken, refreshToken);

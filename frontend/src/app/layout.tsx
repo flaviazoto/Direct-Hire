@@ -32,6 +32,10 @@ export const metadata: Metadata = {
   title:       "DirectHire — AI Global Job Marketplace",
   description: "AI-powered global employment platform connecting skilled workers with international employers in 94 countries.",
   keywords:    "global jobs, international hiring, AI matching, worker placement, recruitment platform",
+  icons: {
+    icon:  "/logo.png",
+    apple: "/logo.png",
+  },
   openGraph: {
     title:       "DirectHire — AI Global Job Marketplace",
     description: "AI-powered global employment platform.",

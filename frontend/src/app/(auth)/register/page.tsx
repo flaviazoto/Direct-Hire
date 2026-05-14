@@ -201,6 +201,7 @@ export default function RegisterPage() {
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({}); setServerErr(""); setLoading(true);

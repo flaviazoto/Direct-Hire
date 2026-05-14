@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -163,10 +164,11 @@ export function Nav() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-            background: "linear-gradient(135deg, #0090FF, #6366F1)",
+            background: "#fff",
             display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 3,
           }}>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff" }}>DH</span>
+            <Image src="/logo.png" alt="DirectHire" width={30} height={30} style={{ objectFit: "contain" }} />
           </div>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "#F0F4FF" }}>DirectHire</span>
         </div>
@@ -293,10 +295,11 @@ export function Nav() {
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: "linear-gradient(135deg, #0090FF, #6366F1)",
+              background: "#fff",
               display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 3,
             }}>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff", letterSpacing: "-0.5px" }}>DH</span>
+              <Image src="/logo.png" alt="DirectHire" width={30} height={30} style={{ objectFit: "contain" }} />
             </div>
             <span style={{
               fontFamily: "var(--font-display)", fontWeight: 700,

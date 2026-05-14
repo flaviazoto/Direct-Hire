@@ -143,13 +143,8 @@ function VerifyEmailOtpContent() {
   const code      = digits.join("");
   const allFilled = code.length === 6;
 
-  // Auto-send code on mount so user always has a fresh code when they arrive
-  useEffect(() => {
-    if (email) {
-      authApi.sendVerificationCode(email).catch(console.error);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // No auto-send on mount — the register endpoint already sent the code.
+  // The "Resend code" button below handles explicit resend requests.
 
   // Countdown timer
   useEffect(() => {
