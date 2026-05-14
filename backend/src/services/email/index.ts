@@ -120,6 +120,7 @@ async function getResendClient() {
 class ResendProvider implements EmailProvider {
   async send(params: SendParams) {
     const resend = await getResendClient();
+    console.log('[Resend] Step 5 — calling API, to:', maskEmail(params.to), 'subject:', params.subject);
     const { data, error } = await resend.emails.send({
       from:     params.from ?? FROM_NO_REPLY,
       to:       params.to,
@@ -127,6 +128,7 @@ class ResendProvider implements EmailProvider {
       subject:  params.subject,
       html:     params.html,
     });
+    console.log('[Resend] Step 6 — API responded:', JSON.stringify({ id: data?.id, error: error ?? null }));
     if (error) throw new Error(error.message);
     return { messageId: data?.id };
   }

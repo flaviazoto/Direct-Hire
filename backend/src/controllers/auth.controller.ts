@@ -174,10 +174,14 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       data: { userId: result.user.id, refreshToken, expiresAt: tokenExpiresAt(24 * 30) },
     });
 
+    console.log('[Register] Step 1 ✅ User created:', result.user.id);
+
     // Generate OTP and store it (replaces token-based email verification)
     const code      = generateOTP();
     const hash      = await hashOTP(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    console.log('[Register] Step 2 ✅ OTP generated (length):', code.length);
 
     await prisma.$transaction([
       prisma.verificationCode.updateMany({
@@ -193,17 +197,22 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       }),
     ]);
 
+    console.log('[Register] Step 3 ✅ OTP saved to DB, expires:', expiresAt.toISOString());
+
     await enqueue("email.welcome", {
       userId: result.user.id, to: input.email,
       firstName: input.firstName, role: input.role,
     });
 
+    console.log('[Register] Step 4 — Calling sendOtpVerification for:', input.email.slice(0, 3) + '***');
+
     let emailSent = true;
     try {
       await sendOtpVerification(result.user.id, input.email, code, 10);
+      console.log('[Register] Step 4 ✅ sendOtpVerification resolved without error');
     } catch (e) {
       emailSent = false;
-      console.error("[register] OTP email failed:", e instanceof Error ? e.message : e);
+      console.error("[register] OTP email failed ❌:", e instanceof Error ? e.message : e);
     }
 
     setAuthCookies(res, accessToken, refreshToken);
