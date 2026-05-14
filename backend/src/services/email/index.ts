@@ -235,8 +235,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
 }
 
 // ── Internal helper — notify the site owner ───────────────────
-async function notifyOwner(subject: string, html: string, text?: string): Promise<void> {
-  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "GENERAL", subject, html, text });
+async function notifyOwner(subject: string, html: string, text?: string, replyTo?: string): Promise<void> {
+  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "GENERAL", subject, html, text, replyTo });
 }
 
 // ── Auth / verification emails ────────────────────────────────
@@ -273,6 +273,7 @@ export async function sendWelcomeEmail(
     `<p>New ${escapeHtml(role.toLowerCase())} registered on DirectHire.</p>
      <p><strong>Name:</strong> ${escapeHtml(firstName)}<br/><strong>Email:</strong> ${escapeHtml(to)}<br/><strong>Role:</strong> ${escapeHtml(role)}</p>`,
     `New ${role} registered: ${firstName} <${to}>`,
+    to,
   ).catch(() => {});
 }
 
@@ -318,6 +319,7 @@ export async function sendAccountApproved(
     `Account approved: ${firstName} (${role})`,
     `<p>You approved <strong>${firstName}</strong> (${role.toLowerCase()}) &lt;${to}&gt;.</p>`,
     `Account approved: ${firstName} (${role}) <${to}>`,
+    to,
   ).catch(() => {});
 }
 
@@ -359,7 +361,7 @@ export async function sendAdminNewSubmission(
     submitterEmail, submitterRole, submitterName,
     adminUrl: `${appUrl}/admin/approvals`,
   });
-  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "ADMIN_NEW_SUBMISSION", subject, html, text });
+  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "ADMIN_NEW_SUBMISSION", subject, html, text, replyTo: submitterEmail });
 }
 
 // ── Job emails ────────────────────────────────────────────────
