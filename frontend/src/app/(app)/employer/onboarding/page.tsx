@@ -76,22 +76,48 @@ export default function EmployerOnboardingPage() {
   const logoUploading = store.uploads["COMPANY_LOGO"]?.status        === "uploading";
   const docUploading  = store.uploads["BUSINESS_DOCUMENT"]?.status   === "uploading";
 
-  const { register, getValues, watch } = useForm({ mode: "onChange" });
+  const { register, getValues, watch, reset } = useForm({ mode: "onChange" });
   const descValue = watch("businessDescription") ?? "";
 
   useEffect(() => {
     if (!store.isLoaded) {
-      store.loadProgress().then(() => {
-        setUiStep(Math.min(store.currentStep, TOTAL_STEPS - 1));
-        const s3 = store.stepData[3] ?? {};
-        if (s3.hiringCountries)  setHiringCountries(s3.hiringCountries as string[]);
-        if (s3.requiredSkills)   setRequiredSkills(s3.requiredSkills as string[]);
-        if (s3.urgency)          setUrgency(s3.urgency as string);
-        if (s3.subscriptionPlan || store.stepData[4]?.subscriptionPlan)
-          setSelectedPlan((store.stepData[4]?.subscriptionPlan as string) ?? "growth");
-      });
+      store.loadProgress();
     }
   }, []);
+
+  // Once data is loaded from server, pre-populate ALL form fields and restore
+  // multi-select state. This runs once on load AND supports "Edit" from Review
+  // — going back to a step always shows the previously saved values.
+  useEffect(() => {
+    if (!store.isLoaded) return;
+
+    setUiStep(Math.min(store.currentStep, TOTAL_STEPS - 1));
+
+    const s3 = (store.stepData[3] ?? {}) as Record<string, unknown>;
+    const s4 = (store.stepData[4] ?? {}) as Record<string, unknown>;
+    if (s3.hiringCountries) setHiringCountries(s3.hiringCountries as string[]);
+    if (s3.requiredSkills)  setRequiredSkills(s3.requiredSkills as string[]);
+    if (s3.urgency)         setUrgency(s3.urgency as string);
+    if (s4.subscriptionPlan) setSelectedPlan(s4.subscriptionPlan as string);
+
+    const d1 = (store.stepData[1] ?? {}) as Record<string, unknown>;
+    const d2 = (store.stepData[2] ?? {}) as Record<string, unknown>;
+    const d3 = (store.stepData[3] ?? {}) as Record<string, unknown>;
+    reset({
+      companyName:         (d1.companyName         as string) ?? "",
+      nipt:                (d1.nipt                as string) ?? "",
+      qkr:                 (d1.qkr                 as string) ?? "",
+      administratorId:     (d1.administratorId     as string) ?? "",
+      website:             (d1.website             as string) ?? "",
+      industry:            (d2.industry            as string) ?? "",
+      companySize:         (d2.companySize         as string) ?? "",
+      address:             (d2.address             as string) ?? "",
+      contactPhone:        ((d2.phone as string) ?? (d2.contactPhone as string) ?? ""),
+      businessDescription: (d2.businessDescription as string) ?? "",
+      workerCount:         (d3.workerCount         as string) ?? "",
+      additionalNotes:     (d3.additionalNotes     as string) ?? "",
+    });
+  }, [store.isLoaded]);
 
   const E = (f: string) => stepErrors[f]
     ? <p style={{ fontSize: 12, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>⚠ {stepErrors[f]}</p>
@@ -384,12 +410,20 @@ export default function EmployerOnboardingPage() {
                 borderRadius: 16, padding: "14px 16px",
                 cursor: "pointer", transition: "all 0.2s",
               }}>
-                <input type="file" className="hidden" accept="application/pdf,image/jpeg,image/png"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleDocUpload(f); }} />
-                <span style={{ fontSize: 22 }}>{docUploaded ? "✅" : "📄"}</span>
+                <input type="file" style={{ display: "none" }} accept="application/pdf,image/jpeg,image/png"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { handleDocUpload(f); e.target.value = ""; } }} />
+                <span style={{ fontSize: 22 }}>
+                  {docUploaded ? "✅" : store.uploads["BUSINESS_DOCUMENT"]?.status === "error" ? "❌" : "📄"}
+                </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>{docUploaded ? "Document uploaded" : "Upload Registration Doc"}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>PDF or image · max 10MB · encrypted</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+                    {docUploaded ? `✓ ${store.uploads["BUSINESS_DOCUMENT"]?.fileName ?? "Document uploaded"}` : docUploading ? "Uploading…" : "Upload Registration Doc"}
+                  </div>
+                  <div style={{ fontSize: 12, color: store.uploads["BUSINESS_DOCUMENT"]?.status === "error" ? "#f87171" : "rgba(255,255,255,0.3)" }}>
+                    {store.uploads["BUSINESS_DOCUMENT"]?.status === "error"
+                      ? `Upload failed — ${store.uploads["BUSINESS_DOCUMENT"]?.errorMsg ?? "please try again"}`
+                      : docUploaded ? "Tap to replace" : "PDF or image · max 10MB · encrypted"}
+                  </div>
                 </div>
                 {docUploading && <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(45,212,191,0.3)", borderTopColor: "#2DD4BF", animation: "spin 0.7s linear infinite" }} />}
               </label>
