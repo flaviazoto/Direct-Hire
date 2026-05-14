@@ -75,5 +75,4 @@ adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);
 adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
 
 // ── Email test — DELETE after confirming delivery ─────────────────────────────
-// No auth — only sends to OWNER_EMAIL, safe to leave open briefly for testing
-adminRouter.get("/test-emails", ctrl.testEmails);
+adminRouter.get("/test-emails", requireAdmin, ctrl.testEmails);
