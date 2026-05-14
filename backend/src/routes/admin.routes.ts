@@ -75,4 +75,8 @@ adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);
 adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
 
 // ── Email test — DELETE after confirming delivery ─────────────────────────────
-adminRouter.get("/test-emails", requireAdmin, ctrl.testEmails);
+// Accepts admin JWT OR ?secret=CRON_SECRET so it can be hit from a plain browser
+adminRouter.get("/test-emails", (req, res, next) => {
+  if (req.query.secret && req.query.secret === process.env.CRON_SECRET) return next();
+  return requireAdmin(req, res, next);
+}, ctrl.testEmails);
