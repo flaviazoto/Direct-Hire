@@ -2,7 +2,13 @@
 import { Router, Request, Response } from "express";
 import { requireAdmin, requireAnyAuth } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
-import { ok, err } from "../lib/response";
+import { ok, created, err } from "../lib/response";
+
+const ALLOWED_UPDATE = new Set([
+  "title", "company", "location", "country", "externalUrl",
+  "salaryMin", "salaryMax", "currency", "jobType", "description",
+  "source", "isPinned", "isActive", "skills",
+]);
 
 export const externalJobsRouter = Router();
 
@@ -82,7 +88,7 @@ externalJobsRouter.post("/admin", requireAdmin, async (req: Request, res: Respon
       include: { admin: { select: { id: true, email: true } } },
     });
 
-    return ok(res, { job }, undefined, 201);
+    return created(res, { job });
   } catch (error) {
     console.error("Error creating external job:", error);
     return err(res, "Internal server error", 500);
@@ -113,14 +119,20 @@ externalJobsRouter.patch("/admin/:id", requireAdmin, async (req: Request, res: R
       }
     }
 
-    // Prepare update data, handling type conversions
-    const data: any = {};
+    // Build update payload — only whitelisted fields, no overwriting id/createdBy/views
+    const data: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updateData)) {
+      if (!ALLOWED_UPDATE.has(key)) continue;
       if (key === "salaryMin" || key === "salaryMax") {
-        data[key] = value ? parseInt(String(value)) : null;
+        data[key] = value !== undefined && value !== "" && value !== null
+          ? parseInt(String(value))
+          : null;
       } else {
         data[key] = value;
       }
+    }
+    if (Object.keys(data).length === 0) {
+      return err(res, "No valid fields to update", 400);
     }
 
     const job = await prisma.externalJob.update({
@@ -182,6 +194,28 @@ externalJobsRouter.patch("/admin/:id/toggle", requireAdmin, async (req: Request,
     return ok(res, { job });
   } catch (error) {
     console.error("Error toggling external job:", error);
+    return err(res, "Internal server error", 500);
+  }
+});
+
+/**
+ * PATCH /api/external-jobs/admin/:id/pin
+ * Toggle isPinned boolean
+ */
+externalJobsRouter.patch("/admin/:id/pin", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existingJob = await prisma.externalJob.findUnique({ where: { id } });
+    if (!existingJob) return err(res, "Not found", 404);
+
+    const job = await prisma.externalJob.update({
+      where: { id },
+      data: { isPinned: !existingJob.isPinned },
+      include: { admin: { select: { id: true, email: true } } },
+    });
+    return ok(res, { job });
+  } catch (error) {
+    console.error("Error toggling pin:", error);
     return err(res, "Internal server error", 500);
   }
 });
