@@ -103,8 +103,16 @@ let _resendClient: InstanceType<Awaited<typeof import("resend")>["Resend"]> | nu
 
 async function getResendClient() {
   if (!_resendClient) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) {
+      console.error("═══════════════════════════════════════════════════════");
+      console.error("FATAL: RESEND_API_KEY is not set. Emails will NOT send.");
+      console.error("═══════════════════════════════════════════════════════");
+    } else {
+      console.log(`[Email] Resend client initialized — key prefix: ${key.slice(0, 6)}...`);
+    }
     const { Resend } = await import("resend");
-    _resendClient = new Resend(process.env.RESEND_API_KEY!);
+    _resendClient = new Resend(key!);
   }
   return _resendClient;
 }
@@ -157,6 +165,7 @@ export interface SendEmailOptions {
   text?:       string;
   templateId?: string;
   variables?:  Record<string, unknown>;
+  rethrow?:    boolean;
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
@@ -220,6 +229,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
         data:  { status: "FAILED", errorMessage: error instanceof Error ? error.message : "Unknown error" },
       }).catch((e: Error) => console.error("[sendEmail] Failed to update log to FAILED:", e.message));
     }
+    if (opts.rethrow) throw error;
     // Don't rethrow — email failure must not crash the request
   }
 }
@@ -236,7 +246,9 @@ export async function sendOtpVerification(
 ) {
   const { otpVerificationTemplate } = await import("./templates");
   const { subject, html, text } = otpVerificationTemplate({ code, expiresMinutes });
-  await sendEmail({ userId, to, from: FROM_NO_REPLY, emailType: "EMAIL_VERIFICATION", subject, html, text });
+  console.log(`[OTP] Sending verification code to ${maskEmail(to)}`);
+  await sendEmail({ userId, to, from: FROM_NO_REPLY, emailType: "EMAIL_VERIFICATION", subject, html, text, rethrow: true });
+  console.log(`[OTP] Verification code delivered to ${maskEmail(to)}`);
 }
 
 export async function sendWelcomeEmail(

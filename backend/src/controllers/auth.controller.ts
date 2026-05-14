@@ -198,9 +198,13 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       firstName: input.firstName, role: input.role,
     });
 
-    sendOtpVerification(result.user.id, input.email, code, 10).catch((e) =>
-      console.error("[register] OTP email error:", e)
-    );
+    let emailSent = true;
+    try {
+      await sendOtpVerification(result.user.id, input.email, code, 10);
+    } catch (e) {
+      emailSent = false;
+      console.error("[register] OTP email failed:", e instanceof Error ? e.message : e);
+    }
 
     setAuthCookies(res, accessToken, refreshToken);
     return ok(res, {
@@ -209,7 +213,11 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       accessToken,
       token: accessToken,
       role: result.user.role,
-    }, "Check your email for a verification code", 201);
+      emailSent,
+    }, emailSent
+      ? "Check your email for a verification code"
+      : "Account created. Email delivery failed — use 'Resend code' on the next screen.",
+    201);
   } catch (e) { next(e); }
 }
 
