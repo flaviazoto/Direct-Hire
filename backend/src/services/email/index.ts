@@ -98,12 +98,22 @@ class SmtpProvider implements EmailProvider {
 }
 
 // ── Resend provider ───────────────────────────────────────────
+// Singleton — instantiated once, reused across all sends
+let _resendClient: InstanceType<Awaited<typeof import("resend")>["Resend"]> | null = null;
+
+async function getResendClient() {
+  if (!_resendClient) {
+    const { Resend } = await import("resend");
+    _resendClient = new Resend(process.env.RESEND_API_KEY!);
+  }
+  return _resendClient;
+}
+
 class ResendProvider implements EmailProvider {
   async send(params: SendParams) {
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const resend = await getResendClient();
     const { data, error } = await resend.emails.send({
-      from:     process.env.RESEND_FROM_EMAIL ?? params.from ?? FROM_NO_REPLY,
+      from:     params.from ?? FROM_NO_REPLY,
       to:       params.to,
       reply_to: params.replyTo,
       subject:  params.subject,

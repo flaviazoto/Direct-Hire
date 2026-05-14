@@ -5,7 +5,12 @@ import crypto from "crypto";
 import prisma from "../lib/prisma";
 import { ok, err, getPagination, paginated } from "../lib/response";
 import { enqueue } from "../services/queue";
-import { sendAccountApproved, sendAccountRejected, sendAccountSuspended, sendAccountReinstated } from "../services/email";
+import {
+  sendAccountApproved, sendAccountRejected, sendAccountSuspended, sendAccountReinstated,
+  sendOtpVerification, sendWelcomeEmail, sendPasswordReset,
+  sendContactFormEmail,
+  OWNER_EMAIL,
+} from "../services/email";
 import { z } from "zod";
 import { decrypt } from "../lib/encrypt";
 import { insertAuditLog } from "../lib/audit";
@@ -994,7 +999,8 @@ export async function approveUser(req: Request, res: Response, next: NextFunctio
       },
     });
 
-    await sendAccountApproved(id, user.email, firstName, user.role as "WORKER" | "EMPLOYER");
+    sendAccountApproved(id, user.email, firstName, user.role as "WORKER" | "EMPLOYER")
+      .catch((e: Error) => console.error("[approveUser] email error:", e.message));
 
     return ok(res, { id, accountStatus: "VERIFIED" });
   } catch (e) { next(e); }
@@ -1045,7 +1051,8 @@ export async function rejectUser(req: Request, res: Response, next: NextFunction
       },
     });
 
-    await sendAccountRejected(id, user.email, firstName, reason);
+    sendAccountRejected(id, user.email, firstName, reason)
+      .catch((e: Error) => console.error("[rejectUser] email error:", e.message));
 
     return ok(res, { success: true });
   } catch (e) { next(e); }
@@ -1100,7 +1107,8 @@ export async function suspendUserAccount(req: Request, res: Response, next: Next
       },
     });
 
-    await sendAccountSuspended(id, user.email, firstName);
+    sendAccountSuspended(id, user.email, firstName)
+      .catch((e: Error) => console.error("[suspendUserAccount] email error:", e.message));
 
     return ok(res, { success: true });
   } catch (e) { next(e); }
@@ -1150,7 +1158,8 @@ export async function reinstateUser(req: Request, res: Response, next: NextFunct
       },
     });
 
-    await sendAccountReinstated(id, user.email, firstName);
+    sendAccountReinstated(id, user.email, firstName)
+      .catch((e: Error) => console.error("[reinstateUser] email error:", e.message));
 
     return ok(res, { success: true });
   } catch (e) { next(e); }
@@ -1230,5 +1239,36 @@ export async function getEmailStats(_req: Request, res: Response, next: NextFunc
       byType:  byType.map(r => ({ type: r.emailType, count: r._count._all }))
                      .sort((a, b) => b.count - a.count),
     });
+  } catch (e) { next(e); }
+}
+
+// ── testEmails — DELETE after confirming all 7 types deliver ──
+// GET /api/admin/test-emails  (admin-only)
+export async function testEmails(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const to = OWNER_EMAIL;
+    const results: Record<string, string> = {};
+    const appUrl = process.env.FRONTEND_URL ?? "https://www.directhire.cc";
+
+    const tests: Array<{ name: string; fn: () => Promise<void> }> = [
+      { name: "otp",       fn: () => sendOtpVerification("test", to, "123456", 10) },
+      { name: "welcome",   fn: () => sendWelcomeEmail("test", to, "Test User", "WORKER") },
+      { name: "reset",     fn: () => sendPasswordReset("test", to, `${appUrl}/reset-password?token=test`) },
+      { name: "approved",  fn: () => sendAccountApproved("test", to, "Test User", "WORKER") },
+      { name: "rejected",  fn: () => sendAccountRejected("test", to, "Test User", "Test reason") },
+      { name: "suspended", fn: () => sendAccountSuspended("test", to, "Test User") },
+      { name: "contact",   fn: () => sendContactFormEmail("Test User", to, "Test Subject", "This is a test message from the email test endpoint.") },
+    ];
+
+    for (const test of tests) {
+      try {
+        await test.fn();
+        results[test.name] = "✅ sent";
+      } catch (err) {
+        results[test.name] = `❌ ${err instanceof Error ? err.message : "unknown error"}`;
+      }
+    }
+
+    return ok(res, results, `Sent to ${to} — check inbox and delete this endpoint.`);
   } catch (e) { next(e); }
 }

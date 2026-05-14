@@ -20,9 +20,10 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-// Email env warnings — visible in Railway/Render logs
+// Email env — fatal when Resend is the configured provider
 if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
-  console.warn("WARNING: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set — emails will be logged to console only");
+  console.error("FATAL: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set");
+  process.exit(1);
 }
 if (!process.env.OWNER_EMAIL) {
   console.warn("WARNING: OWNER_EMAIL not set — defaulting to directhire1977@gmail.com");

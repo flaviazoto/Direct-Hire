@@ -73,3 +73,6 @@ adminRouter.get("/revenue/payments", requireAdmin, revenueCtrl.getPaymentLog);
 // ── Email logs ────────────────────────────────────────────────────────────────
 adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);
 adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
+
+// ── Email test — DELETE after confirming delivery ─────────────────────────────
+adminRouter.get("/test-emails", requireAdmin, ctrl.testEmails);
