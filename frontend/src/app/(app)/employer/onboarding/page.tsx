@@ -70,10 +70,11 @@ export default function EmployerOnboardingPage() {
   const [requiredSkills, setRequiredSkills]   = useState<string[]>([]);
   const [urgency, setUrgency]                 = useState("");
   const [selectedPlan, setSelectedPlan]       = useState("growth");
-  const [logoUploaded, setLogoUploaded]       = useState(false);
-  const [docUploaded, setDocUploaded]         = useState(false);
-  const [logoUploading, setLogoUploading]     = useState(false);
-  const [docUploading, setDocUploading]       = useState(false);
+  // Derive upload state directly from the store so it survives page reloads
+  const logoUploaded  = store.uploads["COMPANY_LOGO"]?.status        === "done";
+  const docUploaded   = store.uploads["BUSINESS_DOCUMENT"]?.status   === "done";
+  const logoUploading = store.uploads["COMPANY_LOGO"]?.status        === "uploading";
+  const docUploading  = store.uploads["BUSINESS_DOCUMENT"]?.status   === "uploading";
 
   const { register, getValues, watch } = useForm({ mode: "onChange" });
   const descValue = watch("businessDescription") ?? "";
@@ -131,6 +132,7 @@ export default function EmployerOnboardingPage() {
       if (!vals.contactPhone?.trim())         errs.contactPhone        = "Phone required";
       if (!vals.businessDescription?.trim())  errs.businessDescription = "Description required";
       else if (vals.businessDescription.length < 30) errs.businessDescription = "Minimum 30 characters";
+      if (!docUploaded)                       errs.businessDocument    = "Business registration document is required";
     }
     if (uiStep === 3) {
       if (hiringCountries.length === 0) errs.hiringCountries = "Select at least one country";
@@ -190,19 +192,8 @@ export default function EmployerOnboardingPage() {
     if (ok) router.push("/employer/dashboard?submitted=1");
   };
 
-  const handleLogoUpload = async (file: File) => {
-    setLogoUploading(true);
-    await store.uploadFile("COMPANY_LOGO", file);
-    setLogoUploaded(true);
-    setLogoUploading(false);
-  };
-
-  const handleDocUpload = async (file: File) => {
-    setDocUploading(true);
-    await store.uploadFile("BUSINESS_DOCUMENT", file);
-    setDocUploaded(true);
-    setDocUploading(false);
-  };
+  const handleLogoUpload = (file: File) => store.uploadFile("COMPANY_LOGO", file);
+  const handleDocUpload  = (file: File) => store.uploadFile("BUSINESS_DOCUMENT", file);
 
   const labelSt: React.CSSProperties = {
     fontSize: 13, fontWeight: 600,
@@ -381,11 +372,15 @@ export default function EmployerOnboardingPage() {
               </div>
             </div>
             <div>
-              <label style={labelSt}>Business Registration Document <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>(optional)</span></label>
+              <label style={labelSt}>Business Registration Document <span style={{ color: "#f87171" }}>*</span></label>
               <label style={{
                 display: "flex", alignItems: "center", gap: 12,
-                border: docUploaded ? "2px solid rgba(14,116,144,0.3)" : "2px dashed rgba(255,255,255,0.1)",
-                background: docUploaded ? "rgba(14,116,144,0.08)" : "rgba(255,255,255,0.03)",
+                border: docUploaded
+                  ? "2px solid rgba(14,116,144,0.3)"
+                  : stepErrors.businessDocument
+                  ? "2px solid #ef4444"
+                  : "2px dashed rgba(255,255,255,0.1)",
+                background: docUploaded ? "rgba(14,116,144,0.08)" : stepErrors.businessDocument ? "rgba(239,68,68,0.05)" : "rgba(255,255,255,0.03)",
                 borderRadius: 16, padding: "14px 16px",
                 cursor: "pointer", transition: "all 0.2s",
               }}>
@@ -398,6 +393,7 @@ export default function EmployerOnboardingPage() {
                 </div>
                 {docUploading && <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(45,212,191,0.3)", borderTopColor: "#2DD4BF", animation: "spin 0.7s linear infinite" }} />}
               </label>
+              {E("businessDocument")}
             </div>
           </div>
         );
@@ -580,6 +576,17 @@ export default function EmployerOnboardingPage() {
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Review & submit</h2>
               <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Check everything before activating your account.</p>
             </div>
+            {!docUploaded && (
+              <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#f87171", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                <span>
+                  <strong>Business registration document missing.</strong> You must upload it before submitting.{" "}
+                  <button type="button" onClick={() => setUiStep(2)} style={{ background: "none", border: "none", color: "#f87171", fontWeight: 700, cursor: "pointer", padding: 0, textDecoration: "underline", fontSize: 13 }}>
+                    Go to Step 2 to upload it.
+                  </button>
+                </span>
+              </div>
+            )}
             {store.submitError && (
               <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#f87171" }}>
                 ⚠ {store.submitError}
@@ -755,7 +762,7 @@ export default function EmployerOnboardingPage() {
               </button>
             )}
             <button type="button" onClick={isLast ? handleSubmit : goNext}
-              disabled={store.isSaving || store.isSubmitting}
+              disabled={store.isSaving || store.isSubmitting || (isLast && !docUploaded)}
               style={{
                 flex: 1, padding: "14px 20px", borderRadius: 14,
                 fontWeight: 700, fontSize: 16, color: "white", border: "none",
