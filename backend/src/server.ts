@@ -12,6 +12,7 @@ const REQUIRED_ENV = [
   "FRONTEND_URL",
   "BACKEND_URL",
   "CRON_SECRET",
+  "STRIPE_SECRET_KEY",
 ];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
@@ -48,6 +49,7 @@ import { publicJobsRouter }  from "./routes/public-jobs.routes";
 import { externalJobsRouter } from "./routes/externalJobs";
 import { contactRouter }       from "./routes/contact.routes";
 import { stripeWebhook }     from "./controllers/webhook.controller";
+import stripe               from "./config/stripe.config";
 import { errorHandler }      from "./middleware/error.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
@@ -115,7 +117,8 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Direct Hire API running at http://localhost:${PORT}`);
   console.log(`   Environment : ${process.env.NODE_ENV}`);
   console.log(`   Frontend URL: ${FRONTEND_URL}`);
-  console.log(`   Health check: http://localhost:${PORT}/health\n`);
+  console.log(`   Health check: http://localhost:${PORT}/health`);
+  console.log(`   Stripe SDK initialised (key prefix: ${process.env.STRIPE_SECRET_KEY!.slice(0, 12)}…)\n`);
 
   // Verification code cleanup every 6 hours
   const SIX_HOURS = 6 * 60 * 60 * 1000;
