@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useOnboardingStore } from "@/lib/stores/onboarding.store";
+import { SkillsMultiSelect, type SkillValue } from "@/components/SkillsMultiSelect";
 
 // ── Step count for workers ────────────────────────────────────
 const TOTAL_STEPS = 7;
@@ -19,13 +20,7 @@ const STEP_LABELS = [
   "Review",
 ];
 
-// ── Skill and country constants ───────────────────────────────
-const SKILLS = [
-  "Nursing", "Care Assistant", "Elderly Care", "First Aid", "Childcare",
-  "Teaching", "Civil Engineering", "Construction", "Electrical", "IT Support",
-  "Software Dev", "Accounting", "Hospitality", "Hotel Management", "Cooking",
-  "Driving", "Security", "Cleaning", "Agriculture", "Welding",
-];
+// ── Country constants ─────────────────────────────────────────
 const COUNTRIES = [
   "Albania", "Algeria", "Bangladesh", "Brazil", "Egypt", "Ethiopia",
   "Ghana", "India", "Indonesia", "Kenya", "Morocco", "Nepal",
@@ -71,7 +66,7 @@ export default function WorkerOnboardingPage() {
   const [direction, setDirection] = useState<"fwd" | "bwd">("fwd");
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
-  const [selectedSkills, setSelectedSkills]       = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills]       = useState<SkillValue[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [languages, setLanguages]                 = useState([{ language: "English", proficiencyLevel: "B2 – Upper Intermediate" }]);
   const [hasSpouse, setHasSpouse]                 = useState(false);
@@ -88,7 +83,7 @@ export default function WorkerOnboardingPage() {
         const s2 = store.stepData[2] ?? {};
         const s3 = store.stepData[3] ?? {};
         const s4 = store.stepData[4] ?? {};
-        if (s3.skills)          setSelectedSkills(s3.skills as string[]);
+        if (s3.skills)          setSelectedSkills(s3.skills as SkillValue[]);
         if (s4.targetCountries) setSelectedCountries(s4.targetCountries as string[]);
         if (s3.languages)       setLanguages(s3.languages as typeof languages);
         if (s2.hasSpouse)       setHasSpouse(s2.hasSpouse as boolean);
@@ -162,7 +157,12 @@ export default function WorkerOnboardingPage() {
         hasSpouse, spouseName: vals.spouseName, numberOfChildren: children,
       };
     } else if (uiStep === 3) {
-      stepPayload = { skills: selectedSkills, yearsExperience: vals.yearsExperience, languages };
+      stepPayload = {
+        skills: selectedSkills.map(s => ({ skill_id: s.skill_id, years_experience: s.years_experience ?? 1 })),
+        _skillsDisplay: selectedSkills,
+        yearsExperience: vals.yearsExperience,
+        languages,
+      };
     } else if (uiStep === 4) {
       stepPayload = {
         expectedSalary: vals.expectedSalary, targetCountries: selectedCountries,
@@ -398,17 +398,17 @@ export default function WorkerOnboardingPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <label style={{ ...labelSt, marginBottom: 10 }}>Your Skills <span style={{ color: "#f87171" }}>*</span></label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {SKILLS.map(skill => (
-                    <button key={skill} type="button"
-                      onClick={() => setSelectedSkills(s => s.includes(skill) ? s.filter(x => x !== skill) : [...s, skill])}
-                      style={selectedSkills.includes(skill) ? pillSel : pillOff}>
-                      {selectedSkills.includes(skill) && "✓ "}{skill}
-                    </button>
-                  ))}
-                </div>
-                {E("skills")}
+                <label style={{ ...labelSt, marginBottom: 8 }}>Your Skills <span style={{ color: "#f87171" }}>*</span></label>
+                <p style={{ ...helperSt, marginBottom: 8, marginTop: 0 }}>
+                  Search and select skills — enter years of experience per skill
+                </p>
+                <SkillsMultiSelect
+                  mode="worker"
+                  value={selectedSkills}
+                  onChange={setSelectedSkills}
+                  error={stepErrors.skills}
+                  placeholder="Search skills (e.g. Nursing, Welding, Python)…"
+                />
               </div>
               <div>
                 <label style={labelSt}>Years of Experience <span style={{ color: "#f87171" }}>*</span></label>
@@ -607,7 +607,7 @@ export default function WorkerOnboardingPage() {
                   { k: "Children", v: String(store.stepData[2]?.numberOfChildren ?? 0) },
                 ]},
                 { label: "Skills", step: 3, rows: [
-                  { k: "Skills",     v: selectedSkills.slice(0, 4).join(", ") + (selectedSkills.length > 4 ? ` +${selectedSkills.length - 4}` : "") || "—" },
+                  { k: "Skills",     v: selectedSkills.map(s => s.label).slice(0, 4).join(", ") + (selectedSkills.length > 4 ? ` +${selectedSkills.length - 4}` : "") || "—" },
                   { k: "Experience", v: (store.stepData[3]?.yearsExperience as string) || "—" },
                 ]},
                 { label: "Preferences", step: 4, rows: [

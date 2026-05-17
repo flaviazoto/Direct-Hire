@@ -13,6 +13,7 @@ import {
   ToastDisplay,
   type ToastData,
 } from "@/components/ui";
+import { SkillsMultiSelect, type SkillValue } from "@/components/SkillsMultiSelect";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ interface FormData {
   salaryMax: string;
   salaryCurrency: string;
   experienceRequired: number;
-  skills: string[];
+  skills: SkillValue[];
   languages: string[];
   visaSupport: boolean;
   accommodation: boolean;
@@ -354,7 +355,7 @@ function NewJobContent() {
       salaryMax:           parseFloat(form.salaryMax),
       salaryCurrency:      form.salaryCurrency,
       experienceRequired:  form.experienceRequired,
-      requiredSkills:      form.skills,
+      required_skill_ids:  form.skills.map(s => s.skill_id),
       languagesRequired:   form.languages,
       visaSupport:         form.visaSupport,
       accommodation:       form.accommodation,
@@ -524,13 +525,16 @@ function NewJobContent() {
 
             <Section title="Skills & Languages">
               <FullRow>
-                <TagInput
-                  label="Required skills *"
-                  tags={form.skills}
-                  onChange={v => { set("skills", v); setErrors(er => ({ ...er, skills: undefined })); }}
-                  placeholder="Type a skill + Enter"
-                  error={errors.skills}
-                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, color: "#a1a1aa" }}>Required skills *</label>
+                  <SkillsMultiSelect
+                    mode="employer"
+                    value={form.skills}
+                    onChange={v => { set("skills", v); setErrors(er => ({ ...er, skills: undefined })); }}
+                    error={errors.skills}
+                    placeholder="Search skills (e.g. Nursing, Docker, Welding)…"
+                  />
+                </div>
               </FullRow>
               <FullRow>
                 <TagInput
@@ -619,7 +623,7 @@ function NewJobContent() {
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Required Skills</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {form.skills.map(s => (
-                    <span key={s} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.25)", color: "#5eead4" }}>{s}</span>
+                    <span key={s.skill_id} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.25)", color: "#5eead4" }}>{s.label}</span>
                   ))}
                 </div>
               </div>

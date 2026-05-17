@@ -12,6 +12,7 @@ import {
   sendApplicationWithdrawnEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
+import { EncryptionService } from "../encryption/encryption.service";
 import { calculateMatchScore } from "../services/matching";
 import { calculateApplicationFeeAsync } from "../services/pricing";
 import stripe from "../services/stripe";
@@ -434,7 +435,7 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
         employer: {
           select: {
             email:          true,
-            phone:          true,
+            phoneEnc:       true,
             employerProfile: { select: { contactPersonName: true } },
           },
         },
@@ -447,10 +448,13 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
     // Build company_contact only when unlocked — never expose employer PII before that
     let companyContact: Record<string, unknown> | null = null;
     if (app.interviewContactUnlocked) {
+      const employerPhone = app.employer.phoneEnc
+        ? await EncryptionService.decrypt(app.employer.phoneEnc)
+        : null;
       companyContact = {
         contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
         contact_email:          app.employer.email,
-        contact_phone:          app.employer.phone ?? null,
+        contact_phone:          employerPhone,
         company_name:           app.job.companyName,
         interview_instructions: app.interviewInstructions,
       };
@@ -542,7 +546,7 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
         employer: {
           select: {
             email:          true,
-            phone:          true,
+            phoneEnc:       true,
             employerProfile: { select: { contactPersonName: true } },
           },
         },
@@ -577,10 +581,14 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
         : []),
     ]).catch(console.error);
 
+    const employerPhone = app.employer.phoneEnc
+      ? await EncryptionService.decrypt(app.employer.phoneEnc)
+      : null;
+
     return ok(res, {
       contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
       contact_email:          app.employer.email,
-      contact_phone:          app.employer.phone ?? null,
+      contact_phone:          employerPhone,
       company_name:           app.job.companyName,
       interview_instructions: app.interviewInstructions,
     });

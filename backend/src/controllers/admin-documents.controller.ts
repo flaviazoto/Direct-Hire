@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
-import { decrypt } from "../lib/encrypt";
+import { EncryptionService } from "../encryption/encryption.service";
 import { insertAdminAuditLog } from "../lib/audit";
 import { escapeHtml, sendEmail } from "../services/email";
 
@@ -127,7 +127,7 @@ export async function getWorkerDocuments(
           select: {
             firstName:           true,
             lastName:            true,
-            passportNumber:      true,
+            passportNumberEnc:   true,
             passportStatus:      true,
             documentsVerified:   true,
             documentsReviewedAt: true,
@@ -184,7 +184,7 @@ export async function getWorkerDocuments(
       accountStatus:       user.accountStatus,
       createdAt:           user.createdAt,
       name:                [p.firstName, p.lastName].filter(Boolean).join(" ") || user.email,
-      passportNumber:      p.passportNumber ? decrypt(p.passportNumber) : null,
+      passportNumber:      p.passportNumberEnc ? await EncryptionService.decrypt(p.passportNumberEnc) : null,
       passportStatus:      p.passportStatus,
       documentsVerified:   p.documentsVerified,
       documentsReviewedAt: p.documentsReviewedAt,
@@ -222,7 +222,7 @@ export async function reviewWorkerDocuments(
         email:         true,
         accountStatus: true,
         workerProfile: {
-          select: { id: true, firstName: true, passportNumber: true },
+          select: { id: true, firstName: true },
         },
         uploads: {
           where:   { status: { not: "DELETED" } },
@@ -378,5 +378,40 @@ export async function reviewWorkerDocuments(
       videoStatus:    body.videoStatus,
       passportStatus: body.passportStatus,
     }, documentsVerified ? "All documents verified" : "Documents reviewed");
+  } catch (e) { next(e); }
+}
+
+// ── GET /api/admin/workers/:id/passport ───────────────────────────────────────
+// Returns the decrypted passport number for admin review.
+// Every access is logged to audit_log with action = PASSPORT_VIEWED.
+export async function getPassportNumber(
+  req: Request, res: Response, next: NextFunction,
+) {
+  try {
+    const adminId   = req.user!.sub;
+    const workerId  = req.params.id;
+
+    const profile = await prisma.workerProfile.findUnique({
+      where:  { userId: workerId },
+      select: { passportNumberEnc: true, passportStatus: true },
+    });
+
+    if (!profile) return err(res, "Worker not found", 404);
+
+    if (!profile.passportNumberEnc) {
+      return ok(res, { passportNumber: null });
+    }
+
+    const passportNumber = await EncryptionService.decrypt(profile.passportNumberEnc);
+
+    await insertAdminAuditLog({
+      actorId:  adminId,
+      targetId: workerId,
+      action:   "PASSPORT_VIEWED",
+      notes:    null,
+      metadata: { passportStatus: profile.passportStatus },
+    });
+
+    return ok(res, { passportNumber });
   } catch (e) { next(e); }
 }

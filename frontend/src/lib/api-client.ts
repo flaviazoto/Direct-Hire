@@ -263,6 +263,11 @@ export const adminApi = {
   getEmailLogs: (params?: Record<string, string>) =>
     get(`/admin/email-logs${params ? "?" + new URLSearchParams(params) : ""}`),
   getEmailStats: () => get("/admin/email-stats"),
+  // ── Skills taxonomy ─────────────────────────────────────────────────────────
+  listSkills: () => get("/admin/skills"),
+  createSkill: (body: unknown) => post("/admin/skills", body),
+  updateSkill: (id: string, body: unknown) => patch(`/admin/skills/${id}`, body),
+  deleteSkill: (id: string) => del(`/admin/skills/${id}`),
   // ── Document review ─────────────────────────────────────────────────────────
   getPendingDocumentWorkers: (params?: Record<string, string>) =>
     get(`/admin/workers/pending-documents${params ? "?" + new URLSearchParams(params) : ""}`),
@@ -297,12 +302,14 @@ export const workerApi = {
     get(`/applications${params ? "?" + new URLSearchParams(params) : ""}`),
   getApplication: (id: string) => get(`/applications/${id}`),
   withdrawApplication: (id: string) => post(`/applications/${id}/withdraw`),
+  deleteApplication:  (id: string) => del(`/applications/${id}`),
   getApplicationContact: (id: string) => get(`/applications/${id}/contact`),
   getDocuments: () => get("/uploads"),
   deleteDocument: (id: string) => del(`/uploads/${id}`),
   getApplicationFee: (jobId: string) => get(`/jobs/${jobId}/application-fee`),
   confirmApplication: (jobId: string, body: { paymentIntentId: string; coverLetter?: string }) =>
     post(`/jobs/${jobId}/apply/confirm`, body),
+  getTrust: () => get("/trust"),
   getLockStatus: () => get("/worker/lock-status"),
   getLockHistory: (params?: Record<string, string>) =>
     get(`/worker/lock-history${params ? "?" + new URLSearchParams(params) : ""}`),

@@ -12,7 +12,7 @@ import {
   OWNER_EMAIL,
 } from "../services/email";
 import { z } from "zod";
-import { decrypt } from "../lib/encrypt";
+import { EncryptionService } from "../encryption/encryption.service";
 import { insertAuditLog } from "../lib/audit";
 
 // ── Audit log helper (raw insert — AdminAuditLog not yet in generated client) ──
@@ -775,12 +775,9 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
         },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          passportNumber: (raw as any).passportNumber
-            ? decrypt((raw as any).passportNumber)
-            : null,
-        };
+        // Strip encrypted field — admins use GET /admin/workers/:id/passport (with audit log)
+        const { passportNumberEnc: _omit, ...safeRaw } = raw as any;
+        profile = safeRaw;
       }
     } else if (user.role === "EMPLOYER") {
       const raw = await prisma.employerProfile.findUnique({
@@ -794,7 +791,7 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
         profile = {
           ...raw,
           administratorId: (raw as any).administratorId
-            ? decrypt((raw as any).administratorId)
+            ? await EncryptionService.decrypt((raw as any).administratorId)
             : null,
         };
       }

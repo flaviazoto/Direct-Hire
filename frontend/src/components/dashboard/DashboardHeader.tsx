@@ -8,7 +8,7 @@ import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
-  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink,
+  TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink, Layers,
 } from 'lucide-react'
 
 type Role = 'worker' | 'employer' | 'admin'
@@ -75,7 +75,10 @@ const ADMIN_LINKS = [
   },
   {
     section: 'Settings',
-    links: [{ href: '/admin/pricing', label: 'Pricing', Icon: Tag }],
+    links: [
+      { href: '/admin/pricing', label: 'Pricing', Icon: Tag },
+      { href: '/admin/skills', label: 'Skills', Icon: Layers },
+    ],
   },
 ]
 

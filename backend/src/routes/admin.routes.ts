@@ -7,6 +7,8 @@ import * as docsCtrl     from "../controllers/admin-documents.controller";
 import * as pricingCtrl  from "../controllers/admin-pricing.controller";
 import * as configCtrl   from "../controllers/admin-config.controller";
 import * as revenueCtrl  from "../controllers/admin-revenue.controller";
+import * as skillsCtrl   from "../skills/skills.controller";
+import * as erasureCtrl  from "../gdpr/erasure.controller";
 import { requireAdmin } from "../middleware/auth.middleware";
 
 export const adminRouter = Router();
@@ -26,6 +28,8 @@ adminRouter.get("/users/:id",                requireAdmin, ctrl.getUserDetail);
 // ── Document review ───────────────────────────────────────────────────────────
 // Static route before /:id param
 adminRouter.get(  "/workers/pending-documents",           requireAdmin, docsCtrl.getPendingDocumentWorkers);
+adminRouter.post( "/workers/:id/erase",                   requireAdmin, erasureCtrl.eraseWorkerHandler);
+adminRouter.get(  "/workers/:id/passport",                requireAdmin, docsCtrl.getPassportNumber);
 adminRouter.get(  "/workers/:id/documents",               requireAdmin, docsCtrl.getWorkerDocuments);
 adminRouter.patch("/workers/:id/documents/review",        requireAdmin, docsCtrl.reviewWorkerDocuments);
 adminRouter.patch("/users/:id/suspend",      requireAdmin, ctrl.suspendUser);       // legacy (UserStatus field)
@@ -69,6 +73,12 @@ adminRouter.get(  "/config",                 requireAdmin, configCtrl.getConfig)
 adminRouter.get("/revenue/summary",  requireAdmin, revenueCtrl.getRevenueSummary);
 adminRouter.get("/revenue/chart",    requireAdmin, revenueCtrl.getRevenueChart);
 adminRouter.get("/revenue/payments", requireAdmin, revenueCtrl.getPaymentLog);
+
+// ── Skills taxonomy ───────────────────────────────────────────────────────────
+adminRouter.get(   "/skills",     requireAdmin, skillsCtrl.adminListSkills);
+adminRouter.post(  "/skills",     requireAdmin, skillsCtrl.adminCreateSkill);
+adminRouter.patch( "/skills/:id", requireAdmin, skillsCtrl.adminUpdateSkill);
+adminRouter.delete("/skills/:id", requireAdmin, skillsCtrl.adminDeleteSkill);
 
 // ── Email logs ────────────────────────────────────────────────────────────────
 adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);

@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
-import { decrypt, encrypt } from "../lib/encrypt";
+import { EncryptionService } from "../encryption/encryption.service";
 
 export async function getProfile(req: Request, res: Response, next: NextFunction) {
   try {
@@ -11,11 +11,13 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
 
     const user = await prisma.user.findUnique({
       where:  { id: userId },
-      select: { id: true, email: true, role: true, phone: true,
+      select: { id: true, email: true, role: true, phoneEnc: true,
                 status: true, accountStatus: true, onboardingComplete: true,
                 isEmailVerified: true, createdAt: true },
     });
     if (!user) return err(res, "User not found", 404);
+    // Decrypt own phone — phoneEnc blob is stripped by ok() automatically
+    const phone = user.phoneEnc ? await EncryptionService.decrypt(user.phoneEnc) : null;
 
     let profile = null;
     if (role === "WORKER") {
@@ -24,10 +26,9 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         include: { skills: true, languages: true, targetCountries: true },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          passportNumber: raw.passportNumber ? decrypt(raw.passportNumber) : null,
-        };
+        // Omit encrypted passport field from all worker DTOs — use dedicated admin endpoint
+        const { passportNumberEnc: _omit, ...safeRaw } = raw;
+        profile = safeRaw;
       }
     } else if (role === "EMPLOYER") {
       const raw = await prisma.employerProfile.findUnique({
@@ -35,11 +36,10 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         include: { hiringCountries: true, requiredSkills: true },
       });
       if (raw) {
+        const rawAdminId = (raw as any).administratorId;
         profile = {
           ...raw,
-          administratorId: (raw as any).administratorId
-            ? decrypt((raw as any).administratorId)
-            : null,
+          administratorId: rawAdminId ? await EncryptionService.decrypt(rawAdminId) : null,
         };
       }
     }
@@ -81,7 +81,7 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
       if (p.city)                        score += 5;
       if (p.yearsExperience)             score += 5;
       if (p.expectedSalary)              score += 5;
-      if (p.passportNumber)              score += 5;
+      if (p.passportNumberEnc)           score += 5;
       if ((p.skills?.length   ?? 0) > 0) score += 10;
       if ((p.languages?.length ?? 0) > 0)       score += 5;
       if ((p.targetCountries?.length ?? 0) > 0) score += 5;
@@ -93,7 +93,8 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
     }
 
     return ok(res, {
-      user, profile, onboarding, verification, notifications,
+      user: { ...user, phone },   // decrypted; phoneEnc stripped by ok()
+      profile, onboarding, verification, notifications,
       unreadNotifications: notifications.filter(n => !n.isRead).length,
       profileCompletionScore,
     });
@@ -106,9 +107,10 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     const role = req.user!.role;
     const body = (req.body ?? {}) as Record<string, unknown>;
 
-    const phone = asTrimmedString(body.phone);
-    if (phone !== undefined) {
-      await prisma.user.update({ where: { id: userId }, data: { phone } });
+    const rawPhone = asTrimmedString(body.phone);
+    if (rawPhone !== undefined) {
+      const phoneEnc = rawPhone ? await EncryptionService.encrypt(rawPhone) : null;
+      await prisma.user.update({ where: { id: userId }, data: { phoneEnc } });
     }
 
     if (role === "WORKER") {
@@ -123,7 +125,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
         yearsExperience:    asTrimmedString(body.yearsExperience),
         expectedSalary:     asTrimmedString(body.expectedSalary),
         additionalNotes:    asTrimmedString(body.additionalNotes),
-        passportNumber:     rawPassport !== undefined ? encrypt(rawPassport) : undefined,
+        passportNumberEnc:  rawPassport !== undefined ? await EncryptionService.encrypt(rawPassport) : undefined,
       };
 
       const updateData = stripUndefined(data);

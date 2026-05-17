@@ -160,6 +160,25 @@ enum VerificationCodeType {
   PASSWORD_RESET
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentEntityType {
+  APPLICATION_FEE
+  WORKER_LOCK
+}
+
 enum AuditAction {
   USER_APPROVED
   USER_REJECTED
@@ -184,6 +203,9 @@ enum AuditAction {
   WORKER_LOCK_EXPIRED
   WORKER_LOCK_OVERRIDDEN
   DOCUMENT_BATCH_REVIEWED
+  PASSPORT_VIEWED
+  PHONE_VIEWED
+  WORKER_ERASED
 }
 
 enum JobPostStatus {
@@ -212,7 +234,7 @@ model User {
   email             String     @unique
   passwordHash      String
   role              Role
-  phone             String?
+  phoneEnc          String?  // AES-256-GCM encrypted via EncryptionService
   isEmailVerified                Boolean       @default(false)
   status                         UserStatus    @default(PENDING_VERIFICATION)
   accountStatus                  AccountStatus @default(PENDING_EMAIL_VERIFICATION) @map("account_status")
@@ -266,8 +288,8 @@ model User {
   workerLocksAsEmployer WorkerLock[]      @relation("EmployerLocks")
   sentMessages          Message[]         @relation("SentMessages")
   receivedMessages      Message[]         @relation("ReceivedMessages")
-  payments              Payment[]
   externalJobsPosted    ExternalJob[]     @relation("AdminPostedExternalJobs")
+  trustScoreHistory     TrustScoreHistory[]
 
   @@index([email])
   @@index([role])
@@ -331,7 +353,7 @@ model WorkerProfile {
   countryOfResidence String?
   city              String?
   address           String?
-  passportNumber    String?  // stored encrypted, text only
+  passportNumberEnc String?  // AES-256-GCM encrypted via EncryptionService
   maritalStatus     String?
   fatherName        String?
   motherName        String?
@@ -367,9 +389,12 @@ model WorkerSkill {
   id              String        @id @default(cuid())
   workerProfileId String
   skill           String
+  skill_id        String?
+  taxonomy        Skill?        @relation(fields: [skill_id], references: [id])
   workerProfile   WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([workerProfileId, skill])
+  @@index([skill_id])
 }
 
 model WorkerLanguage {
@@ -411,20 +436,18 @@ model EmployerProfile {
   city              String?
   address           String?
   businessDescription String?
-  subscriptionPlan             String?
-  subscriptionStatus           String?
-  trialEndsAt                  DateTime?
-  stripeCustomerId             String?   @unique
-  stripeSubscriptionId         String?
-  subscriptionCurrentPeriodEnd DateTime?
-  logoUrl           String?
+  subscriptionPlan   String?
+  subscriptionStatus String?
+  trialEndsAt        DateTime?
+  logoUrl            String?
   isVerified        Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   hiringCountries   EmployerHiringCountry[]
   requiredSkills    EmployerRequiredSkill[]
+  subscription      Subscription?
 
   @@index([userId])
 }
@@ -578,8 +601,9 @@ model JobPost {
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  applications         Application[]
-  savedBy              SavedJob[]
+  applications        Application[]
+  savedBy             SavedJob[]
+  requiredSkillTags   JobRequiredSkill[]
 
   @@index([employerId])
   @@index([status])
@@ -891,26 +915,86 @@ model JobRunLog {
 }
 
 // ─────────────────────────────────────────────
-// PAYMENTS
+// SKILLS TAXONOMY
 // ─────────────────────────────────────────────
 
+model Skill {
+  id                  String            @id @default(uuid())
+  name                String            @unique
+  category            String
+  aliases             String[]          @default([])
+  is_active           Boolean           @default(true)
+  created_at          DateTime          @default(now())
+  worker_skills       WorkerSkill[]
+  job_required_skills JobRequiredSkill[]
+
+  @@index([category])
+}
+
+model JobRequiredSkill {
+  id       String  @id @default(uuid())
+  job_id   String
+  job      JobPost @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  skill_id String
+  skill    Skill   @relation(fields: [skill_id], references: [id])
+
+  @@unique([job_id, skill_id])
+  @@index([skill_id])
+  @@map("job_required_skills")
+}
+
+// ─────────────────────────────────────────────
+// TRUST SCORE HISTORY
+// ─────────────────────────────────────────────
+
+model TrustScoreHistory {
+  id        String   @id @default(cuid())
+  workerId  String   @map("worker_id")
+  score     Int
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  worker    User     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([workerId])
+  @@index([createdAt])
+  @@map("trust_score_history")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS & SUBSCRIPTIONS
+// ─────────────────────────────────────────────
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  employer_id          String             @unique
+  employer             EmployerProfile    @relation(fields: [employer_id], references: [id])
+  stripe_customer_id   String             @unique
+  stripe_sub_id        String             @unique
+  status               SubscriptionStatus @default(INACTIVE)
+  current_period_start DateTime
+  current_period_end   DateTime
+  created_at           DateTime           @default(now())
+  updated_at           DateTime           @updatedAt
+
+  @@index([employer_id])
+  @@index([status])
+}
+
 model Payment {
-  id              String   @id @default(cuid())
-  userId          String
-  stripePaymentId String?
-  stripeInvoiceId String?  @unique
-  amount          Int      // in smallest currency unit (e.g. cents/qindarka)
-  currency        String   @default("USD")
-  status          String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED
-  type            String   @default("SUBSCRIPTION") // SUBSCRIPTION | WORKER_LOCK | APPLICATION_FEE
-  description     String?
-  metadata        Json?
-  createdAt       DateTime @default(now())
+  id                       String            @id @default(uuid())
+  entity_type              PaymentEntityType
+  entity_id                String
+  stripe_payment_intent_id String            @unique
+  amount_cents             Int
+  currency                 String            @default("usd")
+  status                   PaymentStatus     @default(PENDING)
+  metadata                 Json?
+  created_at               DateTime          @default(now())
+  updated_at               DateTime          @updatedAt
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([stripeInvoiceId])
+  @@index([entity_id, entity_type])
+  @@index([status])
 }
 
 // ─────────────────────────────────────────────

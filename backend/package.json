@@ -13,12 +13,17 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:reset": "prisma migrate reset --force && tsx scripts/seed.ts"
+    "db:reset": "prisma migrate reset --force && tsx scripts/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.1048.0",
+    "@aws-sdk/client-s3": "^3.1048.0",
+    "@aws-sdk/s3-request-presigner": "^3.1048.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.100.1",
     "bcryptjs": "^2.4.3",
@@ -49,6 +54,7 @@
     "@types/nodemailer": "^6.4.14",
     "prisma": "^5.22.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.6"
   }
 }

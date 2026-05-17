@@ -5,18 +5,31 @@ import * as jobsCtrl  from "../controllers/employer-jobs.controller";
 import * as appCtrl   from "../controllers/employer-applications.controller";
 import * as lockCtrl  from "../controllers/worker-lock.controller";
 import * as billing   from "../controllers/billing.controller";
+import {
+  getEmployerJobList,
+  createEmployerJob,
+  patchEmployerJob,
+  patchEmployerJobStatus,
+  deleteEmployerJob,
+} from "../jobs/jobs.controller";
 import { requireEmployer, requireVerifiedEmployer } from "../middleware/auth.middleware";
 
 export const employerRouter = Router();
 
-// ── Job posts (verified employer only) ───────────────────────────────────────
-employerRouter.post(  "/jobs",                          requireVerifiedEmployer, jobsCtrl.createJob);
-employerRouter.get(   "/jobs",                          requireVerifiedEmployer, jobsCtrl.getEmployerJobs);
-employerRouter.get(   "/jobs/:id",                      requireVerifiedEmployer, jobsCtrl.getEmployerJob);
-employerRouter.put(   "/jobs/:id",                      requireVerifiedEmployer, jobsCtrl.updateJob);
-employerRouter.post(  "/jobs/:id/submit",               requireVerifiedEmployer, jobsCtrl.submitJob);
-employerRouter.post(  "/jobs/:id/archive",              requireVerifiedEmployer, jobsCtrl.archiveJob);
-employerRouter.delete("/jobs/:id",                      requireVerifiedEmployer, jobsCtrl.deleteJob);
+// ── Job posts — new subscription-gated CRUD (subscription check inlined in handlers)
+// Static sub-routes must precede /:id to avoid param shadowing
+employerRouter.get(   "/jobs",             requireVerifiedEmployer, getEmployerJobList);
+employerRouter.post(  "/jobs",             requireVerifiedEmployer, createEmployerJob);
+employerRouter.patch( "/jobs/:id/status",  requireVerifiedEmployer, patchEmployerJobStatus);
+employerRouter.patch( "/jobs/:id",         requireVerifiedEmployer, patchEmployerJob);
+employerRouter.delete("/jobs/:id",         requireVerifiedEmployer, deleteEmployerJob);
+
+// ── Legacy job-post routes (submit, archive, single-job GET, PUT edit)
+// Kept for existing pages that use DRAFT/moderation flow
+employerRouter.get(   "/jobs/:id",         requireVerifiedEmployer, jobsCtrl.getEmployerJob);
+employerRouter.put(   "/jobs/:id",         requireVerifiedEmployer, jobsCtrl.updateJob);
+employerRouter.post(  "/jobs/:id/submit",  requireVerifiedEmployer, jobsCtrl.submitJob);
+employerRouter.post(  "/jobs/:id/archive", requireVerifiedEmployer, jobsCtrl.archiveJob);
 
 // ── Applications (verified employer only) ────────────────────────────────────
 employerRouter.get("/jobs/:jobId/applications",         requireVerifiedEmployer, appCtrl.getJobApplications);

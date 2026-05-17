@@ -5,12 +5,27 @@ import * as appCtrl      from "../controllers/worker-applications.controller";
 import * as lockCtrl     from "../controllers/worker-lock-status.controller";
 import * as notifCtrl    from "../controllers/worker-notifications.controller";
 import { getWorkerPayments } from "../controllers/worker-payments.controller";
+import { getWorkerJobs } from "../jobs/jobs.controller";
+import {
+  getWorkerApplications,
+  deleteWorkerApplication,
+} from "../applications/worker-applications.controller";
+import { getWorkerTrust }                                               from "../workers/trust.controller";
+import {
+  getWorkerMe,
+  patchWorkerMe,
+  uploadPhoto,
+  uploadVideo,
+  uploadIntroVideo,
+  uploadMedical,
+  getWorkerLockStatus,
+} from "../workers/worker.controller";
 import { requireWorker, requireVerifiedWorker } from "../middleware/auth.middleware";
 
 export const workerRouter = Router();
 
 // ── Job browsing & saving (requireWorker — VERIFIED not required to browse) ───
-workerRouter.get( "/jobs",                requireWorker,         ctrl.getJobs);
+workerRouter.get( "/jobs",                requireWorker,         getWorkerJobs);
 workerRouter.get( "/jobs/countries",      requireWorker,         ctrl.getJobCountries);
 workerRouter.get( "/jobs/filter-options", requireWorker,         ctrl.getJobFilterOptions);
 workerRouter.get( "/jobs/:id",            requireWorker,         ctrl.getJob);
@@ -23,13 +38,26 @@ workerRouter.get( "/saved-jobs",          requireWorker,         ctrl.getSavedJo
 workerRouter.get( "/jobs/:jobId/application-fee",  requireVerifiedWorker, appCtrl.getApplicationFee);
 workerRouter.post("/jobs/:jobId/apply/confirm",    requireVerifiedWorker, appCtrl.confirmApplication);
 workerRouter.post("/jobs/:jobId/apply",            requireVerifiedWorker, appCtrl.applyToJob);
-workerRouter.get( "/applications",                 requireVerifiedWorker, appCtrl.getMyApplications);
-workerRouter.get( "/applications/:id",           requireVerifiedWorker, appCtrl.getApplication);
-workerRouter.post("/applications/:id/withdraw",  requireVerifiedWorker, appCtrl.withdrawApplication);
+workerRouter.get(   "/applications",                requireVerifiedWorker, getWorkerApplications);
+workerRouter.delete("/applications/:id",          requireVerifiedWorker, deleteWorkerApplication);
+workerRouter.get(   "/applications/:id",          requireVerifiedWorker, appCtrl.getApplication);
+workerRouter.post(  "/applications/:id/withdraw", requireVerifiedWorker, appCtrl.withdrawApplication);
 workerRouter.get( "/applications/:id/contact",   requireVerifiedWorker, appCtrl.getContactDetails);
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
 
+// ── Worker profile (me) ───────────────────────────────────────────────────────
+workerRouter.get(  "/worker/me",                   requireWorker, getWorkerMe);
+workerRouter.patch("/worker/me",                   requireWorker, patchWorkerMe);
+workerRouter.post( "/worker/me/upload/photo",       requireWorker, uploadPhoto);
+workerRouter.post( "/worker/me/upload/video",       requireWorker, uploadVideo);
+workerRouter.post( "/worker/me/upload/intro-video", requireWorker, uploadIntroVideo);
+workerRouter.post( "/worker/me/upload/medical",     requireWorker, uploadMedical);
+
+// ── Trust score ───────────────────────────────────────────────────────────────
+workerRouter.get("/trust", requireWorker, getWorkerTrust);
+
 // ── Lock status (requireWorker — available regardless of verification status) ──
+workerRouter.get("/worker/lock-status",        requireWorker, getWorkerLockStatus);
 workerRouter.get("/lock-status",               requireWorker, lockCtrl.getMyLockStatus);
 workerRouter.get("/lock-history",              requireWorker, lockCtrl.getMyLockHistory);
 workerRouter.get("/lock-history/:lockId",      requireWorker, lockCtrl.getMyLockDetail);

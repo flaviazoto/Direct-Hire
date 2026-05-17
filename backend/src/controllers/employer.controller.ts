@@ -5,6 +5,8 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { escapeHtml, sendEmail } from "../services/email";
+import { EncryptionService } from "../encryption/encryption.service";
+import { insertAdminAuditLog } from "../lib/audit";
 
 // Job CRUD is handled by employer-jobs.controller.ts
 
@@ -138,7 +140,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
       select: {
         id:            true,
         email:         true,
-        phone:         true,
+        phoneEnc:      true,
         createdAt:     true,
         lockCount:     true,
         accountStatus: true,
@@ -192,6 +194,22 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     const docsVerified    = (p as any).documentsVerified === true;
     const documentStatus  = docsVerified ? "VERIFIED" : "PENDING_REVIEW";
 
+    // Phone visible only after the employer has an ACCEPTED (hired) application
+    const hiredApp = await prisma.application.findFirst({
+      where:  { workerId, employerId: req.user!.sub, status: "ACCEPTED" },
+      select: { id: true },
+    });
+    let workerPhone: string | null = null;
+    if (hiredApp && user.phoneEnc) {
+      workerPhone = await EncryptionService.decrypt(user.phoneEnc);
+      insertAdminAuditLog({
+        actorId:  req.user!.sub,
+        targetId: workerId,
+        action:   "PHONE_VIEWED",
+        metadata: { employer_id: req.user!.sub, application_id: hiredApp.id },
+      }).catch(console.error);
+    }
+
     // Only generate signed URLs and expose documents after admin has verified them
     const documents = docsVerified
       ? await Promise.all(user.uploads.map(async u => {
@@ -219,7 +237,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     return ok(res, {
       id:                user.id,
       email:             user.email,
-      phone:             user.phone ?? null,
+      phone:             workerPhone,
       created_at:        user.createdAt,
       lock_count:        user.lockCount,
       account_status:    user.accountStatus,

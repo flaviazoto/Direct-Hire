@@ -15,7 +15,9 @@ export type JobName =
   | "email.adminNewSubmission"
   | "scoring.calculateWorkerScore"
   | "scoring.calculateMatchScores"
-  | "fraud.analyzeUser";
+  | "fraud.analyzeUser"
+  | "storage.fileDelete"
+  | "media.videoProcess";
 
 export interface JobPayload {
   "email.welcome":               { userId: string; to: string; firstName: string; role: "WORKER" | "EMPLOYER" };
@@ -30,6 +32,8 @@ export interface JobPayload {
   "scoring.calculateWorkerScore":{ workerId: string };
   "scoring.calculateMatchScores":{ jobPostId: string };
   "fraud.analyzeUser":           { userId: string };
+  "storage.fileDelete":          { uploadId: string; userId: string; filePath: string; provider: "supabase" | "local" };
+  "media.videoProcess":          { workerId: string; uploadId: string; s3Key: string; videoType: "WORK_VIDEO" | "INTRO_VIDEO" };
 }
 
 // ── Inline processor (dev mode) ───────────────────────────────

@@ -2,9 +2,10 @@
 // Typed response helpers for consistent API shape
 
 import { Response } from "express";
+import { stripSensitiveFields } from "../encryption/sensitive-field.decorator";
 
 export function ok<T>(res: Response, data: T, message?: string, status = 200) {
-  return res.status(status).json({ success: true, data, message });
+  return res.status(status).json({ success: true, data: stripSensitiveFields(data), message });
 }
 
 export function created<T>(res: Response, data: T, message?: string) {
@@ -24,7 +25,7 @@ export function paginated<T>(
 ) {
   return res.json({
     success:    true,
-    data,
+    data:       stripSensitiveFields(data),
     total,
     page,
     limit,

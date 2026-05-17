@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
-import { encrypt } from "../lib/encrypt";
+import { EncryptionService } from "../encryption/encryption.service";
 import { enqueue } from "../services/queue";
 import { z } from "zod";
 import { insertAuditLog } from "../lib/audit";
@@ -183,8 +183,8 @@ export async function submit(req: Request, res: Response, next: NextFunction) {
 async function persistWorkerStep(userId: string, step: number, data: Record<string, unknown>) {
   switch (step) {
     case 1: {
-      const passportNumber = data.passportNumber
-        ? await encrypt(data.passportNumber as string)
+      const passportNumberEnc = data.passportNumber
+        ? await EncryptionService.encrypt(data.passportNumber as string)
         : undefined;
       await prisma.workerProfile.upsert({
         where: { userId },
@@ -194,7 +194,7 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           dateOfBirth:        data.dateOfBirth ? new Date(data.dateOfBirth as string) : undefined,
           countryOfResidence: data.countryOfResidence as string,
           city:               data.city as string,
-          passportNumber,
+          passportNumberEnc,
           maritalStatus:      data.maritalStatus as string | undefined,
         },
         create: {
@@ -204,11 +204,15 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           dateOfBirth:        data.dateOfBirth ? new Date(data.dateOfBirth as string) : undefined,
           countryOfResidence: data.countryOfResidence as string,
           city:               data.city as string,
-          passportNumber,
+          passportNumberEnc,
           maritalStatus:      data.maritalStatus as string | undefined,
         },
       });
-      await prisma.user.update({ where: { id: userId }, data: { phone: data.phone as string } });
+      const rawPhone = data.phone as string | undefined;
+      if (rawPhone) {
+        const phoneEnc = await EncryptionService.encrypt(rawPhone);
+        await prisma.user.update({ where: { id: userId }, data: { phoneEnc } });
+      }
       break;
     }
     case 2: {
@@ -284,7 +288,7 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
 async function persistEmployerStep(userId: string, step: number, data: Record<string, unknown>) {
   switch (step) {
     case 1: {
-      const administratorId = data.administratorId ? await encrypt(data.administratorId as string) : undefined;
+      const administratorId = data.administratorId ? await EncryptionService.encrypt(data.administratorId as string) : undefined;
       await prisma.employerProfile.upsert({
         where: { userId },
         update: {
@@ -322,7 +326,11 @@ async function persistEmployerStep(userId: string, step: number, data: Record<st
           businessDescription: data.businessDescription as string,
         },
       });
-      await prisma.user.update({ where: { id: userId }, data: { phone: data.phone as string } });
+      const rawPhone = data.phone as string | undefined;
+      if (rawPhone) {
+        const phoneEnc = await EncryptionService.encrypt(rawPhone);
+        await prisma.user.update({ where: { id: userId }, data: { phoneEnc } });
+      }
       break;
     }
     case 3: {

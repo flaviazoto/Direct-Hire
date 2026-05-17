@@ -647,6 +647,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Worker routes are handled by (app)/worker/layout.tsx — pass through here.
+  if (role === "worker") {
+    return <>{children}</>;
+  }
+
   const handleLogout = () => {
     localStorage.removeItem("dh_token");
     localStorage.removeItem("dh_role");
@@ -656,18 +661,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "row", minHeight: "100vh", background: "var(--navy, #05080f)" }}>
-      {role === 'worker' && <Sidebar role={role} />}
-      <main className={`app-main ${role === 'worker' ? 'pt-14 lg:pt-0' : 'pt-14 md:pt-0 md:pl-64'}`} style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-        {role === 'worker'
-          ? <WorkerHeader onLogout={handleLogout} />
-          : <DashboardHeader role={role} onLogout={handleLogout} />
-        }
-        {role === "worker" && <WorkerTopBar />}
+      <Sidebar role={role} />
+      <main className="app-main pt-14 md:pt-0 md:pl-64" style={{ flex: 1, minWidth: 0, background: "var(--navy, #05080f)", minHeight: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <DashboardHeader role={role} onLogout={handleLogout} />
         <div key={pathname} data-page-root style={{ flex: 1, minWidth: 0 }}>
           {children}
         </div>
       </main>
-
     </div>
   );
 }
