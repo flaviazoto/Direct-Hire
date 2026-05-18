@@ -16,35 +16,35 @@ export async function getRevenueSummary(req: Request, res: Response, next: NextF
     const [subThis, subLast, locks30, fees30, failed30, activeSubs, activeLocks] =
       await Promise.all([
         prisma.payment.aggregate({
-          where: { type: "SUBSCRIPTION", status: "SUCCEEDED", createdAt: { gte: d30 } },
-          _sum: { amount: true },
+          where: { entity_type: "SUBSCRIPTION", status: "SUCCEEDED", created_at: { gte: d30 } },
+          _sum: { amount_cents: true },
         }),
         prisma.payment.aggregate({
           where: {
-            type: "SUBSCRIPTION", status: "SUCCEEDED",
-            createdAt: { gte: startLastMonth, lt: startOfMonth },
+            entity_type: "SUBSCRIPTION", status: "SUCCEEDED",
+            created_at: { gte: startLastMonth, lt: startOfMonth },
           },
-          _sum: { amount: true },
+          _sum: { amount_cents: true },
         }),
         prisma.payment.aggregate({
-          where: { type: "WORKER_LOCK", status: "SUCCEEDED", createdAt: { gte: d30 } },
-          _sum: { amount: true },
+          where: { entity_type: "WORKER_LOCK", status: "SUCCEEDED", created_at: { gte: d30 } },
+          _sum: { amount_cents: true },
         }),
         prisma.payment.aggregate({
-          where: { type: "APPLICATION_FEE", status: "SUCCEEDED", createdAt: { gte: d30 } },
-          _sum: { amount: true },
+          where: { entity_type: "APPLICATION_FEE", status: "SUCCEEDED", created_at: { gte: d30 } },
+          _sum: { amount_cents: true },
         }),
         prisma.payment.count({
-          where: { status: "FAILED", createdAt: { gte: d30 } },
+          where: { status: "FAILED", created_at: { gte: d30 } },
         }),
         prisma.employerProfile.count({ where: { subscriptionStatus: "ACTIVE" } }),
         prisma.workerLock.count({ where: { lockStatus: "ACTIVE" } }),
       ]);
 
-    const mrr         = subThis._sum.amount ?? 0;
-    const mrrLast     = subLast._sum.amount ?? 0;
-    const lockRevenue = locks30._sum.amount ?? 0;
-    const feeRevenue  = fees30._sum.amount  ?? 0;
+    const mrr         = subThis._sum.amount_cents ?? 0;
+    const mrrLast     = subLast._sum.amount_cents ?? 0;
+    const lockRevenue = locks30._sum.amount_cents ?? 0;
+    const feeRevenue  = fees30._sum.amount_cents  ?? 0;
     const mrrGrowth   = mrrLast === 0 ? 0
       : Math.round(((mrr - mrrLast) / mrrLast) * 100);
 
@@ -78,15 +78,15 @@ export async function getRevenueChart(req: Request, res: Response, next: NextFun
     const days  = period === "7d" ? 7 : period === "90d" ? 90 : 30;
     const since = new Date(Date.now() - days * 86400000);
 
-    const typeFilter: { type?: string } =
-      type === "subscription" ? { type: "SUBSCRIPTION"    } :
-      type === "lock"         ? { type: "WORKER_LOCK"     } :
-      type === "fee"          ? { type: "APPLICATION_FEE" } : {};
+    const typeFilter: { entity_type?: string } =
+      type === "subscription" ? { entity_type: "SUBSCRIPTION"    } :
+      type === "lock"         ? { entity_type: "WORKER_LOCK"     } :
+      type === "fee"          ? { entity_type: "APPLICATION_FEE" } : {};
 
     const payments = await prisma.payment.findMany({
-      where:   { status: "SUCCEEDED", createdAt: { gte: since }, ...typeFilter },
-      select:  { amount: true, type: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
+      where:   { status: "SUCCEEDED", created_at: { gte: since }, ...typeFilter },
+      select:  { amount_cents: true, entity_type: true, created_at: true },
+      orderBy: { created_at: "asc" },
     });
 
     // Initialise every day so the chart has no gaps
@@ -97,12 +97,12 @@ export async function getRevenueChart(req: Request, res: Response, next: NextFun
     }
 
     for (const p of payments) {
-      const key = p.createdAt.toISOString().slice(0, 10);
+      const key = p.created_at.toISOString().slice(0, 10);
       if (!map[key]) continue;
-      if      (p.type === "SUBSCRIPTION")    map[key].subscriptionRevenue += p.amount;
-      else if (p.type === "WORKER_LOCK")     map[key].lockRevenue         += p.amount;
-      else if (p.type === "APPLICATION_FEE") map[key].feeRevenue          += p.amount;
-      map[key].total += p.amount;
+      if      (p.entity_type === "SUBSCRIPTION")    map[key].subscriptionRevenue += p.amount_cents;
+      else if (p.entity_type === "WORKER_LOCK")     map[key].lockRevenue         += p.amount_cents;
+      else if (p.entity_type === "APPLICATION_FEE") map[key].feeRevenue          += p.amount_cents;
+      map[key].total += p.amount_cents;
     }
 
     return ok(res, Object.entries(map).map(([date, v]) => ({ date, ...v })));
@@ -116,14 +116,10 @@ export async function getPaymentLog(req: Request, res: Response, next: NextFunct
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
     const { type, status, search } = req.query as Record<string, string | undefined>;
 
-    const where: {
-      type?:   string;
-      status?: string;
-      user?:   { email: { contains: string; mode: "insensitive" } };
-    } = {};
-    if (type)   where.type   = type;
-    if (status) where.status = status;
-    if (search) where.user   = { email: { contains: search, mode: "insensitive" } };
+    const where: Record<string, unknown> = {};
+    if (type)   where.entity_type = type;
+    if (status) where.status      = status;
+    if (search) where.user        = { email: { contains: search, mode: "insensitive" } };
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
@@ -138,7 +134,7 @@ export async function getPaymentLog(req: Request, res: Response, next: NextFunct
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { created_at: "desc" },
         skip,
         take: limit,
       }),
@@ -156,13 +152,13 @@ export async function getPaymentLog(req: Request, res: Response, next: NextFunct
 
       return {
         id:              p.id,
-        amount:          p.amount,
+        amount:          p.amount_cents,
         currency:        p.currency,
         status:          p.status,
-        type:            p.type,
+        type:            p.entity_type,
         description:     p.description,
-        createdAt:       p.createdAt,
-        stripePaymentId: p.stripePaymentId,
+        createdAt:       p.created_at,
+        stripePaymentId: p.stripe_payment_intent_id,
         user: {
           email:       p.user.email,
           role:        p.user.role,
