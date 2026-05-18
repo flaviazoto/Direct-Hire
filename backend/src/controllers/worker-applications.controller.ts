@@ -214,13 +214,13 @@ async function createApplicationRecord(opts: {
     ...(feeCents > 0 && stripePaymentIntentId
       ? [prisma.payment.create({
           data: {
-            userId:          workerId,
-            stripePaymentId: stripePaymentIntentId,
-            amount:          feeCents,
-            currency:        "USD",
-            status:          "SUCCEEDED",
-            type:            "APPLICATION_FEE",
-            description:     `Application fee — ${job.title} at ${job.companyName}`,
+            entity_type:              "APPLICATION_FEE",
+            entity_id:                application.id,
+            stripe_payment_intent_id: stripePaymentIntentId,
+            amount_cents:             feeCents,
+            currency:                 "usd",
+            status:                   "SUCCEEDED",
+            metadata:                 { description: `Application fee — ${job.title} at ${job.companyName}` },
           },
         })]
       : []),

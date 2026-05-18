@@ -20,10 +20,10 @@ export async function getOrCreateCustomer(
 ): Promise<string> {
   const ep = await prisma.employerProfile.findUnique({
     where:  { userId },
-    select: { stripeCustomerId: true },
+    select: { id: true, subscription: { select: { stripe_customer_id: true } } },
   });
 
-  if (ep?.stripeCustomerId) return ep.stripeCustomerId;
+  if (ep?.subscription?.stripe_customer_id) return ep.subscription.stripe_customer_id;
 
   const customer = await stripe.customers.create({
     email,
@@ -31,10 +31,21 @@ export async function getOrCreateCustomer(
     metadata: { userId },
   });
 
-  await prisma.employerProfile.update({
-    where: { userId },
-    data:  { stripeCustomerId: customer.id },
-  });
+  // Upsert the Subscription record with the new customer ID
+  if (ep) {
+    await prisma.subscription.upsert({
+      where:  { employer_id: ep.id },
+      update: { stripe_customer_id: customer.id },
+      create: {
+        employer_id:          ep.id,
+        stripe_customer_id:   customer.id,
+        stripe_sub_id:        `pending-${ep.id}`,
+        status:               "INACTIVE",
+        current_period_start: new Date(),
+        current_period_end:   new Date(),
+      },
+    });
+  }
 
   return customer.id;
 }

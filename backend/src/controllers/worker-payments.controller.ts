@@ -10,29 +10,38 @@ export async function getWorkerPayments(
     const userId = req.user!.sub;
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
 
+    // Resolve the worker's application IDs to look up APPLICATION_FEE payments
+    const workerApplicationIds = await prisma.application.findMany({
+      where:  { workerId: userId },
+      select: { id: true },
+    }).then(rows => rows.map(r => r.id));
+
+    const where = workerApplicationIds.length > 0
+      ? { entity_type: "APPLICATION_FEE" as const, entity_id: { in: workerApplicationIds } }
+      : { entity_type: "APPLICATION_FEE" as const, entity_id: { in: [] as string[] } };
+
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
-        where:   { userId },
-        orderBy: { createdAt: "desc" },
+        where,
+        orderBy: { created_at: "desc" },
         skip,
         take:    limit,
         select:  {
-          id:              true,
-          amount:          true,
-          currency:        true,
-          status:          true,
-          type:            true,
-          description:     true,
-          stripeInvoiceId: true,
-          createdAt:       true,
+          id:                       true,
+          amount_cents:             true,
+          currency:                 true,
+          status:                   true,
+          entity_type:              true,
+          stripe_payment_intent_id: true,
+          created_at:               true,
         },
       }),
-      prisma.payment.count({ where: { userId } }),
+      prisma.payment.count({ where }),
     ]);
 
     const totalSpend = await prisma.payment.aggregate({
-      where:  { userId, status: "SUCCEEDED" },
-      _sum:   { amount: true },
+      where:  { ...where, status: "SUCCEEDED" },
+      _sum:   { amount_cents: true },
     });
 
     return ok(res, {
@@ -41,7 +50,7 @@ export async function getWorkerPayments(
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      totalSpend: totalSpend._sum.amount ?? 0,
+      totalSpend: totalSpend._sum.amount_cents ?? 0,
     });
   } catch (e) { next(e); }
 }

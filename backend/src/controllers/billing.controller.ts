@@ -26,10 +26,9 @@ export async function createCheckout(
       prisma.employerProfile.findUnique({
         where:  { userId },
         select: {
-          companyName:         true,
-          stripeCustomerId:    true,
-          stripeSubscriptionId: true,
-          subscriptionStatus:  true,
+          companyName:        true,
+          subscriptionStatus: true,
+          subscription:       { select: { stripe_customer_id: true, stripe_sub_id: true } },
         },
       }),
     ]);
@@ -45,7 +44,7 @@ export async function createCheckout(
     }
 
     const customerId = await getOrCreateCustomer(
-      userId, user.email, ep.companyName,
+      userId, user.email, ep.companyName ?? null,
     );
 
     const checkoutUrl = await createCheckoutSession({
@@ -70,12 +69,15 @@ export async function getSubscriptionStatus(
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },
       select: {
-        subscriptionStatus:          true,
-        subscriptionPlan:            true,
-        subscriptionCurrentPeriodEnd: true,
-        stripeCustomerId:            true,
-        stripeSubscriptionId:        true,
-        trialEndsAt:                 true,
+        subscriptionStatus: true,
+        subscriptionPlan:   true,
+        trialEndsAt:        true,
+        subscription: {
+          select: {
+            stripe_customer_id: true,
+            current_period_end: true,
+          },
+        },
       },
     });
 
@@ -84,22 +86,26 @@ export async function getSubscriptionStatus(
     }
 
     const payments = await prisma.payment.findMany({
-      where:   { userId },
-      orderBy: { createdAt: "desc" },
+      where:   { entity_type: "APPLICATION_FEE" },
+      orderBy: { created_at: "desc" },
       take:    10,
       select:  {
-        id: true, amount: true, currency: true,
-        status: true, type: true, description: true, createdAt: true,
-        stripeInvoiceId: true,
+        id:                       true,
+        amount_cents:             true,
+        currency:                 true,
+        status:                   true,
+        entity_type:              true,
+        stripe_payment_intent_id: true,
+        created_at:               true,
       },
     });
 
     return ok(res, {
       status:           ep.subscriptionStatus ?? "INACTIVE",
       plan:             ep.subscriptionPlan ?? null,
-      currentPeriodEnd: ep.subscriptionCurrentPeriodEnd ?? null,
+      currentPeriodEnd: ep.subscription?.current_period_end ?? null,
       trialEndsAt:      ep.trialEndsAt ?? null,
-      hasCustomer:      !!ep.stripeCustomerId,
+      hasCustomer:      !!ep.subscription?.stripe_customer_id,
       cancelAtPeriodEnd: ep.subscriptionStatus === "CANCELED",
       payments,
     });
@@ -115,15 +121,18 @@ export async function cancelEmployerSubscription(
 
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },
-      select: { stripeSubscriptionId: true, subscriptionStatus: true },
+      select: {
+        subscriptionStatus: true,
+        subscription: { select: { stripe_sub_id: true } },
+      },
     });
 
-    if (!ep?.stripeSubscriptionId) return err(res, "No active subscription found", 404);
+    if (!ep?.subscription?.stripe_sub_id) return err(res, "No active subscription found", 404);
     if (ep.subscriptionStatus !== "ACTIVE") {
       return err(res, "Subscription is not active", 400);
     }
 
-    await cancelSubscription(ep.stripeSubscriptionId);
+    await cancelSubscription(ep.subscription.stripe_sub_id);
 
     await prisma.employerProfile.update({
       where: { userId },
@@ -143,15 +152,15 @@ export async function createPortal(
 
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },
-      select: { stripeCustomerId: true },
+      select: { subscription: { select: { stripe_customer_id: true } } },
     });
 
-    if (!ep?.stripeCustomerId) {
+    if (!ep?.subscription?.stripe_customer_id) {
       return err(res, "No billing account found — subscribe first", 404);
     }
 
     const portalUrl = await createPortalSession(
-      ep.stripeCustomerId,
+      ep.subscription.stripe_customer_id,
       `${FRONTEND_URL()}/employer/subscription`,
     );
 

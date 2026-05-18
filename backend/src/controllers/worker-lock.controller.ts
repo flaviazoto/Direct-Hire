@@ -71,7 +71,6 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
         employerProfile: {
           select: {
             subscriptionStatus: true,
-            stripeCustomerId:   true,
             companyName:        true,
             contactPersonName:  true,
           },
@@ -80,6 +79,7 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
     });
 
     if (employerFull?.employerProfile?.subscriptionStatus !== "ACTIVE") {
+
       return err(
         res,
         "An active subscription is required to reserve workers.",
@@ -324,14 +324,13 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
     // ── Payment record ────────────────────────────────────────────────────────
     await prisma.payment.create({
       data: {
-        userId:          employerId,
-        stripePaymentId: paymentIntentId,
-        amount:          totalCents,
-        currency:        "usd",
-        status:          "SUCCEEDED",
-        type:            "WORKER_LOCK",
-        description:     `Worker reservation — ${lockDays} day${lockDays !== 1 ? "s" : ""}`,
-        metadata:        { workerId, lockId: lock.id, lockDays },
+        entity_type:              "WORKER_LOCK",
+        entity_id:                lock.id,
+        stripe_payment_intent_id: paymentIntentId,
+        amount_cents:             totalCents,
+        currency:                 "usd",
+        status:                   "SUCCEEDED",
+        metadata:                 { workerId, lockId: lock.id, lockDays, description: `Worker reservation — ${lockDays} day${lockDays !== 1 ? "s" : ""}` },
       },
     });
 
@@ -561,17 +560,15 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
               totalRefundedCents: refundCents,
             },
           });
-
           await prisma.payment.create({
             data: {
-              userId:          employerId,
-              stripePaymentId: refund.id,
-              amount:          -refundCents,   // negative = refund
-              currency:        "usd",
-              status:          "REFUNDED",
-              type:            "WORKER_LOCK",
-              description:     `Partial refund — ${unusedDays} unused day${unusedDays !== 1 ? "s" : ""}`,
-              metadata:        { lockId: lock.id, unusedDays, workerId },
+              entity_type:              "WORKER_LOCK",
+              entity_id:                lock.id,
+              stripe_payment_intent_id: refund.id,
+              amount_cents:             -refundCents,   // negative = refund
+              currency:                 "usd",
+              status:                   "REFUNDED",
+              metadata:                 { lockId: lock.id, unusedDays, workerId, description: `Partial refund — ${unusedDays} unused day${unusedDays !== 1 ? "s" : ""}` },
             },
           });
         }

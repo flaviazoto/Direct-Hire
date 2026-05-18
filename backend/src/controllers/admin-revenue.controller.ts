@@ -8,24 +8,11 @@ import { ok, getPagination, paginated } from "../lib/response";
 
 export async function getRevenueSummary(req: Request, res: Response, next: NextFunction) {
   try {
-    const now            = new Date();
-    const d30            = new Date(now.getTime() - 30 * 86400000);
-    const startOfMonth   = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const now = new Date();
+    const d30 = new Date(now.getTime() - 30 * 86400000);
 
-    const [subThis, subLast, locks30, fees30, failed30, activeSubs, activeLocks] =
+    const [locks30, fees30, failed30, activeSubs, activeLocks] =
       await Promise.all([
-        prisma.payment.aggregate({
-          where: { entity_type: "SUBSCRIPTION", status: "SUCCEEDED", created_at: { gte: d30 } },
-          _sum: { amount_cents: true },
-        }),
-        prisma.payment.aggregate({
-          where: {
-            entity_type: "SUBSCRIPTION", status: "SUCCEEDED",
-            created_at: { gte: startLastMonth, lt: startOfMonth },
-          },
-          _sum: { amount_cents: true },
-        }),
         prisma.payment.aggregate({
           where: { entity_type: "WORKER_LOCK", status: "SUCCEEDED", created_at: { gte: d30 } },
           _sum: { amount_cents: true },
@@ -37,23 +24,17 @@ export async function getRevenueSummary(req: Request, res: Response, next: NextF
         prisma.payment.count({
           where: { status: "FAILED", created_at: { gte: d30 } },
         }),
-        prisma.employerProfile.count({ where: { subscriptionStatus: "ACTIVE" } }),
+        prisma.subscription.count({ where: { status: "ACTIVE" } }),
         prisma.workerLock.count({ where: { lockStatus: "ACTIVE" } }),
       ]);
 
-    const mrr         = subThis._sum.amount_cents ?? 0;
-    const mrrLast     = subLast._sum.amount_cents ?? 0;
     const lockRevenue = locks30._sum.amount_cents ?? 0;
     const feeRevenue  = fees30._sum.amount_cents  ?? 0;
-    const mrrGrowth   = mrrLast === 0 ? 0
-      : Math.round(((mrr - mrrLast) / mrrLast) * 100);
 
     return ok(res, {
-      mrr,
-      mrrGrowth,
       lockRevenue30d:           lockRevenue,
       applicationFeeRevenue30d: feeRevenue,
-      totalRevenue30d:          mrr + lockRevenue + feeRevenue,
+      totalRevenue30d:          lockRevenue + feeRevenue,
       activeSubscriptions:      activeSubs,
       activeLocksNow:           activeLocks,
       failedPayments30d:        failed30,
@@ -79,9 +60,8 @@ export async function getRevenueChart(req: Request, res: Response, next: NextFun
     const since = new Date(Date.now() - days * 86400000);
 
     const typeFilter: { entity_type?: string } =
-      type === "subscription" ? { entity_type: "SUBSCRIPTION"    } :
-      type === "lock"         ? { entity_type: "WORKER_LOCK"     } :
-      type === "fee"          ? { entity_type: "APPLICATION_FEE" } : {};
+      type === "lock" ? { entity_type: "WORKER_LOCK"     } :
+      type === "fee"  ? { entity_type: "APPLICATION_FEE" } : {};
 
     const payments = await prisma.payment.findMany({
       where:   { status: "SUCCEEDED", created_at: { gte: since }, ...typeFilter },
@@ -99,9 +79,8 @@ export async function getRevenueChart(req: Request, res: Response, next: NextFun
     for (const p of payments) {
       const key = p.created_at.toISOString().slice(0, 10);
       if (!map[key]) continue;
-      if      (p.entity_type === "SUBSCRIPTION")    map[key].subscriptionRevenue += p.amount_cents;
-      else if (p.entity_type === "WORKER_LOCK")     map[key].lockRevenue         += p.amount_cents;
-      else if (p.entity_type === "APPLICATION_FEE") map[key].feeRevenue          += p.amount_cents;
+      if      (p.entity_type === "WORKER_LOCK")     map[key].lockRevenue += p.amount_cents;
+      else if (p.entity_type === "APPLICATION_FEE") map[key].feeRevenue  += p.amount_cents;
       map[key].total += p.amount_cents;
     }
 
@@ -119,54 +98,47 @@ export async function getPaymentLog(req: Request, res: Response, next: NextFunct
     const where: Record<string, unknown> = {};
     if (type)   where.entity_type = type;
     if (status) where.status      = status;
-    if (search) where.user        = { email: { contains: search, mode: "insensitive" } };
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              email: true,
-              role:  true,
-              employerProfile: { select: { companyName: true, contactPersonName: true } },
-              workerProfile:   { select: { firstName: true, lastName: true } },
-            },
-          },
-        },
         orderBy: { created_at: "desc" },
         skip,
         take: limit,
+        select: {
+          id:                       true,
+          entity_type:              true,
+          entity_id:                true,
+          stripe_payment_intent_id: true,
+          amount_cents:             true,
+          currency:                 true,
+          status:                   true,
+          metadata:                 true,
+          created_at:               true,
+        },
       }),
       prisma.payment.count({ where }),
     ]);
 
-    const shaped = payments.map((p) => {
-      const ep = p.user.employerProfile;
-      const wp = p.user.workerProfile;
-      const displayName =
-        ep?.companyName ??
-        ep?.contactPersonName ??
-        (wp ? [wp.firstName, wp.lastName].filter(Boolean).join(" ") : null) ??
-        p.user.email;
+    const shaped = payments.map((p) => ({
+      id:              p.id,
+      amount:          p.amount_cents,
+      currency:        p.currency,
+      status:          p.status,
+      type:            p.entity_type,
+      entityId:        p.entity_id,
+      metadata:        p.metadata,
+      createdAt:       p.created_at,
+      stripePaymentId: p.stripe_payment_intent_id,
+    }));
 
-      return {
-        id:              p.id,
-        amount:          p.amount_cents,
-        currency:        p.currency,
-        status:          p.status,
-        type:            p.entity_type,
-        description:     p.description,
-        createdAt:       p.created_at,
-        stripePaymentId: p.stripe_payment_intent_id,
-        user: {
-          email:       p.user.email,
-          role:        p.user.role,
-          displayName,
-        },
-      };
-    });
+    // Optionally filter by search term against metadata (best-effort)
+    const filtered = search
+      ? shaped.filter(p =>
+          JSON.stringify(p.metadata ?? "").toLowerCase().includes(search.toLowerCase()),
+        )
+      : shaped;
 
-    return paginated(res, shaped, total, page, limit);
+    return paginated(res, filtered, total, page, limit);
   } catch (e) { next(e); }
 }

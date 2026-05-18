@@ -142,12 +142,12 @@ export async function runLockDailyBilling(): Promise<void> {
       // Create FAILED Payment record (upfront charge that never succeeded)
       await prisma.payment.create({
         data: {
-          userId:      lock.employerId,
-          amount:      staleCharge ? Number(staleCharge.amount) : dailyRateCents,
-          currency:    lock.currency,
-          status:      "FAILED",
-          type:        "WORKER_LOCK",
-          description: `Worker lock initial payment failed — lock ${lock.id}`,
+          entity_type:              "WORKER_LOCK",
+          entity_id:                lock.id,
+          stripe_payment_intent_id: lock.stripePaymentIntentId ?? `failed-${lock.id}`,
+          amount_cents:             staleCharge ? Math.round(Number(staleCharge.amount) * 100) : dailyRateCents,
+          currency:                 lock.currency.toLowerCase(),
+          status:                   "FAILED",
           metadata: {
             lockId:          lock.id,
             workerId:        lock.workerId,
@@ -155,6 +155,7 @@ export async function runLockDailyBilling(): Promise<void> {
             reason:          "STALE_PENDING_CHARGE",
             graceHours,
             configuredRateCents: dailyRateCents,
+            description:     `Worker lock initial payment failed — lock ${lock.id}`,
           },
         },
       });
@@ -371,15 +372,15 @@ export async function runLockExpiryProcessor(): Promise<void> {
       ]);
 
       // 2. Create Payment record for natural expiry
-      //    amount: 0 — already charged upfront; this records the expiry event
+      //    amount_cents: 0 — already charged upfront; this records the expiry event
       await prisma.payment.create({
         data: {
-          userId:      expiredLock.employerId,
-          amount:      0,
-          currency:    "usd",
-          status:      "SUCCEEDED",
-          type:        "WORKER_LOCK",
-          description: `Worker lock expired after ${expiredLock.lockDays} days`,
+          entity_type:              "WORKER_LOCK",
+          entity_id:                expiredLock.id,
+          stripe_payment_intent_id: expiredLock.stripePaymentIntentId ?? `expired-${expiredLock.id}`,
+          amount_cents:             0,
+          currency:                 "usd",
+          status:                   "SUCCEEDED",
           metadata: {
             lockId:              expiredLock.id,
             workerId:            expiredLock.workerId,
@@ -387,6 +388,7 @@ export async function runLockExpiryProcessor(): Promise<void> {
             totalBilled,
             totalDaysBilled,
             configuredRateCents: dailyRateCents,
+            description:         `Worker lock expired after ${expiredLock.lockDays} days`,
           },
         },
       });
