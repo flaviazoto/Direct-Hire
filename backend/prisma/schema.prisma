@@ -212,7 +212,6 @@ model User {
   email             String     @unique
   passwordHash      String
   role              Role
-  phone             String?
   isEmailVerified                Boolean       @default(false)
   status                         UserStatus    @default(PENDING_VERIFICATION)
   accountStatus                  AccountStatus @default(PENDING_EMAIL_VERIFICATION) @map("account_status")
