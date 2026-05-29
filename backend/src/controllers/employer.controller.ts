@@ -138,7 +138,6 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
       select: {
         id:            true,
         email:         true,
-        phone:         true,
         createdAt:     true,
         lockCount:     true,
         accountStatus: true,
@@ -219,7 +218,6 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     return ok(res, {
       id:                user.id,
       email:             user.email,
-      phone:             user.phone ?? null,
       created_at:        user.createdAt,
       lock_count:        user.lockCount,
       account_status:    user.accountStatus,

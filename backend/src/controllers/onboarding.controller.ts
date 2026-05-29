@@ -208,7 +208,6 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           maritalStatus:      data.maritalStatus as string | undefined,
         },
       });
-      await prisma.user.update({ where: { id: userId }, data: { phone: data.phone as string } });
       break;
     }
     case 2: {
@@ -322,7 +321,6 @@ async function persistEmployerStep(userId: string, step: number, data: Record<st
           businessDescription: data.businessDescription as string,
         },
       });
-      await prisma.user.update({ where: { id: userId }, data: { phone: data.phone as string } });
       break;
     }
     case 3: {

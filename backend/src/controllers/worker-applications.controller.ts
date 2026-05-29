@@ -434,7 +434,6 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
         employer: {
           select: {
             email:          true,
-            phone:          true,
             employerProfile: { select: { contactPersonName: true } },
           },
         },
@@ -450,7 +449,7 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
       companyContact = {
         contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
         contact_email:          app.employer.email,
-        contact_phone:          app.employer.phone ?? null,
+        contact_phone:          null,
         company_name:           app.job.companyName,
         interview_instructions: app.interviewInstructions,
       };
@@ -542,7 +541,6 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
         employer: {
           select: {
             email:          true,
-            phone:          true,
             employerProfile: { select: { contactPersonName: true } },
           },
         },
@@ -580,7 +578,7 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
     return ok(res, {
       contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
       contact_email:          app.employer.email,
-      contact_phone:          app.employer.phone ?? null,
+      contact_phone:          null,
       company_name:           app.job.companyName,
       interview_instructions: app.interviewInstructions,
     });

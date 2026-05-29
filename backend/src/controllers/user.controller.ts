@@ -11,7 +11,7 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
 
     const user = await prisma.user.findUnique({
       where:  { id: userId },
-      select: { id: true, email: true, role: true, phone: true,
+      select: { id: true, email: true, role: true,
                 status: true, accountStatus: true, onboardingComplete: true,
                 isEmailVerified: true, createdAt: true },
     });
@@ -105,11 +105,6 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     const userId = req.user!.sub;
     const role = req.user!.role;
     const body = (req.body ?? {}) as Record<string, unknown>;
-
-    const phone = asTrimmedString(body.phone);
-    if (phone !== undefined) {
-      await prisma.user.update({ where: { id: userId }, data: { phone } });
-    }
 
     if (role === "WORKER") {
       const rawPassport = asTrimmedString(body.passportNumber);
