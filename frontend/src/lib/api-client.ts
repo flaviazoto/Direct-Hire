@@ -7,6 +7,8 @@ type ApiResult<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
+  redirectTo?: string;
   fieldErrors?: Record<string, string>;
 };
 
@@ -69,6 +71,14 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = fals
         if (refreshed) return request<T>(path, options, true);
       }
       window.location.href = "/login?session=expired";
+    }
+
+    // Employer subscription gate (backend/src/middleware/subscription.middleware.ts):
+    // 403 responses carry code: "SUBSCRIPTION_REQUIRED" (not error, which holds the
+    // human-readable message) — send the employer to billing instead of surfacing
+    // a generic error.
+    if (res.status === 403 && json.code === "SUBSCRIPTION_REQUIRED" && typeof window !== "undefined") {
+      window.location.href = json.redirectTo ?? "/employer/subscription";
     }
 
     return json;

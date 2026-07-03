@@ -12,10 +12,14 @@ export async function requireSubscription(
 
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },
-      select: { subscriptionStatus: true },
+      select: { subscriptionStatus: true, subscriptionCurrentPeriodEnd: true },
     });
 
-    if (ep?.subscriptionStatus === "ACTIVE") return next();
+    const isActive  = ep?.subscriptionStatus === "ACTIVE";
+    const isExpired = ep?.subscriptionCurrentPeriodEnd != null
+      && ep.subscriptionCurrentPeriodEnd.getTime() < Date.now();
+
+    if (isActive && !isExpired) return next();
 
     return res.status(403).json({
       success:    false,
