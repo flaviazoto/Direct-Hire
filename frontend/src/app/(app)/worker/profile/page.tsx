@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { userApi } from "@/lib/api-client";
+import { authApi, userApi } from "@/lib/api-client";
 import {
   LoadingPage, PageHeader, Card, CardHeader, CardContent, Badge,
   Button, Avatar, Tag, ProgressBar,
@@ -61,21 +61,15 @@ export default function WorkerProfilePage() {
   const handleDeleteAccount = useCallback(async () => {
     setDeleteLoading(true);
     setDeleteError(null);
-    try {
-      const res = await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setDeleteError((body as { message?: string }).message ?? "Failed to delete account");
-        setDeleteLoading(false);
-        return;
-      }
-      localStorage.removeItem("dh_token");
-      localStorage.removeItem("dh_role");
-      router.replace("/");
-    } catch {
-      setDeleteError("Network error. Please try again.");
+    const res = await authApi.deleteAccount();
+    if (!res.success) {
+      setDeleteError(res.error ?? "Failed to delete account");
       setDeleteLoading(false);
+      return;
     }
+    localStorage.removeItem("dh_token");
+    localStorage.removeItem("dh_role");
+    router.replace("/");
   }, [router]);
 
   if (loading) return <LoadingPage color="blue" />;

@@ -189,6 +189,7 @@ export const authApi = {
   refresh: () => post("/auth/refresh"),
   sendVerificationCode: (email: string) => post("/auth/send-verification-code", { email }),
   verifyEmailCode: (email: string, code: string) => post("/auth/verify-email-code", { email, code }),
+  deleteAccount: () => del("/auth/account"),
 };
 
 export const onboardingApi = {

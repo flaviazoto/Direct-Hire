@@ -16,10 +16,10 @@ function isSafeRedirect(path: string): boolean {
 }
 
 function CallbackContent() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-  const { refresh }  = useAuth();
-  const called       = useRef(false);
+  const router               = useRouter();
+  const searchParams         = useSearchParams();
+  const { hydrateFromLogin } = useAuth();
+  const called               = useRef(false);
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
@@ -56,20 +56,29 @@ function CallbackContent() {
     })
       .then(async (res) => {
         if (!res.ok) throw new Error("exchange_failed");
-        const json = await res.json() as { data?: { accessToken?: string; token?: string; role?: string } };
-        const tok  = json.data?.accessToken ?? json.data?.token;
+        const json = await res.json() as {
+          data?: { accessToken?: string; token?: string; role?: string; user?: { id?: string; email?: string; role?: string } };
+        };
+        const tok = json.data?.accessToken ?? json.data?.token;
         if (tok) {
           localStorage.setItem("dh_token", tok);
-          localStorage.setItem("dh_role", json.data?.role ?? "");
+          localStorage.setItem("dh_role", json.data?.role ?? json.data?.user?.role ?? "");
         }
-        await refresh();
+        // Hydrate auth state from the exchange response itself — no extra
+        // network round-trip, so nothing here can fail and wipe the token
+        // we just stored (same fix applied to the password login flow).
+        hydrateFromLogin({
+          id:    json.data?.user?.id    ?? "",
+          email: json.data?.user?.email ?? "",
+          role:  json.data?.user?.role  ?? json.data?.role ?? "",
+        });
         router.replace(safeRedirect);
       })
       .catch(() => {
         setIsError(true);
         setTimeout(() => router.replace("/login?error=oauth_failed"), 2000);
       });
-  }, [searchParams, refresh, router]);
+  }, [searchParams, hydrateFromLogin, router]);
 
   return (
     <>

@@ -543,6 +543,11 @@ export async function oauthComplete(req: Request, res: Response, next: NextFunct
     });
 
     setAuthCookies(res, accessToken, refreshToken);
-    return ok(res, { role: user.role, accessToken, token: accessToken });
+    return ok(res, {
+      user: { id: user.id, email: user.email, role: user.role },
+      role: user.role,
+      accessToken,
+      token: accessToken,
+    });
   } catch (e) { next(e); }
 }

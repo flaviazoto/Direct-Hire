@@ -70,15 +70,13 @@ export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
 }
 
 // ── Cookie helpers ────────────────────────────────────────────
-export function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+// Only dh_refresh is set as a cookie — the access token travels in the JSON
+// response body / Authorization header only. Setting just one cookie means
+// each auth response carries exactly one Set-Cookie header, avoiding proxy
+// layers (e.g. the Next.js rewrite bridging directhire.cc -> api.directhire.cc)
+// that mishandle/coalesce multiple Set-Cookie headers on one response.
+export function setAuthCookies(res: Response, _accessToken: string, refreshToken: string) {
   const { sameSite, secure } = getCookiePolicy();
-
-  res.cookie(COOKIE_ACCESS, accessToken, {
-    httpOnly: true,
-    sameSite,
-    secure,
-    maxAge:   15 * 60 * 1000,
-  });
 
   res.cookie(COOKIE_REFRESH, refreshToken, {
     httpOnly: true,
@@ -91,12 +89,6 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
 
 export function clearAuthCookies(res: Response) {
   const { sameSite, secure } = getCookiePolicy();
-
-  res.clearCookie(COOKIE_ACCESS, {
-    httpOnly: true,
-    sameSite,
-    secure,
-  });
 
   res.clearCookie(COOKIE_REFRESH, {
     httpOnly: true,

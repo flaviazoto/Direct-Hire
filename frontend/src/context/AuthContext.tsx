@@ -26,10 +26,11 @@ interface AuthState {
 }
 
 interface AuthContextType {
-  auth:        AuthState;
-  loading:     boolean;
-  refresh:     () => Promise<void>;
-  logout:      () => Promise<void>;
+  auth:              AuthState;
+  loading:           boolean;
+  refresh:           () => Promise<void>;
+  logout:            () => Promise<void>;
+  hydrateFromLogin:  (user: { id: string; email: string; role: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -68,6 +69,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuth({ isLoggedIn: true, user, role: user.role, firstName: user.firstName ?? null, loading: false });
   }, []);
 
+  // Hydrates auth state directly from a login response's `user` object —
+  // no network call, so there's no path from here to setLoggedOut(). Used
+  // right after a successful login instead of refresh(), which does its own
+  // /user/profile + /auth/refresh round-trip and can wipe a token that was
+  // literally just issued if that round-trip hits a transient failure.
+  const hydrateFromLogin = useCallback((user: { id: string; email: string; role: string }) => {
+    setAuth({
+      isLoggedIn: true,
+      user:       { id: user.id, email: user.email, role: user.role },
+      role:       user.role,
+      firstName:  null,
+      loading:    false,
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     const token = getToken();
     if (!token) { setLoggedOut(); return; }
@@ -86,11 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (res.status === 401) {
         // Try silent cookie-based refresh
-        const rr = await fetch(`${API}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
+        let rr: Response;
+        try {
+          rr = await fetch(`${API}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch {
+          // Network-level failure reaching /auth/refresh — not a definitive
+          // auth rejection, so don't wipe the token. Let subsequent calls
+          // retry naturally through api-client.ts's own 401 handling.
+          setAuth((s) => ({ ...s, loading: false }));
+          return;
+        }
 
         if (rr.ok) {
           const rd = (await rr.json()) as Record<string, unknown>;
@@ -114,9 +139,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             applyProfile(data.data ? (data.data as Record<string, unknown>) : data);
             return;
           }
+
+          // Refresh nominally succeeded but the confirmation retry didn't —
+          // not a definitive rejection either; don't wipe, just stop loading.
+          setAuth((s) => ({ ...s, loading: false }));
+          return;
         }
 
-        setLoggedOut();
+        if (rr.status === 401 || rr.status === 403) {
+          // Definitive rejection: access token invalid AND the refresh token
+          // is also invalid/expired/forbidden. Safe to log out.
+          setLoggedOut();
+          return;
+        }
+
+        // /auth/refresh hit a transient error (5xx etc.) — not definitive.
+        setAuth((s) => ({ ...s, loading: false }));
         return;
       }
 
@@ -146,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, setLoggedOut]);
 
   return (
-    <AuthContext.Provider value={{ auth, loading: auth.loading, refresh, logout }}>
+    <AuthContext.Provider value={{ auth, loading: auth.loading, refresh, logout, hydrateFromLogin }}>
       {children}
     </AuthContext.Provider>
   );

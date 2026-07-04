@@ -35,9 +35,9 @@ function GoogleIcon() {
 }
 
 function LoginPageContent() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-  const { refresh }  = useAuth();
+  const router             = useRouter();
+  const searchParams       = useSearchParams();
+  const { hydrateFromLogin } = useAuth();
 
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -158,13 +158,19 @@ function LoginPageContent() {
     const res = await authApi.login({ email, password });
     setLoading(false);
     if (res.success) {
-      const d = res.data as { redirectTo?: string; accessToken?: string; token?: string; role?: string; user?: { role?: string } };
+      const d = res.data as { redirectTo?: string; accessToken?: string; token?: string; role?: string; user?: { id?: string; email?: string; role?: string } };
       const tok = d.accessToken ?? d.token;
       if (tok) {
         localStorage.setItem("dh_token", tok);
         localStorage.setItem("dh_role", d.role ?? d.user?.role ?? "");
       }
-      await refresh();
+      // Hydrate auth state from the login response itself — no extra network
+      // round-trip, so nothing here can fail and wipe the token we just stored.
+      hydrateFromLogin({
+        id:    d.user?.id    ?? "",
+        email: d.user?.email ?? email,
+        role:  d.user?.role  ?? d.role ?? "",
+      });
       router.push(d.redirectTo ?? "/worker/dashboard");
     } else {
       const raw = res as { error?: string; accountStatus?: string };
