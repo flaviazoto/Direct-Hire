@@ -11,7 +11,8 @@
       "Bash(find \"c:\\\\Users\\\\FLAVIA\\\\directhire-v2-complete\\\\directhire-v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\employer\" -name \"*.tsx\" -exec grep -l \"candidates\\\\|workers\\\\|locks\" {} \\\\;)",
       "Bash(powershell -Command ' *)",
       "Bash(npm install *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Read(//tmp/**)"
     ]
   }
 }
