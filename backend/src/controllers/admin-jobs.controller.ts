@@ -233,6 +233,15 @@ export async function approveJob(req: Request, res: Response, next: NextFunction
         metadata: { job_id: id, job_title: job.title },
       }),
       sendJobApprovedEmail(job.employer.id, job.employer.email, firstName, job.title, id),
+      prisma.notification.create({
+        data: {
+          userId: job.employer.id,
+          title:  `Job approved — ${job.title}`,
+          body:   `"${job.title}" has been approved and is now live for workers to see.`,
+          type:   "ADMIN_JOB_MODERATION",
+          link:   "/employer/jobs",
+        },
+      }),
     ]).catch(console.error);
 
     return ok(res, { id: updated.id, status: updated.status });
@@ -282,6 +291,15 @@ export async function rejectJob(req: Request, res: Response, next: NextFunction)
         metadata: { job_id: id, job_title: job.title },
       }),
       sendJobRejectedEmail(job.employer.id, job.employer.email, job.title, id, reason),
+      prisma.notification.create({
+        data: {
+          userId: job.employer.id,
+          title:  `Job rejected — ${job.title}`,
+          body:   `"${job.title}" was rejected. Reason: ${reason}`,
+          type:   "ADMIN_JOB_MODERATION",
+          link:   `/employer/jobs/${id}/edit`,
+        },
+      }),
     ]).catch(console.error);
 
     return ok(res, null);
@@ -333,6 +351,15 @@ export async function requestJobChanges(req: Request, res: Response, next: NextF
         metadata: { job_id: id, job_title: job.title },
       }),
       sendJobChangesRequestedEmail(job.employer.id, job.employer.email, job.title, id, notes),
+      prisma.notification.create({
+        data: {
+          userId: job.employer.id,
+          title:  `Changes requested — ${job.title}`,
+          body:   `Admin requested changes to "${job.title}". Notes: ${notes}`,
+          type:   "ADMIN_JOB_MODERATION",
+          link:   `/employer/jobs/${id}/edit`,
+        },
+      }),
     ]).catch(console.error);
 
     return ok(res, null);

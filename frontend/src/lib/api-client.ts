@@ -393,6 +393,12 @@ export const employerApi = {
   createSubscriptionCheckout: () => post("/employer/subscription/checkout"),
   cancelSubscription: () => post("/employer/subscription/cancel"),
   getPortalSession: () => post("/employer/subscription/portal"),
+  // ── Notifications ───────────────────────────────────────────────────────────
+  getNotifications: (params?: Record<string, string>) =>
+    get(`/employer/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
+  getUnreadCount: () => get("/employer/notifications/unread-count"),
+  markNotificationRead: (id: string) => post(`/employer/notifications/${id}/read`),
+  markAllNotificationsRead: () => post("/employer/notifications/read-all"),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */

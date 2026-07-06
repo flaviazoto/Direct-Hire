@@ -1,15 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Menu, X, Bell, ChevronRight, LogOut,
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
   TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock,
 } from 'lucide-react'
+import { employerApi } from '@/lib/api-client'
+import { useNotificationPolling } from '@/hooks/useNotificationPolling'
+
+type NotifItem = {
+  id: string
+  title: string
+  body: string
+  isRead: boolean
+  link?: string | null
+  createdAt: string
+}
+
+function timeAgo(d: string) {
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
 
 type Role = 'worker' | 'employer' | 'admin'
 
@@ -158,6 +177,62 @@ export default function DashboardHeader({
   const [menuOpen, setMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Notifications — functional for employer only today. Admin's bell stays
+  // decorative (no backing /admin/notifications endpoint exists yet) rather
+  // than silently building unrequested admin scope.
+  const [notifOpen,    setNotifOpen]    = useState(false)
+  const [notifs,       setNotifs]       = useState<NotifItem[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
+  const mobileNotifRef  = useRef<HTMLDivElement>(null)
+  const desktopNotifRef = useRef<HTMLDivElement>(null)
+
+  const fetchUnreadCount = useCallback(
+    () => (role === 'employer' ? employerApi.getUnreadCount() : Promise.resolve({ success: false })),
+    [role],
+  )
+  const { unreadCount, refetch: refetchUnreadCount } = useNotificationPolling(fetchUnreadCount)
+
+  async function toggleNotifOpen() {
+    if (notifOpen) { setNotifOpen(false); return }
+    setNotifOpen(true)
+    setNotifLoading(true)
+    const res = await employerApi.getNotifications({ limit: '10' })
+    if (res.success) {
+      const d = res.data as { data?: NotifItem[] } | NotifItem[] | undefined
+      setNotifs(Array.isArray(d) ? d : (d as { data?: NotifItem[] } | undefined)?.data ?? [])
+    }
+    setNotifLoading(false)
+  }
+
+  async function handleNotifClick(n: NotifItem) {
+    setNotifOpen(false)
+    if (!n.isRead) {
+      await employerApi.markNotificationRead(n.id)
+      setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x))
+      refetchUnreadCount()
+    }
+    router.push(n.link ?? '/employer/dashboard')
+  }
+
+  async function handleMarkAllRead() {
+    await employerApi.markAllNotificationsRead()
+    setNotifs(ns => ns.map(x => ({ ...x, isRead: true })))
+    refetchUnreadCount()
+  }
+
+  useEffect(() => {
+    if (!notifOpen) return
+    function handler(e: MouseEvent) {
+      const target = e.target as Node
+      if (mobileNotifRef.current?.contains(target)) return
+      if (desktopNotifRef.current?.contains(target)) return
+      setNotifOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [notifOpen])
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -183,7 +258,7 @@ export default function DashboardHeader({
     }
   }, [menuOpen])
 
-  useEffect(() => { setMenuOpen(false) }, [pathname])
+  useEffect(() => { setMenuOpen(false); setNotifOpen(false) }, [pathname])
 
   const links = role === 'employer' ? ROLE_LINKS.employer : []
   const sidebarTheme = SIDEBAR_THEME[role]
@@ -203,6 +278,60 @@ export default function DashboardHeader({
     border: '1px solid rgba(255,255,255,0.08)',
     cursor: 'pointer',
     textDecoration: 'none',
+  }
+
+  // ── Notification dropdown (employer only) ───────────────────────────────────
+  function renderNotifList() {
+    if (notifLoading) {
+      return <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>Loading…</div>
+    }
+    if (notifs.length === 0) {
+      return <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>No notifications yet</div>
+    }
+    return notifs.map(n => (
+      <button
+        key={n.id}
+        onClick={() => handleNotifClick(n)}
+        style={{
+          width: '100%', display: 'flex', flexDirection: 'column', gap: 4,
+          padding: '12px 16px',
+          background: n.isRead ? 'transparent' : `${sidebarTheme.activeBg}`,
+          border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: '50%', background: sidebarTheme.activeText, flexShrink: 0 }} />}
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{n.title}</span>
+        </div>
+        <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{n.body}</span>
+        <span style={{ fontSize: 11, color: '#4b5563' }}>{timeAgo(n.createdAt)}</span>
+      </button>
+    ))
+  }
+
+  function renderNotifPanel(width: number) {
+    return (
+      <div style={{
+        width, maxWidth: '90vw', maxHeight: 420, overflow: 'hidden',
+        background: '#111827', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 14, boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Notifications</span>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllRead}
+              style={{ fontSize: 11, fontWeight: 600, color: sidebarTheme.activeText, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>{renderNotifList()}</div>
+      </div>
+    )
   }
 
   // Fix 4 — portal escapes any parent stacking context / transform
@@ -349,6 +478,27 @@ export default function DashboardHeader({
             <Link href="/worker/notifications" aria-label="Notifications" style={btnStyle}>
               <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
             </Link>
+          ) : role === 'employer' ? (
+            <div ref={mobileNotifRef} style={{ position: 'relative' }}>
+              <button onClick={toggleNotifOpen} aria-label="Notifications" style={btnStyle}>
+                <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16,
+                    borderRadius: 8, background: '#dc2626', color: 'white',
+                    fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 3px', border: '2px solid rgba(6,9,26,0.97)',
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div style={{ position: 'fixed', top: 56, right: 12, zIndex: 100 }}>
+                  {renderNotifPanel(320)}
+                </div>
+              )}
+            </div>
           ) : (
             <button aria-label="Notifications" style={btnStyle}>
               <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
@@ -380,6 +530,40 @@ export default function DashboardHeader({
             DirectHire
           </span>
         </Link>
+
+        {role === 'employer' && (
+          <div ref={desktopNotifRef} style={{ position: 'relative', marginBottom: 12 }}>
+            <button
+              onClick={toggleNotifOpen}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.7)',
+                fontSize: 13, fontWeight: 500,
+              }}
+            >
+              <div style={{ position: 'relative', display: 'flex' }}>
+                <Bell size={16} strokeWidth={1.75} />
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -6, right: -6, minWidth: 14, height: 14,
+                    borderRadius: 7, background: '#dc2626', color: 'white',
+                    fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 3px',
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              Notifications
+            </button>
+            {notifOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 100 }}>
+                {renderNotifPanel(280)}
+              </div>
+            )}
+          </div>
+        )}
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {role === 'admin' ? (

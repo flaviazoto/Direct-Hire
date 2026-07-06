@@ -5,6 +5,10 @@ import * as jobsCtrl  from "../controllers/employer-jobs.controller";
 import * as appCtrl   from "../controllers/employer-applications.controller";
 import * as lockCtrl  from "../controllers/worker-lock.controller";
 import * as billing   from "../controllers/billing.controller";
+// Notification handlers are role-agnostic (filter purely by req.user.sub), so
+// they're reused as-is rather than duplicated — same cross-role-import pattern
+// already used above for worker-lock.controller.ts.
+import * as notifCtrl from "../controllers/worker-notifications.controller";
 import { requireEmployer, requireVerifiedEmployer } from "../middleware/auth.middleware";
 import { requireSubscription } from "../middleware/subscription.middleware";
 
@@ -67,3 +71,10 @@ employerRouter.get( "/subscription/status",   requireEmployer, billing.getSubscr
 employerRouter.post("/subscription/checkout", requireEmployer, billing.createCheckout);
 employerRouter.post("/subscription/cancel",   requireEmployer, billing.cancelEmployerSubscription);
 employerRouter.post("/subscription/portal",   requireEmployer, billing.createPortal);
+
+// ── Notifications (verified employer only — NOT subscription-gated: a lapsed
+// employer must still be able to see "your job was approved") ────────────────
+employerRouter.get( "/notifications",              requireVerifiedEmployer, notifCtrl.getNotifications);
+employerRouter.get( "/notifications/unread-count", requireVerifiedEmployer, notifCtrl.getUnreadCount);
+employerRouter.post("/notifications/read-all",     requireVerifiedEmployer, notifCtrl.markAllNotificationsRead);
+employerRouter.post("/notifications/:id/read",     requireVerifiedEmployer, notifCtrl.markNotificationRead);
