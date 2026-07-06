@@ -20,7 +20,9 @@ type NavLink = {
 }
 
 // Flat links — desktop sidebar only (worker role uses layout.tsx Sidebar instead)
-const ROLE_LINKS: Record<'employer' | 'admin', NavLink[]> = {
+// NOTE: admin key intentionally removed — admin now renders the grouped
+// ADMIN_LINKS structure below on both desktop and mobile. Kept employer-only.
+const ROLE_LINKS: Record<'employer', NavLink[]> = {
   employer: [
     { href: '/employer/dashboard',    label: 'Dashboard',    Icon: LayoutGrid    },
     { href: '/employer/jobs',         label: 'My Jobs',      Icon: Briefcase     },
@@ -30,17 +32,15 @@ const ROLE_LINKS: Record<'employer' | 'admin', NavLink[]> = {
     { href: '/employer/locks',        label: 'Locks',        Icon: Lock          },
     { href: '/employer/billing',      label: 'Billing',      Icon: CreditCard    },
   ],
-  admin: [
-    { href: '/admin/dashboard', label: 'Dashboard',         Icon: LayoutGrid },
-    { href: '/admin/users',     label: 'All Users',         Icon: Users      },
-    { href: '/admin/approvals', label: 'Pending Approvals', Icon: Clock      },
-    { href: '/admin/audit-log', label: 'Audit Log',         Icon: FileText   },
-    { href: '/admin/revenue',   label: 'Revenue',           Icon: Settings   },
-  ],
 }
 
-// Grouped links — admin mobile overlay only
-const ADMIN_LINKS = [
+type AdminLinkGroup = {
+  section: string
+  links: { href: string; label: string; Icon: React.ElementType }[]
+}
+
+// Grouped links — used by BOTH the admin desktop sidebar and mobile overlay
+const ADMIN_LINKS: AdminLinkGroup[] = [
   {
     section: 'Overview',
     links: [
@@ -185,7 +185,7 @@ export default function DashboardHeader({
 
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
-  const links = ROLE_LINKS[role as 'employer' | 'admin']
+  const links = role === 'employer' ? ROLE_LINKS.employer : []
   const sidebarTheme = SIDEBAR_THEME[role]
   const theme = ROLE_THEME[role]
 
@@ -360,7 +360,7 @@ export default function DashboardHeader({
         </div>
       </header>
 
-      {/* ── Desktop sidebar (shown at md+) — DO NOT TOUCH ── */}
+      {/* ── Desktop sidebar (shown at md+) — outer layout/theme unchanged; nav content now mirrors the mobile overlay's admin grouping ── */}
       <aside
         className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 z-30 pt-6 pb-8 px-4"
         style={{ background: '#0b1120', borderRight: '1px solid rgba(255,255,255,0.07)' }}
@@ -382,26 +382,50 @@ export default function DashboardHeader({
         </Link>
 
         <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {links.map(({ href, label, Icon }) => {
-            const active = isActive(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 12px', borderRadius: 10,
-                  textDecoration: 'none', fontSize: 13, fontWeight: 500,
-                  background: active ? sidebarTheme.activeBg : 'transparent',
-                  color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                <Icon size={16} strokeWidth={1.75} />
-                {label}
-              </Link>
-            )
-          })}
+          {role === 'admin' ? (
+            ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+              <div key={section} className="mb-4">
+                <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
+                  {section}
+                </p>
+                {sectionLinks.map(({ href, label, Icon }) => {
+                  const active = pathname === href || pathname.startsWith(href + '/')
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
+                      style={{ color: active ? undefined : 'rgba(255,255,255,0.55)', fontWeight: 500 }}
+                    >
+                      <Icon size={16} strokeWidth={1.75} />
+                      {label}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))
+          ) : (
+            links.map(({ href, label, Icon }) => {
+              const active = isActive(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 12px', borderRadius: 10,
+                    textDecoration: 'none', fontSize: 13, fontWeight: 500,
+                    background: active ? sidebarTheme.activeBg : 'transparent',
+                    color: active ? sidebarTheme.activeText : 'rgba(255,255,255,0.55)',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  <Icon size={16} strokeWidth={1.75} />
+                  {label}
+                </Link>
+              )
+            })
+          )}
         </nav>
 
         <button
