@@ -351,7 +351,10 @@ export const employerApi = {
   deleteJob: (id: string) => del(`/employer/jobs/${id}`),
   getLocks: (params?: Record<string, string>) =>
     get(`/employer/locks${params ? "?" + new URLSearchParams(params) : ""}`),
-  releaseLock: (id: string) => patch(`/employer/locks/${id}/release`),
+  // NOTE: was patch(`/employer/locks/${id}/release`) — that endpoint never
+  // existed (dead code, no callers). Repointed at the real, already-working
+  // release route (same one releaseWorkerLock below uses).
+  releaseLock: (workerId: string) => post(`/employer/workers/${workerId}/release-lock`, {}),
   getBilling: () => get("/employer/billing"),
   getJobApplications: (jobId: string, params?: Record<string, string>) =>
     get(`/employer/jobs/${jobId}/applications${params ? "?" + new URLSearchParams(params) : ""}`),

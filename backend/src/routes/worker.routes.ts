@@ -30,9 +30,12 @@ workerRouter.get( "/applications/:id/contact",   requireVerifiedWorker, appCtrl.
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
 
 // ── Lock status (requireWorker — available regardless of verification status) ──
-workerRouter.get("/lock-status",               requireWorker, lockCtrl.getMyLockStatus);
-workerRouter.get("/lock-history",              requireWorker, lockCtrl.getMyLockHistory);
-workerRouter.get("/lock-history/:lockId",      requireWorker, lockCtrl.getMyLockDetail);
+// NOTE: prefixed with /worker to match this router's own /worker/notifications
+// and /worker/messages convention (workerRouter is mounted at plain /api in
+// server.ts, not /api/worker, so each route must carry the prefix itself).
+workerRouter.get("/worker/lock-status",          requireWorker, lockCtrl.getMyLockStatus);
+workerRouter.get("/worker/lock-history",         requireWorker, lockCtrl.getMyLockHistory);
+workerRouter.get("/worker/lock-history/:lockId", requireWorker, lockCtrl.getMyLockDetail);
 
 // ── Notifications & messages ──────────────────────────────────────────────────
 // Static routes must precede /:id param routes
