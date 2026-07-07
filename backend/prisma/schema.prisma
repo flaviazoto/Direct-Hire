@@ -621,6 +621,13 @@ model Application {
   rejectionReason          String?           @map("rejection_reason")
   interviewInstructions    String?           @map("interview_instructions")
 
+  // Worker's response to an interview invitation — set via
+  // POST /applications/:id/interview-response, independent of `status`
+  // (status stays INTERVIEWED until the employer accepts/rejects separately).
+  interviewResponse        String?           @map("interview_response")          // "ACCEPTED" | "DECLINED"
+  interviewResponseMessage String?           @db.Text @map("interview_response_message")
+  interviewRespondedAt     DateTime?         @map("interview_responded_at")
+
   matchScore               Decimal?          @db.Decimal(5, 2) @map("match_score")
 
   offeredSalary            Decimal?          @db.Decimal(10, 2) @map("offered_salary")

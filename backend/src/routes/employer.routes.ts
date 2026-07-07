@@ -78,3 +78,8 @@ employerRouter.get( "/notifications",              requireVerifiedEmployer, noti
 employerRouter.get( "/notifications/unread-count", requireVerifiedEmployer, notifCtrl.getUnreadCount);
 employerRouter.post("/notifications/read-all",     requireVerifiedEmployer, notifCtrl.markAllNotificationsRead);
 employerRouter.post("/notifications/:id/read",     requireVerifiedEmployer, notifCtrl.markNotificationRead);
+
+// ── Messages (received-message inbox, reusing the same role-agnostic handlers
+// as the worker side — Message.recipientId/senderId already generic) ─────────
+employerRouter.get( "/messages",          requireVerifiedEmployer, notifCtrl.getMessages);
+employerRouter.post("/messages/:id/read", requireVerifiedEmployer, notifCtrl.markMessageRead);

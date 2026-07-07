@@ -629,6 +629,43 @@ export function applicationInterviewedTemplate(vars: {
   };
 }
 
+export function interviewResponseTemplate(vars: {
+  workerName: string;
+  jobTitle:   string;
+  response:   "ACCEPTED" | "DECLINED";
+  message?:   string;
+  jobId:      string;
+}): TemplateResult {
+  const accepted     = vars.response === "ACCEPTED";
+  const accentColor  = accepted ? "#0D9488" : "#DC2626";
+  const applicantsUrl = `${APP_URL}/employer/jobs/${vars.jobId}/applicants`;
+  const messageBlock = vars.message
+    ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#F8FAFC;border-radius:12px;border-left:4px solid ${accentColor};margin:20px 0;">
+        <tr><td>
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:0.5px;">Message from ${vars.workerName}</p>
+          <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.message}</p>
+        </td></tr>
+       </table>`
+    : "";
+  const html = layout(`
+    ${badge(accepted ? "INTERVIEW ACCEPTED" : "INTERVIEW DECLINED", accentColor)}
+    <br/><br/>
+    ${h1(accepted
+      ? `${vars.workerName} accepted your interview invitation`
+      : `${vars.workerName} declined your interview invitation`)}
+    ${p(`This is regarding your job posting <strong>"${vars.jobTitle}"</strong>.`)}
+    ${messageBlock}
+    ${btn(applicantsUrl, "View applicant", accentColor)}
+    ${divider()}
+    ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+  return {
+    subject: `${vars.workerName} ${accepted ? "accepted" : "declined"} your interview invitation — ${vars.jobTitle}`,
+    html,
+    text: `${vars.workerName} ${accepted ? "accepted" : "declined"} your interview invitation for "${vars.jobTitle}".${vars.message ? ` Message: ${vars.message}` : ""} View at: ${applicantsUrl}`,
+  };
+}
+
 export function applicationAcceptedWorkerTemplate(vars: {
   firstName:   string;
   jobTitle:    string;

@@ -387,6 +387,19 @@ export async function sendApplicationAcceptedWorkerEmail(
     templateId: "application_accepted_worker", variables: { firstName, jobTitle, companyName } });
 }
 
+// Reuses the generic GENERAL email type rather than adding a new EmailType
+// enum member (which would need its own migration) — same convention already
+// used by messageWorker's employer-facing message email.
+export async function sendInterviewResponseEmployerEmail(
+  employerUserId: string, to: string, workerName: string, jobTitle: string,
+  response: "ACCEPTED" | "DECLINED", message: string | undefined, jobId: string,
+) {
+  const { interviewResponseTemplate } = await import("./templates");
+  const { subject, html, text } = interviewResponseTemplate({ workerName, jobTitle, response, message, jobId });
+  await sendEmail({ userId: employerUserId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "interview_response", variables: { workerName, jobTitle, response } });
+}
+
 export async function sendApplicationAcceptedEmployerEmail(userId: string, to: string, workerName: string) {
   const { applicationAcceptedEmployerTemplate } = await import("./templates");
   const { subject, html, text } = applicationAcceptedEmployerTemplate({ workerName });

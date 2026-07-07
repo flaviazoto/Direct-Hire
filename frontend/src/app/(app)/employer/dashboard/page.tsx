@@ -139,6 +139,7 @@ function EmployerDashboardContent() {
   const [activeLockCount, setActiveLockCount] = useState<number | null>(null);
   const [loading, setLoading]             = useState(true);
   const [toast, setToast]                 = useState<ToastData>(null);
+  const [stats, setStats]                 = useState({ totalApplicants: 0, shortlisted: 0, interviewed: 0 });
 
   const showToast = useCallback((msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -167,6 +168,8 @@ function EmployerDashboardContent() {
         const raw = aRes.data as { applications?: Application[] } | Application[];
         const apps = Array.isArray(raw) ? raw : (raw.applications ?? []);
         setTopApps(apps.sort((a, b) => (b.aiMatchScore ?? b.matchScore ?? 0) - (a.aiMatchScore ?? a.matchScore ?? 0)));
+        const s = (aRes as unknown as { stats?: { totalApplicants: number; shortlisted: number; interviewed: number } }).stats;
+        if (s) setStats(s);
       }
       if (lRes.success && lRes.data) {
         const d = lRes.data as { total?: number };
@@ -190,9 +193,11 @@ function EmployerDashboardContent() {
   const needsAction = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus);
   const unread      = notifications.filter(n => !n.isRead).length;
 
-  const totalApplicants  = topApps.length;
-  const shortlisted      = topApps.filter(a => a.status === "SHORTLISTED").length;
-  const interviews       = topApps.filter(a => ["INTERVIEWED", "INTERVIEW"].includes(a.status)).length;
+  // Real totals across ALL of this employer's applications (backend groupBy),
+  // not just the recent-5 list — topApps below stays scoped to that 5-item feed.
+  const totalApplicants  = stats.totalApplicants;
+  const shortlisted      = stats.shortlisted;
+  const interviews       = stats.interviewed;
 
   return (
     <div style={{ maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
@@ -427,7 +432,7 @@ function EmployerDashboardContent() {
             { href: "/employer/workers",     icon: "🔍", label: "Find Workers",   sub: "Browse all talent" },
             { href: "/employer/applications",icon: "👥", label: "Applications",   sub: `${totalApplicants} total` },
             { href: "/employer/locks",       icon: "🔒", label: "Reservations",   sub: activeLockCount ? `${activeLockCount} active` : "Manage holds" },
-            { href: "/employer/billing",     icon: "💳", label: "Billing",        sub: profile?.subscriptionPlan ?? "Choose a plan" },
+            { href: "/employer/subscription", icon: "💳", label: "Billing",        sub: profile?.subscriptionPlan ?? "Choose a plan" },
           ].map(({ href, icon, label, sub }) => (
             <Link key={href} href={href} className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] no-underline transition-all hover:border-teal-500/35 hover:bg-teal-500/5">
               <div className="w-10 h-10 rounded-xl bg-teal-500/12 flex items-center justify-center text-xl flex-shrink-0">{icon}</div>

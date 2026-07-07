@@ -1,9 +1,12 @@
 "use client";
-// src/app/(app)/worker/messages/page.tsx
+// src/app/(app)/employer/messages/page.tsx
+// Minimum-viable inbox: received messages from workers, newest first.
+// Mirrors frontend/src/app/(app)/worker/messages/page.tsx's structure.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { workerApi } from "@/lib/api-client";
+import Link from "next/link";
+import { employerApi } from "@/lib/api-client";
 
 interface MessageItem {
   id:         string;
@@ -43,21 +46,18 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-export default function WorkerMessagesPage() {
+export default function EmployerMessagesPage() {
   const router = useRouter();
-  const [messages,    setMessages]    = useState<MessageItem[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [page,        setPage]        = useState(1);
-  const [totalPages,  setTotalPages]  = useState(1);
-  const [expanded,    setExpanded]    = useState<string | null>(null);
-  const [replyText,   setReplyText]   = useState("");
-  const [replySending, setReplySending] = useState(false);
-  const [replyError,  setReplyError]  = useState<string | null>(null);
-  const [replySent,   setReplySent]   = useState<string | null>(null);
+  const [messages,   setMessages]   = useState<MessageItem[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [page,       setPage]       = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [expanded,   setExpanded]   = useState<string | null>(null);
+  const LIMIT = 20;
 
   async function load(p: number) {
     setLoading(true);
-    const res = await workerApi.getMessages({ page: String(p), limit: "20" });
+    const res = await employerApi.getMessages({ page: String(p), limit: String(LIMIT) });
     if (!res.success) { router.push("/login"); return; }
     const d = res as unknown as PagedResponse;
     setMessages(d.data ?? []);
@@ -70,33 +70,17 @@ export default function WorkerMessagesPage() {
   async function handleExpand(msg: MessageItem) {
     if (expanded === msg.id) { setExpanded(null); return; }
     setExpanded(msg.id);
-    setReplyText("");
-    setReplyError(null);
-    setReplySent(null);
     if (!msg.isRead) {
-      await workerApi.markMessageRead(msg.id);
+      await employerApi.markMessageRead(msg.id);
       setMessages(ms => ms.map(m => m.id === msg.id ? { ...m, isRead: true } : m));
     }
-  }
-
-  async function handleReply(msg: MessageItem) {
-    if (!replyText.trim()) return;
-    setReplySending(true);
-    setReplyError(null);
-    const res = await workerApi.replyToMessage(msg.senderId, replyText.trim());
-    setReplySending(false);
-    if (!res.success) {
-      setReplyError((res as { error?: string }).error ?? "Failed to send reply");
-      return;
-    }
-    setReplyText("");
-    setReplySent(msg.id);
   }
 
   const unreadCount = messages.filter(m => !m.isRead).length;
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
+    <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -109,15 +93,14 @@ export default function WorkerMessagesPage() {
       {/* Body */}
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-          <div style={{ width: 32, height: 32, border: "3px solid rgba(124,58,237,0.2)", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ width: 32, height: 32, border: "3px solid rgba(59,130,246,0.2)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
         </div>
       ) : messages.length === 0 ? (
         <div style={{ textAlign: "center", padding: "64px 0" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>✉️</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>No messages yet</div>
           <div style={{ fontSize: 13, color: "#4b5563" }}>
-            When an employer sends you a message, it will appear here.
+            When a worker replies to one of your messages, it will appear here.
           </div>
         </div>
       ) : (
@@ -128,8 +111,8 @@ export default function WorkerMessagesPage() {
               <div
                 key={msg.id}
                 style={{
-                  background:   msg.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)",
-                  border:       `1px solid ${msg.isRead ? "rgba(255,255,255,0.06)" : "rgba(124,58,237,0.22)"}`,
+                  background:   msg.isRead ? "rgba(255,255,255,0.02)" : "rgba(59,130,246,0.07)",
+                  border:       `1px solid ${msg.isRead ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.22)"}`,
                   borderRadius: 14,
                   overflow:     "hidden",
                   transition:   "border-color 0.15s",
@@ -141,7 +124,7 @@ export default function WorkerMessagesPage() {
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
                 >
                   {/* Avatar */}
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: msg.isRead ? "rgba(100,116,139,0.2)" : "rgba(124,58,237,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: msg.isRead ? "#64748b" : "#a78bfa", flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: msg.isRead ? "rgba(100,116,139,0.2)" : "rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: msg.isRead ? "#64748b" : "#60a5fa", flexShrink: 0 }}>
                     {initials(msg.senderName)}
                   </div>
 
@@ -150,7 +133,7 @@ export default function WorkerMessagesPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{msg.senderName}</span>
                       {!msg.isRead && (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, padding: "1px 7px" }}>New</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#60a5fa", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 20, padding: "1px 7px" }}>New</span>
                       )}
                     </div>
                     <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: isOpen ? "normal" : "nowrap" }}>
@@ -169,45 +152,18 @@ export default function WorkerMessagesPage() {
                 {isOpen && (
                   <div style={{ padding: "0 18px 18px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                     <div style={{ paddingTop: 14 }}>
-                      <div style={{ background: "rgba(0,0,0,0.2)", borderLeft: "3px solid rgba(124,58,237,0.5)", borderRadius: "0 8px 8px 0", padding: "14px 18px", marginBottom: 12 }}>
+                      <div style={{ background: "rgba(0,0,0,0.2)", borderLeft: "3px solid rgba(59,130,246,0.5)", borderRadius: "0 8px 8px 0", padding: "14px 18px", marginBottom: 12 }}>
                         <p style={{ margin: 0, fontSize: 14, color: "#cbd5e1", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{msg.body}</p>
                       </div>
-                      <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 14 }}>
-                        Sent by <strong style={{ color: "#64748b" }}>{msg.senderName}</strong> on {fmtDate(msg.createdAt)}
+                      <div style={{ fontSize: 12, color: "#4b5563", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Sent by <strong style={{ color: "#64748b" }}>{msg.senderName}</strong> on {fmtDate(msg.createdAt)}</span>
+                        <Link
+                          href={`/employer/workers/${msg.senderId}`}
+                          style={{ fontSize: 12, fontWeight: 600, color: "#60a5fa", textDecoration: "none" }}
+                        >
+                          View profile & reply →
+                        </Link>
                       </div>
-
-                      {/* Reply box */}
-                      {replySent === msg.id ? (
-                        <div style={{ fontSize: 13, color: "#4ade80" }}>✓ Reply sent to {msg.senderName}.</div>
-                      ) : (
-                        <div>
-                          <textarea
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            placeholder={`Reply to ${msg.senderName}…`}
-                            maxLength={500}
-                            rows={2}
-                            style={{
-                              width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#e4e4e7",
-                              fontFamily: "inherit", resize: "vertical", marginBottom: 8, boxSizing: "border-box",
-                            }}
-                          />
-                          {replyError && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>{replyError}</div>}
-                          <button
-                            onClick={() => handleReply(msg)}
-                            disabled={replySending || !replyText.trim()}
-                            style={{
-                              padding: "7px 16px", borderRadius: 8, border: "1px solid rgba(124,58,237,0.3)",
-                              background: "rgba(124,58,237,0.15)", color: "#a78bfa", fontWeight: 600, fontSize: 13,
-                              cursor: replySending || !replyText.trim() ? "not-allowed" : "pointer",
-                              opacity: replySending || !replyText.trim() ? 0.6 : 1,
-                            }}
-                          >
-                            {replySending ? "Sending…" : "Send reply"}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}

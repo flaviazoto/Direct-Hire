@@ -81,7 +81,11 @@ export async function getEmployerApplications(req: Request, res: Response, next:
     const where: Record<string, unknown> = { employerId };
     if (status && VALID_STATUSES.includes(status)) where.status = status;
 
-    const [rows, total] = await Promise.all([
+    // Real aggregate counts across ALL of this employer's applications (not
+    // just the paginated/status-filtered page) — one groupBy, not N queries.
+    // Scoped by employerId only, deliberately ignoring the `status` query
+    // filter above so the dashboard stat cards always reflect the true total.
+    const [rows, total, statusCounts] = await Promise.all([
       prisma.application.findMany({
         where, skip, take: limit,
         orderBy: [{ createdAt: "desc" }],
@@ -109,7 +113,22 @@ export async function getEmployerApplications(req: Request, res: Response, next:
         },
       }),
       prisma.application.count({ where }),
+      prisma.application.groupBy({
+        by:     ["status"],
+        where:  { employerId },
+        _count: { _all: true },
+      }),
     ]);
+
+    const countByStatus = Object.fromEntries(
+      statusCounts.map(s => [s.status, s._count._all]),
+    ) as Record<string, number>;
+
+    const stats = {
+      totalApplicants: statusCounts.reduce((sum, s) => sum + s._count._all, 0),
+      shortlisted:     countByStatus.SHORTLISTED ?? 0,
+      interviewed:     countByStatus.INTERVIEWED ?? 0,
+    };
 
     const data = rows.map(r => ({
       id:           r.id,
@@ -129,7 +148,17 @@ export async function getEmployerApplications(req: Request, res: Response, next:
         : null,
     }));
 
-    return paginated(res, data, total, page, limit);
+    // Custom response shape (not the plain paginated() helper) — needs the
+    // extra `stats` block alongside the usual pagination envelope.
+    return res.json({
+      success: true,
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      stats,
+    });
   } catch (e) { next(e); }
 }
 
@@ -172,6 +201,9 @@ export async function getJobApplications(req: Request, res: Response, next: Next
           coverLetter:              true,
           matchScore:               true,
           interviewContactUnlocked: true,
+          interviewResponse:        true,
+          interviewResponseMessage: true,
+          interviewRespondedAt:     true,
           worker:                   { select: WORKER_SELECT },
         },
       }),
@@ -204,6 +236,9 @@ export async function getJobApplications(req: Request, res: Response, next: Next
       cover_letter:             r.coverLetter,
       match_score:              r.matchScore != null ? Number(r.matchScore) : null,
       interview_contact_unlocked: r.interviewContactUnlocked,
+      interview_response:         r.interviewResponse,
+      interview_response_message: r.interviewResponseMessage,
+      interview_responded_at:     r.interviewRespondedAt,
       worker: {
         id:           r.worker.id,
         email:        r.worker.email,

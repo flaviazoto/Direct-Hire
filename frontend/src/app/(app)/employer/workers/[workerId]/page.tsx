@@ -275,8 +275,6 @@ function WorkerProfileContent() {
         closeReserveModal();
         await refetchLock();
         showToast("This worker is already reserved by another employer.", "err");
-      } else if (errData.code === "SUBSCRIPTION_REQUIRED") {
-        setModalError("An active subscription is required to reserve workers.");
       } else if (errData.code === "CONCURRENT_LIMIT") {
         setModalError("You've reached the maximum number of concurrent reservations.");
       } else {

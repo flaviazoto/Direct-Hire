@@ -79,6 +79,11 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = fals
     // a generic error.
     if (res.status === 403 && json.code === "SUBSCRIPTION_REQUIRED" && typeof window !== "undefined") {
       window.location.href = json.redirectTo ?? "/employer/subscription";
+      // Never resolve — the page's .then() callback (which would otherwise
+      // set loading=false and render an empty/generic state) simply never
+      // runs while the browser navigates away. Prevents the empty-state
+      // flash / redirect-race that Finding #9 flagged.
+      return new Promise<ApiResult<T>>(() => {});
     }
 
     return json;
@@ -314,6 +319,10 @@ export const workerApi = {
   getApplicationFee: (jobId: string) => get(`/jobs/${jobId}/application-fee`),
   confirmApplication: (jobId: string, body: { paymentIntentId: string; coverLetter?: string }) =>
     post(`/jobs/${jobId}/apply/confirm`, body),
+  respondToInterview: (id: string, body: { response: "ACCEPTED" | "DECLINED"; message?: string }) =>
+    post(`/applications/${id}/interview-response`, body),
+  replyToMessage: (otherUserId: string, body: string) =>
+    post(`/worker/messages/${otherUserId}/reply`, { body }),
   getLockStatus: () => get("/worker/lock-status"),
   getLockHistory: (params?: Record<string, string>) =>
     get(`/worker/lock-history${params ? "?" + new URLSearchParams(params) : ""}`),
@@ -399,16 +408,13 @@ export const employerApi = {
   getUnreadCount: () => get("/employer/notifications/unread-count"),
   markNotificationRead: (id: string) => post(`/employer/notifications/${id}/read`),
   markAllNotificationsRead: () => post("/employer/notifications/read-all"),
+  // ── Messages ─────────────────────────────────────────────────────────────────
+  getMessages: (params?: Record<string, string>) =>
+    get(`/employer/messages${params ? "?" + new URLSearchParams(params) : ""}`),
+  markMessageRead: (id: string) => post(`/employer/messages/${id}/read`),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */
-
-export const reservationApi = {
-  accept:           (id: string)                    => post(`/worker/lock-history/${id}/accept`),
-  decline:          (id: string)                    => del(`/worker/lock-history/${id}`),
-  requestInterview: (id: string, body?: object)     => post(`/worker/lock-history/${id}/request-interview`, body ?? {}),
-  create:           (body: object)                  => post("/employer/locks", body),
-};
 
 export const applicationActionApi = {
   patchStatus: (id: string, data: object) =>

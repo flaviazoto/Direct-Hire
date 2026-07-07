@@ -27,6 +27,7 @@ workerRouter.get( "/applications",                 requireVerifiedWorker, appCtr
 workerRouter.get( "/applications/:id",           requireVerifiedWorker, appCtrl.getApplication);
 workerRouter.post("/applications/:id/withdraw",  requireVerifiedWorker, appCtrl.withdrawApplication);
 workerRouter.get( "/applications/:id/contact",   requireVerifiedWorker, appCtrl.getContactDetails);
+workerRouter.post("/applications/:id/interview-response", requireVerifiedWorker, appCtrl.respondToInterview);
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
 
 // ── Lock status (requireWorker — available regardless of verification status) ──
@@ -45,3 +46,4 @@ workerRouter.get(  "/worker/notifications",              requireWorker, notifCtr
 workerRouter.patch("/worker/notifications/:id/read",     requireWorker, notifCtrl.markNotificationRead);
 workerRouter.get(  "/worker/messages",                   requireWorker, notifCtrl.getMessages);
 workerRouter.patch("/worker/messages/:id/read",          requireWorker, notifCtrl.markMessageRead);
+workerRouter.post( "/worker/messages/:otherUserId/reply", requireWorker, notifCtrl.replyToMessage);

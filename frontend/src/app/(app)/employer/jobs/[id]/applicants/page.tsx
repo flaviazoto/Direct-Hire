@@ -29,13 +29,16 @@ interface Worker {
 }
 
 interface Application {
-  id:                         string;
-  status:                     string;
-  created_at:                 string;
-  cover_letter:               string | null;
-  match_score:                number | string | null;
-  interview_contact_unlocked: boolean;
-  worker:                     Worker;
+  id:                          string;
+  status:                      string;
+  created_at:                  string;
+  cover_letter:                string | null;
+  match_score:                 number | string | null;
+  interview_contact_unlocked:  boolean;
+  interview_response:          string | null;
+  interview_response_message:  string | null;
+  interview_responded_at:      string | null;
+  worker:                      Worker;
 }
 
 interface JobDetail {
@@ -429,6 +432,23 @@ function ProfileDrawer({
             )}
           </div>
 
+          {/* Interview response */}
+          {app.status === "INTERVIEWED" && app.interview_response && (
+            <div style={{
+              marginBottom: 20, display: "flex", flexDirection: "column", gap: 2,
+              background: app.interview_response === "ACCEPTED" ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+              border: `1px solid ${app.interview_response === "ACCEPTED" ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+              borderRadius: 10, padding: "10px 14px",
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: app.interview_response === "ACCEPTED" ? "#4ade80" : "#f87171" }}>
+                {app.interview_response === "ACCEPTED" ? "✓ Accepted the interview invitation" : "Declined the interview invitation"}
+              </span>
+              {app.interview_response_message && (
+                <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>"{app.interview_response_message}"</span>
+              )}
+            </div>
+          )}
+
           {/* Skills */}
           {profile.skills.length > 0 && (
             <div style={{ marginBottom: 20 }}>
@@ -679,6 +699,24 @@ function CandidateCard({
                 </span>
               )}
             </div>
+
+            {/* Interview response — worker's answer to an interview invitation */}
+            {app.status === "INTERVIEWED" && app.interview_response && (
+              <div style={{
+                marginTop: 10, marginLeft: 48,
+                display: "inline-flex", flexDirection: "column", gap: 2,
+                background: app.interview_response === "ACCEPTED" ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+                border: `1px solid ${app.interview_response === "ACCEPTED" ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+                borderRadius: 8, padding: "6px 12px",
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: app.interview_response === "ACCEPTED" ? "#4ade80" : "#f87171" }}>
+                  {app.interview_response === "ACCEPTED" ? "✓ Accepted the interview invitation" : "Declined the interview invitation"}
+                </span>
+                {app.interview_response_message && (
+                  <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>"{app.interview_response_message}"</span>
+                )}
+              </div>
+            )}
 
             {/* Bottom row: date + actions */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, marginLeft: 48, flexWrap: "wrap" }}>

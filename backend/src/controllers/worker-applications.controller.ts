@@ -10,6 +10,7 @@ import {
   sendNewApplicationEmail,
   sendApplicationConfirmationEmail,
   sendApplicationWithdrawnEmail,
+  sendInterviewResponseEmployerEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
 import { calculateMatchScore } from "../services/matching";
@@ -26,6 +27,9 @@ const APPLICATION_LIST_SELECT = {
   coverLetter:              true,
   interviewContactUnlocked: true,
   interviewInstructions:    true,
+  interviewResponse:        true,
+  interviewResponseMessage: true,
+  interviewRespondedAt:     true,
   matchScore:               true,
   job: {
     select: {
@@ -458,6 +462,79 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
     // Strip internal employer relation from the response payload
     const { employer: _employer, ...rest } = app;
     return ok(res, { ...rest, company_contact: companyContact });
+  } catch (e) { next(e); }
+}
+
+// ── POST /applications/:id/interview-response ────────────────────────────────
+// Worker accepts or declines an interview invitation. This is independent of
+// `status`, which stays INTERVIEWED regardless — the employer still decides
+// ACCEPTED/REJECTED separately based on how the interview actually goes.
+
+const InterviewResponseSchema = z.object({
+  response: z.enum(["ACCEPTED", "DECLINED"]),
+  message:  z.string().max(500, "Message must be 500 characters or fewer").optional(),
+});
+
+export async function respondToInterview(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+    const { id }   = req.params;
+
+    const parsed = InterviewResponseSchema.safeParse(req.body);
+    if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
+    const { response, message } = parsed.data;
+
+    const app = await prisma.application.findUnique({
+      where: { id },
+      include: {
+        job:      { select: { title: true, companyName: true } },
+        worker:   { select: { workerProfile: { select: { firstName: true, lastName: true } } } },
+        employer: { select: { id: true, email: true } },
+      },
+    });
+
+    if (!app)                      return err(res, "Application not found", 404);
+    if (app.workerId !== workerId) return err(res, "Forbidden", 403);
+    if (app.status !== "INTERVIEWED") {
+      return err(res, `Cannot respond to an interview invitation while status is ${app.status}`, 400);
+    }
+
+    const updated = await prisma.application.update({
+      where: { id },
+      data: {
+        interviewResponse:        response,
+        interviewResponseMessage: message ?? null,
+        interviewRespondedAt:     new Date(),
+      },
+    });
+
+    const workerName = [
+      app.worker.workerProfile?.firstName,
+      app.worker.workerProfile?.lastName,
+    ].filter(Boolean).join(" ") || "The candidate";
+
+    // Fire-and-forget: notify employer — non-fatal, same pattern used everywhere
+    // else in this codebase (failures logged, never affect the response already sent).
+    Promise.all([
+      sendInterviewResponseEmployerEmail(
+        app.employer.id, app.employer.email, workerName, app.job.title, response, message, app.jobId,
+      ).catch((e: unknown) => console.error("[interview response email]", e)),
+      prisma.notification.create({
+        data: {
+          userId: app.employer.id,
+          type:   "APPLICATION_UPDATE",
+          title:  response === "ACCEPTED"
+            ? `${workerName} accepted your interview invitation`
+            : `${workerName} declined your interview invitation`,
+          body:   message
+            ? `Re: "${app.job.title}" — ${message}`
+            : `Re: "${app.job.title}"`,
+          link:   `/employer/jobs/${app.jobId}/applicants`,
+        },
+      }).catch((e: unknown) => console.error("[interview response notif]", e)),
+    ]).catch(console.error);
+
+    return ok(res, updated, "Response recorded");
   } catch (e) { next(e); }
 }
 

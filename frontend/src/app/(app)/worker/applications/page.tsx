@@ -29,6 +29,9 @@ interface Application {
   coverLetter:              string | null;
   interviewContactUnlocked: boolean;
   interviewInstructions:    string | null;
+  interviewResponse:        string | null;
+  interviewResponseMessage: string | null;
+  interviewRespondedAt:     string | null;
   matchScore:               number | string | null;
   job:                      ApplicationJob;
 }
@@ -257,6 +260,109 @@ function InterviewContactPanel({ appId, jobTitle }: { appId: string; jobTitle: s
   );
 }
 
+// ── Interview response panel ────────────────────────────────────────────────────
+
+function InterviewResponsePanel({
+  appId,
+  interviewResponse,
+  interviewResponseMessage,
+  onResponded,
+}: {
+  appId:                     string;
+  interviewResponse:         string | null;
+  interviewResponseMessage:  string | null;
+  onResponded:               (id: string, response: string, message: string | null) => void;
+}) {
+  const [message,   setMessage]   = useState("");
+  const [sending,   setSending]   = useState<"ACCEPTED" | "DECLINED" | null>(null);
+  const [error,     setError]     = useState<string | null>(null);
+
+  async function respond(response: "ACCEPTED" | "DECLINED") {
+    setSending(response);
+    setError(null);
+    const res = await workerApi.respondToInterview(appId, {
+      response,
+      message: message.trim() || undefined,
+    });
+    setSending(null);
+    if (!res.success) {
+      setError((res as { error?: string }).error ?? "Failed to send response");
+      return;
+    }
+    onResponded(appId, response, message.trim() || null);
+  }
+
+  if (interviewResponse) {
+    const accepted = interviewResponse === "ACCEPTED";
+    return (
+      <div style={{
+        marginTop: 12,
+        background: accepted ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
+        border: `1px solid ${accepted ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+        borderRadius: 10, padding: "12px 16px",
+        fontSize: 13, color: accepted ? "#86efac" : "#f87171", lineHeight: 1.6,
+      }}>
+        {accepted ? "✓ You accepted this interview invitation." : "You declined this interview invitation."}
+        {interviewResponseMessage && (
+          <div style={{ marginTop: 6, fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>
+            "{interviewResponseMessage}"
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      marginTop: 12,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 10, padding: "14px 16px",
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#e4e4e7", marginBottom: 8 }}>
+        Respond to this interview invitation
+      </div>
+      <textarea
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        placeholder="Optional: share your availability or a short note…"
+        maxLength={500}
+        rows={2}
+        style={{
+          width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#e4e4e7",
+          fontFamily: "inherit", resize: "vertical", marginBottom: 10, boxSizing: "border-box",
+        }}
+      />
+      {error && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          onClick={() => respond("ACCEPTED")}
+          disabled={sending !== null}
+          style={{
+            flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(74,222,128,0.3)",
+            background: "rgba(74,222,128,0.12)", color: "#4ade80", fontWeight: 600, fontSize: 13,
+            cursor: sending ? "not-allowed" : "pointer", opacity: sending ? 0.6 : 1,
+          }}
+        >
+          {sending === "ACCEPTED" ? "Sending…" : "Accept"}
+        </button>
+        <button
+          onClick={() => respond("DECLINED")}
+          disabled={sending !== null}
+          style={{
+            flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.3)",
+            background: "rgba(248,113,113,0.1)", color: "#f87171", fontWeight: 600, fontSize: 13,
+            cursor: sending ? "not-allowed" : "pointer", opacity: sending ? 0.6 : 1,
+          }}
+        >
+          {sending === "DECLINED" ? "Sending…" : "Decline"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Withdraw modal ─────────────────────────────────────────────────────────────
 
 function WithdrawModal({ jobTitle, onConfirm, onCancel, loading }: {
@@ -313,9 +419,11 @@ function WithdrawModal({ jobTitle, onConfirm, onCancel, loading }: {
 function ApplicationCard({
   app,
   onWithdrawn,
+  onInterviewResponded,
 }: {
   app: Application;
   onWithdrawn: (id: string) => void;
+  onInterviewResponded: (id: string, response: string, message: string | null) => void;
 }) {
   const [expanded,       setExpanded]       = useState(false);
   const [showCover,      setShowCover]      = useState(false);
@@ -471,9 +579,17 @@ function ApplicationCard({
               </div>
             )}
 
-            {/* INTERVIEWED — contact panel */}
+            {/* INTERVIEWED — contact panel + response */}
             {app.status === "INTERVIEWED" && (
-              <InterviewContactPanel appId={app.id} jobTitle={app.job.title} />
+              <>
+                <InterviewContactPanel appId={app.id} jobTitle={app.job.title} />
+                <InterviewResponsePanel
+                  appId={app.id}
+                  interviewResponse={app.interviewResponse}
+                  interviewResponseMessage={app.interviewResponseMessage}
+                  onResponded={onInterviewResponded}
+                />
+              </>
             )}
 
             {/* ACCEPTED — congratulations */}
@@ -561,6 +677,12 @@ function ApplicationsContent() {
 
   function handleWithdrawn(id: string) {
     setApps(prev => prev.map(a => a.id === id ? { ...a, status: "WITHDRAWN" } : a));
+  }
+
+  function handleInterviewResponded(id: string, response: string, message: string | null) {
+    setApps(prev => prev.map(a => a.id === id
+      ? { ...a, interviewResponse: response, interviewResponseMessage: message, interviewRespondedAt: new Date().toISOString() }
+      : a));
   }
 
   // Derive tab counts from currently loaded data (all-tab load gives full counts)
@@ -678,7 +800,7 @@ function ApplicationsContent() {
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {apps.map(app => (
-              <ApplicationCard key={app.id} app={app} onWithdrawn={handleWithdrawn} />
+              <ApplicationCard key={app.id} app={app} onWithdrawn={handleWithdrawn} onInterviewResponded={handleInterviewResponded} />
             ))}
           </div>
 
