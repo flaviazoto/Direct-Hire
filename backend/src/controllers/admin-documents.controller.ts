@@ -178,13 +178,18 @@ export async function getWorkerDocuments(
     const photo   = uploads.find(x => x.fileType === "PROFILE_PHOTO");
     const video   = uploads.find(x => x.fileType === "WORK_VIDEO" || x.fileType === "INTRO_VIDEO");
 
+    let passportNumber: string | null = null;
+    if (p.passportNumber) {
+      try { passportNumber = decrypt(p.passportNumber); } catch { passportNumber = null; }
+    }
+
     return ok(res, {
       userId:              user.id,
       email:               user.email,
       accountStatus:       user.accountStatus,
       createdAt:           user.createdAt,
       name:                [p.firstName, p.lastName].filter(Boolean).join(" ") || user.email,
-      passportNumber:      p.passportNumber ? decrypt(p.passportNumber) : null,
+      passportNumber,
       passportStatus:      p.passportStatus,
       documentsVerified:   p.documentsVerified,
       documentsReviewedAt: p.documentsReviewedAt,

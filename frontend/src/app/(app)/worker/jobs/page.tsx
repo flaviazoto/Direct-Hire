@@ -25,8 +25,7 @@ interface Job {
   country: string;
   city?: string | null;
   category?: string | null;
-  workType?: string | null;
-  visaType?: string | null;
+  contractType?: string | null; // real field backing the "work type" filter/badge
   visaSupport?: boolean;
   salaryMin?: number | null;
   salaryMax?: number | null;
@@ -91,6 +90,20 @@ const INITIAL_FILTERS: FiltersState = {
   country: "", category: "", workType: "", visaType: "", company: "",
   location: "", minSalary: "", maxSalary: "",
   visaSupport: false, savedOnly: false, sort: "match",
+};
+
+// workTypes/visaTypes now come back as real backend enum-style values
+// (JobPost.contractType, and an honest 2-value mapping of the visaSupport
+// boolean — see worker.controller.ts buildJobsWhere/getJobFilterOptions).
+// Pretty-print them for the dropdown; fall back to the raw value for
+// anything not in this map so a future enum addition doesn't disappear.
+const WORK_TYPE_LABELS: Record<string, string> = {
+  FULL_TIME: "Full-time", PART_TIME: "Part-time", CONTRACT: "Contract",
+  TEMPORARY: "Temporary", INTERNSHIP: "Internship", FREELANCE: "Freelance",
+};
+const VISA_TYPE_LABELS: Record<string, string> = {
+  VISA_SUPPORT_AVAILABLE: "Visa support available",
+  NO_VISA_SUPPORT: "No visa support",
 };
 
 const COUNTRY_EMOJIS: Record<string, string> = {
@@ -254,14 +267,14 @@ function FilterPanel({
           <label style={labelStyle}>Work type</label>
           <select value={filters.workType} onChange={e => onFilter("workType", e.target.value)} style={inputStyle}>
             <option value="">Any type</option>
-            {options.workTypes.map(w => <option key={w} value={w} style={{ background: "#111" }}>{w}</option>)}
+            {options.workTypes.map(w => <option key={w} value={w} style={{ background: "#111" }}>{WORK_TYPE_LABELS[w] ?? w}</option>)}
           </select>
         </div>
         <div>
           <label style={labelStyle}>Visa type</label>
           <select value={filters.visaType} onChange={e => onFilter("visaType", e.target.value)} style={inputStyle}>
             <option value="">Any visa</option>
-            {options.visaTypes.map(v => <option key={v} value={v} style={{ background: "#111" }}>{v}</option>)}
+            {options.visaTypes.map(v => <option key={v} value={v} style={{ background: "#111" }}>{VISA_TYPE_LABELS[v] ?? v}</option>)}
           </select>
         </div>
         <div>
@@ -431,9 +444,8 @@ function JobCard({ job, onApply, onSave, checking, applied, saving }: {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
         {salary && <Pill color="green">{salary}</Pill>}
         {job.category && <Pill color="cyan">{job.category}</Pill>}
-        {job.workType && <Pill color="violet">{job.workType}</Pill>}
+        {job.contractType && <Pill color="violet">{WORK_TYPE_LABELS[job.contractType] ?? job.contractType}</Pill>}
         {job.visaSupport && <Pill color="teal">✓ Visa support</Pill>}
-        {job.visaType && <Pill color="blue">{job.visaType}</Pill>}
         {skills.map(s => (
           <span key={s.skill} style={{
             fontSize: 11, padding: "3px 8px", borderRadius: 5,

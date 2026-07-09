@@ -37,12 +37,21 @@ function deriveCountryCode(country: string): string {
   return cleaned.slice(0, 2).toUpperCase();
 }
 
+// The real enum backing "work type" — schema.prisma has no separate workType
+// column; JobPost.contractType is the actual field the frontend's workType
+// dropdown should filter on.
+const CONTRACT_TYPES = ["FULL_TIME", "PART_TIME", "CONTRACT", "TEMPORARY", "INTERNSHIP", "FREELANCE"];
+
 function buildJobsWhere(query: Record<string, string>) {
-  const { search, country, category, company, location } = query;
+  const { search, country, category, company, location, workType } = query;
 
   const minSalary = toNumber(query.minSalary);
   const maxSalary = toNumber(query.maxSalary);
   const visaSupport = query.visaSupport;
+  // "visaType" has no real multi-value column of its own — the only real,
+  // queryable signal is the boolean JobPost.visaSupport. Mapped honestly to
+  // two selectable values rather than left decorative; see getJobFilterOptions.
+  const visaType = query.visaType;
 
   const where: Record<string, unknown> = { status: "APPROVED" };
   const andFilters: Record<string, unknown>[] = [];
@@ -64,8 +73,18 @@ function buildJobsWhere(query: Record<string, string>) {
     andFilters.push({ category: { equals: category, mode: "insensitive" } });
   }
 
+  if (workType && CONTRACT_TYPES.includes(workType.toUpperCase())) {
+    andFilters.push({ contractType: workType.toUpperCase() });
+  }
+
   if (visaSupport === "true") {
     andFilters.push({ visaSupport: true });
+  }
+
+  if (visaType === "VISA_SUPPORT_AVAILABLE") {
+    andFilters.push({ visaSupport: true });
+  } else if (visaType === "NO_VISA_SUPPORT") {
+    andFilters.push({ visaSupport: false });
   }
 
   if (company) {
@@ -245,17 +264,22 @@ export async function getJobFilterOptions(req: Request, res: Response, next: Nex
     const rows = await prisma.jobPost.findMany({
       where,
       select: {
-        country:     true,
-        category:    true,
-        companyName: true,
-        salaryMin:   true,
-        salaryMax:   true,
+        country:      true,
+        category:     true,
+        companyName:  true,
+        salaryMin:    true,
+        salaryMax:    true,
+        contractType: true,
+        visaSupport:  true,
       },
     });
 
     const countries   = new Set<string>();
     const categories  = new Set<string>();
     const companies   = new Set<string>();
+    const workTypes   = new Set<string>();
+    let hasVisaSupport   = false;
+    let hasNoVisaSupport = false;
     let minSalary: number | null = null;
     let maxSalary: number | null = null;
 
@@ -263,6 +287,8 @@ export async function getJobFilterOptions(req: Request, res: Response, next: Nex
       if (row.country?.trim())     countries.add(row.country.trim());
       if (row.category?.trim())    categories.add(row.category.trim());
       if (row.companyName?.trim()) companies.add(row.companyName.trim());
+      if (row.contractType)        workTypes.add(row.contractType);
+      if (row.visaSupport) hasVisaSupport = true; else hasNoVisaSupport = true;
 
       const sMin = row.salaryMin ? Number(row.salaryMin) : null;
       const sMax = row.salaryMax ? Number(row.salaryMax) : null;
@@ -274,10 +300,18 @@ export async function getJobFilterOptions(req: Request, res: Response, next: Nex
       }
     }
 
+    // visaTypes has no real multi-value column — see buildJobsWhere's comment.
+    // Only offer values that actually distinguish jobs currently in this set.
+    const visaTypes: string[] = [];
+    if (hasVisaSupport)   visaTypes.push("VISA_SUPPORT_AVAILABLE");
+    if (hasNoVisaSupport) visaTypes.push("NO_VISA_SUPPORT");
+
     return ok(res, {
       countries:   Array.from(countries).sort((a, b) => a.localeCompare(b)),
       categories:  Array.from(categories).sort((a, b) => a.localeCompare(b)),
       companies:   Array.from(companies).sort((a, b) => a.localeCompare(b)),
+      workTypes:   Array.from(workTypes).sort((a, b) => a.localeCompare(b)),
+      visaTypes,
       salaryRange: { min: minSalary, max: maxSalary },
     });
   } catch (e) {

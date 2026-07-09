@@ -18,6 +18,7 @@ interface ProfileData {
   user: {
     email: string; status: string;
     accountStatus?: string; onboardingComplete?: boolean; isEmailVerified: boolean;
+    rejectionReason?: string | null;
   };
   profile: {
     firstName?: string; lastName?: string; profession?: string;
@@ -202,6 +203,7 @@ function WorkerDashboardContent() {
   const isApproved   = onbStatus === "APPROVED" || user.accountStatus === "VERIFIED";
   const needsChanges = onbStatus === "NEEDS_CHANGES";
   const isVerified   = profile?.documentsVerified || isApproved;
+  const isRejected   = user.accountStatus === "REJECTED";
 
   const appsSent   = applications.length;
   const interviews = applications.filter(a => ["INTERVIEWED", "INTERVIEW"].includes(a.status)).length;
@@ -293,8 +295,30 @@ function WorkerDashboardContent() {
         </div>
 
         {/* ── Section 3: Alert banners ───────────────────────────────────────── */}
-        {(isVerified || needsChanges || !isApproved) && (
+        {(isVerified || needsChanges || isRejected || !isApproved) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            {isRejected && (
+              <div style={{
+                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,
+                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                alignItems: 'flex-start',
+              }}>
+                <AlertTriangle size={15} style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#f87171', margin: '0 0 2px' }}>Application not approved</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 6px' }}>
+                    {user.rejectionReason ?? 'Your application did not meet our verification requirements.'}
+                  </p>
+                  {/* No self-service resubmit path exists for a REJECTED account
+                      (confirmed: onboarding.controller.ts has no reset-and-resubmit
+                      flow, unlike NEEDS_CHANGES) — contact support is the only
+                      honest next step, not a re-submit CTA we can't back up. */}
+                  <a href="mailto:support@directhire.cc" style={{ fontSize: 12, fontWeight: 600, color: '#fca5a5', textDecoration: 'underline' }}>
+                    Contact support →
+                  </a>
+                </div>
+              </div>
+            )}
             {isVerified && (
               <div style={{
                 display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,

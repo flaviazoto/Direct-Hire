@@ -13,7 +13,8 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
       where:  { id: userId },
       select: { id: true, email: true, role: true,
                 status: true, accountStatus: true, onboardingComplete: true,
-                isEmailVerified: true, createdAt: true },
+                isEmailVerified: true, createdAt: true,
+                rejectionReason: true },
     });
     if (!user) return err(res, "User not found", 404);
 
@@ -42,12 +43,14 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         include: { hiringCountries: true, requiredSkills: true },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          administratorId: (raw as any).administratorId
-            ? decrypt((raw as any).administratorId)
-            : null,
-        };
+        // try/catch-null — same guard as the worker branch above. This is the
+        // exact site originally diagnosed as a 500 (malformed/legacy
+        // administratorId ciphertext threw uncaught here).
+        let administratorId: string | null = null;
+        if ((raw as any).administratorId) {
+          try { administratorId = decrypt((raw as any).administratorId); } catch { administratorId = null; }
+        }
+        profile = { ...raw, administratorId };
       }
     }
 

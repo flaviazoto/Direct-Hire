@@ -80,6 +80,55 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
       metadata: { fileType, fileName: safeFileName, sizeBytes: file.size },
     });
 
+    // Re-review on post-approval document edits (NOT profile text edits —
+    // updateProfile in user.controller.ts intentionally never touches
+    // documentsVerified; only a new/replaced DOCUMENT re-enters review).
+    // Resets documentsVerified so this worker reappears in the admin's
+    // default pending-documents queue (admin-documents.controller.ts filters
+    // on documentsVerified: false) — a re-upload from an already-verified
+    // worker would otherwise never surface there again.
+    if (role === "WORKER") {
+      const wp = await prisma.workerProfile.findUnique({
+        where:  { userId },
+        select: { documentsVerified: true },
+      });
+
+      if (wp?.documentsVerified) {
+        await prisma.workerProfile.update({
+          where: { userId },
+          data:  { documentsVerified: false },
+        });
+
+        const admins = await prisma.user.findMany({
+          where:  { role: "ADMIN" },
+          select: { id: true },
+        });
+
+        Promise.all([
+          prisma.notification.create({
+            data: {
+              userId,
+              type:  "DOCUMENT_PENDING",
+              title: "Document under review",
+              body:  "Your new upload has been received and is being reviewed again before it goes live.",
+              link:  "/worker/documents",
+            },
+          }),
+          ...(admins.length > 0
+            ? [prisma.notification.createMany({
+                data: admins.map((a) => ({
+                  userId: a.id,
+                  type:   "DOCUMENT_PENDING",
+                  title:  "Verified worker re-uploaded a document",
+                  body:   `A previously-verified worker uploaded a new ${fileType.toLowerCase().replace(/_/g, " ")} — re-review needed.`,
+                  link:   `/admin/document-review/${userId}`,
+                })),
+              })]
+            : []),
+        ]).catch((e: unknown) => console.error("[uploadFile re-review notif]", e));
+      }
+    }
+
     return ok(res, result, "File uploaded successfully", 201);
   } catch (e) { next(e); }
 }

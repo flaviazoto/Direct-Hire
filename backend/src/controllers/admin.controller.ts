@@ -770,12 +770,11 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
         },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          passportNumber: (raw as any).passportNumber
-            ? decrypt((raw as any).passportNumber)
-            : null,
-        };
+        let passportNumber: string | null = null;
+        if ((raw as any).passportNumber) {
+          try { passportNumber = decrypt((raw as any).passportNumber); } catch { passportNumber = null; }
+        }
+        profile = { ...raw, passportNumber };
       }
     } else if (user.role === "EMPLOYER") {
       const raw = await prisma.employerProfile.findUnique({
@@ -786,12 +785,14 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
         },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          administratorId: (raw as any).administratorId
-            ? decrypt((raw as any).administratorId)
-            : null,
-        };
+        // The originally-diagnosed 500 site — bare decrypt() here is what
+        // crashed this whole endpoint for an employer with malformed/legacy
+        // administratorId ciphertext.
+        let administratorId: string | null = null;
+        if ((raw as any).administratorId) {
+          try { administratorId = decrypt((raw as any).administratorId); } catch { administratorId = null; }
+        }
+        profile = { ...raw, administratorId };
       }
     }
 

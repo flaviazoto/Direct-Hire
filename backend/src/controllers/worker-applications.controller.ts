@@ -586,11 +586,23 @@ export async function withdrawApplication(req: Request, res: Response, next: Nex
       app.worker.workerProfile?.lastName,
     ].filter(Boolean).join(" ") || "A candidate";
 
-    // Fire-and-forget: notify employer
-    sendApplicationWithdrawnEmail(
-      app.employerId, app.employer.email,
-      wName, app.job.title, app.job.companyName,
-    ).catch(console.error);
+    // Fire-and-forget: notify employer — email + in-app, same non-fatal
+    // pattern used at every other status-change site in this file.
+    Promise.all([
+      sendApplicationWithdrawnEmail(
+        app.employerId, app.employer.email,
+        wName, app.job.title, app.job.companyName,
+      ).catch((e: unknown) => console.error("[withdraw email]", e)),
+      prisma.notification.create({
+        data: {
+          userId: app.employerId,
+          type:   "APPLICATION_UPDATE",
+          title:  `${wName} withdrew their application`,
+          body:   `${wName} withdrew their application for "${app.job.title}".`,
+          link:   `/employer/jobs/${app.jobId}/applicants`,
+        },
+      }).catch((e: unknown) => console.error("[withdraw notif]", e)),
+    ]).catch(console.error);
 
     return ok(res, { success: true });
   } catch (e) { next(e); }
