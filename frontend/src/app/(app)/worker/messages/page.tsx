@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/worker/messages/page.tsx
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
 
@@ -55,7 +55,7 @@ export default function WorkerMessagesPage() {
   const [replyError,  setReplyError]  = useState<string | null>(null);
   const [replySent,   setReplySent]   = useState<string | null>(null);
 
-  async function load(p: number) {
+  const load = useCallback(async (p: number) => {
     setLoading(true);
     const res = await workerApi.getMessages({ page: String(p), limit: "20" });
     if (!res.success) { router.push("/login"); return; }
@@ -63,9 +63,9 @@ export default function WorkerMessagesPage() {
     setMessages(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
     setLoading(false);
-  }
+  }, [router]);
 
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => { load(page); }, [page, load]);
 
   async function handleExpand(msg: MessageItem) {
     if (expanded === msg.id) { setExpanded(null); return; }

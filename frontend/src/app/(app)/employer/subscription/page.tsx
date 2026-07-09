@@ -244,7 +244,7 @@ function EmployerSubscriptionContent() {
       {/* Past-due warning banner */}
       {isPastDue && (
         <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>
-          Your last payment failed. Update your payment method via "Manage billing" below to keep your subscription active.
+          Your last payment failed. Update your payment method via &quot;Manage billing&quot; below to keep your subscription active.
         </div>
       )}
 

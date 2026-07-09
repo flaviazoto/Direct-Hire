@@ -148,7 +148,7 @@ function EmployerDashboardContent() {
 
   useEffect(() => {
     if (searchParams.get("submitted") === "1") showToast("Company profile submitted for review!");
-  }, []);
+  }, [searchParams, showToast]);
 
   useEffect(() => {
     Promise.all([

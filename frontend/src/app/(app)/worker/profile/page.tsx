@@ -56,7 +56,7 @@ export default function WorkerProfilePage() {
       else router.push("/login");
       setLoading(false);
     });
-  }, []);
+  }, [router]);
 
   const handleDeleteAccount = useCallback(async () => {
     setDeleteLoading(true);

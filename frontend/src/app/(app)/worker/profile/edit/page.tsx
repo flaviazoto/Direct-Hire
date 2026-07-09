@@ -63,7 +63,7 @@ export default function WorkerProfileEditPage() {
       })
       setLoading(false)
     })
-  }, [])
+  }, [router])
 
   const autoSave = useCallback(async (patch: Partial<WorkerForm>) => {
     setSaving(true)

@@ -444,7 +444,7 @@ function ProfileDrawer({
                 {app.interview_response === "ACCEPTED" ? "✓ Accepted the interview invitation" : "Declined the interview invitation"}
               </span>
               {app.interview_response_message && (
-                <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>"{app.interview_response_message}"</span>
+                <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>{`"${app.interview_response_message}"`}</span>
               )}
             </div>
           )}
@@ -713,7 +713,7 @@ function CandidateCard({
                   {app.interview_response === "ACCEPTED" ? "✓ Accepted the interview invitation" : "Declined the interview invitation"}
                 </span>
                 {app.interview_response_message && (
-                  <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>"{app.interview_response_message}"</span>
+                  <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>{`"${app.interview_response_message}"`}</span>
                 )}
               </div>
             )}

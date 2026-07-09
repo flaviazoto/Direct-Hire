@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/employer/workers/[workerId]/page.tsx
 
-import React, { CSSProperties, Suspense, useEffect, useRef, useState } from "react";
+import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
@@ -194,6 +194,14 @@ function WorkerProfileContent() {
       if (rRes.success) setLockRate(rRes.data as LockRate);
       setLoading(false);
     }).catch(() => { router.push("/employer/workers"); });
+  }, [workerId, router]);
+
+  // Reset lazily-loaded applications when navigating to a different worker —
+  // without this, switching workers while already on the "applications" tab
+  // would keep showing the previous worker's applications (the lazy-load
+  // effect below only fetches when apps is still null).
+  useEffect(() => {
+    setApps(null);
   }, [workerId]);
 
   // Lazy-load applications when tab selected
@@ -204,7 +212,22 @@ function WorkerProfileContent() {
       if (res.success) setApps(res.data as WorkerApplication[]);
       setAppsLoading(false);
     });
-  }, [activeTab]);
+  }, [activeTab, apps, workerId]);
+
+  // Declared here (not further down with the other lock actions) and memoized
+  // so the escape-key effect right below can list it as a dependency without
+  // resubscribing its keydown listener on every render.
+  const closeReserveModal = useCallback(() => {
+    if (modalLoading) return;
+    setShowModal(false);
+    setModalDays(7);
+    setModalPhase("configure");
+    setModalError("");
+    setStripeClientSecret("");
+    setStripePaymentIntentId("");
+    setStripeTotalCents(0);
+    setStripeDailyRateCents(0);
+  }, [modalLoading]);
 
   // Escape key + body scroll lock for modals
   const anyModalOpen = showModal || showExtendModal || showReleaseModal || showMsgModal;
@@ -224,7 +247,7 @@ function WorkerProfileContent() {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, showMsgModal, modalLoading, extendLoading, releaseLoading, msgSending]);
+  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, showMsgModal, modalLoading, extendLoading, releaseLoading, msgSending, closeReserveModal]);
 
   function showToast(msg: string, type: "ok" | "err") {
     setToast({ msg, type });
@@ -237,18 +260,6 @@ function WorkerProfileContent() {
   }
 
   // ── Lock actions ─────────────────────────────────────────────────────────
-
-  function closeReserveModal() {
-    if (modalLoading) return;
-    setShowModal(false);
-    setModalDays(7);
-    setModalPhase("configure");
-    setModalError("");
-    setStripeClientSecret("");
-    setStripePaymentIntentId("");
-    setStripeTotalCents(0);
-    setStripeDailyRateCents(0);
-  }
 
   async function handleInitiateReserve() {
     if (modalDays < 1 || modalDays > 14) { setModalError("Duration must be 1–14 days."); return; }

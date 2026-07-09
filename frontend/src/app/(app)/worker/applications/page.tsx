@@ -305,7 +305,7 @@ function InterviewResponsePanel({
         {accepted ? "✓ You accepted this interview invitation." : "You declined this interview invitation."}
         {interviewResponseMessage && (
           <div style={{ marginTop: 6, fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>
-            "{interviewResponseMessage}"
+            {`"${interviewResponseMessage}"`}
           </div>
         )}
       </div>
