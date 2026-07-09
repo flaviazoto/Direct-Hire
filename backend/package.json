@@ -16,7 +16,8 @@
     "db:reset": "prisma migrate reset --force && tsx scripts/seed.ts",
     "backup:db": "tsx scripts/export-db-backup.ts",
     "reencrypt:passports": "tsx scripts/reencrypt-passports.ts",
-    "backfill:worker-phones": "tsx scripts/backfill-worker-phones.ts"
+    "backfill:worker-phones": "tsx scripts/backfill-worker-phones.ts",
+    "flip-video-privacy": "tsx scripts/flip-video-privacy.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

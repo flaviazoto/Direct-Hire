@@ -9,6 +9,7 @@ import { sendAccountApproved, sendAccountRejected, sendAccountSuspended, sendAcc
 import { z } from "zod";
 import { decrypt } from "../lib/encrypt";
 import { insertAuditLog } from "../lib/audit";
+import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 
 // ── Audit log helper (raw insert — AdminAuditLog not yet in generated client) ──
 async function insertAdminAuditLog(opts: {
@@ -746,7 +747,7 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
         if (u.isPrivate && u.filePath) {
           const { data } = await client.storage
             .from(process.env.SUPABASE_STORAGE_BUCKET!)
-            .createSignedUrl(u.filePath, 3600); // 1 hour
+            .createSignedUrl(u.filePath, SIGNED_URL_EXPIRY_SECONDS);
           return { ...u, signedUrl: data?.signedUrl ?? u.fileUrl };
         }
         return { ...u, signedUrl: u.fileUrl };

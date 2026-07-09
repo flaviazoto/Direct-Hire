@@ -6,6 +6,7 @@ import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { sendEmail } from "../services/email";
 import { decrypt } from "../lib/encrypt";
+import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 
 // Job CRUD is handled by employer-jobs.controller.ts
 
@@ -209,7 +210,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
             const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
             const { data } = await client.storage
               .from(process.env.SUPABASE_STORAGE_BUCKET!)
-              .createSignedUrl(u.filePath, 3600);
+              .createSignedUrl(u.filePath, SIGNED_URL_EXPIRY_SECONDS);
             fileUrl = data?.signedUrl ?? u.fileUrl;
           }
           return {

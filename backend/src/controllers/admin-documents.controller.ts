@@ -6,6 +6,7 @@ import { ok, err, paginated, getPagination } from "../lib/response";
 import { decrypt } from "../lib/encrypt";
 import { insertAdminAuditLog } from "../lib/audit";
 import { sendEmail } from "../services/email";
+import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 
 const BatchReviewSchema = z.object({
   photoStatus:    z.enum(["APPROVED", "REJECTED", "PENDING"]),
@@ -168,7 +169,7 @@ export async function getWorkerDocuments(
         if (u.isPrivate && u.filePath) {
           const { data } = await sb.storage
             .from(process.env.SUPABASE_STORAGE_BUCKET!)
-            .createSignedUrl(u.filePath, 3600);
+            .createSignedUrl(u.filePath, SIGNED_URL_EXPIRY_SECONDS);
           return { ...u, signedUrl: data?.signedUrl ?? u.fileUrl };
         }
         return { ...u, signedUrl: u.fileUrl };

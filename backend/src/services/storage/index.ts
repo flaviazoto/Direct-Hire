@@ -25,6 +25,12 @@ export const MAX_SIZE: Record<FileType, number> = {
   OTHER:               20 * 1024 * 1024,
 };
 
+// Shared by every createSignedUrl() call site (uploads.controller.ts,
+// admin-documents.controller.ts, admin.controller.ts, employer.controller.ts).
+// Tightening per file-type class (e.g. shorter for medical certs) is a later
+// tuning decision — this pass only removes the duplicated magic number.
+export const SIGNED_URL_EXPIRY_SECONDS = 3600;
+
 // ── Supabase client — service role, bypasses RLS ──────────────
 function getStorageClient() {
   return createClient(

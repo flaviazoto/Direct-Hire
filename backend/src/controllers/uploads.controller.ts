@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
-import { uploadFile as storageUpload, deleteFile, ALLOWED_MIME, MAX_SIZE } from "../services/storage";
+import { uploadFile as storageUpload, deleteFile, ALLOWED_MIME, MAX_SIZE, SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 import type { FileType } from "../types";
 import { insertAuditLog } from "../lib/audit";
 
@@ -65,7 +65,12 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
     const ext          = MIME_TO_EXT[file.mimetype] ?? 'bin';
     const safeFileName = `${userId}-${Date.now()}.${ext}`;
 
-    const isPrivate = ["MEDICAL_CERTIFICATE","BUSINESS_DOCUMENT"].includes(fileType);
+    // PROFILE_PHOTO and COMPANY_LOGO stay public per the storage sensitivity
+    // split — they render in bulk across browse lists (employer/workers grid,
+    // admin/approvals queue) where per-thumbnail signing would mean N signing
+    // calls per page load. Everything else a worker/employer uploads is
+    // private by default.
+    const isPrivate = ["MEDICAL_CERTIFICATE","BUSINESS_DOCUMENT","WORK_VIDEO","INTRO_VIDEO"].includes(fileType);
     const result    = await storageUpload({
       userId, fileType, fileName: safeFileName,
       mimeType: file.mimetype, buffer: file.buffer, isPrivate,
@@ -139,12 +144,31 @@ export async function listUploads(req: Request, res: Response, next: NextFunctio
     const uploads = await prisma.upload.findMany({
       where:   { userId: req.user!.sub, status: { not: "DELETED" } },
       orderBy: { uploadedAt: "desc" },
-      select:  { id: true, fileType: true, fileName: true, fileUrl: true,
+      select:  { id: true, fileType: true, fileName: true, fileUrl: true, filePath: true,
                  mimeType: true, sizeBytes: true, status: true, isPrivate: true,
                  reviewStatus: true, reviewNotes: true, reviewedAt: true,
                  uploadedAt: true },
     });
-    return ok(res, uploads);
+
+    // Sign isPrivate rows the same way every other consumer does (getUploadUrl,
+    // admin-documents.controller.ts, admin.controller.ts, employer.controller.ts)
+    // — same 3600s expiry, same fallback-to-fileUrl-on-failure pattern. Without
+    // this, the worker's own documents list would return an unusable bare
+    // filePath (see storage/index.ts's supabaseUpload) for any private file.
+    let signed = uploads;
+    if (process.env.STORAGE_PROVIDER === "supabase" && uploads.some(u => u.isPrivate && u.filePath)) {
+      const { createClient } = await import("@supabase/supabase-js");
+      const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+      signed = await Promise.all(uploads.map(async (u) => {
+        if (!u.isPrivate || !u.filePath) return u;
+        const { data } = await client.storage
+          .from(process.env.SUPABASE_STORAGE_BUCKET!)
+          .createSignedUrl(u.filePath, SIGNED_URL_EXPIRY_SECONDS);
+        return { ...u, fileUrl: data?.signedUrl ?? u.fileUrl };
+      }));
+    }
+
+    return ok(res, signed.map(({ filePath, ...rest }) => rest));
   } catch (e) { next(e); }
 }
 
@@ -183,7 +207,7 @@ export async function getUploadUrl(req: Request, res: Response, next: NextFuncti
       const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
       const { data } = await client.storage
         .from(process.env.SUPABASE_STORAGE_BUCKET!)
-        .createSignedUrl(record.filePath, 3600);
+        .createSignedUrl(record.filePath, SIGNED_URL_EXPIRY_SECONDS);
       url = data?.signedUrl ?? record.fileUrl;
     }
 
