@@ -186,6 +186,9 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
       const passportNumber = data.passportNumber
         ? await encrypt(data.passportNumber as string)
         : undefined;
+      const phone = data.phone
+        ? await encrypt(data.phone as string)
+        : undefined;
       await prisma.workerProfile.upsert({
         where: { userId },
         update: {
@@ -195,6 +198,7 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           countryOfResidence: data.countryOfResidence as string,
           city:               data.city as string,
           passportNumber,
+          phone,
           maritalStatus:      data.maritalStatus as string | undefined,
         },
         create: {
@@ -205,6 +209,7 @@ async function persistWorkerStep(userId: string, step: number, data: Record<stri
           countryOfResidence: data.countryOfResidence as string,
           city:               data.city as string,
           passportNumber,
+          phone,
           maritalStatus:      data.maritalStatus as string | undefined,
         },
       });

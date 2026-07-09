@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
+import { calculateMatchScore, type ScoringWorker, type ScoringJob } from "../services/matching";
 
 function toNumber(value: unknown): number | undefined {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -102,22 +103,54 @@ function buildJobsWhere(query: Record<string, string>) {
   return where;
 }
 
+// Loads everything calculateMatchScore needs for this worker, once per
+// request — skills, experience, expected salary, target countries, current
+// country, trust score. scoringWorker is null when there's no WorkerProfile
+// row at all (e.g. an authenticated-but-not-yet-onboarded worker browsing
+// jobs pre-verification) — callers must treat that as "no score available",
+// not "score is 0".
 async function getWorkerContext(userId?: string) {
   if (!userId) {
-    return { workerProfileId: null as string | null, workerSkills: [] as string[] };
+    return { workerProfileId: null as string | null, scoringWorker: null as ScoringWorker | null };
   }
 
   const workerProfile = await prisma.workerProfile.findUnique({
     where: { userId },
     select: {
-      id: true,
-      skills: { select: { skill: true } },
+      id:                 true,
+      skills:             { select: { skill: true } },
+      yearsExperience:    true,
+      expectedSalary:     true,
+      targetCountries:    { select: { country: true } },
+      countryOfResidence: true,
+      trustScore:         true,
     },
   });
 
+  if (!workerProfile) {
+    return { workerProfileId: null as string | null, scoringWorker: null as ScoringWorker | null };
+  }
+
   return {
-    workerProfileId: workerProfile?.id ?? null,
-    workerSkills: workerProfile?.skills.map((skillRow) => skillRow.skill.toLowerCase()) ?? [],
+    workerProfileId: workerProfile.id,
+    scoringWorker: {
+      skills:             workerProfile.skills,
+      yearsExperience:    workerProfile.yearsExperience,
+      expectedSalary:     workerProfile.expectedSalary,
+      targetCountries:    workerProfile.targetCountries,
+      countryOfResidence: workerProfile.countryOfResidence,
+      trustScore:         workerProfile.trustScore,
+    } as ScoringWorker,
+  };
+}
+
+function toScoringJob(job: { requiredSkills: string[]; salaryMin: Prisma.Decimal; salaryMax: Prisma.Decimal; country: string; experienceRequired: number }): ScoringJob {
+  return {
+    requiredSkills:     job.requiredSkills,
+    salaryMin:          job.salaryMin,
+    salaryMax:          job.salaryMax,
+    country:            job.country,
+    experienceRequired: job.experienceRequired,
   };
 }
 
@@ -129,7 +162,7 @@ export async function getJobs(req: Request, res: Response, next: NextFunction) {
     const sort = query.sort;
     const savedOnly = query.savedOnly === "true";
     const userId = req.user?.sub;
-    const { workerProfileId, workerSkills } = await getWorkerContext(userId);
+    const { workerProfileId, scoringWorker } = await getWorkerContext(userId);
 
     if (savedOnly && !workerProfileId) {
       return paginated(res, [], 0, page, limit);
@@ -141,6 +174,17 @@ export async function getJobs(req: Request, res: Response, next: NextFunction) {
         some: { workerProfileId },
       };
     }
+    // NOTE — performance tradeoff: "match" sort can't be expressed as a DB
+    // ORDER BY (the score is computed in application code from the worker's
+    // relations against each job's fields). getJobOrderBy("match") already
+    // falls through to createdAt desc, so this fetches ONE page using that
+    // stable baseline order, then — for sort==="match" only — re-sorts that
+    // already-fetched page in memory by real score, below. This ranks
+    // correctly WITHIN the fetched page (e.g. the 20 jobs on page 1), not
+    // across the full table: a better-matching job sitting on page 2 will
+    // not bubble up to page 1. Doing that properly would need a
+    // precomputed-scores table refreshed out of band — explicitly out of
+    // scope for this pass per instruction.
     const orderBy = getJobOrderBy(sort);
 
     const [rows, total] = await Promise.all([
@@ -160,19 +204,31 @@ export async function getJobs(req: Request, res: Response, next: NextFunction) {
       savedSet = new Set(saved.map((savedRow) => savedRow.jobPostId));
     }
 
-    const enriched = rows.map((job) => {
-      const jobSkills = job.requiredSkills.map((s) => s.toLowerCase());
-      const matched = workerSkills.filter((s) => jobSkills.includes(s)).length;
-      const matchScore = jobSkills.length > 0
-        ? Math.round((matched / jobSkills.length) * 100)
+    // One worker load (above) + this one page of jobs — score every row in
+    // memory, no N+1. scoringWorker is null for a worker with no profile
+    // row yet, in which case matchScore stays undefined for every job
+    // (never 0 — 0 would misleadingly read as "bad match" rather than
+    // "no data to score against yet").
+    let enriched = rows.map((job) => {
+      const matchScore = scoringWorker
+        ? calculateMatchScore(scoringWorker, toScoringJob(job))
         : undefined;
 
       return {
         ...job,
         matchScore,
+        // Returned alongside matchScore (same value) for one release so any
+        // other consumer still reading aiMatchScore doesn't silently break.
+        // Drop this once nothing in the codebase reads aiMatchScore anymore
+        // (frontend now reads matchScore as canonical — see jobs/page.tsx).
+        aiMatchScore: matchScore,
         isSaved: savedSet.has(job.id),
       };
     });
+
+    if (sort === "match" && scoringWorker) {
+      enriched = [...enriched].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
+    }
 
     return paginated(res, enriched, total, page, limit);
   } catch (e) {
@@ -277,7 +333,7 @@ export async function getJob(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
     const userId = req.user?.sub;
-    const { workerProfileId, workerSkills } = await getWorkerContext(userId);
+    const { workerProfileId, scoringWorker } = await getWorkerContext(userId);
 
     const job = await prisma.jobPost.findUnique({ where: { id } });
 
@@ -293,13 +349,13 @@ export async function getJob(req: Request, res: Response, next: NextFunction) {
       isSaved = !!saved;
     }
 
-    const jobSkills = job.requiredSkills.map((s) => s.toLowerCase());
-    const matched = workerSkills.filter((s) => jobSkills.includes(s)).length;
-    const matchScore = jobSkills.length > 0
-      ? Math.round((matched / jobSkills.length) * 100)
+    // Same real formula, same worker, same job — the detail modal shows the
+    // identical number the feed already showed for this job.
+    const matchScore = scoringWorker
+      ? calculateMatchScore(scoringWorker, toScoringJob(job))
       : undefined;
 
-    return ok(res, { ...job, isSaved, matchScore });
+    return ok(res, { ...job, isSaved, matchScore, aiMatchScore: matchScore });
   } catch (e) {
     next(e);
   }

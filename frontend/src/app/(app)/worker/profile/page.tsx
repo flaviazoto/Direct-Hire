@@ -17,7 +17,7 @@ interface ProfileData {
     nationality?: string; countryOfResidence?: string; city?: string;
     profession?: string; yearsExperience?: string; expectedSalary?: string;
     maritalStatus?: string; hasSpouse?: boolean; numberOfChildren?: number;
-    additionalNotes?: string; trustScore?: number; riskScore?: number;
+    phone?: string; additionalNotes?: string; trustScore?: number; riskScore?: number;
     isSearchable?: boolean; documentsVerified?: boolean; documentsReviewedAt?: string;
     skills?: { skill: string }[];
     languages?: { language: string; proficiencyLevel: string }[];
@@ -254,6 +254,7 @@ export default function WorkerProfilePage() {
                 <Field label="Nationality"    value={profile.nationality} />
                 <Field label="Country"        value={profile.countryOfResidence} />
                 <Field label="City"           value={profile.city} />
+                <Field label="Phone"          value={profile.phone} />
                 <Field label="Marital Status" value={profile.maritalStatus} />
                 <Field label="Children"       value={profile.numberOfChildren} />
               </CardContent>

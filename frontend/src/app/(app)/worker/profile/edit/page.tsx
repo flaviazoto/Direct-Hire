@@ -12,6 +12,7 @@ interface WorkerForm {
   nationality:        string
   countryOfResidence: string
   city:               string
+  phone:              string
   profession:         string
   yearsExperience:    string
   expectedSalary:     string
@@ -21,7 +22,7 @@ interface WorkerForm {
 
 const EMPTY: WorkerForm = {
   firstName: '', lastName: '', nationality: '', countryOfResidence: '',
-  city: '', profession: '', yearsExperience: '', expectedSalary: '',
+  city: '', phone: '', profession: '', yearsExperience: '', expectedSalary: '',
   passportNumber: '', additionalNotes: '',
 }
 
@@ -53,6 +54,7 @@ export default function WorkerProfileEditPage() {
         nationality:        p.nationality        ?? '',
         countryOfResidence: p.countryOfResidence ?? '',
         city:               p.city               ?? '',
+        phone:              p.phone              ?? '',
         profession:         p.profession         ?? '',
         yearsExperience:    p.yearsExperience    ?? '',
         expectedSalary:     p.expectedSalary     ?? '',
@@ -150,6 +152,10 @@ export default function WorkerProfileEditPage() {
               <div>
                 <label style={S.label}>Passport number</label>
                 <input style={S.input} value={form.passportNumber} onChange={e => handleChange('passportNumber', e.target.value)} placeholder="P12345678" autoComplete="off" />
+              </div>
+              <div>
+                <label style={S.label}>Phone number</label>
+                <input style={S.input} value={form.phone} onChange={e => handleChange('phone', e.target.value)} placeholder="+1 555 123 4567" autoComplete="tel" />
               </div>
             </div>
           </div>

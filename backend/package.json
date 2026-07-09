@@ -15,7 +15,8 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force && tsx scripts/seed.ts",
     "backup:db": "tsx scripts/export-db-backup.ts",
-    "reencrypt:passports": "tsx scripts/reencrypt-passports.ts"
+    "reencrypt:passports": "tsx scripts/reencrypt-passports.ts",
+    "backfill:worker-phones": "tsx scripts/backfill-worker-phones.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

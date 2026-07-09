@@ -24,10 +24,17 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         include: { skills: true, languages: true, targetCountries: true },
       });
       if (raw) {
-        profile = {
-          ...raw,
-          passportNumber: raw.passportNumber ? decrypt(raw.passportNumber) : null,
-        };
+        // try/catch-null so one bad row (malformed ciphertext, key rotation,
+        // etc.) can never turn into a 500 for the whole profile fetch.
+        let passportNumber: string | null = null;
+        if (raw.passportNumber) {
+          try { passportNumber = decrypt(raw.passportNumber); } catch { passportNumber = null; }
+        }
+        let phone: string | null = null;
+        if (raw.phone) {
+          try { phone = decrypt(raw.phone); } catch { phone = null; }
+        }
+        profile = { ...raw, passportNumber, phone };
       }
     } else if (role === "EMPLOYER") {
       const raw = await prisma.employerProfile.findUnique({
@@ -108,6 +115,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
 
     if (role === "WORKER") {
       const rawPassport = asTrimmedString(body.passportNumber);
+      const rawPhone    = asTrimmedString(body.phone);
       const data = {
         firstName:          asTrimmedString(body.firstName),
         lastName:           asTrimmedString(body.lastName),
@@ -119,6 +127,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
         expectedSalary:     asTrimmedString(body.expectedSalary),
         additionalNotes:    asTrimmedString(body.additionalNotes),
         passportNumber:     rawPassport !== undefined ? encrypt(rawPassport) : undefined,
+        phone:              rawPhone    !== undefined ? encrypt(rawPhone)    : undefined,
       };
 
       const updateData = stripUndefined(data);

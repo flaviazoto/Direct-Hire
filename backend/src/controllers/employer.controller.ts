@@ -5,6 +5,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { sendEmail } from "../services/email";
+import { decrypt } from "../lib/encrypt";
 
 // Job CRUD is handled by employer-jobs.controller.ts
 
@@ -158,6 +159,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
             profileScore:        true,
             trustScore:          true,
             documentsVerified:   true,
+            phone:               true,
             skills:             { select: { skill: true } },
             languages:          { select: { language: true, proficiencyLevel: true } },
             targetCountries:    { select: { country: true } },
@@ -191,6 +193,13 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     const docsVerified    = (p as any).documentsVerified === true;
     const documentStatus  = docsVerified ? "VERIFIED" : "PENDING_REVIEW";
 
+    // try/catch-null so one bad row (malformed ciphertext, key rotation,
+    // etc.) can never turn into a 500 for this whole endpoint.
+    let phone: string | null = null;
+    if (p.phone) {
+      try { phone = decrypt(p.phone); } catch { phone = null; }
+    }
+
     // Only generate signed URLs and expose documents after admin has verified them
     const documents = docsVerified
       ? await Promise.all(user.uploads.map(async u => {
@@ -218,6 +227,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     return ok(res, {
       id:                user.id,
       email:             user.email,
+      phone,
       created_at:        user.createdAt,
       lock_count:        user.lockCount,
       account_status:    user.accountStatus,

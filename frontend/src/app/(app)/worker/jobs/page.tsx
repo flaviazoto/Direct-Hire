@@ -31,7 +31,7 @@ interface Job {
   salaryMin?: number | null;
   salaryMax?: number | null;
   currency?: string | null;
-  aiMatchScore?: number;
+  matchScore?: number; // canonical field — see backend/src/controllers/worker.controller.ts
   isSaved?: boolean;
   employerProfile?: { companyName?: string | null; country?: string | null };
   requiredSkills?: { skill: string }[];
@@ -414,7 +414,7 @@ function JobCard({ job, onApply, onSave, checking, applied, saving }: {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-          {job.aiMatchScore !== undefined && <ScoreRing score={job.aiMatchScore} />}
+          {job.matchScore !== undefined && <ScoreRing score={job.matchScore} />}
           {job.createdAt && <span style={{ fontSize: 11, color: "#3a3a3a" }}>{timeAgo(job.createdAt)}</span>}
         </div>
       </div>

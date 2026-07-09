@@ -330,6 +330,7 @@ model WorkerProfile {
   city              String?
   address           String?
   passportNumber    String?  // stored encrypted, text only
+  phone             String?  // stored encrypted, text only — same pattern as passportNumber
   maritalStatus     String?
   fatherName        String?
   motherName        String?
