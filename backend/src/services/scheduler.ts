@@ -8,11 +8,26 @@
 // Schedules:
 //   lock-daily-billing    '5 0 * * *'   (00:05 UTC daily)
 //   lock-expiry-processor '15 * * * *'  (every hour at :15)
+//   match-score-recalc    '15 2 * * *'  (02:15 UTC daily)
+//   onboarding-reminders  '0 9 * * *'   (09:00 UTC daily)
 
 import { runLockDailyBilling, runLockExpiryProcessor } from "./lock-jobs";
+import { runMatchScoreRecalc } from "./scoring-jobs";
+import { runOnboardingReminders } from "./queue";
 
 const LOCK_DAILY_BILLING_CRON    = "5 0 * * *";
 const LOCK_EXPIRY_PROCESSOR_CRON = "15 * * * *";
+const MATCH_SCORE_RECALC_CRON    = "15 2 * * *";
+// Pre-existing handler (queue/index.ts) — was reachable only via the manual
+// /cron HTTP endpoint (cron.routes.ts), never actually scheduled by this
+// file. Registering it here is the "needs one line" fix from the gap
+// analysis. NOTE: runOnboardingReminders() has no per-user "already
+// reminded" cooldown — a worker who abandoned onboarding 3 days ago will get
+// a reminder every single day this job runs, not just once. Pre-existing
+// behavior (same when manually triggered via /cron), not introduced by this
+// wiring — flagged here, not fixed, since the ask was to wire it up, not
+// rewrite its semantics.
+const ONBOARDING_REMINDER_CRON   = "0 9 * * *";
 
 // ── cron → ms helper (only for setInterval fallback) ─────────────────────────
 // Returns the milliseconds until the next scheduled fire time.
@@ -100,8 +115,20 @@ async function registerBullMQJobs(): Promise<void> {
     { name: "lock-expiry-processor", data: {} },
   );
 
+  await queue.upsertJobScheduler(
+    "match-score-recalc",
+    { pattern: MATCH_SCORE_RECALC_CRON, tz: "UTC" },
+    { name: "match-score-recalc", data: {} },
+  );
+
+  await queue.upsertJobScheduler(
+    "onboarding-reminders",
+    { pattern: ONBOARDING_REMINDER_CRON, tz: "UTC" },
+    { name: "onboarding-reminders", data: {} },
+  );
+
   await queue.close();
-  console.log("[Scheduler] BullMQ repeat jobs registered: lock-daily-billing, lock-expiry-processor");
+  console.log("[Scheduler] BullMQ repeat jobs registered: lock-daily-billing, lock-expiry-processor, match-score-recalc, onboarding-reminders");
 }
 
 // ── BullMQ Worker process (processes scheduled jobs from queue) ───────────────
@@ -119,6 +146,12 @@ export async function startBullMQWorker(): Promise<void> {
           break;
         case "lock-expiry-processor":
           await runLockExpiryProcessor();
+          break;
+        case "match-score-recalc":
+          await runMatchScoreRecalc();
+          break;
+        case "onboarding-reminders":
+          await runOnboardingReminders();
           break;
         default:
           console.warn(`[BullMQ Worker] Unknown job: ${job.name}`);
@@ -153,4 +186,6 @@ export async function startScheduler(): Promise<void> {
   console.log("[Scheduler] Using inline setTimeout scheduler (no Redis)");
   scheduleRecurringDaily("lock-daily-billing",    0, 5,  runLockDailyBilling);
   scheduleRecurringHourly("lock-expiry-processor", 15,   runLockExpiryProcessor);
+  scheduleRecurringDaily("match-score-recalc",    2, 15, runMatchScoreRecalc);
+  scheduleRecurringDaily("onboarding-reminders",  9, 0,  runOnboardingReminders);
 }

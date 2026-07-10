@@ -13,6 +13,7 @@ import {
   sendInterviewResponseEmployerEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
+import { decrypt } from "../lib/encrypt";
 import { calculateMatchScore } from "../services/matching";
 import { calculateApplicationFeeAsync } from "../services/pricing";
 import stripe from "../services/stripe";
@@ -438,7 +439,7 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
         employer: {
           select: {
             email:          true,
-            employerProfile: { select: { contactPersonName: true } },
+            employerProfile: { select: { contactPersonName: true, phone: true } },
           },
         },
       },
@@ -450,10 +451,16 @@ export async function getApplication(req: Request, res: Response, next: NextFunc
     // Build company_contact only when unlocked — never expose employer PII before that
     let companyContact: Record<string, unknown> | null = null;
     if (app.interviewContactUnlocked) {
+      // try/catch-null — same guard used everywhere else this field is read
+      // (malformed/legacy ciphertext must never 500 the whole endpoint).
+      let contactPhone: string | null = null;
+      if (app.employer.employerProfile?.phone) {
+        try { contactPhone = decrypt(app.employer.employerProfile.phone); } catch { contactPhone = null; }
+      }
       companyContact = {
         contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
         contact_email:          app.employer.email,
-        contact_phone:          null,
+        contact_phone:          contactPhone,
         company_name:           app.job.companyName,
         interview_instructions: app.interviewInstructions,
       };
@@ -630,7 +637,7 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
         employer: {
           select: {
             email:          true,
-            employerProfile: { select: { contactPersonName: true } },
+            employerProfile: { select: { contactPersonName: true, phone: true } },
           },
         },
       },
@@ -664,10 +671,15 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
         : []),
     ]).catch(console.error);
 
+    let contactPhone: string | null = null;
+    if (app.employer.employerProfile?.phone) {
+      try { contactPhone = decrypt(app.employer.employerProfile.phone); } catch { contactPhone = null; }
+    }
+
     return ok(res, {
       contact_name:           app.employer.employerProfile?.contactPersonName ?? null,
       contact_email:          app.employer.email,
-      contact_phone:          null,
+      contact_phone:          contactPhone,
       company_name:           app.job.companyName,
       interview_instructions: app.interviewInstructions,
     });

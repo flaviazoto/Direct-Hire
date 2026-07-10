@@ -17,7 +17,8 @@
     "backup:db": "tsx scripts/export-db-backup.ts",
     "reencrypt:passports": "tsx scripts/reencrypt-passports.ts",
     "backfill:worker-phones": "tsx scripts/backfill-worker-phones.ts",
-    "flip-video-privacy": "tsx scripts/flip-video-privacy.ts"
+    "flip-video-privacy": "tsx scripts/flip-video-privacy.ts",
+    "sweep:orphaned-profiles": "tsx scripts/sweep-orphaned-profiles.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

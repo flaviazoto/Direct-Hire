@@ -50,7 +50,11 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         if ((raw as any).administratorId) {
           try { administratorId = decrypt((raw as any).administratorId); } catch { administratorId = null; }
         }
-        profile = { ...raw, administratorId };
+        let phone: string | null = null;
+        if (raw.phone) {
+          try { phone = decrypt(raw.phone); } catch { phone = null; }
+        }
+        profile = { ...raw, administratorId, phone };
       }
     }
 
@@ -144,6 +148,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     }
 
     if (role === "EMPLOYER") {
+      const rawPhone = asTrimmedString(body.phone);
       const data = {
         companyName:         asTrimmedString(body.companyName),
         contactPersonName:   asTrimmedString(body.contactPersonName),
@@ -154,6 +159,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
         city:                asTrimmedString(body.city),
         address:             asTrimmedString(body.address),
         businessDescription: asTrimmedString(body.businessDescription),
+        phone:               rawPhone !== undefined ? encrypt(rawPhone) : undefined,
       };
 
       const updateData = stripUndefined(data);

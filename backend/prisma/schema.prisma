@@ -403,6 +403,7 @@ model EmployerProfile {
   nipt              String?
   qkr               String?
   administratorId   String?  // encrypted
+  phone             String?  // stored encrypted, text only — same pattern as WorkerProfile.phone
   industry          String?
   companySize       String?
   website           String?

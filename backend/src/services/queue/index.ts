@@ -84,9 +84,96 @@ async function processInline<N extends JobName>(
       await emailSvc.sendAdminNewSubmission(d.submitterEmail, d.submitterRole, d.submitterName);
       break;
     }
+    case "scoring.calculateMatchScores": {
+      const d = data as JobPayload["scoring.calculateMatchScores"];
+      await notifyMatchingWorkersForApprovedJob(d.jobPostId);
+      break;
+    }
     default:
       console.log(`[Queue] Job ${name} — no inline processor, skipping.`);
   }
+}
+
+// ── scoring.calculateMatchScores processor ─────────────────────
+// Triggered by admin-jobs.controller.ts's approveJob via enqueue(), never
+// awaited there — admin approval must not wait on scoring. Reuses the same
+// weighted match formula the worker feed already uses (services/matching):
+// scores every VERIFIED worker with a profile against the newly-approved
+// job, notifies the top 20 scoring >= 70%. Runs once per approval, for one
+// job — NOT a general worker×job score-matrix job (explicitly out of scope;
+// see runMatchScoreRecalc in services/scoring-jobs for the separate nightly
+// staleness-refresh job that covers already-submitted applications).
+export async function notifyMatchingWorkersForApprovedJob(jobPostId: string): Promise<void> {
+  const prisma = (await import("../../lib/prisma")).default;
+  const { calculateMatchScore } = await import("../matching");
+
+  const job = await prisma.jobPost.findUnique({
+    where:  { id: jobPostId },
+    select: {
+      id: true, title: true,
+      requiredSkills: true, salaryMin: true, salaryMax: true,
+      country: true, experienceRequired: true,
+    },
+  });
+  if (!job) {
+    console.warn(`[scoring.calculateMatchScores] JobPost ${jobPostId} not found — skipping`);
+    return;
+  }
+
+  const workers = await prisma.workerProfile.findMany({
+    where: { user: { role: "WORKER", accountStatus: "VERIFIED" } },
+    select: {
+      userId:             true,
+      skills:             { select: { skill: true } },
+      yearsExperience:    true,
+      expectedSalary:     true,
+      targetCountries:    { select: { country: true } },
+      countryOfResidence: true,
+      trustScore:         true,
+    },
+  });
+
+  const topMatches = workers
+    .map((w) => ({
+      userId: w.userId,
+      score: calculateMatchScore(
+        {
+          skills:             w.skills,
+          yearsExperience:    w.yearsExperience,
+          expectedSalary:     w.expectedSalary,
+          targetCountries:    w.targetCountries,
+          countryOfResidence: w.countryOfResidence,
+          trustScore:         w.trustScore,
+        },
+        {
+          requiredSkills:     job.requiredSkills,
+          salaryMin:          job.salaryMin,
+          salaryMax:          job.salaryMax,
+          country:            job.country,
+          experienceRequired: job.experienceRequired,
+        },
+      ),
+    }))
+    .filter((s) => s.score >= 70)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+
+  if (topMatches.length === 0) {
+    console.log(`[scoring.calculateMatchScores] No workers >=70% match for job ${jobPostId}`);
+    return;
+  }
+
+  await prisma.notification.createMany({
+    data: topMatches.map((m) => ({
+      userId: m.userId,
+      title:  `New job matches your profile — ${Math.round(m.score)}% match`,
+      body:   `"${job.title}" looks like a strong fit for your profile.`,
+      type:   "JOB_MATCH",
+      link:   "/worker/jobs",
+    })),
+  });
+
+  console.log(`[scoring.calculateMatchScores] Notified ${topMatches.length} worker(s) for job ${jobPostId}`);
 }
 
 // ── Enqueue function ──────────────────────────────────────────

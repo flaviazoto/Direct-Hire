@@ -343,12 +343,19 @@ async function persistEmployerStep(userId: string, step: number, data: Record<st
       break;
     }
     case 2: {
+      // Same silent-drop bug as worker phone: frontend already collects and
+      // requires "Contact Phone" at this step (sent as `phone`), never
+      // persisted until now.
+      const phone = data.phone
+        ? await encrypt(data.phone as string)
+        : undefined;
       await prisma.employerProfile.upsert({
         where: { userId },
         update: {
           industry:            data.industry            as string,
           companySize:         data.companySize         as string,
           address:             data.address             as string,
+          phone,
           businessDescription: data.businessDescription as string,
         },
         create: {
@@ -356,6 +363,7 @@ async function persistEmployerStep(userId: string, step: number, data: Record<st
           industry:            data.industry            as string,
           companySize:         data.companySize         as string,
           address:             data.address             as string,
+          phone,
           businessDescription: data.businessDescription as string,
         },
       });

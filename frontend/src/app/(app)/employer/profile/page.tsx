@@ -15,6 +15,7 @@ interface ProfileData {
   profile: {
     companyName?: string; contactPersonName?: string; industry?: string;
     companySize?: string; website?: string; country?: string; city?: string;
+    phone?: string | null;
     businessDescription?: string; subscriptionPlan?: string; isVerified?: boolean;
     hiringCountries?: { country: string }[];
     requiredSkills?:  { skill: string }[];
@@ -54,7 +55,7 @@ export default function EmployerProfilePage() {
   const [deleteError, setDeleteError]     = useState<string | null>(null);
   const [form, setForm]       = useState({
     companyName: "", contactPersonName: "", industry: "",
-    companySize: "", website: "", country: "", city: "", businessDescription: "",
+    companySize: "", website: "", country: "", city: "", phone: "", businessDescription: "",
   });
 
   const showToast = (msg: string, type: "ok" | "err") => {
@@ -76,6 +77,7 @@ export default function EmployerProfilePage() {
           website:             d.profile.website ?? "",
           country:             d.profile.country ?? "",
           city:                d.profile.city ?? "",
+          phone:               d.profile.phone ?? "",
           businessDescription: d.profile.businessDescription ?? "",
         });
       }
@@ -144,6 +146,7 @@ export default function EmployerProfilePage() {
               <Input label="Country" value={form.country} onChange={e => set("country", e.target.value)} placeholder="Germany" />
               <Input label="City"    value={form.city}    onChange={e => set("city", e.target.value)}    placeholder="Berlin" />
             </div>
+            <Input label="Phone" value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="+44 20 1234 5678" type="tel" />
             <Textarea label="Business Description" value={form.businessDescription} onChange={e => set("businessDescription", e.target.value)} rows={4} placeholder="Describe your company and what you do…" />
           </CardContent>
           <CardFooter>

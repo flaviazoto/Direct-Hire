@@ -15,6 +15,7 @@ import {
   sendPostingRightsRestoredEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
+import { enqueue } from "../services/queue";
 
 // ── Job counts cache (60-second TTL) ─────────────────────────────────────────
 
@@ -243,6 +244,10 @@ export async function approveJob(req: Request, res: Response, next: NextFunction
         },
       }),
     ]).catch(console.error);
+
+    // Notify matching workers — background job, not awaited so approval never
+    // waits on scoring dozens of worker profiles.
+    enqueue("scoring.calculateMatchScores", { jobPostId: updated.id }).catch(console.error);
 
     return ok(res, { id: updated.id, status: updated.status });
   } catch (e) { next(e); }
