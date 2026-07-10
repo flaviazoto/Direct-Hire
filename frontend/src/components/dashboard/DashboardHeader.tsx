@@ -93,6 +93,10 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
     ],
   },
   {
+    section: 'Locks',
+    links: [{ href: '/admin/locks', label: 'Lock Monitor', Icon: Lock }],
+  },
+  {
     section: 'Settings',
     links: [{ href: '/admin/pricing', label: 'Pricing', Icon: Tag }],
   },

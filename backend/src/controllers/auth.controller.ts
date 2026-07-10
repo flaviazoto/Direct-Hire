@@ -15,6 +15,10 @@ import { generateOTP, hashOTP, verifyOTP } from "../common/utils/otp.util";
 import { sendOtpVerification, sendEmailVerified } from "../services/email";
 import { insertAuditLog } from "../lib/audit";
 
+// GDPR consent — bump whenever /terms or /privacy changes materially
+// (both currently show "Last updated: January 2025").
+const CURRENT_CONSENT_POLICY_VERSION = "2025-01";
+
 // ── Schemas ───────────────────────────────────────────────────
 const RegisterSchema = z.object({
   firstName:       z.string().trim().min(1).max(100),
@@ -23,6 +27,9 @@ const RegisterSchema = z.object({
   password:        z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
   confirmPassword: z.string(),
   role:            z.enum(["WORKER", "EMPLOYER"]),
+  acceptedTerms:   z.boolean().refine(v => v === true, {
+    message: "You must accept the Terms of Service and Privacy Policy",
+  }),
 }).refine(d => d.password === d.confirmPassword, {
   message: "Passwords do not match", path: ["confirmPassword"],
 });
@@ -66,6 +73,8 @@ export async function register(req: Request, res: Response, next: NextFunction) 
           role:   input.role,
           status: "PENDING_VERIFICATION",
           isEmailVerified: false,
+          consentAcceptedAt:    new Date(),
+          consentPolicyVersion: CURRENT_CONSENT_POLICY_VERSION,
         },
       });
 

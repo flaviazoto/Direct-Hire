@@ -241,6 +241,22 @@ model User {
   avatarUrl                      String?
   onboardingComplete             Boolean       @default(false)
 
+  // GDPR explicit consent — captured at registration (standard email/password
+  // signup only; see auth.controller.ts register()). NULL for every account
+  // that predates this column, and for OAuth signups, which don't currently
+  // pass through this checkbox — both are known, flagged gaps, not bugs to
+  // silently paper over.
+  consentAcceptedAt              DateTime?
+  consentPolicyVersion           String?
+
+  // Non-transactional email suppression (unsubscribe). NULL = subscribed.
+  // unsubscribeToken is random (not signed/JWT), generated lazily — see
+  // lib/unsubscribe.ts — and looked up directly, same pattern as
+  // PasswordResetToken/EmailVerificationToken but as a plain non-expiring
+  // column since it's 1:1 with the user.
+  emailUnsubscribedAt            DateTime?
+  unsubscribeToken               String?       @unique
+
   // Relations
   workerProfile     WorkerProfile?
   employerProfile   EmployerProfile?

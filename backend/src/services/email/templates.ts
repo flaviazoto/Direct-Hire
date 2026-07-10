@@ -14,7 +14,11 @@ const BRAND_COLOR = "#1848CC";
 const BRAND_BG    = "#08142A";
 
 // ── Base layout ───────────────────────────────────────────────
-function layout(body: string): string {
+// unsubscribeUrl is only ever passed by templates for non-transactional
+// EmailTypes (currently just onboardingReminderTemplate — see
+// lib/unsubscribe.ts's classification) — every other template call site
+// omits it and gets the plain footer, unchanged.
+function layout(body: string, opts?: { unsubscribeUrl?: string }): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +51,8 @@ function layout(body: string): string {
           <p style="margin:0;font-size:12px;color:#94A3B8;text-align:center;line-height:1.6;">
             © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
             <a href="${APP_URL}/privacy" style="color:#1848CC;text-decoration:none;">Privacy Policy</a> ·
-            <a href="${APP_URL}/terms" style="color:#1848CC;text-decoration:none;">Terms of Service</a>
+            <a href="${APP_URL}/terms" style="color:#1848CC;text-decoration:none;">Terms of Service</a>${opts?.unsubscribeUrl ? ` ·
+            <a href="${opts.unsubscribeUrl}" style="color:#1848CC;text-decoration:none;">Unsubscribe</a>` : ""}
           </p>
         </td>
       </tr>
@@ -409,6 +414,7 @@ export function onboardingReminderTemplate(vars: {
   firstName: string;
   continueUrl: string;
   completionPct: number;
+  unsubscribeUrl: string;
 }): TemplateResult {
   const html = layout(`
     ${badge("REMINDER")}
@@ -425,11 +431,11 @@ export function onboardingReminderTemplate(vars: {
     <p style="font-size:14px;color:#64748B;text-align:right;margin:8px 0 20px;">${vars.completionPct}% complete</p>
     ${btn(vars.continueUrl, "Continue Registration")}
     ${p("It only takes a few more minutes. Verified profiles get 3× more employer views.")}
-  `);
+  `, { unsubscribeUrl: vars.unsubscribeUrl });
   return {
     subject: `Don't miss out — your profile is ${vars.completionPct}% complete`,
     html,
-    text: `Your profile is ${vars.completionPct}% complete. Continue at: ${vars.continueUrl}`,
+    text: `Your profile is ${vars.completionPct}% complete. Continue at: ${vars.continueUrl}\n\nUnsubscribe from these reminders: ${vars.unsubscribeUrl}`,
   };
 }
 

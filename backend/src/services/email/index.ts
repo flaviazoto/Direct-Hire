@@ -2,6 +2,7 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../../lib/prisma";
 import type { EmailType } from "../../types";
+import { isSuppressible, isUnsubscribed } from "../../lib/unsubscribe";
 
 // ── Constants ─────────────────────────────────────────────────
 export const OWNER_EMAIL   = process.env.OWNER_EMAIL   ?? "directhire1977@gmail.com";
@@ -100,6 +101,16 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
+  // Central suppression gate — the ONLY place unsubscribe is enforced.
+  // Only checks the DB for email types that are actually suppressible (see
+  // lib/unsubscribe.ts's classification), so the 15 transactional types
+  // never pay this extra query. userId-less sends (owner/admin notifications,
+  // contact-form replies) have nothing to suppress against.
+  if (opts.userId && isSuppressible(opts.emailType) && await isUnsubscribed(opts.userId)) {
+    console.log(`[sendEmail] Suppressed "${opts.subject}" → ${opts.to} (unsubscribed, type ${opts.emailType})`);
+    return;
+  }
+
   let logId: string | undefined;
   try {
     const logRecord = await prisma.emailLog.create({
@@ -469,8 +480,11 @@ export async function sendPostingRightsRestoredEmail(userId: string, to: string)
 export async function sendOnboardingReminder(
   userId: string, to: string, firstName: string, continueUrl: string, completionPct: number,
 ) {
+  const { getOrCreateUnsubscribeToken, buildUnsubscribeUrl } = await import("../../lib/unsubscribe");
+  const unsubscribeUrl = buildUnsubscribeUrl(await getOrCreateUnsubscribeToken(userId));
+
   const { onboardingReminderTemplate } = await import("./templates");
-  const { subject, html, text } = onboardingReminderTemplate({ firstName, continueUrl, completionPct });
+  const { subject, html, text } = onboardingReminderTemplate({ firstName, continueUrl, completionPct, unsubscribeUrl });
   await sendEmail({ userId, to, from: FROM_HELLO, emailType: "ONBOARDING_REMINDER", subject, html, text });
 }
 

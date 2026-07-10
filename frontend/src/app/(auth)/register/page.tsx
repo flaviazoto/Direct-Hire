@@ -204,7 +204,7 @@ export default function RegisterPage() {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({}); setServerErr(""); setLoading(true);
-    const res = await authApi.register({ firstName: firstName.trim(), lastName: lastName.trim(), email, password, confirmPassword: confirm, role });
+    const res = await authApi.register({ firstName: firstName.trim(), lastName: lastName.trim(), email, password, confirmPassword: confirm, role, acceptedTerms });
     setLoading(false);
     if (res.success) {
       router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);

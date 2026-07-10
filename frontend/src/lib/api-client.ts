@@ -285,6 +285,12 @@ export const adminApi = {
   getWorkerDocuments: (id: string) => get(`/admin/workers/${id}/documents`),
   reviewWorkerDocuments: (id: string, body: { photoStatus: string; videoStatus: string; passportStatus: string; notes?: string }) =>
     patch(`/admin/workers/${id}/documents/review`, body),
+  // ── Lock monitor ─────────────────────────────────────────────────────────────
+  getAllLocks: (params?: Record<string, string>) =>
+    get(`/admin/locks${params ? "?" + new URLSearchParams(params) : ""}`),
+  getLocksSummary: () => get("/admin/locks/summary"),
+  getLockDetail: (lockId: string) => get(`/admin/locks/${lockId}`),
+  overrideLock: (lockId: string, note: string) => post(`/admin/locks/${lockId}/override`, { note }),
   // ── Notifications ────────────────────────────────────────────────────────────
   getNotifications: (params?: Record<string, string>) =>
     get(`/admin/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
