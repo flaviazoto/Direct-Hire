@@ -6,6 +6,7 @@ import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
 import { LoadingPage } from "@/components/ui";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
+import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -654,8 +655,8 @@ function ApplicationsContent() {
   const [page,         setPage]       = useState(1);
   const LIMIT = 20;
 
-  const fetchApps = useCallback(async () => {
-    setLoading(true);
+  const fetchApps = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const params: Record<string, string> = { page: String(page), limit: String(LIMIT) };
     if (activeTab !== "ALL") params.status = activeTab;
     const res = await workerApi.getApplications(params);
@@ -663,10 +664,16 @@ function ApplicationsContent() {
       setApps((res.data as Application[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
     }
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
   }, [activeTab, page]);
 
   useEffect(() => { fetchApps(); }, [fetchApps]);
+
+  // Background refresh so status changes / interview responses show up without
+  // a manual reload — silent (no spinner), preserves scroll position and each
+  // ApplicationCard's expanded state (React keeps that local state as long as
+  // the app.id keys stay stable across the re-render).
+  useVisibilityPoll(useCallback(() => fetchApps({ silent: true }), [fetchApps]), 60_000);
 
   // Reset page when tab changes
   function switchTab(tab: TabStatus) {

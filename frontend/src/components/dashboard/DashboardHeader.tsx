@@ -10,7 +10,7 @@ import {
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
   TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock,
 } from 'lucide-react'
-import { employerApi } from '@/lib/api-client'
+import { employerApi, adminApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
 
 type NotifItem = {
@@ -180,9 +180,9 @@ export default function DashboardHeader({
   const pathname = usePathname()
   const router = useRouter()
 
-  // Notifications — functional for employer only today. Admin's bell stays
-  // decorative (no backing /admin/notifications endpoint exists yet) rather
-  // than silently building unrequested admin scope.
+  // Notifications — functional for both employer and admin. Same role-agnostic
+  // backend handlers (worker-notifications.controller.ts) mounted on each
+  // role's router; only the API namespace differs here.
   const [notifOpen,    setNotifOpen]    = useState(false)
   const [notifs,       setNotifs]       = useState<NotifItem[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
@@ -190,7 +190,9 @@ export default function DashboardHeader({
   const desktopNotifRef = useRef<HTMLDivElement>(null)
 
   const fetchUnreadCount = useCallback(
-    () => (role === 'employer' ? employerApi.getUnreadCount() : Promise.resolve({ success: false })),
+    () => role === 'employer' ? employerApi.getUnreadCount()
+        : role === 'admin'    ? adminApi.getUnreadCount()
+        : Promise.resolve({ success: false }),
     [role],
   )
   const { unreadCount, refetch: refetchUnreadCount } = useNotificationPolling(fetchUnreadCount)
@@ -199,7 +201,9 @@ export default function DashboardHeader({
     if (notifOpen) { setNotifOpen(false); return }
     setNotifOpen(true)
     setNotifLoading(true)
-    const res = await employerApi.getNotifications({ limit: '10' })
+    const res = role === 'admin'
+      ? await adminApi.getNotifications({ limit: '10' })
+      : await employerApi.getNotifications({ limit: '10' })
     if (res.success) {
       const d = res.data as { data?: NotifItem[] } | NotifItem[] | undefined
       setNotifs(Array.isArray(d) ? d : (d as { data?: NotifItem[] } | undefined)?.data ?? [])
@@ -210,15 +214,17 @@ export default function DashboardHeader({
   async function handleNotifClick(n: NotifItem) {
     setNotifOpen(false)
     if (!n.isRead) {
-      await employerApi.markNotificationRead(n.id)
+      if (role === 'admin') await adminApi.markNotificationRead(n.id)
+      else                  await employerApi.markNotificationRead(n.id)
       setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x))
       refetchUnreadCount()
     }
-    router.push(n.link ?? '/employer/dashboard')
+    router.push(n.link ?? (role === 'admin' ? '/admin/dashboard' : '/employer/dashboard'))
   }
 
   async function handleMarkAllRead() {
-    await employerApi.markAllNotificationsRead()
+    if (role === 'admin') await adminApi.markAllNotificationsRead()
+    else                  await employerApi.markAllNotificationsRead()
     setNotifs(ns => ns.map(x => ({ ...x, isRead: true })))
     refetchUnreadCount()
   }
@@ -479,7 +485,7 @@ export default function DashboardHeader({
             <Link href="/worker/notifications" aria-label="Notifications" style={btnStyle}>
               <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
             </Link>
-          ) : role === 'employer' ? (
+          ) : (
             <div ref={mobileNotifRef} style={{ position: 'relative' }}>
               <button onClick={toggleNotifOpen} aria-label="Notifications" style={btnStyle}>
                 <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
@@ -500,10 +506,6 @@ export default function DashboardHeader({
                 </div>
               )}
             </div>
-          ) : (
-            <button aria-label="Notifications" style={btnStyle}>
-              <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
-            </button>
           )}
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
             <Menu size={20} className={theme.hamburger} />
@@ -532,7 +534,7 @@ export default function DashboardHeader({
           </span>
         </Link>
 
-        {role === 'employer' && (
+        {(role === 'employer' || role === 'admin') && (
           <div ref={desktopNotifRef} style={{ position: 'relative', marginBottom: 12 }}>
             <button
               onClick={toggleNotifOpen}

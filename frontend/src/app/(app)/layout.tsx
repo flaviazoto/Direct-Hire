@@ -7,6 +7,7 @@ import Link from "next/link";
 import { authApi, adminApi, employerApi, workerApi } from "@/lib/api-client";
 import DashboardHeader   from "@/components/dashboard/DashboardHeader";
 import WorkerHeader      from "@/components/dashboard/WorkerHeader";
+import { useNotificationPolling } from "@/hooks/useNotificationPolling";
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -490,22 +491,14 @@ interface NotifItem {
 
 function WorkerTopBar() {
   const router = useRouter();
-  const [unread,   setUnread]   = useState(0);
   const [open,     setOpen]     = useState(false);
   const [notifs,   setNotifs]   = useState<NotifItem[]>([]);
   const [loading,  setLoading]  = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Poll unread count every 30s
-  useEffect(() => {
-    const fetch_ = async () => {
-      const res = await workerApi.getUnreadCount();
-      if (res.success) setUnread((res.data as { count: number })?.count ?? 0);
-    };
-    fetch_();
-    const t = setInterval(fetch_, 30_000);
-    return () => clearInterval(t);
-  }, []);
+  // Unread count — pause-when-hidden + refetch-on-refocus, same as the
+  // employer bell (DashboardHeader.tsx).
+  const { unreadCount: unread, refetch: refetchUnread } = useNotificationPolling(workerApi.getUnreadCount);
 
   // Close on outside click
   useEffect(() => {
@@ -533,8 +526,8 @@ function WorkerTopBar() {
     setOpen(false);
     if (!n.isRead) {
       await workerApi.markNotificationRead(n.id);
-      setUnread(c => Math.max(0, c - 1));
       setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+      refetchUnread();
     }
     router.push(n.link ?? "/worker/notifications");
   }

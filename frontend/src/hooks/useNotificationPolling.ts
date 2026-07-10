@@ -2,11 +2,21 @@
 // frontend/src/hooks/useNotificationPolling.ts
 // Role-agnostic unread-notification-count poller. Pass in whichever role's
 // getUnreadCount function (employerApi.getUnreadCount, workerApi.getUnreadCount,
-// ...) — this hook doesn't know or care which role it's serving.
+// adminApi.getUnreadCount, ...) — this hook doesn't know or care which role
+// it's serving. Thin wrapper around useVisibilityPoll — the pause-when-hidden /
+// refetch-on-refocus behavior lives there; this just adds the unread-count
+// state and an immediate fetch on mount (list-refresh callers of
+// useVisibilityPoll don't want that immediate call since they already have
+// their own initial-load effect).
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useVisibilityPoll } from "./useVisibilityPoll";
 
-type UnreadCountResult = { success: boolean; data?: { count?: number } };
+// `data` is typed as unknown (not { count?: number }) so this accepts the
+// ApiResult<unknown> shape every *Api.getUnreadCount() call actually returns
+// (api-client.ts's get<T>() infers T = unknown with no explicit type arg) —
+// narrowed at the one place it's read, below.
+type UnreadCountResult = { success: boolean; data?: unknown };
 type UnreadCountFetcher = () => Promise<UnreadCountResult>;
 
 export function useNotificationPolling(fetchUnreadCount: UnreadCountFetcher, intervalMs = 30_000) {
@@ -17,28 +27,14 @@ export function useNotificationPolling(fetchUnreadCount: UnreadCountFetcher, int
   const fetcherRef = useRef(fetchUnreadCount);
   fetcherRef.current = fetchUnreadCount;
 
-  const refetch = useCallback(async () => {
+  const poll = useCallback(async () => {
     const res = await fetcherRef.current();
-    if (res.success) setUnreadCount(res.data?.count ?? 0);
+    if (res.success) setUnreadCount((res.data as { count?: number } | undefined)?.count ?? 0);
   }, []);
 
-  useEffect(() => {
-    refetch();
+  const { refetch } = useVisibilityPoll(poll, intervalMs);
 
-    const tick = () => {
-      if (document.visibilityState === "visible") refetch();
-    };
-
-    const interval = setInterval(tick, intervalMs);
-    // Also refetch immediately when the tab regains focus, so the badge
-    // doesn't sit stale for up to `intervalMs` after switching back.
-    document.addEventListener("visibilitychange", tick);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [refetch, intervalMs]);
+  useEffect(() => { refetch(); }, [refetch]);
 
   return { unreadCount, refetch };
 }

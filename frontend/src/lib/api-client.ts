@@ -285,6 +285,12 @@ export const adminApi = {
   getWorkerDocuments: (id: string) => get(`/admin/workers/${id}/documents`),
   reviewWorkerDocuments: (id: string, body: { photoStatus: string; videoStatus: string; passportStatus: string; notes?: string }) =>
     patch(`/admin/workers/${id}/documents/review`, body),
+  // ── Notifications ────────────────────────────────────────────────────────────
+  getNotifications: (params?: Record<string, string>) =>
+    get(`/admin/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
+  getUnreadCount: () => get("/admin/notifications/unread-count"),
+  markNotificationRead: (id: string) => post(`/admin/notifications/${id}/read`),
+  markAllNotificationsRead: () => post("/admin/notifications/read-all"),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*

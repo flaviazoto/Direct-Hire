@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
 import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
+import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -791,9 +792,9 @@ function ApplicantsContent() {
     });
   }, [jobId]);
 
-  const fetchApps = useCallback(async () => {
+  const fetchApps = useCallback(async (opts?: { silent?: boolean }) => {
     if (!jobId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     const p: Record<string, string> = { page: String(page), limit: String(LIMIT) };
     const tab = TABS.find(t => t.key === activeTab);
     if (tab?.apiStatus) p.status = tab.apiStatus;
@@ -804,10 +805,17 @@ function ApplicantsContent() {
       setApps((res.data as Application[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
     }
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
   }, [jobId, activeTab, sort, page]);
 
   useEffect(() => { fetchApps(); }, [fetchApps]);
+
+  // Background refresh so new applications / interview responses appear
+  // without a reload — silent (no spinner), same no-jank pattern as the
+  // worker applications page. The profile drawer holds its own snapshot of
+  // the clicked Application, so a background update never yanks it shut or
+  // swaps its content mid-review.
+  useVisibilityPoll(useCallback(() => fetchApps({ silent: true }), [fetchApps]), 60_000);
 
   function switchTab(key: TabKey) {
     setActiveTab(key);

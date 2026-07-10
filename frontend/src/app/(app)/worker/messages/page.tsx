@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
+import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
 interface MessageItem {
   id:         string;
@@ -55,17 +56,21 @@ export default function WorkerMessagesPage() {
   const [replyError,  setReplyError]  = useState<string | null>(null);
   const [replySent,   setReplySent]   = useState<string | null>(null);
 
-  const load = useCallback(async (p: number) => {
-    setLoading(true);
+  const load = useCallback(async (p: number, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const res = await workerApi.getMessages({ page: String(p), limit: "20" });
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { if (!opts?.silent) router.push("/login"); return; }
     const d = res as unknown as PagedResponse;
     setMessages(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
   }, [router]);
 
   useEffect(() => { load(page); }, [page, load]);
+
+  // Background refresh so replies appear without a reload — silent (no
+  // spinner), preserves the expanded row + in-progress reply draft.
+  useVisibilityPoll(useCallback(() => load(page, { silent: true }), [load, page]), 60_000);
 
   async function handleExpand(msg: MessageItem) {
     if (expanded === msg.id) { setExpanded(null); return; }

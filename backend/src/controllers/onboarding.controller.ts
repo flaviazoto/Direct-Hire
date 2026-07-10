@@ -24,6 +24,30 @@ const EMPLOYER_REQUIRED_UPLOADS = {
   businessDocument: "BUSINESS_DOCUMENT",
 } as const;
 
+// ── Notify all admin users of a new worker pending verification ───────────────
+// Mirrors notifyAdminsNewJob (employer-jobs.controller.ts) — same admins.map +
+// createMany shape. Uses NotificationType.GENERAL since no dedicated enum value
+// exists for this event (adding one would need a schema migration; GENERAL is
+// the established fallback — see admin-documents.controller.ts's review-batch
+// notification, which does the same).
+async function notifyAdminsNewWorkerPending(workerId: string, workerName: string) {
+  const admins = await prisma.user.findMany({
+    where:  { role: "ADMIN" },
+    select: { id: true },
+  });
+  if (!admins.length) return;
+
+  await prisma.notification.createMany({
+    data: admins.map((a) => ({
+      userId: a.id,
+      title:  "New worker pending verification",
+      body:   `${workerName} submitted their profile for review.`,
+      type:   "GENERAL" as const,
+      link:   `/admin/approvals?userId=${workerId}`,
+    })),
+  });
+}
+
 // ── getProgress ───────────────────────────────────────────────
 export async function getProgress(req: Request, res: Response, next: NextFunction) {
   try {
@@ -171,6 +195,15 @@ export async function submit(req: Request, res: Response, next: NextFunction) {
     await enqueue("email.adminNewSubmission", {
       submitterEmail: user!.email, submitterRole: role, submitterName: displayName,
     });
+
+    // In-app admin notification — the email above already exists, but admins
+    // only saw pending workers by polling the dashboard until now. Scoped to
+    // WORKER per this pass; the same could be added for employer submissions
+    // later using this same helper.
+    if (role === "WORKER") {
+      notifyAdminsNewWorkerPending(userId, displayName).catch((e: unknown) =>
+        console.error("[onboarding.submit notifyAdmins]", e));
+    }
 
     return ok(res, {
       status: "SUBMITTED",

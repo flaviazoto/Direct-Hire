@@ -7,6 +7,10 @@ import * as docsCtrl     from "../controllers/admin-documents.controller";
 import * as pricingCtrl  from "../controllers/admin-pricing.controller";
 import * as configCtrl   from "../controllers/admin-config.controller";
 import * as revenueCtrl  from "../controllers/admin-revenue.controller";
+// Notification handlers are role-agnostic (filter purely by req.user.sub), so
+// they're reused as-is — same cross-role-import pattern already used in
+// employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
+import * as notifCtrl    from "../controllers/worker-notifications.controller";
 import { requireAdmin } from "../middleware/auth.middleware";
 
 export const adminRouter = Router();
@@ -73,3 +77,9 @@ adminRouter.get("/revenue/payments", requireAdmin, revenueCtrl.getPaymentLog);
 // ── Email logs ────────────────────────────────────────────────────────────────
 adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);
 adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
+
+// ── Notifications ──────────────────────────────────────────────────────────────
+adminRouter.get( "/notifications",              requireAdmin, notifCtrl.getNotifications);
+adminRouter.get( "/notifications/unread-count", requireAdmin, notifCtrl.getUnreadCount);
+adminRouter.post("/notifications/read-all",     requireAdmin, notifCtrl.markAllNotificationsRead);
+adminRouter.post("/notifications/:id/read",     requireAdmin, notifCtrl.markNotificationRead);
