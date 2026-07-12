@@ -207,7 +207,24 @@ export default function RegisterPage() {
     const res = await authApi.register({ firstName: firstName.trim(), lastName: lastName.trim(), email, password, confirmPassword: confirm, role, acceptedTerms });
     setLoading(false);
     if (res.success) {
-      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+      // Forward ?redirect= (e.g. from a public job page) through to
+      // verify-email so the intent isn't silently dropped. Read directly
+      // from window.location rather than useSearchParams() — this page
+      // isn't wrapped in <Suspense>, and adding that wrapper just to read
+      // one incidental param is a bigger change than this needs. NOT
+      // chased any further than this: a new registrant still needs
+      // onboarding + admin verification (accountStatus VERIFIED) before
+      // they can apply to anything, which is an async, human-reviewed step
+      // that can take hours to days — no session-based redirect survives
+      // that gap meaningfully, so /auth/pending-review (where verify-email
+      // sends them next) is the honest end of this chain.
+      const redirectParam = typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("redirect")
+        : null;
+      const isSafeRedirect = !!redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//");
+      const verifyUrl = `/auth/verify-email?email=${encodeURIComponent(email)}`
+        + (isSafeRedirect ? `&redirect=${encodeURIComponent(redirectParam)}` : "");
+      router.push(verifyUrl);
     } else {
       setServerErr(res.error ?? "Registration failed. Please try again.");
     }

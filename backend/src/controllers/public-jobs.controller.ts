@@ -60,6 +60,10 @@ const JOB_DETAIL_SELECT = {
   description:  true,
   requirements: true,
   benefits:     true,
+  // approvedAt (not createdAt) is the correct JobPosting.datePosted source —
+  // createdAt is when the employer drafted it, approvedAt is when it actually
+  // went public. Added for the public job detail page's JSON-LD (SEO phase 1).
+  approvedAt:   true,
 } as const;
 
 // ── Sort helper ────────────────────────────────────────────────────────────────

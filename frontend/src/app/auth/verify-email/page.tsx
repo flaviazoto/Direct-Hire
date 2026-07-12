@@ -158,6 +158,14 @@ function VerifyEmailOtpContent() {
     return () => clearTimeout(t);
   }, [countdown]);
 
+  // Forwarded from /register when the user arrived there with ?redirect=
+  // (e.g. a public job page's CTA) — see register/page.tsx's handleSubmit
+  // for why this chain intentionally ends at pending-review and isn't
+  // chased any further (onboarding + admin verification still stand
+  // between here and being able to actually apply to anything).
+  const redirectParam = searchParams.get("redirect");
+  const isSafeRedirect = !!redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//");
+
   const handleVerify = useCallback(async () => {
     if (!allFilled || loading) return;
     setError("");
@@ -165,11 +173,11 @@ function VerifyEmailOtpContent() {
     const res = await authApi.verifyEmailCode(email, code);
     setLoading(false);
     if (res.success) {
-      router.push("/auth/pending-review");
+      router.push(isSafeRedirect ? `/auth/pending-review?redirect=${encodeURIComponent(redirectParam!)}` : "/auth/pending-review");
     } else {
       setError((res as { error?: string }).error ?? "Verification failed. Please try again.");
     }
-  }, [allFilled, loading, email, code, router]);
+  }, [allFilled, loading, email, code, router, isSafeRedirect, redirectParam]);
 
   // Allow Enter key to submit when all digits filled
   useEffect(() => {

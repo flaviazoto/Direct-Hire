@@ -648,7 +648,17 @@ function JobCard({
       {/* Title row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4 }}>{job.title}</div>
+          {/* Real, crawlable link to the SSR detail page — the rest of the
+              card still opens the quick-view slide-over on click (see
+              onClick on the outer div); this anchor is what lets Google (and
+              anyone sharing a link) reach a specific job directly. */}
+          <Link
+            href={`/jobs/${job.id}`}
+            onClick={e => e.stopPropagation()}
+            style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4, display: "block", textDecoration: "none" }}
+          >
+            {job.title}
+          </Link>
           <div style={{ fontSize: 12, color: "#71717a" }}>
             {job.companyName} · {[job.city, job.country].filter(Boolean).join(", ")}
           </div>

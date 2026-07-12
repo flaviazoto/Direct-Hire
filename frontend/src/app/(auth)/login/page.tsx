@@ -171,7 +171,16 @@ function LoginPageContent() {
         email: d.user?.email ?? email,
         role:  d.user?.role  ?? d.role ?? "",
       });
-      router.push(d.redirectTo ?? "/worker/dashboard");
+      // Honor ?redirect= (e.g. from a public job page's "Apply on
+      // DirectHire" CTA) when it's a safe same-origin path — reaching this
+      // branch already means the account passed every accountStatus gate
+      // the backend enforces (login() rejects pending/rejected/suspended
+      // before returning success), so overriding the default dashboard
+      // redirect here doesn't bypass anything. Must start with a single "/"
+      // — "//evil.com" is protocol-relative and would leave the site.
+      const redirectParam = searchParams.get("redirect");
+      const isSafeRedirect = !!redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//");
+      router.push(isSafeRedirect ? redirectParam : (d.redirectTo ?? "/worker/dashboard"));
     } else {
       const raw = res as { error?: string; accountStatus?: string };
       const status = raw.accountStatus;
