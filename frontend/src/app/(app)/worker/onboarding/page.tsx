@@ -2,7 +2,7 @@
 // src/app/(app)/worker/onboarding/page.tsx
 // Full worker onboarding wizard — connected to backend APIs
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useOnboardingStore } from "@/lib/stores/onboarding.store";
@@ -79,15 +79,23 @@ export default function WorkerOnboardingPage() {
 
   const { register, handleSubmit, watch, getValues, formState: { errors } } = useForm({ mode: "onChange" });
 
+  // useOnboardingStore() (no selector) returns a fresh merged object on every
+  // state change, so depending on `store` directly would re-run this on every
+  // keystroke/upload-progress tick. This effect is genuinely mount-once —
+  // freeze the first render's `store` in a ref (never updated afterward, so
+  // reads below stay identical to what the original `[]`-deps closure would
+  // have captured) and read through the ref inside the effect. Ref reads
+  // don't need to be listed as deps.
+  const storeRef = useRef(store);
   useEffect(() => {
-    if (!store.isLoaded) {
-      store.loadProgress().then(() => {
-        const saved = store.currentStep;
+    if (!storeRef.current.isLoaded) {
+      storeRef.current.loadProgress().then(() => {
+        const saved = storeRef.current.currentStep;
         setUiStep(Math.min(saved, TOTAL_STEPS - 1));
-        const s1 = store.stepData[1] ?? {};
-        const s2 = store.stepData[2] ?? {};
-        const s3 = store.stepData[3] ?? {};
-        const s4 = store.stepData[4] ?? {};
+        const s1 = storeRef.current.stepData[1] ?? {};
+        const s2 = storeRef.current.stepData[2] ?? {};
+        const s3 = storeRef.current.stepData[3] ?? {};
+        const s4 = storeRef.current.stepData[4] ?? {};
         if (s3.skills)          setSelectedSkills(s3.skills as string[]);
         if (s4.targetCountries) setSelectedCountries(s4.targetCountries as string[]);
         if (s3.languages)       setLanguages(s3.languages as typeof languages);
@@ -95,7 +103,7 @@ export default function WorkerOnboardingPage() {
         if (s2.numberOfChildren) setChildren(s2.numberOfChildren as number);
       });
     } else {
-      setUiStep(Math.min(store.currentStep, TOTAL_STEPS - 1));
+      setUiStep(Math.min(storeRef.current.currentStep, TOTAL_STEPS - 1));
     }
   }, []);
 

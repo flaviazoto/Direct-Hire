@@ -61,6 +61,7 @@ enum FileStatus {
   UPLOADED
   FAILED
   DELETED
+  SUPERSEDED
 }
 
 enum DocumentReviewStatus {

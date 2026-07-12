@@ -164,7 +164,7 @@ function WorkerDashboardContent() {
 
   useEffect(() => {
     if (searchParams.get("submitted") === "1") showToast("Application submitted! We'll review within 24–48 hours.");
-  }, []);
+  }, [searchParams, showToast]);
 
   useEffect(() => {
     Promise.all([

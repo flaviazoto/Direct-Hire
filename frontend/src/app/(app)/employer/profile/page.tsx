@@ -83,7 +83,7 @@ export default function EmployerProfilePage() {
       }
       setLoading(false);
     });
-  }, []);
+  }, [router]);
 
   const handleSave = async () => {
     setSaving(true);

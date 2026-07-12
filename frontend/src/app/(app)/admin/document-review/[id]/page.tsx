@@ -29,7 +29,7 @@ interface WorkerDocData {
   documentsReviewedBy: string | null;
   photo:               DocItem | null;
   video:               DocItem | null;
-  allUploads:          { id: string; fileType: string; fileName: string; url: string; mimeType: string; reviewStatus: DocStatus; uploadedAt: string }[];
+  allUploads:          { id: string; fileType: string; fileName: string; url: string; mimeType: string; status: string; reviewStatus: DocStatus; uploadedAt: string }[];
 }
 
 function fmtDate(d: string) {
@@ -116,7 +116,7 @@ export default function WorkerDocumentReviewPage() {
       setPassportStatus(d.passportStatus ?? "PENDING");
       setLoading(false);
     });
-  }, [id]);
+  }, [id, router]);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -282,19 +282,28 @@ export default function WorkerDocumentReviewPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {data.allUploads
               .filter(u => u.fileType !== "PROFILE_PHOTO" && u.fileType !== "WORK_VIDEO" && u.fileType !== "INTRO_VIDEO")
-              .map(u => (
-                <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(0,0,0,0.15)", borderRadius: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 13, color: "#e2e8f0" }}>{u.fileName}</div>
-                    <div style={{ fontSize: 11, color: "#4b5563" }}>{u.fileType.replace(/_/g, " ")} · {fmtDate(u.uploadedAt)}</div>
+              .map(u => {
+                const superseded = u.status === "SUPERSEDED";
+                return (
+                  <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(0,0,0,0.15)", borderRadius: 8, opacity: superseded ? 0.5 : 1 }}>
+                    <div>
+                      <div style={{ fontSize: 13, color: "#e2e8f0" }}>{u.fileName}</div>
+                      <div style={{ fontSize: 11, color: "#4b5563" }}>
+                        {u.fileType.replace(/_/g, " ")} · {fmtDate(u.uploadedAt)}
+                        {superseded && <span style={{ color: "#71717a" }}> · replaced by a newer upload</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {superseded
+                        ? <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#71717a", background: "rgba(113,113,122,0.12)" }}>Superseded</span>
+                        : <StatusBadge status={u.reviewStatus} />
+                      }
+                      <a href={u.url} target="_blank" rel="noopener noreferrer"
+                         style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none" }}>View ↗</a>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <StatusBadge status={u.reviewStatus} />
-                    <a href={u.url} target="_blank" rel="noopener noreferrer"
-                       style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none" }}>View ↗</a>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       )}

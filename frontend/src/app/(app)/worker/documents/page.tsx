@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/worker/documents/page.tsx
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { uploadApi } from "@/lib/api-client";
 import {
@@ -105,14 +105,14 @@ export default function WorkerDocumentsPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await uploadApi.list();
     if (!res.success) { router.push("/login"); return; }
     setUploads((res.data as unknown as UploadRecord[]) ?? []);
     setLoading(false);
-  };
+  }, [router]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const handleUpload = async (fileType: string, file: File) => {
     setUploading(fileType);

@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/worker/notifications/page.tsx
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
 import { ToastDisplay, type ToastData } from "@/components/ui";
@@ -56,7 +56,7 @@ export default function WorkerNotificationsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  async function load(p: number, unread: boolean) {
+  const load = useCallback(async (p: number, unread: boolean) => {
     setLoading(true);
     const params: Record<string, string> = { page: String(p), limit: "20" };
     if (unread) params.unreadOnly = "true";
@@ -66,7 +66,7 @@ export default function WorkerNotificationsPage() {
     setNotifs(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
     setLoading(false);
-  }
+  }, [router]);
 
   useEffect(() => {
     if (prevUnreadOnly.current !== unreadOnly) {
@@ -76,7 +76,7 @@ export default function WorkerNotificationsPage() {
     } else {
       load(page, unreadOnly);
     }
-  }, [page, unreadOnly]);
+  }, [page, unreadOnly, load]);
 
   const markRead = async (id: string) => {
     await workerApi.markNotificationRead(id);

@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/employer/onboarding/page.tsx
 
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useRef, useState, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useOnboardingStore } from "@/lib/stores/onboarding.store";
@@ -78,16 +78,24 @@ export default function EmployerOnboardingPage() {
   const { register, getValues, watch } = useForm({ mode: "onChange" });
   const descValue = watch("businessDescription") ?? "";
 
+  // useOnboardingStore() (no selector) returns a fresh merged object on every
+  // state change, so depending on `store` directly would re-run this on every
+  // keystroke/upload-progress tick. This effect is genuinely mount-once —
+  // freeze the first render's `store` in a ref (never updated afterward, so
+  // its .currentStep/.stepData reads below stay identical to what the
+  // original `[]`-deps closure would have captured) and read through the ref
+  // inside the effect. Ref reads don't need to be listed as deps.
+  const storeRef = useRef(store);
   useEffect(() => {
-    if (!store.isLoaded) {
-      store.loadProgress().then(() => {
-        setUiStep(Math.min(store.currentStep, TOTAL_STEPS - 1));
-        const s3 = store.stepData[3] ?? {};
+    if (!storeRef.current.isLoaded) {
+      storeRef.current.loadProgress().then(() => {
+        setUiStep(Math.min(storeRef.current.currentStep, TOTAL_STEPS - 1));
+        const s3 = storeRef.current.stepData[3] ?? {};
         if (s3.hiringCountries)  setHiringCountries(s3.hiringCountries as string[]);
         if (s3.requiredSkills)   setRequiredSkills(s3.requiredSkills as string[]);
         if (s3.urgency)          setUrgency(s3.urgency as string);
-        if (s3.subscriptionPlan || store.stepData[4]?.subscriptionPlan)
-          setSelectedPlan((store.stepData[4]?.subscriptionPlan as string) ?? "growth");
+        if (s3.subscriptionPlan || storeRef.current.stepData[4]?.subscriptionPlan)
+          setSelectedPlan((storeRef.current.stepData[4]?.subscriptionPlan as string) ?? "growth");
       });
     }
   }, []);

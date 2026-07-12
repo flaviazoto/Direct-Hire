@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/admin/document-review/page.tsx
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
@@ -71,7 +71,7 @@ export default function DocumentReviewPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total,      setTotal]      = useState(0);
 
-  async function load(p: number, t: "pending" | "all") {
+  const load = useCallback(async (p: number, t: "pending" | "all") => {
     setLoading(true);
     const res = await adminApi.getPendingDocumentWorkers({ page: String(p), limit: "20", tab: t });
     if (!res.success) { router.push("/login"); return; }
@@ -80,9 +80,9 @@ export default function DocumentReviewPage() {
     setTotalPages(d.totalPages ?? 1);
     setTotal(d.total ?? 0);
     setLoading(false);
-  }
+  }, [router]);
 
-  useEffect(() => { load(page, tab); }, [page, tab]);
+  useEffect(() => { load(page, tab); }, [page, tab, load]);
 
   function switchTab(t: "pending" | "all") {
     setTab(t);

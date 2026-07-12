@@ -1,7 +1,7 @@
 "use client";
 // src/app/(app)/employer/locks/page.tsx
 
-import React, { CSSProperties, Suspense, useEffect, useRef, useState } from "react";
+import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
@@ -171,18 +171,18 @@ function LocksContent() {
     return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", onKey); };
   }, [anyModal, extendLock, releaseLock, extendLoading, releaseLoading]);
 
-  async function fetchLocks(p: number, append = false) {
+  const fetchLocks = useCallback(async (p: number, append = false) => {
     const res = await employerApi.getLocks({ page: String(p), limit: "20" });
     if (!res.success) { if (p === 1) router.push("/employer/dashboard"); return; }
     const d = res as unknown as { data: Lock[]; total: number; page: number; limit: number; success: boolean };
     const rows = d.data ?? [];
     setLocks(prev => append ? [...prev, ...rows] : rows);
     setHasMore((p * 20) < (d.total ?? 0));
-  }
+  }, [router]);
 
   useEffect(() => {
     fetchLocks(1).then(() => setLoading(false));
-  }, []);
+  }, [fetchLocks]);
 
   async function loadMore() {
     const next = page + 1;

@@ -17,14 +17,18 @@ interface WorkerForm {
   yearsExperience:    string
   expectedSalary:     string
   passportNumber:     string
+  maritalStatus:      string
+  numberOfChildren:   string
   additionalNotes:    string
 }
 
 const EMPTY: WorkerForm = {
   firstName: '', lastName: '', nationality: '', countryOfResidence: '',
   city: '', phone: '', profession: '', yearsExperience: '', expectedSalary: '',
-  passportNumber: '', additionalNotes: '',
+  passportNumber: '', maritalStatus: '', numberOfChildren: '', additionalNotes: '',
 }
+
+const MARITAL_STATUS_OPTIONS = ['Single', 'Married', 'Divorced', 'Widowed']
 
 const S = {
   page:   { minHeight: '100vh', background: 'var(--navy, #05080f)', padding: '24px 16px 64px' } as React.CSSProperties,
@@ -59,6 +63,8 @@ export default function WorkerProfileEditPage() {
         yearsExperience:    p.yearsExperience    ?? '',
         expectedSalary:     p.expectedSalary     ?? '',
         passportNumber:     p.passportNumber     ?? '',
+        maritalStatus:      p.maritalStatus      ?? '',
+        numberOfChildren:   p.numberOfChildren != null ? String(p.numberOfChildren) : '',
         additionalNotes:    p.additionalNotes    ?? '',
       })
       setLoading(false)
@@ -156,6 +162,17 @@ export default function WorkerProfileEditPage() {
               <div>
                 <label style={S.label}>Phone number</label>
                 <input style={S.input} value={form.phone} onChange={e => handleChange('phone', e.target.value)} placeholder="+1 555 123 4567" autoComplete="tel" />
+              </div>
+              <div>
+                <label style={S.label}>Marital status</label>
+                <select style={S.input} value={form.maritalStatus} onChange={e => handleChange('maritalStatus', e.target.value)}>
+                  <option value="">Select…</option>
+                  {MARITAL_STATUS_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Number of children</label>
+                <input style={S.input} type="number" min={0} value={form.numberOfChildren} onChange={e => handleChange('numberOfChildren', e.target.value)} placeholder="0" />
               </div>
             </div>
           </div>

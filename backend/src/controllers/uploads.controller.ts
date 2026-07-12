@@ -85,6 +85,15 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
       metadata: { fileType, fileName: safeFileName, sizeBytes: file.size },
     });
 
+    // Re-uploading the same fileType creates a new row rather than an
+    // upsert — history has value for admin review — so the previous
+    // "current" row(s) would otherwise linger at status UPLOADED forever.
+    // Mark them SUPERSEDED instead: still listed, no longer read as current.
+    await prisma.upload.updateMany({
+      where: { userId, fileType, id: { not: result.id }, status: "UPLOADED" },
+      data:  { status: "SUPERSEDED" },
+    }).catch((e: unknown) => console.error("[uploadFile] Failed to mark previous uploads superseded:", e));
+
     // Re-review on post-approval document edits (NOT profile text edits —
     // updateProfile in user.controller.ts intentionally never touches
     // documentsVerified; only a new/replaced DOCUMENT re-enters review).

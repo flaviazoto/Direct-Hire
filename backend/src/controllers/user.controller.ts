@@ -123,6 +123,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     if (role === "WORKER") {
       const rawPassport = asTrimmedString(body.passportNumber);
       const rawPhone    = asTrimmedString(body.phone);
+      const numberOfChildren = asNonNegativeInt(body.numberOfChildren);
       const data = {
         firstName:          asTrimmedString(body.firstName),
         lastName:           asTrimmedString(body.lastName),
@@ -132,6 +133,8 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
         city:               asTrimmedString(body.city),
         yearsExperience:    asTrimmedString(body.yearsExperience),
         expectedSalary:     asTrimmedString(body.expectedSalary),
+        maritalStatus:      asTrimmedString(body.maritalStatus),
+        numberOfChildren,
         additionalNotes:    asTrimmedString(body.additionalNotes),
         passportNumber:     rawPassport !== undefined ? encrypt(rawPassport) : undefined,
         phone:              rawPhone    !== undefined ? encrypt(rawPhone)    : undefined,
@@ -202,6 +205,13 @@ function asTrimmedString(value: unknown): string | undefined {
   }
   const v = value.trim();
   return v.length > 0 ? v : undefined;
+}
+
+function asNonNegativeInt(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isFinite(value) && value >= 0 ? Math.trunc(value) : undefined;
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : undefined;
 }
 
 function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {

@@ -1,0 +1,33 @@
+-- retire-passportNumberEnc.sql
+--
+-- MANUAL, DELIBERATE, POST-BACKUP OPERATION. Do NOT run this as part of a
+-- normal deploy, and do NOT move it into prisma/migrations/ — it is not
+-- tracked by `prisma migrate deploy` on purpose. Run it by hand, once, only
+-- after taking a fresh database backup (see scripts/export-db-backup.ts).
+--
+-- Context: "WorkerProfile"."passportNumberEnc" is a legacy column from an
+-- earlier schema generation — it is NOT declared in prisma/schema.prisma
+-- (same DB-drift pattern documented in
+-- 20260704120000_phase1_additive_reconcile and
+-- 20260710000000_fix_orphaned_profile_upload_fks). Its data was migrated
+-- into the current WorkerProfile.passportNumber column (encrypted with this
+-- app's lib/encrypt.ts format) by scripts/reencrypt-passports.ts.
+--
+-- Verified before writing this script:
+--   - Zero references to passportNumberEnc anywhere in backend/src (grepped
+--     clean — the running application never reads or writes this column).
+--   - The only remaining references are historical: this file,
+--     scripts/reencrypt-passports.ts, scripts/export-db-backup.ts, and
+--     prisma/phase2_backfill_PREVIEW.sql / the phase1 migration's comments.
+--   - Live column check (read-only, via DIRECT_URL): the column still
+--     exists (text, nullable) and currently has 1 row with a non-NULL
+--     value. Confirm that row's passportNumber (current column) is
+--     correctly populated before dropping — don't assume
+--     reencrypt-passports.ts's prior run covered every row; re-verify with
+--     scripts/reencrypt-passports.ts --inspect or a direct query first.
+--
+-- This script does NOT run automatically and the column is not dropped by
+-- deploying this codebase — it stays until someone deliberately executes
+-- this file by hand.
+
+ALTER TABLE "WorkerProfile" DROP COLUMN IF EXISTS "passportNumberEnc";

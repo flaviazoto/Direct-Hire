@@ -35,7 +35,7 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
       setTimeout(() => onDismiss(item.id), 300);
     }, 4000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [item.id, onDismiss]);
 
   return (
     <div style={{

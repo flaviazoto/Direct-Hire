@@ -224,7 +224,30 @@ export async function runOnboardingReminders(): Promise<void> {
     include: { user: true },
   });
 
+  if (stale.length === 0) {
+    console.log(`[Cron] Sent 0 onboarding reminders.`);
+    return;
+  }
+
+  // Cooldown — one reminder per 7 days, not one per run. EmailLog already
+  // records every reminder send (sendOnboardingReminder -> sendEmail with
+  // emailType: "ONBOARDING_REMINDER"), so reusing it here is cheaper than
+  // adding a lastReminderSentAt column + migration to OnboardingProgress.
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+  const recentReminders = await prisma.emailLog.groupBy({
+    by:    ["userId"],
+    where: {
+      emailType: "ONBOARDING_REMINDER",
+      userId:    { in: stale.map((op) => op.userId) },
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+  const remindedRecently = new Set(recentReminders.map((r) => r.userId));
+
+  let sent = 0;
   for (const op of stale) {
+    if (op.userId && remindedRecently.has(op.userId)) continue;
+
     const pct = Math.round((op.completedSteps.length / op.totalSteps) * 100);
     const firstName =
       (op.draftData as Record<string, unknown>)?.firstName as string | undefined ?? "there";
@@ -236,8 +259,9 @@ export async function runOnboardingReminders(): Promise<void> {
       continueUrl,
       completionPct: pct,
     });
+    sent++;
   }
-  console.log(`[Cron] Sent ${stale.length} onboarding reminders.`);
+  console.log(`[Cron] Sent ${sent} onboarding reminder(s), skipped ${stale.length - sent} (reminded within the last 7 days).`);
 }
 
 // ── Verification code cleanup ─────────────────────────────────

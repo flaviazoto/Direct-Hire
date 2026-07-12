@@ -1,13 +1,14 @@
 "use client";
 // src/app/(app)/layout.tsx — Dark premium sidebar layout
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authApi, adminApi, employerApi, workerApi } from "@/lib/api-client";
 import DashboardHeader   from "@/components/dashboard/DashboardHeader";
 import WorkerHeader      from "@/components/dashboard/WorkerHeader";
 import { useNotificationPolling } from "@/hooks/useNotificationPolling";
+import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -244,70 +245,62 @@ function Sidebar({ role }: { role: Role }) {
   const [activeLockCount,  setActiveLockCount]  = useState(0);
   const [workerIsLocked,   setWorkerIsLocked]   = useState(false);
   const [workerNotifCount, setWorkerNotifCount] = useState(0);
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const notifRef     = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
+  // NOTE: Sidebar only ever mounts with role === 'worker' (see AppLayout —
+  // employer/admin render DashboardHeader's own sidebar instead), so the
+  // admin/employer pollers below are currently unreachable dead code. Left
+  // in place and migrated like the rest rather than deleted — removing them
+  // is a separate decision from this polling-consolidation pass.
+
+  const fetchAdminCounts = useCallback(async () => {
     if (role !== "admin") return;
-    const fetchCounts = async () => {
-      const res = await adminApi.getUserCounts();
-      if (res.success && res.data) {
-        const d = res.data as Record<string, number>;
-        setAdminCounts({
-          pending_review:  d.pending_review  ?? 0,
-          total_workers:   d.total_workers   ?? 0,
-          total_employers: d.total_employers ?? 0,
-          pending_jobs:    d.pending_jobs    ?? 0,
-          live_jobs:       d.live_jobs       ?? 0,
-        });
-      }
-    };
-    fetchCounts();
-    intervalRef.current = setInterval(fetchCounts, 120_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    const res = await adminApi.getUserCounts();
+    if (res.success && res.data) {
+      const d = res.data as Record<string, number>;
+      setAdminCounts({
+        pending_review:  d.pending_review  ?? 0,
+        total_workers:   d.total_workers   ?? 0,
+        total_employers: d.total_employers ?? 0,
+        pending_jobs:    d.pending_jobs    ?? 0,
+        live_jobs:       d.live_jobs       ?? 0,
+      });
+    }
   }, [role]);
+  const { refetch: refetchAdminCounts } = useVisibilityPoll(fetchAdminCounts, 120_000);
+  useEffect(() => { refetchAdminCounts(); }, [refetchAdminCounts]);
 
-  useEffect(() => {
+  const fetchLockCount = useCallback(async () => {
     if (role !== "employer") return;
-    const fetchLockCount = async () => {
-      const res = await employerApi.getLocks({ status: "ACTIVE", limit: "1" });
-      if (res.success && res.data) {
-        const d = res.data as { total?: number };
-        setActiveLockCount(d.total ?? 0);
-      }
-    };
-    fetchLockCount();
-    intervalRef.current = setInterval(fetchLockCount, 120_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    const res = await employerApi.getLocks({ status: "ACTIVE", limit: "1" });
+    if (res.success && res.data) {
+      const d = res.data as { total?: number };
+      setActiveLockCount(d.total ?? 0);
+    }
   }, [role]);
+  const { refetch: refetchLockCount } = useVisibilityPoll(fetchLockCount, 120_000);
+  useEffect(() => { refetchLockCount(); }, [refetchLockCount]);
 
-  useEffect(() => {
+  const fetchWorkerLock = useCallback(async () => {
     if (role !== "worker") return;
-    const fetchWorkerLock = async () => {
-      const res = await workerApi.getLockStatus();
-      if (res.success && res.data) {
-        const d = res.data as { is_locked?: boolean };
-        setWorkerIsLocked(d.is_locked ?? false);
-      }
-    };
-    fetchWorkerLock();
-    intervalRef.current = setInterval(fetchWorkerLock, 5 * 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    const res = await workerApi.getLockStatus();
+    if (res.success && res.data) {
+      const d = res.data as { is_locked?: boolean };
+      setWorkerIsLocked(d.is_locked ?? false);
+    }
   }, [role]);
+  const { refetch: refetchWorkerLock } = useVisibilityPoll(fetchWorkerLock, 5 * 60_000);
+  useEffect(() => { refetchWorkerLock(); }, [refetchWorkerLock]);
 
-  useEffect(() => {
+  const fetchNotifCount = useCallback(async () => {
     if (role !== "worker") return;
-    const fetchNotifCount = async () => {
-      const res = await workerApi.getUnreadCount();
-      if (res.success && res.data) {
-        const d = res.data as { count?: number };
-        setWorkerNotifCount(d.count ?? 0);
-      }
-    };
-    fetchNotifCount();
-    notifRef.current = setInterval(fetchNotifCount, 30_000);
-    return () => { if (notifRef.current) clearInterval(notifRef.current); };
+    const res = await workerApi.getUnreadCount();
+    if (res.success && res.data) {
+      const d = res.data as { count?: number };
+      setWorkerNotifCount(d.count ?? 0);
+    }
   }, [role]);
+  const { refetch: refetchNotifCount } = useVisibilityPoll(fetchNotifCount, 30_000);
+  useEffect(() => { refetchNotifCount(); }, [refetchNotifCount]);
 
   const handleLogout = async () => {
     localStorage.removeItem("dh_token");
@@ -618,7 +611,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("dh_token") : null;
     if (!token) router.push("/login");
-  }, []);
+  }, [router]);
 
   const role: Role = pathname.startsWith("/admin")
     ? "admin"
