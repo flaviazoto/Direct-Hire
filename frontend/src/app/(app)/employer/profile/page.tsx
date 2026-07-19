@@ -7,7 +7,7 @@ import { authApi, userApi } from "@/lib/api-client";
 import {
   LoadingPage, PageHeader, Card, CardHeader, CardContent, CardFooter,
   Button, Input, Textarea, SelectInput, Tag, Badge,
-  ToastDisplay, type ToastData,
+  ToastDisplay, type ToastData, ErrorState,
 } from "@/components/ui";
 
 interface ProfileData {
@@ -48,6 +48,7 @@ export default function EmployerProfilePage() {
   const router = useRouter();
   const [data, setData]                   = useState<ProfileData | null>(null);
   const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
   const [saving, setSaving]               = useState(false);
   const [toast, setToast]                 = useState<ToastData>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -63,9 +64,11 @@ export default function EmployerProfilePage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     userApi.getProfile().then(res => {
-      if (!res.success) { router.push("/login"); return; }
+      if (!res.success) { setError(res.error ?? "Could not load your profile."); setLoading(false); return; }
       const d = res.data as ProfileData;
       setData(d);
       if (d.profile) {
@@ -82,8 +85,10 @@ export default function EmployerProfilePage() {
         });
       }
       setLoading(false);
-    });
-  }, [router]);
+    }).catch(() => { setError("Network error - check your connection."); setLoading(false); });
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -113,6 +118,13 @@ export default function EmployerProfilePage() {
   }, [router]);
 
   if (loading) return <LoadingPage color="teal" />;
+  if (error) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <ErrorState message={error} retry={load} title="Could not load your profile" />
+      </div>
+    );
+  }
   if (!data)   return null;
 
   return (

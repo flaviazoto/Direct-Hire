@@ -6,6 +6,7 @@ import type React from "react";
 import { useEffect, useState, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
 import { C } from "@/lib/admin-theme";
+import { ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ function SaveBtn({ onClick, saving, disabled }: { onClick: () => void; saving: b
 export default function AdminPricingPage() {
   const [config,  setConfig]  = useState<ConfigMap>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toast,   setToast]   = useState<ToastState>(null);
 
   // ── Per-field draft state ──────────────────────────────────────────────────
@@ -139,10 +141,16 @@ export default function AdminPricingPage() {
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     adminApi.getAllConfig().then((raw) => {
-      const r = raw as unknown as { success: boolean; data?: ConfigMap };
-      if (!r.success || !r.data) return;
+      const r = raw as unknown as { success: boolean; data?: ConfigMap; error?: string };
+      if (!r.success || !r.data) {
+        setError(r.error ?? "Could not load pricing configuration.");
+        setLoading(false);
+        return;
+      }
       const c = r.data;
       setConfig(c);
       setRateDollars((parseCents(c.lock_daily_rate_cents, 200) / 100).toFixed(2));
@@ -151,8 +159,13 @@ export default function AdminPricingPage() {
       setFeeEnabled((c.application_fee_enabled ?? "true") === "true");
       setFeeBaseDollars((parseCents(c.application_base_fee_cents, 300) / 100).toFixed(2));
       setLoading(false);
+    }).catch(() => {
+      setError("Network error - check your connection.");
+      setLoading(false);
     });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   // ── Save handlers ──────────────────────────────────────────────────────────
 
@@ -239,6 +252,14 @@ export default function AdminPricingPage() {
     return (
       <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
         <div style={{ color: C.muted, fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
+        <ErrorState message={error} retry={load} title="Could not load pricing configuration" />
       </div>
     );
   }

@@ -8,7 +8,7 @@
 import type React from "react";
 import { useEffect, useState, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -139,6 +139,7 @@ export default function AdminLocksPage() {
   const [locks, setLocks]         = useState<LockRow[]>([]);
   const [total, setTotal]         = useState(0);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [page, setPage]           = useState(1);
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL");
   const [toast, setToast]         = useState<ToastData>(null);
@@ -153,12 +154,15 @@ export default function AdminLocksPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20" };
     if (statusTab !== "ALL") params.status = statusTab;
     const res = await adminApi.getAllLocks(params);
     if (res.success) {
       setLocks((res.data as LockRow[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
+    } else {
+      setError(res.error ?? "Could not load reservations.");
     }
     setLoading(false);
   }, [page, statusTab]);
@@ -232,6 +236,10 @@ export default function AdminLocksPage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : error ? (
+                <tr><td colSpan={8} style={{ padding: 24 }}>
+                  <ErrorState message={error} retry={load} title="Could not load reservations" />
+                </td></tr>
               ) : locks.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ padding: "64px 24px", textAlign: "center" }}>

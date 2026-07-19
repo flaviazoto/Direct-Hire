@@ -2,12 +2,12 @@
 // src/app/(app)/employer/workers/[workerId]/page.tsx
 
 import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
-import { ToastDisplay, Spinner, type ToastData } from "@/components/ui";
+import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -137,15 +137,16 @@ function Skeleton() {
 // ── Main component ────────────────────────────────────────────────────────────
 
 function WorkerProfileContent() {
-  const router   = useRouter();
   const { workerId } = useParams<{ workerId: string }>();
 
   const [worker,     setWorker]     = useState<WorkerDetail | null>(null);
   const [lockStatus, setLockStatus] = useState<LockStatus | null>(null);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
   const [activeTab,  setActiveTab]  = useState<"overview" | "skills" | "experience" | "documents" | "applications">("overview");
   const [apps,       setApps]       = useState<WorkerApplication[] | null>(null);
   const [appsLoading, setAppsLoading] = useState(false);
+  const [appsError, setAppsError] = useState<string | null>(null);
   const [toast,      setToast]      = useState<ToastData>(null);
 
   // Platform lock rate (fetched on load for badge + modal preview)
@@ -182,19 +183,23 @@ function WorkerProfileContent() {
   const [msgSent,      setMsgSent]      = useState(false);
 
   // Fetch worker, lock status, and platform lock rate in parallel
-  useEffect(() => {
+  const loadWorker = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     Promise.all([
       employerApi.getWorkerDetail(workerId),
       employerApi.getWorkerLockStatus(workerId),
       employerApi.getLockRate(),
     ]).then(([wRes, lRes, rRes]) => {
-      if (!wRes.success) { router.push("/employer/workers"); return; }
+      if (!wRes.success) { setLoadError(wRes.error ?? "Could not load this worker."); setLoading(false); return; }
       setWorker(wRes.data as WorkerDetail);
       if (lRes.success) setLockStatus(lRes.data as LockStatus);
       if (rRes.success) setLockRate(rRes.data as LockRate);
       setLoading(false);
-    }).catch(() => { router.push("/employer/workers"); });
-  }, [workerId, router]);
+    }).catch(() => { setLoadError("Network error - check your connection."); setLoading(false); });
+  }, [workerId]);
+
+  useEffect(() => { loadWorker(); }, [loadWorker]);
 
   // Reset lazily-loaded applications when navigating to a different worker —
   // without this, switching workers while already on the "applications" tab
@@ -205,14 +210,20 @@ function WorkerProfileContent() {
   }, [workerId]);
 
   // Lazy-load applications when tab selected
-  useEffect(() => {
-    if (activeTab !== "applications" || apps !== null) return;
+  const loadApps = useCallback(() => {
     setAppsLoading(true);
+    setAppsError(null);
     employerApi.getWorkerApplications(workerId).then(res => {
       if (res.success) setApps(res.data as WorkerApplication[]);
+      else setAppsError(res.error ?? "Could not load applications.");
       setAppsLoading(false);
-    });
-  }, [activeTab, apps, workerId]);
+    }).catch(() => { setAppsError("Network error - check your connection."); setAppsLoading(false); });
+  }, [workerId]);
+
+  useEffect(() => {
+    if (activeTab !== "applications" || apps !== null) return;
+    loadApps();
+  }, [activeTab, apps, loadApps]);
 
   // Declared here (not further down with the other lock actions) and memoized
   // so the escape-key effect right below can list it as a dependency without
@@ -360,6 +371,13 @@ function WorkerProfileContent() {
   }
 
   if (loading) return <Skeleton />;
+  if (loadError) {
+    return (
+      <div style={{ maxWidth: 640, margin: "80px auto", padding: "0 20px" }}>
+        <ErrorState message={loadError} retry={loadWorker} title="Could not load this worker" />
+      </div>
+    );
+  }
   if (!worker)  return null;
 
   const name         = workerName(worker);
@@ -900,7 +918,10 @@ function WorkerProfileContent() {
               <Spinner size="md" color="teal" />
             </div>
           )}
-          {!appsLoading && apps !== null && apps.length === 0 && (
+          {!appsLoading && appsError && (
+            <ErrorState message={appsError} retry={loadApps} title="Could not load applications" />
+          )}
+          {!appsLoading && !appsError && apps !== null && apps.length === 0 && (
             <EmptyTabMsg text="This worker hasn't applied to your job posts." />
           )}
           {!appsLoading && apps !== null && apps.length > 0 && (

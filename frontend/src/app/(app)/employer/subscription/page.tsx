@@ -10,7 +10,7 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
-import { LoadingPage } from "@/components/ui";
+import { LoadingPage, ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -114,6 +114,7 @@ function EmployerSubscriptionContent() {
 
   const [sub,          setSub]          = useState<SubStatus | null>(null);
   const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
   const [actionBusy,   setActionBusy]   = useState<string | null>(null);
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCancel,   setShowCancel]   = useState(false);
@@ -127,8 +128,11 @@ function EmployerSubscriptionContent() {
   };
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     const r = await employerApi.getSubscriptionStatus();
     if (r.success) setSub(r.data as SubStatus);
+    else setError(r.error ?? "Could not load your subscription status.");
     setLoading(false);
   }, []);
 
@@ -172,6 +176,13 @@ function EmployerSubscriptionContent() {
   };
 
   if (loading) return <LoadingPage color="blue" />;
+  if (error) {
+    return (
+      <div style={{ maxWidth: 560, margin: "80px auto", padding: "0 20px" }}>
+        <ErrorState message={error} retry={load} title="Could not load your subscription" />
+      </div>
+    );
+  }
 
   const status      = sub?.status ?? "INACTIVE";
   const isActive    = status === "ACTIVE";

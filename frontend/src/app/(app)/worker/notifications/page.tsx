@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 interface NotifItem {
   id:        string;
@@ -45,6 +45,7 @@ export default function WorkerNotificationsPage() {
   const router = useRouter();
   const [notifs,      setNotifs]      = useState<NotifItem[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
   const [page,        setPage]        = useState(1);
   const [totalPages,  setTotalPages]  = useState(1);
   const [unreadOnly,  setUnreadOnly]  = useState(false);
@@ -58,15 +59,16 @@ export default function WorkerNotificationsPage() {
 
   const load = useCallback(async (p: number, unread: boolean) => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(p), limit: "20" };
     if (unread) params.unreadOnly = "true";
     const res = await workerApi.getNotifications(params);
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load notifications."); setLoading(false); return; }
     const d = res as unknown as PagedResponse;
     setNotifs(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
     setLoading(false);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (prevUnreadOnly.current !== unreadOnly) {
@@ -141,6 +143,8 @@ export default function WorkerNotificationsPage() {
           <div style={{ width: 32, height: 32, border: "3px solid rgba(124,58,237,0.2)", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
+      ) : error ? (
+        <ErrorState message={error} retry={() => load(page, unreadOnly)} title="Could not load notifications" />
       ) : notifs.length === 0 ? (
         <div style={{ textAlign: "center", padding: "64px 0", color: "#4b5563" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>

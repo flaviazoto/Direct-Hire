@@ -2,9 +2,8 @@
 
 import type React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/api-client";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -93,12 +92,13 @@ function ReinstateModal({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminFraudPage() {
-  const router = useRouter();
   const [users, setUsers]               = useState<User[]>([]);
   const [flagged, setFlagged]           = useState<User[]>([]);
   const [total, setTotal]               = useState(0);
   const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [flaggedLoading, setFlaggedLoading] = useState(true);
+  const [flaggedError, setFlaggedError] = useState<string | null>(null);
   const [page, setPage]                 = useState(1);
   const [search, setSearch]             = useState("");
   const [acting, setActing]             = useState<string | null>(null);
@@ -112,21 +112,25 @@ export default function AdminFraudPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20", status: "SUSPENDED" };
     const res = await adminApi.getUsers(params);
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load suspended accounts."); setLoading(false); return; }
     const all = (res.data as unknown as User[]) ?? [];
     setUsers(search ? all.filter(u => u.email.toLowerCase().includes(search.toLowerCase())) : all);
     setTotal((res as unknown as { total: number }).total ?? 0);
     setLoading(false);
-  }, [page, search, router]);
+  }, [page, search]);
 
   const loadFlagged = useCallback(async () => {
     setFlaggedLoading(true);
+    setFlaggedError(null);
     const res = await adminApi.getUsers({ sortBy: "riskScore", order: "desc", limit: "10" } as Record<string, string>);
     if (res.success) {
       const all = (res.data as unknown as User[]) ?? [];
       setFlagged(all.filter(u => (u.riskScore ?? 0) > 70));
+    } else {
+      setFlaggedError(res.error ?? "Could not load high-risk users.");
     }
     setFlaggedLoading(false);
   }, []);
@@ -202,6 +206,10 @@ export default function AdminFraudPage() {
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {flaggedLoading ? (
             <div style={{ padding: "40px 24px", textAlign: "center", color: C.muted, fontSize: 14 }}>Loading…</div>
+          ) : flaggedError ? (
+            <div style={{ padding: "24px" }}>
+              <ErrorState message={flaggedError} retry={loadFlagged} title="Could not load high-risk users" />
+            </div>
           ) : flagged.length === 0 ? (
             <div style={{ padding: "40px 24px", textAlign: "center" }}>
               <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.2 }}>✅</div>
@@ -265,6 +273,8 @@ export default function AdminFraudPage() {
 
       {loading ? (
         <div style={{ padding: "60px 24px", textAlign: "center", color: C.muted, fontSize: 14 }}>Loading…</div>
+      ) : error ? (
+        <ErrorState message={error} retry={load} title="Could not load suspended accounts" />
       ) : users.length === 0 ? (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "60px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>✅</div>

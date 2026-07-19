@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
-import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
+import { LoadingPage, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -767,6 +767,7 @@ function ApplicantsContent() {
   const [apps,         setApps]         = useState<Application[]>([]);
   const [total,        setTotal]        = useState(0);
   const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
   const [jobLoading,   setJobLoading]   = useState(true);
   const [activeTab,    setActiveTab]    = useState<TabKey>("ALL");
   const [sort,         setSort]         = useState<"newest" | "match">("newest");
@@ -788,13 +789,14 @@ function ApplicantsContent() {
     setJobLoading(true);
     employerApi.getJob(jobId).then(res => {
       if (res.success && res.data) setJob(res.data as unknown as JobDetail);
+      else console.error("[applicants] job detail fetch failed:", res.error);
       setJobLoading(false);
-    });
+    }).catch(err => { console.error("[applicants] job detail fetch failed:", err); setJobLoading(false); });
   }, [jobId]);
 
   const fetchApps = useCallback(async (opts?: { silent?: boolean }) => {
     if (!jobId) return;
-    if (!opts?.silent) setLoading(true);
+    if (!opts?.silent) { setLoading(true); setError(null); }
     const p: Record<string, string> = { page: String(page), limit: String(LIMIT) };
     const tab = TABS.find(t => t.key === activeTab);
     if (tab?.apiStatus) p.status = tab.apiStatus;
@@ -804,6 +806,8 @@ function ApplicantsContent() {
     if (res.success) {
       setApps((res.data as Application[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
+    } else if (!opts?.silent) {
+      setError(res.error ?? "Could not load applicants.");
     }
     if (!opts?.silent) setLoading(false);
   }, [jobId, activeTab, sort, page]);
@@ -977,8 +981,13 @@ function ApplicantsContent() {
         </div>
       )}
 
+      {/* Error state */}
+      {!loading && error && (
+        <ErrorState message={error} retry={() => fetchApps()} title="Could not load applicants" />
+      )}
+
       {/* Empty state */}
-      {!loading && apps.length === 0 && (
+      {!loading && !error && apps.length === 0 && (
         <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "60px 32px", textAlign: "center" }}>
           <div style={{ fontSize: 38, marginBottom: 14 }}>
             {activeTab === "ALL" ? "📭" : activeTab === "ACCEPTED" ? "🎯" : "🔍"}

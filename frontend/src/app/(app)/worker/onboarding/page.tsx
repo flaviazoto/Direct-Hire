@@ -52,11 +52,15 @@ const VISA_TYPES = [
   "Work Visa", "Working Holiday", "Intra-company Transfer",
   "Seasonal Work", "Domestic Worker", "Any available",
 ];
+// `required` mirrors the backend's submit() gate exactly (onboarding.controller.ts):
+// PROFILE_PHOTO is always required; WORK_VIDEO/INTRO_VIDEO are an "at least one"
+// group ("video"); MEDICAL_CERTIFICATE is never checked by submit() or by admin
+// document review (admin-documents.controller.ts BatchReviewSchema), so it's optional.
 const FILE_TYPES = [
-  { key: "PROFILE_PHOTO",       label: "Profile Photo",       icon: "📷", hint: "JPG/PNG, max 5MB" },
-  { key: "WORK_VIDEO",          label: "30s Work Video",      icon: "🎥", hint: "MP4/MOV, max 50MB" },
-  { key: "INTRO_VIDEO",         label: "30s Intro Video",     icon: "🎬", hint: "MP4/MOV, max 50MB" },
-  { key: "MEDICAL_CERTIFICATE", label: "Medical Certificate", icon: "📄", hint: "PDF/JPG, max 10MB" },
+  { key: "PROFILE_PHOTO",       label: "Profile Photo",       icon: "📷", hint: "JPG/PNG, max 5MB",  required: true as const },
+  { key: "WORK_VIDEO",          label: "30s Work Video",      icon: "🎥", hint: "MP4/MOV, max 50MB", required: "video" as const },
+  { key: "INTRO_VIDEO",         label: "30s Intro Video",     icon: "🎬", hint: "MP4/MOV, max 50MB", required: "video" as const },
+  { key: "MEDICAL_CERTIFICATE", label: "Medical Certificate", icon: "📄", hint: "PDF/JPG, max 10MB", required: false as const },
 ];
 
 // ── Component ─────────────────────────────────────────────────
@@ -202,6 +206,18 @@ export default function WorkerOnboardingPage() {
   };
 
   const handleFinalSubmit = async () => {
+    const hasPhoto = store.uploads["PROFILE_PHOTO"]?.status === "done";
+    const hasVideo = store.uploads["WORK_VIDEO"]?.status === "done" || store.uploads["INTRO_VIDEO"]?.status === "done";
+    if (!hasPhoto || !hasVideo) {
+      const missing = !hasPhoto && !hasVideo
+        ? "a profile photo and at least one video (work or intro)"
+        : !hasPhoto
+        ? "a profile photo"
+        : "at least one video (work or intro)";
+      store.setSubmitError(`Upload ${missing} before submitting.`);
+      return;
+    }
+
     const ok = await store.submitOnboarding();
     if (ok) {
       const sp = new URLSearchParams(window.location.search);
@@ -214,7 +230,10 @@ export default function WorkerOnboardingPage() {
     await store.uploadFile(fileType, file);
   };
 
-  const completedUploads = Object.values(store.uploads).filter(u => u.status === "done").length;
+  const hasProfilePhoto = store.uploads["PROFILE_PHOTO"]?.status === "done";
+  const hasAnyVideo = store.uploads["WORK_VIDEO"]?.status === "done" || store.uploads["INTRO_VIDEO"]?.status === "done";
+  const REQUIRED_UPLOAD_COUNT = 2;
+  const requiredUploadsDone = (hasProfilePhoto ? 1 : 0) + (hasAnyVideo ? 1 : 0);
 
   // ── Style helpers ─────────────────────────────────────────────
   const inputClass = (f: string) =>
@@ -235,6 +254,64 @@ export default function WorkerOnboardingPage() {
   const pillOff: React.CSSProperties  = { padding: "8px 14px", borderRadius: 99, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" };
 
   const headingSt: React.CSSProperties = { paddingBottom: "1.25rem", marginBottom: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)" };
+
+  const UploadCard = ({ fileType }: { fileType: typeof FILE_TYPES[number] }) => {
+    const { key, label, icon, hint } = fileType;
+    const entry     = store.uploads[key];
+    const isDone    = entry?.status === "done";
+    const isLoading = entry?.status === "uploading";
+    const isError   = entry?.status === "error";
+
+    return (
+      <div style={{
+        border: isDone
+          ? "2px solid rgba(0,144,255,0.3)"
+          : isError
+          ? "2px solid rgba(239,68,68,0.3)"
+          : "2px dashed rgba(255,255,255,0.1)",
+        background: isDone
+          ? "rgba(0,144,255,0.08)"
+          : isError
+          ? "rgba(239,68,68,0.08)"
+          : "rgba(255,255,255,0.03)",
+        borderRadius: 16,
+        padding: 16,
+        transition: "all 0.2s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>{isDone ? "✅" : icon}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{label}</div>
+            {isDone ? (
+              <div style={{ fontSize: 12, color: "#60A5FA", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.fileName}</div>
+            ) : isError ? (
+              <div style={{ fontSize: 12, color: "#f87171" }}>{entry.errorMsg}</div>
+            ) : isLoading ? (
+              <div>
+                <div style={{ fontSize: 12, color: "#60A5FA", marginBottom: 4 }}>Uploading… {entry.progress}%</div>
+                <div style={{ height: 3, background: "rgba(0,144,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.3s", width: `${entry.progress}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{hint}</div>
+            )}
+          </div>
+          {isDone ? (
+            <button type="button" onClick={() => store.removeUpload(key)}
+              style={{ fontSize: 12, color: "#f87171", fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>Remove</button>
+          ) : !isLoading && (
+            <label style={{ cursor: "pointer" }}>
+              <input type="file" className="hidden"
+                accept={key === "PROFILE_PHOTO" ? "image/jpeg,image/png,image/webp" : key.includes("VIDEO") ? "video/mp4,video/quicktime" : "application/pdf,image/jpeg,image/png"}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(key, f); }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 8, padding: "5px 12px" }}>Upload</span>
+            </label>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // ── Render current step content ───────────────────────────────
   const renderStep = () => {
@@ -519,71 +596,28 @@ export default function WorkerOnboardingPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{completedUploads} of 4 uploaded</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>{Math.round((completedUploads / 4) * 100)}%</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{requiredUploadsDone} of {REQUIRED_UPLOAD_COUNT} required uploaded</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>{Math.round((requiredUploadsDone / REQUIRED_UPLOAD_COUNT) * 100)}%</span>
               </div>
               <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.5s", width: `${(completedUploads / 4) * 100}%` }} />
+                <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.5s", width: `${(requiredUploadsDone / REQUIRED_UPLOAD_COUNT) * 100}%` }} />
               </div>
-              {FILE_TYPES.map(({ key, label, icon, hint }) => {
-                const entry    = store.uploads[key];
-                const isDone   = entry?.status === "done";
-                const isLoading = entry?.status === "uploading";
-                const isError  = entry?.status === "error";
 
-                return (
-                  <div key={key} style={{
-                    border: isDone
-                      ? "2px solid rgba(0,144,255,0.3)"
-                      : isError
-                      ? "2px solid rgba(239,68,68,0.3)"
-                      : "2px dashed rgba(255,255,255,0.1)",
-                    background: isDone
-                      ? "rgba(0,144,255,0.08)"
-                      : isError
-                      ? "rgba(239,68,68,0.08)"
-                      : "rgba(255,255,255,0.03)",
-                    borderRadius: 16,
-                    padding: 16,
-                    transition: "all 0.2s",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 24 }}>{isDone ? "✅" : icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{label}</div>
-                        {isDone ? (
-                          <div style={{ fontSize: 12, color: "#60A5FA", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.fileName}</div>
-                        ) : isError ? (
-                          <div style={{ fontSize: 12, color: "#f87171" }}>{entry.errorMsg}</div>
-                        ) : isLoading ? (
-                          <div>
-                            <div style={{ fontSize: 12, color: "#60A5FA", marginBottom: 4 }}>Uploading… {entry.progress}%</div>
-                            <div style={{ height: 3, background: "rgba(0,144,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
-                              <div style={{ height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2, transition: "width 0.3s", width: `${entry.progress}%` }} />
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{hint}</div>
-                        )}
-                      </div>
-                      {isDone ? (
-                        <button type="button" onClick={() => store.removeUpload(key)}
-                          style={{ fontSize: 12, color: "#f87171", fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>Remove</button>
-                      ) : !isLoading && (
-                        <label style={{ cursor: "pointer" }}>
-                          <input type="file" className="hidden"
-                            accept={key === "PROFILE_PHOTO" ? "image/jpeg,image/png,image/webp" : key.includes("VIDEO") ? "video/mp4,video/quicktime" : "application/pdf,image/jpeg,image/png"}
-                            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(key, f); }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 8, padding: "5px 12px" }}>Upload</span>
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Required</div>
+              <UploadCard fileType={FILE_TYPES[0]} />
+
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Upload at least one video</span>
+                <UploadCard fileType={FILE_TYPES[1]} />
+                <UploadCard fileType={FILE_TYPES[2]} />
+              </div>
+
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Optional</div>
+              <UploadCard fileType={FILE_TYPES[3]} />
+
               <div style={{ background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 12, padding: "12px 14px" }}>
                 <p style={{ fontSize: 12, color: "#60A5FA" }}>
-                  📸 Profile photo and at least one video are required before your profile becomes searchable. Other documents can be added later.
+                  📸 Profile photo and at least one video are required to submit your application. Medical certificate is optional and can be added anytime.
                 </p>
               </div>
             </div>
@@ -599,9 +633,6 @@ export default function WorkerOnboardingPage() {
               <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>Check your details. Tap any section to edit.</p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {store.submitError && (
-                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#f87171" }}>⚠ {store.submitError}</div>
-              )}
               {[
                 { label: "Personal Info", step: 1, rows: [
                   { k: "Name",     v: `${store.stepData[1]?.firstName ?? ""} ${store.stepData[1]?.lastName ?? ""}`.trim() || "—" },
@@ -817,8 +848,17 @@ export default function WorkerOnboardingPage() {
           borderTop: "1px solid rgba(255,255,255,0.07)",
           padding: "1rem 1.5rem",
         }}>
+          {store.loadError && (
+            <div style={{ maxWidth: 680, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 12, color: "#f87171" }}>
+              <span>⚠ {store.loadError} Your progress may not reflect what&apos;s saved.</span>
+              <button type="button" onClick={() => store.loadProgress()} style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, padding: "4px 10px", color: "#f87171", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Retry</button>
+            </div>
+          )}
           {stepErrors._form && (
             <div style={{ maxWidth: 680, margin: "0 auto 8px", fontSize: 12, color: "#f87171" }}>⚠ {stepErrors._form}</div>
+          )}
+          {store.submitError && (
+            <div style={{ maxWidth: 680, margin: "0 auto 8px", fontSize: 12, color: "#f87171" }}>⚠ {store.submitError}</div>
           )}
           <div className="onboarding-actions-inner" style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 12 }}>
             {uiStep > 0 && (

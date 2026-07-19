@@ -1,10 +1,11 @@
 "use client";
 // src/app/(app)/admin/document-review/[id]/page.tsx
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
+import { ErrorState } from "@/components/ui";
 
 type DocStatus = "APPROVED" | "REJECTED" | "PENDING";
 
@@ -92,10 +93,10 @@ function DocStatusToggle({
 }
 
 export default function WorkerDocumentReviewPage() {
-  const router         = useRouter();
   const { id }         = useParams<{ id: string }>();
   const [data,         setData]         = useState<WorkerDocData | null>(null);
   const [loading,      setLoading]      = useState(true);
+  const [loadError,    setLoadError]    = useState<string | null>(null);
   const [submitting,   setSubmitting]   = useState(false);
   const [success,      setSuccess]      = useState(false);
   const [errorMsg,     setErrorMsg]     = useState("");
@@ -106,17 +107,24 @@ export default function WorkerDocumentReviewPage() {
   const [passportStatus, setPassportStatus] = useState<DocStatus>("PENDING");
   const [notes,          setNotes]          = useState("");
 
-  useEffect(() => {
+  const loadDocuments = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     adminApi.getWorkerDocuments(id).then(res => {
-      if (!res.success) { router.push("/admin/document-review"); return; }
+      if (!res.success) { setLoadError(res.error ?? "Could not load worker documents."); setLoading(false); return; }
       const d = res.data as WorkerDocData;
       setData(d);
       setPhotoStatus(d.photo?.reviewStatus    ?? "PENDING");
       setVideoStatus(d.video?.reviewStatus    ?? "PENDING");
       setPassportStatus(d.passportStatus ?? "PENDING");
       setLoading(false);
+    }).catch(() => {
+      setLoadError("Network error - check your connection.");
+      setLoading(false);
     });
-  }, [id, router]);
+  }, [id]);
+
+  useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -163,6 +171,14 @@ export default function WorkerDocumentReviewPage() {
       <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
         <div style={{ width: 36, height: 36, border: "3px solid rgba(220,38,38,0.2)", borderTopColor: "#dc2626", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: "32px 28px", maxWidth: 640, margin: "0 auto" }}>
+        <ErrorState message={loadError} retry={loadDocuments} title="Could not load worker documents" />
       </div>
     );
   }

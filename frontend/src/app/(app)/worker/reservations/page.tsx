@@ -5,7 +5,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
-import { LoadingPage } from "@/components/ui";
+import { LoadingPage, ErrorState } from "@/components/ui";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -217,9 +217,10 @@ function ReservationsContent() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchPage(pageNum: number, append = false) {
-    if (pageNum === 1) setLoading(true); else setLoadingMore(true);
+    if (pageNum === 1) { setLoading(true); setError(null); } else setLoadingMore(true);
     try {
       const res = await workerApi.getLockHistory({ page: String(pageNum), limit: String(PAGE_SIZE) });
       if (res.success && res.data) {
@@ -227,10 +228,13 @@ function ReservationsContent() {
         setLocks(prev => append ? [...prev, ...d.data] : d.data);
         setTotal(d.total);
         setHasMore(pageNum * PAGE_SIZE < d.total);
+      } else if (pageNum === 1) {
+        setError(res.error ?? "Could not load reservations.");
       } else {
         console.error("Lock history API failed:", res.error, res);
       }
     } catch (err) {
+      if (pageNum === 1) setError("Network error - check your connection.");
       console.error("Lock history fetch error:", err);
     } finally {
       if (pageNum === 1) setLoading(false); else setLoadingMore(false);
@@ -280,7 +284,9 @@ function ReservationsContent() {
       </div>
 
       {/* Lock list */}
-      {locks.length === 0 ? (
+      {error ? (
+        <ErrorState message={error} retry={() => fetchPage(1)} title="Could not load reservations" />
+      ) : locks.length === 0 ? (
         <EmptyState />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

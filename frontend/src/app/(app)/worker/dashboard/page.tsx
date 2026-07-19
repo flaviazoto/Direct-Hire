@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ClipboardList, Search, User, FolderOpen,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { userApi, workerApi } from "@/lib/api-client";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
-import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
+import { LoadingPage, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
@@ -148,13 +148,13 @@ function JobRow({ job }: { job: Job }) {
 /* ── Dashboard content ───────────────────────────────────────────────────────── */
 
 function WorkerDashboardContent() {
-  const router       = useRouter();
   const searchParams = useSearchParams();
 
   const [profileData, setProfileData]   = useState<ProfileData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [jobs, setJobs]                 = useState<Job[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [toast, setToast]               = useState<ToastData>(null);
 
   const showToast = useCallback((msg: string, type: "ok" | "err" = "ok") => {
@@ -166,27 +166,45 @@ function WorkerDashboardContent() {
     if (searchParams.get("submitted") === "1") showToast("Application submitted! We'll review within 24–48 hours.");
   }, [searchParams, showToast]);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([
       userApi.getProfile(),
       workerApi.getApplications({ limit: "100" }),
       workerApi.getJobs({ limit: "3" }),
     ]).then(([pRes, aRes, jRes]) => {
-      if (!pRes.success) { router.push("/login"); return; }
+      if (!pRes.success) { setError(pRes.error ?? "Could not load your dashboard."); setLoading(false); return; }
       setProfileData(pRes.data as ProfileData);
       if (aRes.success) {
         const raw = aRes.data as { applications?: Application[] } | Application[];
         setApplications(Array.isArray(raw) ? raw : (raw.applications ?? []));
+      } else {
+        console.error("[dashboard] applications fetch failed:", aRes.error);
       }
       if (jRes.success) {
         const raw = jRes.data as { jobs?: Job[] } | Job[];
         setJobs(Array.isArray(raw) ? raw : (raw.jobs ?? []));
+      } else {
+        console.error("[dashboard] jobs fetch failed:", jRes.error);
       }
       setLoading(false);
+    }).catch(() => {
+      setError("Network error - check your connection.");
+      setLoading(false);
     });
-  }, [router]);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingPage color="blue" />;
+  if (error) {
+    return (
+      <div style={{ maxWidth: 600, margin: "80px auto", padding: "0 20px" }}>
+        <ErrorState message={error} retry={load} title="Could not load your dashboard" />
+      </div>
+    );
+  }
   if (!profileData) return null;
 
   const { user, profile, onboarding, verification, notifications, profileCompletionScore } = profileData;
@@ -197,7 +215,7 @@ function WorkerDashboardContent() {
 
   const onbStatus    = onboarding?.onboardingStatus ?? "DRAFT";
   const completePct  = onboarding
-    ? Math.round((onboarding.completedSteps.length / onboarding.totalSteps) * 100)
+    ? Math.round(((onboarding.completedSteps?.length ?? 0) / onboarding.totalSteps) * 100)
     : 0;
   const pct          = profileCompletionScore ?? completePct;
   const isApproved   = onbStatus === "APPROVED" || user.accountStatus === "VERIFIED";

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { authApi, userApi } from "@/lib/api-client";
 import {
   LoadingPage, PageHeader, Card, CardHeader, CardContent, Badge,
-  Button, Avatar, Tag, ProgressBar,
+  Button, Avatar, Tag, ProgressBar, ErrorState,
 } from "@/components/ui";
 
 interface ProfileData {
@@ -46,17 +46,22 @@ export default function WorkerProfilePage() {
   const router = useRouter();
   const [data, setData]                   = useState<ProfileData | null>(null);
   const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError]     = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     userApi.getProfile().then(res => {
       if (res.success) setData(res.data as ProfileData);
-      else router.push("/login");
+      else setError(res.error ?? "Could not load your profile.");
       setLoading(false);
-    });
-  }, [router]);
+    }).catch(() => { setError("Network error - check your connection."); setLoading(false); });
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const handleDeleteAccount = useCallback(async () => {
     setDeleteLoading(true);
@@ -73,13 +78,20 @@ export default function WorkerProfilePage() {
   }, [router]);
 
   if (loading) return <LoadingPage color="blue" />;
+  if (error) {
+    return (
+      <div style={{ maxWidth: 600, margin: "80px auto", padding: "0 20px" }}>
+        <ErrorState message={error} retry={load} title="Could not load your profile" />
+      </div>
+    );
+  }
   if (!data) return null;
 
   const { user, profile, onboarding, verification, profileCompletionScore } = data;
   const firstName    = profile?.firstName ?? user.email.split("@")[0];
   const fullName     = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || user.email;
   const stepPct = onboarding
-    ? Math.round((onboarding.completedSteps.length / onboarding.totalSteps) * 100)
+    ? Math.round(((onboarding.completedSteps?.length ?? 0) / onboarding.totalSteps) * 100)
     : 0;
   const completionPct = profileCompletionScore ?? stepPct;
   const isFullyApproved =

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
-import { Button, Spinner, ToastDisplay, type ToastData } from "@/components/ui";
+import { Button, Spinner, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -371,6 +371,7 @@ export default function AdminAllJobsPage() {
   const [counts,   setCounts]   = useState<JobCounts | null>(null);
   const [page,     setPage]     = useState(1);
   const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
   const [search,   setSearch]   = useState("");
   const [country,  setCountry]  = useState("");
   const [category, setCategory] = useState("");
@@ -407,6 +408,7 @@ export default function AdminAllJobsPage() {
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20" };
     const statusFilter = TABS.find(t => t.key === tab)?.statusFilter ?? "";
     if (statusFilter)     params.status      = statusFilter;
@@ -417,7 +419,7 @@ export default function AdminAllJobsPage() {
 
     const res = await adminApi.getJobs(params) as any;
     setLoading(false);
-    if (!res.success) return;
+    if (!res.success) { setError(res.error ?? "Could not load jobs."); return; }
     const rows: JobRow[] = res.data ?? [];
     setJobs(rows);
     setTotal(res.total ?? 0);
@@ -665,6 +667,12 @@ export default function AdminAllJobsPage() {
             <tbody>
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+                : error
+                ? (
+                  <tr><td colSpan={7} style={{ padding: 24 }}>
+                    <ErrorState message={error} retry={fetchJobs} title="Could not load jobs" />
+                  </td></tr>
+                )
                 : jobs.length === 0
                 ? (
                   <tr><td colSpan={7}>

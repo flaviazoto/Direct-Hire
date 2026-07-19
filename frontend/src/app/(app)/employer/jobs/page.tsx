@@ -2,7 +2,7 @@
 // src/app/(app)/employer/jobs/page.tsx
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { employerApi } from "@/lib/api-client";
 import {
@@ -10,6 +10,7 @@ import {
   LoadingPage,
   ToastDisplay,
   type ToastData,
+  ErrorState,
 } from "@/components/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -397,7 +398,6 @@ function PersonIcon() {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 function EmployerJobsContent() {
-  const router       = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab]       = useState<TabKey>("ALL");
@@ -406,6 +406,7 @@ function EmployerJobsContent() {
   const [total, setTotal]               = useState(0);
   const [page, setPage]                 = useState(1);
   const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast]               = useState<ToastData>(null);
   const [confirm, setConfirm]           = useState<{
@@ -441,16 +442,17 @@ function EmployerJobsContent() {
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20" };
     if (activeTab !== "ALL") params.status = activeTab;
 
     const res = await employerApi.getJobs(params);
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load jobs."); setLoading(false); return; }
 
     setJobs((res.data as JobPost[]) ?? []);
     setTotal((res as { total?: number }).total ?? 0);
     setLoading(false);
-  }, [activeTab, page, router]);
+  }, [activeTab, page]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
@@ -629,6 +631,8 @@ function EmployerJobsContent() {
         <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
           <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(0,144,255,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
         </div>
+      ) : error ? (
+        <ErrorState message={error} retry={fetchJobs} title="Could not load jobs" />
       ) : jobs.length === 0 ? (
         <div style={{
           background: "#161616", border: "1px solid rgba(255,255,255,0.06)",

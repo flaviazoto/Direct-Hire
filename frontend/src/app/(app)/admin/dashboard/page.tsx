@@ -2,10 +2,9 @@
 // src/app/(app)/admin/dashboard/page.tsx
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
-import { LoadingPage } from "@/components/ui";
+import { LoadingPage, ErrorState } from "@/components/ui";
 import { C } from "@/lib/admin-theme";
 
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
@@ -94,8 +93,6 @@ function RiskBadge({ score }: { score: number }) {
 /* ─── Main page ──────────────────────────────────────────────────────────────── */
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
-
   const [stats,     setStats]     = useState<Stats | null>(null);
   const [pending,   setPending]   = useState<PendingUser[]>([]);
   const [audit,     setAudit]     = useState<AuditEntry[]>([]);
@@ -126,7 +123,9 @@ export default function AdminDashboardPage() {
     }).catch(() => {/* non-blocking */});
   }, []);
 
-  useEffect(() => {
+  const loadDashboard = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
     Promise.all([
       adminApi.getStats(),
       adminApi.getPendingUsers(),
@@ -147,9 +146,12 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }).catch(err => {
       console.error("[Admin] Dashboard load error:", err);
+      setLoadError("Network error - check your connection.");
       setLoading(false);
     });
-  }, [router]);
+  }, []);
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
   async function handleSavePricing() {
     if (!pricingDraft) return;
@@ -191,10 +193,8 @@ export default function AdminDashboardPage() {
 
   if (loading) return <LoadingPage color="amber" />;
   if (loadError) return (
-    <div style={{ padding: "60px 40px", textAlign: "center" }}>
-      <div style={{ fontSize: 14, color: "#f87171", marginBottom: 8, fontWeight: 600 }}>Failed to load admin dashboard</div>
-      <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{loadError}</div>
-      <div style={{ fontSize: 12, color: "#555", marginTop: 12 }}>Check the browser console and Network tab for details.</div>
+    <div style={{ padding: "60px 40px", maxWidth: 480, margin: "0 auto" }}>
+      <ErrorState message={loadError} retry={loadDashboard} title="Failed to load admin dashboard" />
     </div>
   );
   if (!stats) return null;

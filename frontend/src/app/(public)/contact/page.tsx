@@ -42,10 +42,12 @@ export default function ContactPage() {
   const [form, setForm]       = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.message) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -60,7 +62,7 @@ export default function ContactPage() {
       if (!res.ok) throw new Error("Failed");
       setSent(true);
     } catch {
-      alert("Failed to send message. Please email hello@directhire.cc directly.");
+      setError("Failed to send message. Please email hello@directhire.cc directly.");
     } finally {
       setLoading(false);
     }
@@ -237,6 +239,16 @@ export default function ContactPage() {
                         {...focusHandlers}
                       />
                     </div>
+
+                    {error && (
+                      <div style={{
+                        background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+                        borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#f87171",
+                        fontFamily: "var(--font-body)",
+                      }}>
+                        ⚠ {error}
+                      </div>
+                    )}
 
                     <button
                       onClick={handleSubmit}

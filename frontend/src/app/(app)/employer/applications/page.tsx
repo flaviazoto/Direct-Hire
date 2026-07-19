@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
-import { LoadingPage, Avatar, EmptyState } from "@/components/ui";
+import { LoadingPage, Avatar, EmptyState, ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -193,11 +192,10 @@ const FILTERS = ["All", "APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEWED", "ACCE
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function EmployerApplicationsContent() {
-  const router = useRouter();
-
   const [apps,         setApps]         = useState<Application[]>([]);
   const [total,        setTotal]        = useState(0);
   const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("All");
   const [page,         setPage]         = useState(1);
   const [hoverRow,     setHoverRow]     = useState<string | null>(null);
@@ -213,14 +211,15 @@ function EmployerApplicationsContent() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20" };
     if (activeFilter !== "All") params.status = activeFilter;
     const res = await employerApi.getApplications(params);
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load applications."); setLoading(false); return; }
     setApps((res.data as unknown as Application[]) ?? []);
     setTotal((res as unknown as { total: number }).total ?? 0);
     setLoading(false);
-  }, [page, activeFilter, router]);
+  }, [page, activeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -267,6 +266,13 @@ function EmployerApplicationsContent() {
   };
 
   if (loading) return <LoadingPage color="teal" />;
+  if (error) {
+    return (
+      <div style={{ padding: "32px 40px", maxWidth: 1400, margin: "0 auto" }}>
+        <ErrorState message={error} retry={load} title="Could not load applications" />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1400, margin: "0 auto" }}>

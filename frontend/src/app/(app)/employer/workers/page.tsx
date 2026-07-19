@@ -5,7 +5,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { employerApi } from "@/lib/api-client";
-import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
+import { LoadingPage, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -263,6 +263,7 @@ function WorkersContent() {
   const [page,          setPage]          = useState(1);
   const [hasMore,       setHasMore]       = useState(false);
   const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
   const [loadingMore,   setLoadingMore]   = useState(false);
   const [search,        setSearch]        = useState("");
   const [country,       setCountry]       = useState("");
@@ -277,7 +278,7 @@ function WorkersContent() {
   }, [search]);
 
   const fetchWorkers = useCallback(async (pageNum: number, append = false) => {
-    if (pageNum === 1) setLoading(true); else setLoadingMore(true);
+    if (pageNum === 1) { setLoading(true); setError(null); } else setLoadingMore(true);
     try {
       const params: Record<string, string> = {
         page:  String(pageNum),
@@ -294,7 +295,11 @@ function WorkersContent() {
         setWorkers(prev => append ? [...prev, ...rows] : rows);
         setTotal(d.total ?? 0);
         setHasMore(pageNum * PAGE_SIZE < (d.total ?? 0));
+      } else if (pageNum === 1) {
+        setError(res.error ?? "Could not load workers.");
       }
+    } catch {
+      if (pageNum === 1) setError("Network error - check your connection.");
     } finally {
       if (pageNum === 1) setLoading(false); else setLoadingMore(false);
     }
@@ -432,6 +437,8 @@ function WorkersContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : error ? (
+        <ErrorState message={error} retry={() => fetchWorkers(1)} title="Could not load workers" />
       ) : workers.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <EmptyState availableOnly={availableOnly} />

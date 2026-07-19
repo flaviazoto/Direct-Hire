@@ -2,11 +2,10 @@
 // src/app/(app)/worker/documents/page.tsx
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { uploadApi } from "@/lib/api-client";
 import {
   LoadingPage, PageHeader, Card, CardContent, Badge, Button,
-  EmptyState, ToastDisplay, type ToastData, ProgressBar,
+  EmptyState, ToastDisplay, type ToastData, ProgressBar, ErrorState,
 } from "@/components/ui";
 
 interface UploadRecord {
@@ -91,9 +90,9 @@ function UploadArea({
 }
 
 export default function WorkerDocumentsPage() {
-  const router = useRouter();
   const [uploads, setUploads]     = useState<UploadRecord[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [toast, setToast]         = useState<ToastData>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
@@ -106,11 +105,13 @@ export default function WorkerDocumentsPage() {
   };
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     const res = await uploadApi.list();
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load your documents."); setLoading(false); return; }
     setUploads((res.data as unknown as UploadRecord[]) ?? []);
     setLoading(false);
-  }, [router]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -157,6 +158,13 @@ export default function WorkerDocumentsPage() {
   };
 
   if (loading) return <LoadingPage color="blue" />;
+  if (error) {
+    return (
+      <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <ErrorState message={error} retry={load} title="Could not load your documents" />
+      </div>
+    );
+  }
 
   const getUpload = (fileType: string) => uploads.find(u => u.fileType === fileType && u.status !== "DELETED");
 

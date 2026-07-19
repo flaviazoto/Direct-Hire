@@ -754,6 +754,12 @@ export default function EmployerOnboardingPage() {
 
         {/* ── Sticky Footer ────────────────────────────────────────── */}
         <div className="employer-onboarding-actions" style={{ position: "sticky", bottom: 0, background: "rgba(1,9,19,0.96)", backdropFilter: "blur(16px)", borderTop: "1px solid rgba(255,255,255,0.08)", padding: "16px 16px 20px" }}>
+          {store.loadError && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 12, color: "#f87171", marginBottom: 8, fontWeight: 500 }}>
+              <span>⚠ {store.loadError} Your progress may not reflect what&apos;s saved.</span>
+              <button type="button" onClick={() => store.loadProgress()} style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, padding: "4px 10px", color: "#f87171", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Retry</button>
+            </div>
+          )}
           {stepErrors._form && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8, fontWeight: 500 }}>⚠ {stepErrors._form}</div>}
           <div className="employer-onboarding-actions-inner" style={{ display: "flex", gap: 10 }}>
             {uiStep > 0 && (

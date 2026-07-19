@@ -3,9 +3,8 @@
 
 import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
-import { ToastDisplay, Spinner, type ToastData } from "@/components/ui";
+import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -133,10 +132,9 @@ function Skeleton() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function LocksContent() {
-  const router = useRouter();
-
   const [locks,       setLocks]       = useState<Lock[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
   const [page,        setPage]        = useState(1);
   const [hasMore,     setHasMore]     = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -172,15 +170,17 @@ function LocksContent() {
   }, [anyModal, extendLock, releaseLock, extendLoading, releaseLoading]);
 
   const fetchLocks = useCallback(async (p: number, append = false) => {
+    if (p === 1) setError(null);
     const res = await employerApi.getLocks({ page: String(p), limit: "20" });
-    if (!res.success) { if (p === 1) router.push("/employer/dashboard"); return; }
+    if (!res.success) { if (p === 1) setError(res.error ?? "Could not load reservations."); return; }
     const d = res as unknown as { data: Lock[]; total: number; page: number; limit: number; success: boolean };
     const rows = d.data ?? [];
     setLocks(prev => append ? [...prev, ...rows] : rows);
     setHasMore((p * 20) < (d.total ?? 0));
-  }, [router]);
+  }, []);
 
   useEffect(() => {
+    setLoading(true);
     fetchLocks(1).then(() => setLoading(false));
   }, [fetchLocks]);
 
@@ -325,7 +325,9 @@ function LocksContent() {
       </div>
 
       {/* Lock list */}
-      {visible.length === 0 ? (
+      {error ? (
+        <ErrorState message={error} retry={() => fetchLocks(1)} title="Could not load reservations" />
+      ) : visible.length === 0 ? (
         <EmptyState tab={activeTab} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

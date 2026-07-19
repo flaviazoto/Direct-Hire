@@ -171,7 +171,7 @@ function SlideOverPanel({
   const bizDoc       = detail?.uploads.find(u => u.fileType === "BUSINESS_DOCUMENT");
 
   const completionPct = detail?.onboarding
-    ? Math.round((detail.onboarding.completedSteps.length / detail.onboarding.totalSteps) * 100)
+    ? Math.round(((detail.onboarding.completedSteps?.length ?? 0) / detail.onboarding.totalSteps) * 100)
     : 0;
 
   const renderDocReviewControls = (upload: UploadRecord) => {

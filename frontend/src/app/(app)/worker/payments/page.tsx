@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { workerApi } from "@/lib/api-client";
+import { ErrorState } from "@/components/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,15 +103,23 @@ function TypeIcon({ type }: { type: string }) {
 export default function WorkerPaymentsPage() {
   const [data, setData]     = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
   const [page, setPage]     = useState(1);
   const limit = 10;
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
-    (workerApi.getPayments({ page: String(page), limit: String(limit) }) as Promise<{ success: boolean; data?: PaymentsData }>)
-      .then((r) => { if (r.success && r.data) setData(r.data); })
+    setError(null);
+    (workerApi.getPayments({ page: String(page), limit: String(limit) }) as Promise<{ success: boolean; data?: PaymentsData; error?: string }>)
+      .then((r) => {
+        if (r.success && r.data) setData(r.data);
+        else setError(r.error ?? "Could not load payment history.");
+      })
+      .catch(() => setError("Network error - check your connection."))
       .finally(() => setLoading(false));
   }, [page]);
+
+  useEffect(() => { load(); }, [load]);
 
   const payments    = data?.payments ?? [];
   const totalPages  = data?.totalPages ?? 1;
@@ -181,6 +190,10 @@ export default function WorkerPaymentsPage() {
         {loading ? (
           <div style={{ padding: "60px", textAlign: "center", color: "rgba(255,255,255,0.3)" }}>
             Loading payments…
+          </div>
+        ) : error ? (
+          <div style={{ padding: "24px" }}>
+            <ErrorState message={error} retry={load} title="Could not load payment history" />
           </div>
         ) : payments.length === 0 ? (
           <div style={{ padding: "60px", textAlign: "center" }}>

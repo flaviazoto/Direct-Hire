@@ -2,9 +2,9 @@
 // src/app/(app)/worker/messages/page.tsx
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
 import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
+import { ErrorState } from "@/components/ui";
 
 interface MessageItem {
   id:         string;
@@ -45,9 +45,9 @@ function initials(name: string) {
 }
 
 export default function WorkerMessagesPage() {
-  const router = useRouter();
   const [messages,    setMessages]    = useState<MessageItem[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
   const [page,        setPage]        = useState(1);
   const [totalPages,  setTotalPages]  = useState(1);
   const [expanded,    setExpanded]    = useState<string | null>(null);
@@ -57,14 +57,17 @@ export default function WorkerMessagesPage() {
   const [replySent,   setReplySent]   = useState<string | null>(null);
 
   const load = useCallback(async (p: number, opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
+    if (!opts?.silent) { setLoading(true); setError(null); }
     const res = await workerApi.getMessages({ page: String(p), limit: "20" });
-    if (!res.success) { if (!opts?.silent) router.push("/login"); return; }
+    if (!res.success) {
+      if (!opts?.silent) { setError(res.error ?? "Could not load messages."); setLoading(false); }
+      return;
+    }
     const d = res as unknown as PagedResponse;
     setMessages(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
     if (!opts?.silent) setLoading(false);
-  }, [router]);
+  }, []);
 
   useEffect(() => { load(page); }, [page, load]);
 
@@ -107,7 +110,7 @@ export default function WorkerMessagesPage() {
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: 0 }}>Messages</h1>
         <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
-          {loading ? "Loading…" : unreadCount > 0 ? `${unreadCount} unread` : messages.length === 0 ? "No messages yet" : "All caught up"}
+          {loading ? "Loading…" : error ? "Could not load messages" : unreadCount > 0 ? `${unreadCount} unread` : messages.length === 0 ? "No messages yet" : "All caught up"}
         </p>
       </div>
 
@@ -117,6 +120,8 @@ export default function WorkerMessagesPage() {
           <div style={{ width: 32, height: 32, border: "3px solid rgba(124,58,237,0.2)", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
+      ) : error ? (
+        <ErrorState message={error} retry={() => load(page)} title="Could not load messages" />
       ) : messages.length === 0 ? (
         <div style={{ textAlign: "center", padding: "64px 0" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>✉️</div>

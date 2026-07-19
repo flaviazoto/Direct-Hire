@@ -944,6 +944,58 @@ export function EmptyState({
   );
 }
 
+// ─── ErrorState ───────────────────────────────────────────────────────────────
+// Replaces the content area on a failed fetch — distinct from EmptyState (which
+// means "the request succeeded, there's genuinely nothing here") and from a
+// toast (which is for transient action feedback, not a blocked main view).
+
+export function ErrorState({
+  message,
+  retry,
+  title = "Could not load this page",
+  className,
+}: {
+  message?: string;
+  retry?: () => void;
+  title?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={className}
+      style={{
+        background: "rgba(239,68,68,0.06)",
+        border: "1px solid rgba(239,68,68,0.15)",
+        borderRadius: 14,
+        padding: "32px 24px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 24, marginBottom: 8 }}>⚠</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>{title}</div>
+      {message && <div style={{ fontSize: 13, color: "#71717a", marginBottom: retry ? 16 : 0 }}>{message}</div>}
+      {retry && (
+        <button
+          onClick={retry}
+          style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 8,
+            padding: "8px 20px",
+            color: "#f87171",
+            fontSize: 13,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontWeight: 600,
+          }}
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── PageHeader ───────────────────────────────────────────────────────────────
 
 export function PageHeader({

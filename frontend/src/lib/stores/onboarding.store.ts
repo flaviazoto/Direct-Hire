@@ -37,12 +37,14 @@ interface OnboardingState {
   isSubmitting:     boolean;
   saveError:        string | null;
   submitError:      string | null;
+  loadError:        string | null;
   isLoaded:         boolean;
 
   // Actions
   loadProgress:     () => Promise<void>;
   saveStep:         (step: number, data: Record<string, unknown>) => Promise<boolean>;
   submitOnboarding: () => Promise<boolean>;
+  setSubmitError:   (msg: string | null) => void;
   setStepData:      (step: number, data: Record<string, unknown>) => void;
   uploadFile:       (fileType: string, file: File) => Promise<boolean>;
   removeUpload:     (fileType: string) => Promise<void>;
@@ -65,52 +67,56 @@ export const useOnboardingStore = create<OnboardingState>()(
       isSubmitting:     false,
       saveError:        null,
       submitError:      null,
+      loadError:        null,
       isLoaded:         false,
 
       loadProgress: async () => {
+        set({ loadError: null });
         const res = await onboardingApi.getProgress();
-        if (res.success) {
-          const d = res.data as Record<string, unknown>;
-          set({
-            currentStep:      d.currentStep as number,
-            completedSteps:   d.completedSteps as number[],
-            totalSteps:       d.totalSteps as number,
-            onboardingStatus: d.onboardingStatus as string,
-            completionPct:    d.completionPct as number,
-            lastSavedAt:      d.lastSavedAt as string,
-            isSubmitted:      d.isSubmitted as boolean,
-            isLoaded:         true,
-          });
-
-          // Load existing uploads
-          const serverUploads = (d.uploads as Array<{
-            fileType: string; id: string; fileName: string;
-            fileUrl: string; sizeBytes: number;
-          }>) ?? [];
-
-          const uploadsMap: Record<string, UploadEntry> = {};
-          for (const u of serverUploads) {
-            uploadsMap[u.fileType] = {
-              id:       u.id,
-              fileType: u.fileType,
-              fileName: u.fileName,
-              fileUrl:  u.fileUrl,
-              sizeBytes: u.sizeBytes,
-              status:   "done",
-              progress: 100,
-            };
-          }
-          set({ uploads: uploadsMap });
-
-          // Restore draft step data
-          const draft = (d.draftData as Record<string, unknown>) ?? {};
-          const stepData: Record<number, Record<string, unknown>> = {};
-          for (const key of Object.keys(draft)) {
-            const match = key.match(/^step_(\d+)$/);
-            if (match) stepData[parseInt(match[1])] = draft[key] as Record<string, unknown>;
-          }
-          set({ stepData });
+        if (!res.success) {
+          set({ loadError: res.error ?? "Could not load your onboarding progress." });
+          return;
         }
+        const d = res.data as Record<string, unknown>;
+        set({
+          currentStep:      d.currentStep as number,
+          completedSteps:   d.completedSteps as number[],
+          totalSteps:       d.totalSteps as number,
+          onboardingStatus: d.onboardingStatus as string,
+          completionPct:    d.completionPct as number,
+          lastSavedAt:      d.lastSavedAt as string,
+          isSubmitted:      d.isSubmitted as boolean,
+          isLoaded:         true,
+        });
+
+        // Load existing uploads
+        const serverUploads = (d.uploads as Array<{
+          fileType: string; id: string; fileName: string;
+          fileUrl: string; sizeBytes: number;
+        }>) ?? [];
+
+        const uploadsMap: Record<string, UploadEntry> = {};
+        for (const u of serverUploads) {
+          uploadsMap[u.fileType] = {
+            id:       u.id,
+            fileType: u.fileType,
+            fileName: u.fileName,
+            fileUrl:  u.fileUrl,
+            sizeBytes: u.sizeBytes,
+            status:   "done",
+            progress: 100,
+          };
+        }
+        set({ uploads: uploadsMap });
+
+        // Restore draft step data
+        const draft = (d.draftData as Record<string, unknown>) ?? {};
+        const stepData: Record<number, Record<string, unknown>> = {};
+        for (const key of Object.keys(draft)) {
+          const match = key.match(/^step_(\d+)$/);
+          if (match) stepData[parseInt(match[1])] = draft[key] as Record<string, unknown>;
+        }
+        set({ stepData });
       },
 
       saveStep: async (step, data) => {
@@ -145,6 +151,8 @@ export const useOnboardingStore = create<OnboardingState>()(
           return false;
         }
       },
+
+      setSubmitError: (msg) => set({ submitError: msg }),
 
       setStepData: (step, data) => {
         set((s) => ({ stepData: { ...s.stepData, [step]: { ...s.stepData[step], ...data } } }));
@@ -211,7 +219,7 @@ export const useOnboardingStore = create<OnboardingState>()(
           currentStep: 0, completedSteps: [], completionPct: 0,
           stepData: {}, uploads: {}, isSubmitted: false,
           onboardingStatus: "DRAFT", isSaving: false, isSubmitting: false,
-          saveError: null, submitError: null, isLoaded: false,
+          saveError: null, submitError: null, loadError: null, isLoaded: false,
         });
       },
     }),

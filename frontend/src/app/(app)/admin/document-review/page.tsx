@@ -2,10 +2,10 @@
 // src/app/(app)/admin/document-review/page.tsx
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
 import { C } from "@/lib/admin-theme";
+import { ErrorState } from "@/components/ui";
 
 interface WorkerRow {
   userId:              string;
@@ -63,24 +63,25 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function DocumentReviewPage() {
-  const router = useRouter();
   const [tab,        setTab]        = useState<"pending" | "all">("pending");
   const [rows,       setRows]       = useState<WorkerRow[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
   const [page,       setPage]       = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total,      setTotal]      = useState(0);
 
   const load = useCallback(async (p: number, t: "pending" | "all") => {
     setLoading(true);
+    setError(null);
     const res = await adminApi.getPendingDocumentWorkers({ page: String(p), limit: "20", tab: t });
-    if (!res.success) { router.push("/login"); return; }
+    if (!res.success) { setError(res.error ?? "Could not load workers."); setLoading(false); return; }
     const d = res as unknown as PagedResponse;
     setRows(d.data ?? []);
     setTotalPages(d.totalPages ?? 1);
     setTotal(d.total ?? 0);
     setLoading(false);
-  }, [router]);
+  }, []);
 
   useEffect(() => { load(page, tab); }, [page, tab, load]);
 
@@ -132,6 +133,8 @@ export default function DocumentReviewPage() {
           <div style={{ width: 32, height: 32, border: "3px solid rgba(220,38,38,0.2)", borderTopColor: "#dc2626", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
+      ) : error ? (
+        <ErrorState message={error} retry={() => load(page, tab)} title="Could not load workers" />
       ) : rows.length === 0 ? (
         <div style={{ textAlign: "center", padding: "64px 0", color: C.muted }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>

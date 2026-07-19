@@ -3,7 +3,7 @@
 import type React from "react";
 import { useEffect, useState, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -182,6 +182,7 @@ export default function AdminUsersPage() {
   const [users, setUsers]         = useState<UserRow[]>([]);
   const [total, setTotal]         = useState(0);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [page, setPage]           = useState(1);
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL");
   const [roleFilter, setRole]     = useState("");
@@ -200,6 +201,7 @@ export default function AdminUsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: "20" };
     if (statusTab !== "ALL") params.status = statusTab;
     if (roleFilter)          params.role   = roleFilter;
@@ -208,6 +210,8 @@ export default function AdminUsersPage() {
     if (res.success) {
       setUsers((res.data as UserRow[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
+    } else {
+      setError(res.error ?? "Could not load users.");
     }
     setLoading(false);
   }, [page, statusTab, roleFilter, search]);
@@ -334,6 +338,10 @@ export default function AdminUsersPage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : error ? (
+                <tr><td colSpan={7} style={{ padding: 24 }}>
+                  <ErrorState message={error} retry={load} title="Could not load users" />
+                </td></tr>
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ padding: "64px 24px", textAlign: "center" }}>

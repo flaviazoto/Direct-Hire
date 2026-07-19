@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
 import {
-  Button, Spinner, Textarea, ToastDisplay, type ToastData,
+  Button, Spinner, Textarea, ToastDisplay, type ToastData, ErrorState,
 } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -644,6 +644,7 @@ export default function AdminJobsPendingPage() {
   const [jobs,       setJobs]       = useState<PendingJob[]>([]);
   const [total,      setTotal]      = useState(0);
   const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
   const [search,     setSearch]     = useState("");
   const [country,    setCountry]    = useState("");
   const [category,   setCategory]   = useState("");
@@ -669,6 +670,7 @@ export default function AdminJobsPendingPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params: Record<string, string> = {};
     if (search.trim()) params.search   = search.trim();
     if (country)       params.country  = country;
@@ -676,7 +678,7 @@ export default function AdminJobsPendingPage() {
 
     const res = await adminApi.getPendingJobs(params) as any;
     setLoading(false);
-    if (!res.success) return;
+    if (!res.success) { setError(res.error ?? "Could not load pending jobs."); return; }
 
     const data: PendingJob[] = res.data ?? [];
     setJobs(data);
@@ -927,6 +929,14 @@ export default function AdminJobsPendingPage() {
             <tbody>
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+                : error
+                ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: "24px" }}>
+                      <ErrorState message={error} retry={load} title="Could not load pending jobs" />
+                    </td>
+                  </tr>
+                )
                 : jobs.length === 0
                 ? (
                   <tr>

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi } from "@/lib/api-client";
-import { LoadingPage } from "@/components/ui";
+import { LoadingPage, ErrorState } from "@/components/ui";
 import { C, pill } from "@/lib/admin-theme";
 
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
@@ -153,6 +153,7 @@ export default function AdminEmailLogsPage() {
   const [page,     setPage]     = useState(1);
   const [loading,  setLoading]  = useState(true);
   const [fetching, setFetching] = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
   const [toast,    setToast]    = useState<{ msg: string; ok: boolean } | null>(null);
 
   const [filterType,   setFilterType]   = useState("");
@@ -171,11 +172,13 @@ export default function AdminEmailLogsPage() {
   useEffect(() => {
     adminApi.getEmailStats().then(res => {
       if (res.success) setStats(res.data as EmailStats);
-    });
+      else console.error("[email-logs] stats fetch failed:", res.error);
+    }).catch(err => console.error("[email-logs] stats fetch failed:", err));
   }, []);
 
-  useEffect(() => {
+  const loadLogs = useCallback(() => {
     setFetching(true);
+    setError(null);
     const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
     if (filterType)   params.emailType = filterType;
     if (filterStatus) params.status    = filterStatus;
@@ -185,14 +188,19 @@ export default function AdminEmailLogsPage() {
 
     adminApi.getEmailLogs(params)
       .then(res => {
-        const r = res as unknown as LogsPage;
+        const r = res as unknown as LogsPage & { error?: string };
         if (r.success) {
           setLogs(r.data ?? []);
           setTotal(r.total ?? 0);
+        } else {
+          setError(r.error ?? "Could not load email logs.");
         }
       })
+      .catch(() => setError("Network error - check your connection."))
       .finally(() => { setLoading(false); setFetching(false); });
   }, [page, filterType, filterStatus, search, dateFrom, dateTo]);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
 
   function handleSearchInput(val: string) {
     setSearchInput(val);
@@ -385,6 +393,10 @@ export default function AdminEmailLogsPage() {
         {fetching ? (
           <div style={{ padding: "48px 20px", textAlign: "center", color: C.muted, fontSize: 13 }}>
             Loading…
+          </div>
+        ) : error ? (
+          <div style={{ padding: "24px" }}>
+            <ErrorState message={error} retry={loadLogs} title="Could not load email logs" />
           </div>
         ) : logs.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center", color: C.muted, fontSize: 13 }}>

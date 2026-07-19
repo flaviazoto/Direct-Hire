@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check } from 'lucide-react'
 import { userApi } from '@/lib/api-client'
+import { ErrorState } from '@/components/ui'
 
 interface WorkerForm {
   firstName:          string
@@ -40,17 +40,19 @@ const S = {
 }
 
 export default function WorkerProfileEditPage() {
-  const router = useRouter()
   const [form, setForm]     = useState<WorkerForm>(EMPTY)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true)
+    setLoadError(null)
     userApi.getProfile().then(res => {
-      if (!res.success) { router.push('/login'); return }
+      if (!res.success) { setLoadError(res.error ?? 'Could not load your profile.'); setLoading(false); return }
       const p = (res.data as any)?.profile ?? {}
       setForm({
         firstName:          p.firstName          ?? '',
@@ -68,8 +70,10 @@ export default function WorkerProfileEditPage() {
         additionalNotes:    p.additionalNotes    ?? '',
       })
       setLoading(false)
-    })
-  }, [router])
+    }).catch(() => { setLoadError('Network error - check your connection.'); setLoading(false) })
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const autoSave = useCallback(async (patch: Partial<WorkerForm>) => {
     setSaving(true)
@@ -98,6 +102,16 @@ export default function WorkerProfileEditPage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#05080f' }}>
         <div style={{ width: 28, height: 28, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#0090ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 640, margin: '80px auto 0' }}>
+          <ErrorState message={loadError} retry={load} title="Could not load your profile" />
+        </div>
       </div>
     )
   }

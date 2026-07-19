@@ -5,6 +5,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminApi } from "@/lib/api-client";
 import { C } from "@/lib/admin-theme";
+import { ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -176,28 +177,40 @@ export default function AdminRevenuePage() {
   const [search,          setSearch]          = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState<string | null>(null);
+  const [paymentsError,   setPaymentsError]   = useState<string | null>(null);
   const [csvLoading,      setCsvLoading]      = useState(false);
   const [copiedId,        setCopiedId]        = useState<string | null>(null);
 
   const skipChartEffect = useRef(true);
 
-  useEffect(() => {
+  const loadSummary = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([
       adminApi.getRevenueSummary(),
       adminApi.getRevenueChart("30d", "all"),
     ]).then(([sRes, cRes]) => {
-      if (sRes.success) setSummary(sRes.data as Summary);
+      if (!sRes.success) { setError(sRes.error ?? "Could not load revenue data."); setLoading(false); return; }
+      setSummary(sRes.data as Summary);
       if (cRes.success) setChart(cRes.data as ChartDay[]);
+      else console.error("[revenue] chart fetch failed:", cRes.error);
       setLoading(false);
       skipChartEffect.current = false;
+    }).catch(() => {
+      setError("Network error - check your connection.");
+      setLoading(false);
     });
   }, []);
+
+  useEffect(() => { loadSummary(); }, [loadSummary]);
 
   useEffect(() => {
     if (skipChartEffect.current) return;
     adminApi.getRevenueChart(chartPeriod, chartType).then(r => {
       if (r.success) setChart(r.data as ChartDay[]);
-    });
+      else console.error("[revenue] chart fetch failed:", r.error);
+    }).catch(err => console.error("[revenue] chart fetch failed:", err));
   }, [chartPeriod, chartType]);
 
   useEffect(() => {
@@ -208,6 +221,7 @@ export default function AdminRevenuePage() {
   useEffect(() => { setPage(1); }, [filterType, filterStatus, debouncedSearch]);
 
   const fetchPayments = useCallback(() => {
+    setPaymentsError(null);
     const params: Record<string, string> = {
       page:  String(page),
       limit: String(LIMIT),
@@ -221,8 +235,10 @@ export default function AdminRevenuePage() {
         const d = r as unknown as PaginatedPayments;
         setPayments(d.data);
         setTotal(d.total);
+      } else {
+        setPaymentsError(r.error ?? "Could not load payment log.");
       }
-    });
+    }).catch(() => setPaymentsError("Network error - check your connection."));
   }, [page, filterType, filterStatus, debouncedSearch]);
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
@@ -269,6 +285,14 @@ export default function AdminRevenuePage() {
     return (
       <div style={{ padding: "60px 40px", textAlign: "center", color: C.muted, fontSize: 14 }}>
         Loading revenue data…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: "32px 40px" }}>
+        <ErrorState message={error} retry={loadSummary} title="Could not load revenue data" />
       </div>
     );
   }
@@ -575,8 +599,12 @@ export default function AdminRevenuePage() {
           ))}
         </div>
 
-        {/* Empty state */}
-        {payments.length === 0 ? (
+        {/* Error / empty state */}
+        {paymentsError ? (
+          <div style={{ padding: "24px 20px" }}>
+            <ErrorState message={paymentsError} retry={fetchPayments} title="Could not load payment log" />
+          </div>
+        ) : payments.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>💳</div>
             <div style={{ fontWeight: 600, fontSize: 14, color: C.text, marginBottom: 6 }}>

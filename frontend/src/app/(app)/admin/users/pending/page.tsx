@@ -3,7 +3,7 @@
 import type React from "react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { adminApi } from "@/lib/api-client";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { C, inputStyle } from "@/lib/admin-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -362,6 +362,7 @@ function RejectModal({ onConfirm, onCancel, loading }: { onConfirm: (r: string) 
 export default function PendingUsersPage() {
   const [users, setUsers]               = useState<PendingUser[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [roleTab, setRoleTab]           = useState<RoleTab>("ALL");
   const [search, setSearch]             = useState("");
   const [selectedId, setSelected]       = useState<string | null>(null);
@@ -371,8 +372,10 @@ export default function PendingUsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const res = await adminApi.getPendingUsers();
     if (res.success) setUsers((res.data as PendingUser[]) ?? []);
+    else setError(res.error ?? "Could not load pending users.");
     setLoading(false);
   }, []);
 
@@ -487,6 +490,12 @@ export default function PendingUsersPage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: "24px" }}>
+                    <ErrorState message={error} retry={load} title="Could not load pending users" />
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ padding: "64px 24px", textAlign: "center" }}>

@@ -4,7 +4,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
-import { LoadingPage } from "@/components/ui";
+import { LoadingPage, ErrorState } from "@/components/ui";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
 import { useVisibilityPoll } from "@/hooks/useVisibilityPoll";
 
@@ -651,18 +651,21 @@ function ApplicationsContent() {
   const [apps,         setApps]       = useState<Application[]>([]);
   const [total,        setTotal]      = useState(0);
   const [loading,      setLoading]    = useState(true);
+  const [error,        setError]      = useState<string | null>(null);
   const [activeTab,    setActiveTab]  = useState<TabStatus>("ALL");
   const [page,         setPage]       = useState(1);
   const LIMIT = 20;
 
   const fetchApps = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
+    if (!opts?.silent) { setLoading(true); setError(null); }
     const params: Record<string, string> = { page: String(page), limit: String(LIMIT) };
     if (activeTab !== "ALL") params.status = activeTab;
     const res = await workerApi.getApplications(params);
     if (res.success) {
       setApps((res.data as Application[]) ?? []);
       setTotal((res as unknown as { total: number }).total ?? 0);
+    } else if (!opts?.silent) {
+      setError(res.error ?? "Could not load applications.");
     }
     if (!opts?.silent) setLoading(false);
   }, [activeTab, page]);
@@ -776,8 +779,13 @@ function ApplicationsContent() {
         </div>
       )}
 
+      {/* Error state */}
+      {!loading && error && (
+        <ErrorState message={error} retry={() => fetchApps()} title="Could not load applications" />
+      )}
+
       {/* Empty state */}
-      {!loading && apps.length === 0 && (
+      {!loading && !error && apps.length === 0 && (
         <div style={{
           background: "#161616", border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: 16, padding: "60px 32px", textAlign: "center",

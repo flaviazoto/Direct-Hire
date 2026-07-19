@@ -187,7 +187,7 @@ function EmployerDashboardContent() {
   const onbStatus     = onboarding?.onboardingStatus ?? "DRAFT";
   const statusInfo    = STATUS_INFO[onbStatus] ?? STATUS_INFO.DRAFT;
   const completionPct = onboarding
-    ? Math.round((onboarding.completedSteps.length / onboarding.totalSteps) * 100)
+    ? Math.round(((onboarding.completedSteps?.length ?? 0) / onboarding.totalSteps) * 100)
     : 0;
   const isActive    = onbStatus === "APPROVED";
   const needsAction = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus);
