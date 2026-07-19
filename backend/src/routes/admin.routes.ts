@@ -7,6 +7,7 @@ import * as docsCtrl     from "../controllers/admin-documents.controller";
 import * as pricingCtrl  from "../controllers/admin-pricing.controller";
 import * as configCtrl   from "../controllers/admin-config.controller";
 import * as revenueCtrl  from "../controllers/admin-revenue.controller";
+import * as externalJobsCtrl from "../controllers/admin-external-jobs.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is — same cross-role-import pattern already used in
 // employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
@@ -53,6 +54,13 @@ adminRouter.post("/jobs/:id/archive",          requireAdmin, jobsCtrl.archiveJob
 // ── Employer posting rights ───────────────────────────────────────────────────
 adminRouter.post("/employers/:id/revoke-posting-rights",  requireAdmin, jobsCtrl.revokePostingRights);
 adminRouter.post("/employers/:id/restore-posting-rights", requireAdmin, jobsCtrl.restorePostingRights);
+
+// ── External jobs (admin-curated links to jobs hosted elsewhere) ────────────
+adminRouter.get(   "/external-jobs",              requireAdmin, externalJobsCtrl.getExternalJobs);
+adminRouter.post(  "/external-jobs",               requireAdmin, externalJobsCtrl.createExternalJob);
+adminRouter.patch( "/external-jobs/:id",           requireAdmin, externalJobsCtrl.updateExternalJob);
+adminRouter.post(  "/external-jobs/:id/archive",   requireAdmin, externalJobsCtrl.archiveExternalJob);
+adminRouter.delete("/external-jobs/:id",           requireAdmin, externalJobsCtrl.deleteExternalJob);
 
 // ── Lock management ───────────────────────────────────────────────────────────
 // Static routes before /:lockId param

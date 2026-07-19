@@ -297,6 +297,13 @@ export const adminApi = {
   getUnreadCount: () => get("/admin/notifications/unread-count"),
   markNotificationRead: (id: string) => post(`/admin/notifications/${id}/read`),
   markAllNotificationsRead: () => post("/admin/notifications/read-all"),
+  // ── External jobs ────────────────────────────────────────────────────────────
+  getExternalJobs: (params?: Record<string, string>) =>
+    get(`/admin/external-jobs${params ? "?" + new URLSearchParams(params) : ""}`),
+  createExternalJob: (body: Record<string, unknown>) => post("/admin/external-jobs", body),
+  updateExternalJob: (id: string, body: Record<string, unknown>) => patch(`/admin/external-jobs/${id}`, body),
+  archiveExternalJob: (id: string) => post(`/admin/external-jobs/${id}/archive`),
+  deleteExternalJob: (id: string) => del(`/admin/external-jobs/${id}`),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*

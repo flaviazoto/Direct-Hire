@@ -276,6 +276,7 @@ model User {
   adminAuditLogs    AdminAuditLog[]    @relation("AdminAuditLogs")
   userAuditLogs     AdminAuditLog[]    @relation("UserAuditLogs")
   jobPosts             JobPost[]          @relation("EmployerJobs")
+  externalJobsCreated  ExternalJob[]      @relation("ExternalJobsCreatedBy")
   workerApplications   Application[]      @relation("WorkerApplications")
   employerApplications Application[]      @relation("EmployerApplications")
   workerLocksAsWorker   WorkerLock[]      @relation("WorkerLocks")
@@ -605,6 +606,53 @@ model JobPost {
   @@index([createdAt])
   @@index([status, country, category])
   @@map("job_posts")
+}
+
+// ─────────────────────────────────────────────
+// EXTERNAL JOBS
+// ─────────────────────────────────────────────
+// Admin-curated links to jobs hosted elsewhere (EURES, LinkedIn, Indeed,
+// national job boards) — surfaced in the worker feed and public jobs list
+// so new workers have real inventory to browse from day one. Deliberately a
+// SEPARATE model from JobPost: no employer, no Application pipeline, no
+// match scoring. Do not add a nullable employerId here to "unify" the two —
+// that would force every JobPost query/permission check to handle a
+// half-populated employer relation.
+
+model ExternalJob {
+  id               String        @id @default(cuid())
+
+  title            String
+  description      String        @db.Text
+
+  country          String
+  city             String?
+
+  salaryMin        Decimal?      @db.Decimal(10, 2) @map("salary_min")
+  salaryMax        Decimal?      @db.Decimal(10, 2) @map("salary_max")
+  salaryCurrency   String?       @map("salary_currency")
+
+  contractType     ContractType? @map("contract_type")
+
+  externalUrl      String        @map("external_url")
+  sourceName       String        @map("source_name")
+
+  // Plain string, not an enum — same convention as Payment.status: simple
+  // admin-curated content doesn't need DB-level exhaustiveness, and it keeps
+  // this table decoupled from an ALTER TYPE migration if a status like
+  // "EXPIRED" gets added later.
+  status           String        @default("ACTIVE") // ACTIVE | ARCHIVED
+
+  createdById      String?       @map("created_by_id")
+  createdBy        User?         @relation("ExternalJobsCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([country])
+  @@index([createdAt])
+  @@map("external_jobs")
 }
 
 // ─────────────────────────────────────────────

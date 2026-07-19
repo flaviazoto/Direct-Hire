@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { calculateMatchScore, type ScoringWorker, type ScoringJob } from "../services/matching";
+import { getActiveExternalJobsForFeed } from "../lib/external-jobs";
 
 function toNumber(value: unknown): number | undefined {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -235,6 +236,7 @@ export async function getJobs(req: Request, res: Response, next: NextFunction) {
 
       return {
         ...job,
+        source: "jobpost" as const,
         matchScore,
         // Returned alongside matchScore (same value) for one release so any
         // other consumer still reading aiMatchScore doesn't silently break.
@@ -249,7 +251,19 @@ export async function getJobs(req: Request, res: Response, next: NextFunction) {
       enriched = [...enriched].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
     }
 
-    return paginated(res, enriched, total, page, limit);
+    // External jobs can't be match-scored (no skills/salary comparison
+    // against a real employer's requirements), so they always sort after
+    // every real job regardless of `sort` — appended here, never merged
+    // into the scored/sorted `enriched` array above. Only fetched on page 1
+    // (see getActiveExternalJobsForFeed doc comment) and skipped entirely
+    // for the "saved jobs" view, which is real-jobs-only by definition.
+    let feed: unknown[] = enriched;
+    if (page === 1 && !savedOnly) {
+      const external = await getActiveExternalJobsForFeed({ country: query.country });
+      feed = [...enriched, ...external];
+    }
+
+    return paginated(res, feed, total, page, limit);
   } catch (e) {
     next(e);
   }

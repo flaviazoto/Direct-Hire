@@ -17,7 +17,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { publicJobsApi, workerApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { ToastDisplay, type ToastData } from "@/components/ui";
+import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -49,6 +49,14 @@ interface Job {
   requirements?: string;
   benefits?: string;
   experienceRequired?: number;
+  // External jobs (admin-pasted links — EURES, LinkedIn, Indeed, national
+  // boards) share this same list response, tagged source: "external".
+  // Real jobPost rows are tagged source: "jobpost". See
+  // backend/src/lib/external-jobs.ts. Never has a /jobs/[id] detail page —
+  // its canonical home is the external site.
+  source?: "jobpost" | "external";
+  sourceName?: string;
+  externalUrl?: string;
 }
 
 interface AuthState {
@@ -151,6 +159,19 @@ function fmtSalary(job: Job): string | null {
   const max = typeof job.salaryMax === "string" ? parseFloat(job.salaryMax) : job.salaryMax;
   if (!min || !max) return null;
   return `${job.salaryCurrency} ${min.toLocaleString()} – ${max.toLocaleString()} / mo`;
+}
+
+// External jobs may have only one of salaryMin/salaryMax (whatever the
+// source board disclosed) — fmtSalary above requires both, so this is a
+// separate, more permissive formatter rather than loosening fmtSalary's
+// contract for every real job everywhere.
+function fmtExternalSalary(job: Job): string | null {
+  const min = typeof job.salaryMin === "string" ? parseFloat(job.salaryMin) : job.salaryMin;
+  const max = typeof job.salaryMax === "string" ? parseFloat(job.salaryMax) : job.salaryMax;
+  if (!min && !max) return null;
+  const cur = job.salaryCurrency ?? "";
+  if (min && max) return `${cur} ${min.toLocaleString()} – ${max.toLocaleString()}`.trim();
+  return `${cur} ${(min ?? max)!.toLocaleString()}`.trim();
 }
 
 // ── Tiny inline components ─────────────────────────────────────────────────────
@@ -713,6 +734,52 @@ function JobCard({
   );
 }
 
+// External jobs never open the quick-view slide-over (there's no
+// /jobs/[id] page for them — see backend/src/controllers/public-jobs.controller.ts) and
+// never claim verification or run application-fee logic; the whole card is
+// honest about being hosted elsewhere.
+function ExternalJobCard({ job }: { job: Job }) {
+  const salary = fmtExternalSalary(job);
+
+  return (
+    <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4 }}>
+            {job.title}
+          </div>
+          <div style={{ fontSize: 12, color: "#71717a" }}>
+            {[job.city, job.country].filter(Boolean).join(", ")}
+          </div>
+        </div>
+        <Chip color="amber">External</Chip>
+      </div>
+
+      {salary && <div style={{ fontSize: 13, fontWeight: 600, color: "#86efac", marginBottom: 10 }}>{salary}</div>}
+
+      {job.contractType && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+          <Chip color="violet">{CONTRACT_LABEL[job.contractType] ?? job.contractType}</Chip>
+        </div>
+      )}
+
+      <div style={{ fontSize: 12, color: "#71717a", marginBottom: 14 }}>
+        Hosted on {job.sourceName} — opens in a new tab.
+      </div>
+
+      <a
+        href={job.externalUrl}
+        target="_blank"
+        rel="noopener nofollow sponsored"
+        onClick={e => e.stopPropagation()}
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 36, padding: "0 18px", borderRadius: 9, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+      >
+        View on {job.sourceName} ↗
+      </a>
+    </div>
+  );
+}
+
 // ── Slide-over detail panel ────────────────────────────────────────────────────
 
 function SlideOver({
@@ -895,11 +962,13 @@ function JobBoardContent() {
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [countries, setCountries]   = useState<{ country: string; count: number }[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [applyingId,    setApplyingId]    = useState<string | null>(null);
   const [applyModalJob, setApplyModalJob] = useState<Job | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
@@ -931,8 +1000,10 @@ function JobBoardContent() {
       if (r.success) {
         const ids = ((r.data as { job: { id: string } }[]) ?? []).map(a => a.job.id);
         setAppliedJobIds(new Set(ids));
+      } else {
+        console.error("[jobs] applied-jobs fetch failed:", r.error);
       }
-    });
+    }).catch(err => console.error("[jobs] applied-jobs fetch failed:", err));
   }, [authIsWorker]);
 
   // Clean up any legacy Stripe Checkout query params left in the URL
@@ -948,8 +1019,10 @@ function JobBoardContent() {
   useEffect(() => {
     Promise.all([publicJobsApi.getCategories(), publicJobsApi.getCountries()]).then(([catRes, ctryRes]) => {
       if (catRes.success) setCategories((catRes.data as string[]) ?? []);
+      else console.error("[jobs] categories fetch failed:", catRes.error);
       if (ctryRes.success) setCountries((ctryRes.data as { country: string; count: number }[]) ?? []);
-    });
+      else console.error("[jobs] countries fetch failed:", ctryRes.error);
+    }).catch(err => console.error("[jobs] filter-meta fetch failed:", err));
   }, []);
 
   // ── Build API query params ────────────────────────────────────────────────
@@ -958,6 +1031,10 @@ function JobBoardContent() {
     const p = filtersToParams(filters);
     p.page  = String(page);
     p.limit = "20";
+    // Opt-in flag — ONLY this page passes it. The sitemap/detail-page SSR
+    // helpers (lib/jobs-ssr.ts) call the same /public/jobs endpoint without
+    // it, so external jobs structurally never reach the sitemap.
+    p.includeExternal = "true";
     return p;
   }, [filters, page]);
 
@@ -969,17 +1046,24 @@ function JobBoardContent() {
 
   const fetchJobs = useCallback(async () => {
     const append = isAppend.current;
-    if (append) setLoadingMore(true); else setLoading(true);
+    if (append) setLoadingMore(true); else { setLoading(true); setError(null); }
 
-    const res = await publicJobsApi.getJobs(apiParams);
-    if (res.success) {
-      const rows = (res.data as Job[]) ?? [];
-      setJobs(prev => append ? [...prev, ...rows] : rows);
-      setTotal((res as { total?: number }).total ?? 0);
+    try {
+      const res = await publicJobsApi.getJobs(apiParams);
+      if (res.success) {
+        const rows = (res.data as Job[]) ?? [];
+        setJobs(prev => append ? [...prev, ...rows] : rows);
+        setTotal((res as { total?: number }).total ?? 0);
+        if (!append) setError(null);
+      } else if (!append) {
+        setError(res.error ?? "Could not load jobs.");
+      }
+    } catch {
+      if (!append) setError("Network error - check your connection.");
+    } finally {
+      isAppend.current = false;
+      if (append) setLoadingMore(false); else setLoading(false);
     }
-
-    isAppend.current = false;
-    if (append) setLoadingMore(false); else setLoading(false);
   }, [apiParams]);
 
   useEffect(() => {
@@ -1014,15 +1098,23 @@ function JobBoardContent() {
 
   async function openJob(job: Job) {
     setSelectedJob(job);
+    setDetailError(null);
     if (!job.description) {
       setDetailLoading(true);
-      const res = await publicJobsApi.getJob(job.id);
-      setDetailLoading(false);
-      if (res.success) {
-        const full = res.data as Job;
-        setSelectedJob(full);
-        // Patch the job in list too
-        setJobs(prev => prev.map(j => j.id === job.id ? { ...j, ...full } : j));
+      try {
+        const res = await publicJobsApi.getJob(job.id);
+        if (res.success) {
+          const full = res.data as Job;
+          setSelectedJob(full);
+          // Patch the job in list too
+          setJobs(prev => prev.map(j => j.id === job.id ? { ...j, ...full } : j));
+        } else {
+          setDetailError(res.error ?? "Could not load job details.");
+        }
+      } catch {
+        setDetailError("Network error - check your connection.");
+      } finally {
+        setDetailLoading(false);
       }
     }
   }
@@ -1072,8 +1164,8 @@ function JobBoardContent() {
 
       {/* Slide-over */}
       <SlideOver
-        job={detailLoading ? null : selectedJob}
-        onClose={() => setSelectedJob(null)}
+        job={detailLoading || detailError ? null : selectedJob}
+        onClose={() => { setSelectedJob(null); setDetailError(null); }}
         onApply={handleApply}
         applying={applyingId === selectedJob?.id}
         applied={selectedJob ? appliedJobIds.has(selectedJob.id) : false}
@@ -1085,6 +1177,19 @@ function JobBoardContent() {
           <div onClick={() => setSelectedJob(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
           <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "#161616", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(0,144,255,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
+          </div>
+        </>
+      )}
+      {/* Error overlay for detail */}
+      {selectedJob && detailError && (
+        <>
+          <div onClick={() => { setSelectedJob(null); setDetailError(null); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "#161616", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
+            <ErrorState
+              message={detailError}
+              retry={() => selectedJob && openJob(selectedJob)}
+              title="Could not load job details"
+            />
           </div>
         </>
       )}
@@ -1153,6 +1258,8 @@ function JobBoardContent() {
                     </div>
                   ))}
                 </div>
+              ) : error ? (
+                <ErrorState message={error} retry={fetchJobs} title="Could not load jobs" />
               ) : jobs.length === 0 ? (
                 <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "56px 32px", textAlign: "center" }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
@@ -1168,15 +1275,19 @@ function JobBoardContent() {
                 <>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {jobs.map(job => (
-                      <JobCard
-                        key={job.id}
-                        job={job}
-                        onClick={() => openJob(job)}
-                        onApply={handleApply}
-                        applying={applyingId === job.id}
-                        applied={appliedJobIds.has(job.id)}
-                        auth={auth}
-                      />
+                      job.source === "external" ? (
+                        <ExternalJobCard key={job.id} job={job} />
+                      ) : (
+                        <JobCard
+                          key={job.id}
+                          job={job}
+                          onClick={() => openJob(job)}
+                          onApply={handleApply}
+                          applying={applyingId === job.id}
+                          applied={appliedJobIds.has(job.id)}
+                          auth={auth}
+                        />
+                      )
                     ))}
                   </div>
 

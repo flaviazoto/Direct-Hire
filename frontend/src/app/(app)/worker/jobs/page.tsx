@@ -36,6 +36,13 @@ interface Job {
   requiredSkills?: { skill: string }[];
   createdAt?: string;
   positionsAvailable?: number;
+  // External jobs (admin-pasted links — EURES, LinkedIn, Indeed, national
+  // boards) are interleaved into this same feed, tagged source: "external".
+  // Real jobPost rows are tagged source: "jobpost". See
+  // backend/src/lib/external-jobs.ts. No apply/save flow, no match score.
+  source?: "jobpost" | "external";
+  sourceName?: string;
+  externalUrl?: string;
 }
 
 interface CountryCardData {
@@ -508,6 +515,68 @@ function JobCard({ job, onApply, onSave, checking, applied, saving }: {
           Track
         </Link>
       </div>
+    </div>
+  );
+}
+
+// ─── External Job Card ──────────────────────────────────────────────────────
+// No apply/save flow, no match score, no "Verified" claims — this job lives
+// on another site (EURES, LinkedIn, Indeed, a national board); ours is just
+// a pointer to it.
+
+function ExternalJobCard({ job }: { job: Job }) {
+  const salary = job.salaryMin
+    ? `${job.currency ?? "EUR"} ${Math.round(job.salaryMin).toLocaleString()}${job.salaryMax ? `–${Math.round(job.salaryMax).toLocaleString()}` : "+"}`
+    : null;
+
+  return (
+    <div style={{
+      background: "#121212", border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 16, padding: "20px 22px",
+    }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 10 }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+          background: "rgba(245,158,11,0.1)",
+          border: "1px solid rgba(245,158,11,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 17,
+        }}>
+          🔗
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff", lineHeight: 1.3, marginBottom: 3 }}>
+            {job.title}
+          </div>
+          <div style={{ fontSize: 12, color: "#71717a" }}>
+            {[job.city, job.country].filter(Boolean).join(", ")}
+          </div>
+        </div>
+        <Pill color="amber">External</Pill>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+        {salary && <Pill color="green">{salary}</Pill>}
+        {job.contractType && <Pill color="violet">{WORK_TYPE_LABELS[job.contractType] ?? job.contractType}</Pill>}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#71717a", marginBottom: 14 }}>
+        Hosted on {job.sourceName} — opens in a new tab.
+      </div>
+
+      <a
+        href={job.externalUrl}
+        target="_blank"
+        rel="noopener nofollow sponsored"
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          height: 36, padding: "0 20px", borderRadius: 9,
+          background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+          color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none",
+        }}
+      >
+        View on {job.sourceName} ↗
+      </a>
     </div>
   );
 }
@@ -1321,15 +1390,19 @@ function WorkerJobsContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {jobs.map(job => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    onApply={handleApply}
-                    onSave={handleSave}
-                    checking={checkingFeeId === job.id}
-                    applied={appliedIds.has(job.id)}
-                    saving={savingId === job.id}
-                  />
+                  job.source === "external" ? (
+                    <ExternalJobCard key={job.id} job={job} />
+                  ) : (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      onApply={handleApply}
+                      onSave={handleSave}
+                      checking={checkingFeeId === job.id}
+                      applied={appliedIds.has(job.id)}
+                      saving={savingId === job.id}
+                    />
+                  )
                 ))}
               </div>
             )}

@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
+import { getActiveExternalJobsForFeed } from "../lib/external-jobs";
 
 // ── Simple in-memory cache (60-second TTL) ────────────────────────────────────
 
@@ -168,9 +169,24 @@ export async function getPublicJobs(req: Request, res: Response, next: NextFunct
       }),
     ]);
 
+    // External jobs are opt-in via includeExternal=true — ONLY the public
+    // jobs list page passes this. This same getPublicJobs handler is also
+    // called by frontend/src/lib/jobs-ssr.ts::getAllPublicJobIdsServer to
+    // build sitemap.ts, which never sends includeExternal, so external jobs
+    // structurally can never end up in the sitemap or get an SEO page —
+    // their canonical home is the external site, not ours.
+    let data: unknown[] = rows.map((r) => ({ ...r, source: "jobpost" as const }));
+    if (query.includeExternal === "true" && page === 1) {
+      const external = await getActiveExternalJobsForFeed({
+        country: query.country,
+        search:  query.search,
+      });
+      data = [...data, ...external];
+    }
+
     const payload = {
       success:    true,
-      data:       rows,
+      data,
       total,
       page,
       limit,
