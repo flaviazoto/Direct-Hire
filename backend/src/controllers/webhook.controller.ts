@@ -135,14 +135,25 @@ export async function stripeWebhook(req: Request, res: Response) {
         });
         if (user) {
           const name = user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there";
-          await sendEmail({
-            userId,
-            to:        user.email,
-            emailType: "GENERAL",
-            subject:   "Payment failed — action required",
-            html: failEmail(name),
-            text: `Hi ${name}, your DirectHire subscription payment failed. Please update your payment method.`,
-          }).catch(e => console.error("[stripe-webhook] email failed:", e));
+          Promise.all([
+            sendEmail({
+              userId,
+              to:        user.email,
+              emailType: "GENERAL",
+              subject:   "Payment failed — action required",
+              html: failEmail(name),
+              text: `Hi ${name}, your DirectHire subscription payment failed. Please update your payment method.`,
+            }),
+            prisma.notification.create({
+              data: {
+                userId,
+                title: "Payment failed",
+                body:  "We couldn't process your subscription payment. Update your payment method to keep your account active.",
+                type:  "GENERAL",
+                link:  "/employer/subscription",
+              },
+            }),
+          ]).catch(e => console.error("[stripe-webhook] payment-failed notify failed:", e));
         }
         break;
       }

@@ -7,6 +7,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { sendJobSubmittedEmail, sendJobResubmittedNotification } from "../services/email";
+import { notifyApplicantsOfJobClosure } from "../services/queue";
 
 // ── Audit log helper (raw insert — JOB_SUBMITTED not in generated enum yet) ───
 
@@ -151,6 +152,15 @@ export async function createJob(req: Request, res: Response, next: NextFunction)
         sendJobSubmittedEmail(employerId, employer.email, employerName, job.title),
         notifyAdminsNewJob(job.id, job.title, job.companyName),
         insertJobAuditLog(employerId, job.id, job.title),
+        prisma.notification.create({
+          data: {
+            userId: employerId,
+            title:  `Job submitted for review — ${job.title}`,
+            body:   `"${job.title}" is now pending admin review. We'll notify you once it's approved.`,
+            type:   "GENERAL",
+            link:   `/employer/jobs/${job.id}/edit`,
+          },
+        }),
       ]).catch(console.error);
     }
 
@@ -337,6 +347,15 @@ export async function submitJob(req: Request, res: Response, next: NextFunction)
       sendJobSubmittedEmail(employerId, employer?.email ?? "", employerName, job.title),
       notifyAdminsNewJob(job.id, job.title, job.companyName),
       insertJobAuditLog(employerId, job.id, job.title),
+      prisma.notification.create({
+        data: {
+          userId: employerId,
+          title:  `Job submitted for review — ${job.title}`,
+          body:   `"${job.title}" is now pending admin review. We'll notify you once it's approved.`,
+          type:   "GENERAL",
+          link:   `/employer/jobs/${job.id}/edit`,
+        },
+      }),
     ];
 
     if (isResubmission) {
@@ -388,6 +407,9 @@ export async function archiveJob(req: Request, res: Response, next: NextFunction
       where: { id: job.id },
       data: { status: "ARCHIVED", archivedAt: new Date() },
     });
+
+    notifyApplicantsOfJobClosure(job.id).catch((e: unknown) =>
+      console.error(`[archiveJob] notifyApplicantsOfJobClosure failed for job ${job.id}:`, e));
 
     return ok(res, updated, "Job archived");
   } catch (e) { next(e); }

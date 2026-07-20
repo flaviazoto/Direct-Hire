@@ -8,6 +8,7 @@ import stripe, {
   cancelSubscription,
   createPortalSession,
 } from "../services/stripe";
+import { sendSubscriptionCanceledEmail } from "../services/email";
 
 const FRONTEND_URL = () => process.env.FRONTEND_URL ?? "http://localhost:3000";
 
@@ -115,7 +116,10 @@ export async function cancelEmployerSubscription(
 
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },
-      select: { stripeSubscriptionId: true, subscriptionStatus: true },
+      select: {
+        stripeSubscriptionId: true, subscriptionStatus: true,
+        subscriptionCurrentPeriodEnd: true, contactPersonName: true, companyName: true,
+      },
     });
 
     if (!ep?.stripeSubscriptionId) return err(res, "No active subscription found", 404);
@@ -129,6 +133,29 @@ export async function cancelEmployerSubscription(
       where: { userId },
       data:  { subscriptionStatus: "CANCELED" },
     });
+
+    // Fire-and-forget: email + in-app confirmation, same non-fatal pattern
+    // used everywhere else in this codebase. accessUntil falls back to "now"
+    // only in the unexpected case subscriptionCurrentPeriodEnd was never set
+    // (e.g. webhook hasn't synced yet) — should not normally happen for an
+    // account that just passed the ACTIVE check above.
+    const accessUntil = ep.subscriptionCurrentPeriodEnd ?? new Date();
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    const name = ep.contactPersonName?.split(" ")[0] ?? ep.companyName ?? "there";
+    if (user) {
+      Promise.all([
+        sendSubscriptionCanceledEmail(userId, user.email, name, accessUntil),
+        prisma.notification.create({
+          data: {
+            userId,
+            title: "Subscription canceled",
+            body:  `Your cancellation is confirmed. You'll keep access until ${accessUntil.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
+            type:  "GENERAL",
+            link:  "/employer/subscription",
+          },
+        }),
+      ]).catch((e: unknown) => console.error("[cancelEmployerSubscription] confirmation notify failed:", e));
+    }
 
     return ok(res, null, "Subscription will cancel at end of billing period");
   } catch (e) { next(e); }

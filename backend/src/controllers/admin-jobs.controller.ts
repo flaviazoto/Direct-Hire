@@ -15,7 +15,7 @@ import {
   sendPostingRightsRestoredEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
-import { enqueue } from "../services/queue";
+import { enqueue, notifyApplicantsOfJobClosure } from "../services/queue";
 
 // ── Job counts cache (60-second TTL) ─────────────────────────────────────────
 
@@ -405,6 +405,9 @@ export async function archiveJobAdmin(req: Request, res: Response, next: NextFun
       action:   "JOB_ARCHIVED",
       metadata: { job_id: id, job_title: job.title },
     }).catch(console.error);
+
+    notifyApplicantsOfJobClosure(id).catch((e: unknown) =>
+      console.error(`[archiveJobAdmin] notifyApplicantsOfJobClosure failed for job ${id}:`, e));
 
     return ok(res, null);
   } catch (e) { next(e); }

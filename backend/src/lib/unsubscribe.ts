@@ -5,13 +5,18 @@
 //
 // Classification (per EmailType — see prisma/schema.prisma):
 //   NON-TRANSACTIONAL (suppressible — user can opt out):
-//     ONBOARDING_REMINDER
+//     ONBOARDING_REMINDER, JOB_MATCH
 //   TRANSACTIONAL (always sent, never suppressed):
 //     WELCOME, EMAIL_VERIFICATION, PASSWORD_RESET, ONBOARDING_SUBMITTED,
 //     ACCOUNT_APPROVED, ACCOUNT_REJECTED, ACCOUNT_NEEDS_CHANGES,
 //     SUBSCRIPTION_CONFIRMED, ADMIN_NEW_SUBMISSION, APPLICATION_RECEIVED,
 //     APPLICATION_SHORTLISTED, APPLICATION_INTERVIEW_REQUESTED,
 //     APPLICATION_ACCEPTED, APPLICATION_REJECTED, GENERAL
+//
+// JOB_MATCH is recommendation/digest-class (a scored suggestion, not a
+// status change the user is owed) — added as its own EmailType instead of
+// reusing GENERAL specifically so it could be classified suppressible here
+// without dragging every other GENERAL call site along with it.
 //
 // GENERAL is a catch-all reused across job-moderation outcomes, worker-lock
 // lifecycle, posting-rights changes, contact-form receipts, and direct
@@ -32,6 +37,7 @@ import type { EmailType } from "../types";
 
 const NON_TRANSACTIONAL_EMAIL_TYPES: ReadonlySet<EmailType> = new Set<EmailType>([
   "ONBOARDING_REMINDER",
+  "JOB_MATCH",
 ]);
 
 export function isSuppressible(emailType: EmailType): boolean {

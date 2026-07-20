@@ -189,12 +189,18 @@ export async function submit(req: Request, res: Response, next: NextFunction) {
 
     await insertAuditLog({ actorId: userId, targetId: userId, action: "ONBOARDING_SUBMITTED", entity: "OnboardingProgress", entityId: progress.id });
 
-    await enqueue("email.onboardingSubmitted", {
-      userId, to: user!.email, name: displayName, role: role as "WORKER" | "EMPLOYER",
-    });
-    await enqueue("email.adminNewSubmission", {
-      submitterEmail: user!.email, submitterRole: role, submitterName: displayName,
-    });
+    // Fire-and-forget — was `await`ed sequentially before, which (with
+    // JOBS_INLINE_MODE=true) blocked the submit response on two live Resend
+    // calls. Matches the non-fatal Promise.all(...).catch(console.error)
+    // pattern used for every other side-effect send in this codebase.
+    Promise.all([
+      enqueue("email.onboardingSubmitted", {
+        userId, to: user!.email, name: displayName, role: role as "WORKER" | "EMPLOYER",
+      }),
+      enqueue("email.adminNewSubmission", {
+        submitterEmail: user!.email, submitterRole: role, submitterName: displayName,
+      }),
+    ]).catch((e: unknown) => console.error("[onboarding.submit] email enqueue failed:", e));
 
     // In-app admin notification — the email above already exists, but admins
     // only saw pending workers by polling the dashboard until now. Scoped to

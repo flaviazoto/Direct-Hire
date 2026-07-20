@@ -47,6 +47,7 @@ import { publicJobsRouter }  from "./routes/public-jobs.routes";
 import { contactRouter }       from "./routes/contact.routes";
 import { unsubscribeRouter }   from "./routes/unsubscribe.routes";
 import { stripeWebhook }     from "./controllers/webhook.controller";
+import { resendWebhook }     from "./controllers/resend-webhook.controller";
 import { errorHandler }      from "./middleware/error.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
@@ -78,6 +79,8 @@ app.use(cookieParser());
 
 // Stripe webhook needs raw body for signature verification — MUST be before express.json()
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+// Same requirement — Resend webhooks are Svix-signed over the raw body.
+app.post("/api/webhooks/resend", express.raw({ type: "application/json" }), resendWebhook);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));

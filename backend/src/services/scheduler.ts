@@ -6,7 +6,11 @@
 //   Dev / serverless (JOBS_INLINE_MODE=true or no Redis): setInterval scheduler
 //
 // Schedules:
-//   lock-daily-billing    '5 0 * * *'   (00:05 UTC daily)
+//   lock-daily-billing    '5 0 * * *'   (00:05 UTC daily) — also runs
+//                                        runSubscriptionExpiryWarnings()
+//                                        internally (piggybacked, not a
+//                                        separate registration — see
+//                                        lock-jobs/index.ts doc comment)
 //   lock-expiry-processor '15 * * * *'  (every hour at :15)
 //   match-score-recalc    '15 2 * * *'  (02:15 UTC daily)
 //   onboarding-reminders  '0 9 * * *'   (09:00 UTC daily)

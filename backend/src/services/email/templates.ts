@@ -141,25 +141,6 @@ export function otpVerificationTemplate(vars: { code: string; expiresMinutes: nu
   };
 }
 
-export function emailVerificationTemplate(vars: { verifyUrl: string }): TemplateResult {
-  const html = layout(`
-    ${badge("EMAIL VERIFICATION")}
-    <br/><br/>
-    ${h1("Verify your email address")}
-    ${p("Please click the button below to verify your email address and activate your account.")}
-    ${p("<strong>This link expires in 24 hours.</strong>")}
-    ${btn(vars.verifyUrl, "Verify Email Address")}
-    ${divider()}
-    ${p(`Or copy this link: <br/><a href="${vars.verifyUrl}" style="color:${BRAND_COLOR};font-size:13px;word-break:break-all;">${vars.verifyUrl}</a>`)}
-    ${p("If you didn't create an account, you can safely ignore this email.")}
-  `);
-  return {
-    subject: `Verify your ${APP_NAME} email address`,
-    html,
-    text: `Verify your email: ${vars.verifyUrl}`,
-  };
-}
-
 export function passwordResetTemplate(vars: { resetUrl: string }): TemplateResult {
   const html = layout(`
     ${badge("PASSWORD RESET")}
@@ -699,23 +680,6 @@ export function applicationAcceptedWorkerTemplate(vars: {
   };
 }
 
-export function applicationAcceptedEmployerTemplate(vars: {
-  workerName: string;
-}): TemplateResult {
-  const html = layout(`
-    ${badge("✓ APPLICATION ACCEPTED", "#16A34A")}
-    <br/><br/>
-    ${h1("You've confirmed the hire")}
-    ${p(`You've accepted <strong>${vars.workerName}'s</strong> application. Their contact details are available in your dashboard.`)}
-    ${btn(`${APP_URL}/employer/applications`, "View all applications")}
-  `);
-  return {
-    subject: `You've accepted ${vars.workerName}'s application`,
-    html,
-    text: `You've accepted ${vars.workerName}'s application. Their contact details are available in your dashboard.`,
-  };
-}
-
 export function hireConfirmationEmployerTemplate(vars: {
   employerName:     string;
   workerName:       string;
@@ -1222,5 +1186,102 @@ export function contactConfirmationTemplate(vars: {
     subject: `We received your message — ${APP_NAME}`,
     html,
     text: `Hi ${vars.name}, thanks for reaching out! We've received your message and will get back to you within 24 hours on business days. If urgent, email hello@directhire.cc.`,
+  };
+}
+
+// ── Subscription lifecycle ───────────────────────────────────
+
+export function subscriptionCanceledTemplate(vars: {
+  name:             string;
+  accessUntil:      Date;
+}): TemplateResult {
+  const until = fmtDate(vars.accessUntil);
+  const html = layout(`
+    ${badge("SUBSCRIPTION CANCELED", "#64748B")}
+    <br/><br/>
+    ${h1(`Hi ${vars.name}, your subscription is set to cancel`)}
+    ${p("We've confirmed your cancellation request. You will not be charged again.")}
+    ${summaryTable(
+      summaryRow("Access until", until),
+    )}
+    ${p("You'll keep full access to DirectHire until the date above. After that, your account will move to view-only mode until you resubscribe.")}
+    ${btn(`${APP_URL}/employer/subscription`, "Manage Subscription", "#64748B")}
+    ${p("Changed your mind? You can resubscribe any time before or after your access ends.")}
+    ${divider()}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+  return {
+    subject: `Your DirectHire subscription is set to cancel`,
+    html,
+    text: `Hi ${vars.name}, your cancellation is confirmed. You'll keep access until ${until}. You will not be charged again. Resubscribe any time at ${APP_URL}/employer/subscription.`,
+  };
+}
+
+export function subscriptionExpiryWarningTemplate(vars: {
+  name:        string;
+  accessUntil: Date;
+}): TemplateResult {
+  const until = fmtDate(vars.accessUntil);
+  const html = layout(`
+    ${badge("⚠ ACCESS ENDING SOON", "#D97706")}
+    <br/><br/>
+    ${h1(`Hi ${vars.name}, your access ends in 3 days`)}
+    ${p(`Your canceled DirectHire subscription remains active until <strong>${until}</strong>. After that, you'll lose access to candidate search and job posting until you resubscribe.`)}
+    ${btn(`${APP_URL}/employer/subscription`, "Resubscribe", "#D97706")}
+    ${divider()}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+  return {
+    subject: `Your DirectHire access ends in 3 days`,
+    html,
+    text: `Hi ${vars.name}, your canceled subscription remains active until ${until}. Resubscribe at ${APP_URL}/employer/subscription to avoid losing access.`,
+  };
+}
+
+// ── Job archived → pending applicants ─────────────────────────
+
+export function jobClosedApplicantTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("POSITION CLOSED", "#64748B")}
+    <br/><br/>
+    ${h1(`Hi ${vars.firstName}, this position has closed`)}
+    ${p(`The position you applied for, <strong>${vars.jobTitle}</strong> at ${vars.companyName}, has been closed by the employer.`)}
+    ${p("This does not affect your other applications. Browse the job feed for similar opportunities.")}
+    ${btn(`${APP_URL}/worker/jobs`, "Browse Jobs")}
+    ${divider()}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+  return {
+    subject: `Position closed — ${vars.jobTitle}`,
+    html,
+    text: `Hi ${vars.firstName}, the position "${vars.jobTitle}" at ${vars.companyName} has been closed by the employer. Browse similar jobs at ${APP_URL}/worker/jobs.`,
+  };
+}
+
+// ── Job match recommendation (SUPPRESSIBLE — see lib/unsubscribe.ts) ──────────
+
+export function jobMatchTemplate(vars: {
+  firstName:      string;
+  jobTitle:       string;
+  matchPct:       number;
+  jobsUrl:        string;
+  unsubscribeUrl: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge(`${vars.matchPct}% MATCH`, "#16A34A")}
+    <br/><br/>
+    ${h1(`${vars.firstName}, a new job matches your profile`)}
+    ${p(`<strong>${vars.jobTitle}</strong> looks like a strong fit for your profile — a ${vars.matchPct}% match based on your skills, experience, and target countries.`)}
+    ${btn(vars.jobsUrl, "View Job")}
+    ${p("You're receiving this because your profile closely matches a newly-approved job. You can unsubscribe from match recommendations any time.")}
+  `, { unsubscribeUrl: vars.unsubscribeUrl });
+  return {
+    subject: `New job match — ${vars.jobTitle} (${vars.matchPct}%)`,
+    html,
+    text: `${vars.jobTitle} looks like a strong fit for your profile (${vars.matchPct}% match). View it at ${vars.jobsUrl}\n\nUnsubscribe from match recommendations: ${vars.unsubscribeUrl}`,
   };
 }

@@ -10,6 +10,20 @@ export const FROM_NO_REPLY = "DirectHire <noreply@directhire.cc>";
 export const FROM_HELLO    = "DirectHire <hello@directhire.cc>";
 export const FROM_SUPPORT  = "DirectHire Support <support@directhire.cc>";
 
+// ── Boot-time fail-fast ───────────────────────────────────────
+// Previously a missing RESEND_API_KEY only surfaced as a per-email runtime
+// failure (logged + EmailLog FAILED, request unaffected) — silent enough
+// that a misconfigured deploy could run for a while before anyone noticed
+// no email was actually sending. This module loads as part of the route
+// import graph at server startup, so throwing here stops the process
+// immediately with a clear cause instead of degrading silently.
+if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
+  throw new Error(
+    "[services/email] EMAIL_PROVIDER=resend but RESEND_API_KEY is not set. " +
+    "Set RESEND_API_KEY in the environment, or change EMAIL_PROVIDER to use a different provider.",
+  );
+}
+
 // ── Provider interface ────────────────────────────────────────
 interface SendParams {
   from?:    string;
@@ -186,12 +200,6 @@ export async function sendWelcomeEmail(
      <p><strong>Name:</strong> ${firstName}<br/><strong>Email:</strong> ${to}<br/><strong>Role:</strong> ${role}</p>`,
     `New ${role} registered: ${firstName} <${to}>`,
   ).catch(() => {});
-}
-
-export async function sendEmailVerification(userId: string, to: string, verifyUrl: string) {
-  const { emailVerificationTemplate } = await import("./templates");
-  const { subject, html, text } = emailVerificationTemplate({ verifyUrl });
-  await sendEmail({ userId, to, from: FROM_NO_REPLY, emailType: "EMAIL_VERIFICATION", subject, html, text });
 }
 
 export async function sendPasswordReset(userId: string, to: string, resetUrl: string) {
@@ -411,13 +419,6 @@ export async function sendInterviewResponseEmployerEmail(
     templateId: "interview_response", variables: { workerName, jobTitle, response } });
 }
 
-export async function sendApplicationAcceptedEmployerEmail(userId: string, to: string, workerName: string) {
-  const { applicationAcceptedEmployerTemplate } = await import("./templates");
-  const { subject, html, text } = applicationAcceptedEmployerTemplate({ workerName });
-  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
-    templateId: "application_accepted_employer", variables: { workerName } });
-}
-
 export async function sendHireConfirmationEmployerEmail(data: {
   employerUserId:   string;
   employerEmail:    string;
@@ -601,4 +602,51 @@ export async function sendContactConfirmationEmail(to: string, name: string) {
   const { subject, html, text } = contactConfirmationTemplate({ name });
   await sendEmail({ to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
     templateId: "contact_confirmation" });
+}
+
+// ── Subscription lifecycle ────────────────────────────────────
+
+export async function sendSubscriptionCanceledEmail(userId: string, to: string, name: string, accessUntil: Date) {
+  const { subscriptionCanceledTemplate } = await import("./templates");
+  const { subject, html, text } = subscriptionCanceledTemplate({ name, accessUntil });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "subscription_canceled", variables: { accessUntil: accessUntil.toISOString() } });
+}
+
+export async function sendSubscriptionExpiryWarningEmail(userId: string, to: string, name: string, accessUntil: Date) {
+  const { subscriptionExpiryWarningTemplate } = await import("./templates");
+  const { subject, html, text } = subscriptionExpiryWarningTemplate({ name, accessUntil });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "subscription_expiry_warning", variables: { accessUntil: accessUntil.toISOString() } });
+}
+
+// ── Job archived → pending applicants ─────────────────────────
+
+export async function sendJobClosedApplicantEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { jobClosedApplicantTemplate } = await import("./templates");
+  const { subject, html, text } = jobClosedApplicantTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_NO_REPLY, emailType: "GENERAL", subject, html, text,
+    templateId: "job_closed_applicant", variables: { jobTitle, companyName } });
+}
+
+// ── Job match recommendation (SUPPRESSIBLE — see lib/unsubscribe.ts) ──────────
+
+export async function sendJobMatchEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, matchPct: number,
+) {
+  const { getOrCreateUnsubscribeToken, buildUnsubscribeUrl } = await import("../../lib/unsubscribe");
+  const unsubscribeUrl = buildUnsubscribeUrl(await getOrCreateUnsubscribeToken(userId));
+
+  const appUrl = process.env.FRONTEND_URL ?? "https://directhire.cc";
+  // No ?open=<jobId> deep-link — checked frontend/src/app/(app)/worker/jobs/page.tsx,
+  // it doesn't read that query param (never implemented), so this links to the
+  // plain feed rather than a URL that silently does nothing.
+  const { jobMatchTemplate } = await import("./templates");
+  const { subject, html, text } = jobMatchTemplate({
+    firstName, jobTitle, matchPct, jobsUrl: `${appUrl}/worker/jobs`, unsubscribeUrl,
+  });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "JOB_MATCH", subject, html, text,
+    templateId: "job_match", variables: { jobTitle, matchPct } });
 }

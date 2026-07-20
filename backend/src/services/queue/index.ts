@@ -5,7 +5,6 @@
 
 export type JobName =
   | "email.welcome"
-  | "email.verify"
   | "email.passwordReset"
   | "email.onboardingReminder"
   | "email.onboardingSubmitted"
@@ -19,7 +18,6 @@ export type JobName =
 
 export interface JobPayload {
   "email.welcome":               { userId: string; to: string; firstName: string; role: "WORKER" | "EMPLOYER" };
-  "email.verify":                { userId: string; to: string; verifyUrl: string };
   "email.passwordReset":         { userId: string; to: string; resetUrl: string };
   "email.onboardingReminder":    { userId: string; to: string; firstName: string; continueUrl: string; completionPct: number };
   "email.onboardingSubmitted":   { userId: string; to: string; name: string; role: "WORKER" | "EMPLOYER" };
@@ -42,11 +40,6 @@ async function processInline<N extends JobName>(
     case "email.welcome": {
       const d = data as JobPayload["email.welcome"];
       await emailSvc.sendWelcomeEmail(d.userId, d.to, d.firstName, d.role);
-      break;
-    }
-    case "email.verify": {
-      const d = data as JobPayload["email.verify"];
-      await emailSvc.sendEmailVerification(d.userId, d.to, d.verifyUrl);
       break;
     }
     case "email.passwordReset": {
@@ -124,18 +117,22 @@ export async function notifyMatchingWorkersForApprovedJob(jobPostId: string): Pr
     where: { user: { role: "WORKER", accountStatus: "VERIFIED" } },
     select: {
       userId:             true,
+      firstName:          true,
       skills:             { select: { skill: true } },
       yearsExperience:    true,
       expectedSalary:     true,
       targetCountries:    { select: { country: true } },
       countryOfResidence: true,
       trustScore:         true,
+      user:               { select: { email: true } },
     },
   });
 
   const topMatches = workers
     .map((w) => ({
-      userId: w.userId,
+      userId:    w.userId,
+      email:     w.user.email,
+      firstName: w.firstName ?? "there",
       score: calculateMatchScore(
         {
           skills:             w.skills,
@@ -173,7 +170,87 @@ export async function notifyMatchingWorkersForApprovedJob(jobPostId: string): Pr
     })),
   });
 
+  // Email sibling of the bell above — suppressible (JOB_MATCH is classified
+  // non-transactional in lib/unsubscribe.ts), sendEmail's central gate
+  // already skips unsubscribed workers, so no extra filtering needed here.
+  // Fire-and-forget, same non-fatal pattern as every other batch notify in
+  // this codebase — one worker's send failing must not affect the rest.
+  const emailSvc = await import("../email");
+  Promise.all(
+    topMatches.map((m) =>
+      emailSvc.sendJobMatchEmail(m.userId, m.email, m.firstName, job.title, Math.round(m.score))
+        .catch((e: unknown) => console.error(`[scoring.calculateMatchScores] email failed for worker ${m.userId}:`, e)),
+    ),
+  ).catch(() => {});
+
   console.log(`[scoring.calculateMatchScores] Notified ${topMatches.length} worker(s) for job ${jobPostId}`);
+}
+
+// ── notifyApplicantsOfJobClosure ────────────────────────────────
+// Called from BOTH archiveJobAdmin (admin-jobs.controller.ts) and archiveJob
+// (employer-jobs.controller.ts) — shared here rather than duplicated in two
+// controllers. Notifies every applicant still in a non-terminal status
+// (APPLIED/VIEWED/SHORTLISTED/INTERVIEWED) that the position closed.
+//
+// Boundary: this ONLY notifies — it never touches Application.status. An
+// archived job's open applications stay exactly as they were; the employer
+// (or admin) archiving a job is not the same action as rejecting every
+// applicant, and silently auto-rejecting rows here would be a real status
+// change hiding inside what's supposed to be a notification-only pass.
+export async function notifyApplicantsOfJobClosure(jobPostId: string): Promise<void> {
+  const prisma = (await import("../../lib/prisma")).default;
+
+  const job = await prisma.jobPost.findUnique({
+    where:  { id: jobPostId },
+    select: { title: true, companyName: true },
+  });
+  if (!job) {
+    console.warn(`[notifyApplicantsOfJobClosure] JobPost ${jobPostId} not found — skipping`);
+    return;
+  }
+
+  const applications = await prisma.application.findMany({
+    where: {
+      jobId:  jobPostId,
+      status: { in: ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEWED"] },
+    },
+    select: {
+      id: true,
+      worker: {
+        select: {
+          id:    true,
+          email: true,
+          workerProfile: { select: { firstName: true } },
+        },
+      },
+    },
+  });
+
+  if (applications.length === 0) {
+    console.log(`[notifyApplicantsOfJobClosure] No open applicants for job ${jobPostId}`);
+    return;
+  }
+
+  await prisma.notification.createMany({
+    data: applications.map((a) => ({
+      userId: a.worker.id,
+      title:  `Position closed — ${job.title}`,
+      body:   `The position you applied for, "${job.title}" at ${job.companyName}, has been closed by the employer.`,
+      type:   "APPLICATION_UPDATE",
+      link:   `/worker/applications/${a.id}`,
+    })),
+  });
+
+  const emailSvc = await import("../email");
+  Promise.all(
+    applications.map((a) =>
+      emailSvc.sendJobClosedApplicantEmail(
+        a.worker.id, a.worker.email, a.worker.workerProfile?.firstName ?? "there", job.title, job.companyName,
+      ).catch((e: unknown) => console.error(`[notifyApplicantsOfJobClosure] email failed for worker ${a.worker.id}:`, e)),
+    ),
+  ).catch(() => {});
+
+  console.log(`[notifyApplicantsOfJobClosure] Notified ${applications.length} applicant(s) for job ${jobPostId}`);
 }
 
 // ── Enqueue function ──────────────────────────────────────────

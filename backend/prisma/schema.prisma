@@ -86,6 +86,11 @@ enum EmailType {
   APPLICATION_INTERVIEW_REQUESTED
   APPLICATION_ACCEPTED
   APPLICATION_REJECTED
+  // Suppressible (marketing-class) — see lib/unsubscribe.ts. Kept as its own
+  // type rather than folded into GENERAL specifically so it CAN be
+  // suppressed without also suppressing the many transactional emails that
+  // reuse GENERAL (job moderation, lock lifecycle, posting rights, messages).
+  JOB_MATCH
   GENERAL
 }
 
