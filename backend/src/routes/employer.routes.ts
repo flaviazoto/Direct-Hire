@@ -37,8 +37,9 @@ employerRouter.put("/applications/:id/status",          requireVerifiedEmployer,
 // Creating/extending a lock requires a subscription; releasing one does not —
 // a lapsed employer must still be able to release a worker they've reserved.
 // NOTE: lockCtrl.lockWorker (worker-lock.controller.ts) already has its own inline
-// subscriptionStatus === "ACTIVE" check (FIX 1, ~line 82). That check is left in
-// place — it's now redundant with this router-level gate but harmless.
+// ACTIVE-or-unexpired-TRIAL check (FIX 1, ~line 86). That check is redundant
+// with this router-level gate — kept in place, but must stay in sync with it
+// (both now accept TRIAL, not just ACTIVE) rather than being allowed to drift.
 employerRouter.get( "/locks",                           requireVerifiedEmployer,                      lockCtrl.getMyLocks);
 employerRouter.post("/workers/:workerId/lock",          requireVerifiedEmployer, requireSubscription, lockCtrl.lockWorker);
 employerRouter.post("/workers/:workerId/lock/confirm",  requireVerifiedEmployer, requireSubscription, lockCtrl.confirmLock);

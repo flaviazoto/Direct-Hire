@@ -76,7 +76,7 @@ const JOB_APPLY_SELECT = {
     select: {
       id:    true,
       email: true,
-      employerProfile: { select: { subscriptionStatus: true } },
+      employerProfile: { select: { subscriptionStatus: true, trialEndsAt: true } },
     },
   },
 } as const;
@@ -95,6 +95,15 @@ const WORKER_SCORE_SELECT = {
     },
   },
 } as const;
+
+// Same ACTIVE-or-unexpired-TRIAL rule as requireSubscription (subscription.middleware.ts)
+// and lockWorker's inline gate — an employer mid-trial can post jobs (createJob
+// goes through that same middleware), so workers must be able to apply to them.
+function isEmployerSubscriptionValid(ep?: { subscriptionStatus: string | null; trialEndsAt: Date | null } | null) {
+  const isActive   = ep?.subscriptionStatus === "ACTIVE";
+  const isTrialing = ep?.subscriptionStatus === "TRIAL" && ep?.trialEndsAt != null && ep.trialEndsAt.getTime() > Date.now();
+  return isActive || isTrialing;
+}
 
 // Shared: validate job, compute matchScore + feeCents. Called from multiple endpoints.
 async function resolveJobAndFee(jobId: string, workerId: string) {
@@ -268,7 +277,7 @@ export async function applyToJob(req: Request, res: Response, next: NextFunction
     if (!job)                      return err(res, "Job not found", 404);
     if (job.status !== "APPROVED") return err(res, "This job is not accepting applications", 400);
 
-    if (job.employer.employerProfile?.subscriptionStatus !== "ACTIVE") {
+    if (!isEmployerSubscriptionValid(job.employer.employerProfile)) {
       return res.status(403).json({
         success: false,
         error:   "This job is no longer accepting applications.",
@@ -362,7 +371,7 @@ export async function confirmApplication(req: Request, res: Response, next: Next
     if (!job)                      return err(res, "Job not found", 404);
     if (job.status !== "APPROVED") return err(res, "Job no longer available", 400);
 
-    if (job.employer.employerProfile?.subscriptionStatus !== "ACTIVE") {
+    if (!isEmployerSubscriptionValid(job.employer.employerProfile)) {
       return res.status(403).json({
         success: false,
         error:   "This job is no longer accepting applications.",

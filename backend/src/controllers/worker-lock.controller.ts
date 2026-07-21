@@ -75,6 +75,7 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
         employerProfile: {
           select: {
             subscriptionStatus: true,
+            trialEndsAt:        true,
             stripeCustomerId:   true,
             companyName:        true,
             contactPersonName:  true,
@@ -83,7 +84,15 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
       },
     });
 
-    if (employerFull?.employerProfile?.subscriptionStatus !== "ACTIVE") {
+    if (!employerFull) return err(res, "Employer not found", 404);
+
+    // Redundant with the router-level requireSubscription gate on this route,
+    // but kept in sync with it (same ACTIVE-or-unexpired-TRIAL rule) rather
+    // than removed — see employer.routes.ts's note on this duplication.
+    const ep = employerFull.employerProfile;
+    const isActive   = ep?.subscriptionStatus === "ACTIVE";
+    const isTrialing = ep?.subscriptionStatus === "TRIAL" && ep?.trialEndsAt != null && ep.trialEndsAt.getTime() > Date.now();
+    if (!isActive && !isTrialing) {
       return err(
         res,
         "An active subscription is required to reserve workers.",
