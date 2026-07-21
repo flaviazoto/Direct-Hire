@@ -3,7 +3,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { userApi, workerApi } from "@/lib/api-client";
@@ -601,9 +601,14 @@ function PaymentStep({
     setPaying(true);
     setError(null);
 
+    // return_url is required by Stripe even with redirect:"if_required" —
+    // most payment methods never navigate away, but redirect-based ones
+    // (3DS off-platform challenges, certain bank methods) do. Returns to this
+    // same page (not a generic landing page) with a dh_apply_job marker so
+    // the on-mount return handler below knows which job to resume confirming.
     const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: `${window.location.origin}/worker/applications` },
+      confirmParams: { return_url: `${window.location.origin}/worker/jobs?dh_apply_job=${jobId}` },
       redirect: "if_required",
     });
 
@@ -992,6 +997,7 @@ function SkeletonCard() {
 
 function WorkerJobsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
@@ -1017,6 +1023,42 @@ function WorkerJobsContent() {
   const showToast = useCallback((msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // ── Resume after a real off-platform redirect (3DS, bank methods) ─────────
+  // redirect: "if_required" means most payment methods never leave this page,
+  // but the few that do land back here with Stripe's own payment_intent /
+  // payment_intent_client_secret query params appended, plus our own
+  // dh_apply_job marker (set in PaymentStep's return_url) saying which job to
+  // resume confirming. Runs once on mount; the apply modal is already closed
+  // on a fresh page load, so this surfaces the result via toast the same way
+  // handleApplied already does — no cover letter is resent (lost with the
+  // reloaded page state), matching confirmApplication's optional contract.
+  useEffect(() => {
+    const clientSecret = searchParams.get("payment_intent_client_secret");
+    const jobId = searchParams.get("dh_apply_job");
+    if (!clientSecret || !jobId || !stripePromise) return;
+
+    (async () => {
+      const stripe = await stripePromise;
+      if (!stripe) return;
+      const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+
+      if (paymentIntent?.status === "succeeded") {
+        const res = await workerApi.confirmApplication(jobId, { paymentIntentId: paymentIntent.id });
+        if (res.success) {
+          setAppliedIds(prev => new Set(prev).add(jobId));
+          showToast("✓ Applied successfully!", "ok");
+        } else {
+          showToast((res as { error?: string }).error ?? "Payment succeeded but application could not be confirmed — contact support.", "err");
+        }
+      } else {
+        showToast("Payment was not completed. Please try again.", "err");
+      }
+
+      router.replace("/worker/jobs");
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

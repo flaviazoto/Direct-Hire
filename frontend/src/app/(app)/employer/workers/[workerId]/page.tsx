@@ -285,6 +285,50 @@ function WorkerProfileContent() {
     if (res.success) setLockStatus(res.data as LockStatus);
   }
 
+  // ── Resume after a real off-platform redirect (3DS, bank methods) ─────────
+  // redirect: "if_required" means most payment methods never leave this page,
+  // but the few that do land back here with Stripe's own payment_intent /
+  // payment_intent_client_secret query params appended, plus our own
+  // dh_confirm marker (set in the two return_url values above) saying which
+  // flow to resume. Runs once on mount; a fresh page load means any open
+  // modal state is already gone, so this surfaces the result the same way
+  // the in-modal success/failure path already does — toast + refetch.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const clientSecret = params.get("payment_intent_client_secret");
+    const flow = params.get("dh_confirm");
+    if (!clientSecret || !flow) return;
+
+    (async () => {
+      const stripe = await stripePromise;
+      if (!stripe) return;
+      const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+
+      if (paymentIntent?.status === "succeeded") {
+        const res = flow === "lock_extend"
+          ? await employerApi.confirmExtendWorkerLock(workerId, { paymentIntentId: paymentIntent.id })
+          : await employerApi.confirmLock(workerId, { paymentIntentId: paymentIntent.id });
+        if (res.success) {
+          await refetchLock();
+          const expiry = (res.data as { lockExpiryDate?: string })?.lockExpiryDate;
+          showToast(
+            flow === "lock_extend"
+              ? `Reservation extended${expiry ? " to " + fmtDate(expiry) : ""}`
+              : `Worker reserved${expiry ? " until " + fmtDate(expiry) : ""}`,
+            "ok",
+          );
+        } else {
+          showToast(res.error ?? "Payment succeeded but could not be confirmed. Please contact support.", "err");
+        }
+      } else {
+        showToast("Payment was not completed. Please try again.", "err");
+      }
+
+      window.history.replaceState(null, "", window.location.pathname);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Lock actions ─────────────────────────────────────────────────────────
 
   async function handleInitiateReserve() {
@@ -1124,6 +1168,7 @@ function WorkerProfileContent() {
               <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: "stripe" } }}>
                 <PaymentForm
                   paymentIntentId={stripePaymentIntentId}
+                  returnUrl={`${window.location.origin}${window.location.pathname}?dh_confirm=lock`}
                   onSuccess={handleLockConfirmed}
                   onCancel={() => { setModalPhase("configure"); setModalError(""); }}
                 />
@@ -1259,6 +1304,7 @@ function WorkerProfileContent() {
               <Elements stripe={stripePromise} options={{ clientSecret: extendClientSecret, appearance: { theme: "stripe" } }}>
                 <PaymentForm
                   paymentIntentId={extendPaymentIntentId}
+                  returnUrl={`${window.location.origin}${window.location.pathname}?dh_confirm=lock_extend`}
                   onSuccess={handleExtendConfirmed}
                   onCancel={() => { setExtendPhase("configure"); setExtendError(""); }}
                   submitLabel="Pay & confirm extension"
@@ -1453,11 +1499,13 @@ function WorkerProfileContent() {
 
 function PaymentForm({
   paymentIntentId: _paymentIntentId,
+  returnUrl,
   onSuccess,
   onCancel,
   submitLabel = "Pay & confirm reservation",
 }: {
   paymentIntentId: string;
+  returnUrl:       string;
   onSuccess:       () => Promise<void>;
   onCancel:        () => void;
   submitLabel?:    string;
@@ -1473,11 +1521,15 @@ function PaymentForm({
     setLoading(true);
     setError("");
 
+    // return_url is required by Stripe even with redirect:"if_required" — most
+    // payment methods never navigate away, but redirect-based ones (3DS
+    // off-platform challenges, certain bank methods) do. dh_confirm tells the
+    // on-mount return handler below which finalize call to resume.
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
       confirmParams: {
-        return_url: window.location.href,
+        return_url: returnUrl,
       },
     });
 
