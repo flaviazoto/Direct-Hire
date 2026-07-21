@@ -40,6 +40,10 @@ const ExtendSchema = z.object({
   additional_days: z.number().int().min(1).max(30),
 });
 
+const ConfirmExtendSchema = z.object({
+  paymentIntentId: z.string().min(1),
+});
+
 const ReleaseSchema = z.object({
   reason: z.string().max(2000).optional(),
 });
@@ -290,8 +294,8 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
           lockStartDate:         now,
           lockExpiryDate,
           lockDays,
-          totalBilled:           dailyFee,  // first day billed immediately
-          totalDaysBilled:       1,
+          totalBilled:           totalCents / 100,  // full amount actually charged by Stripe
+          totalDaysBilled:       lockDays,
           stripePaymentIntentId: paymentIntentId,
         },
       }),
@@ -384,6 +388,16 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
 }
 
 // ── POST /employer/workers/:workerId/extend-lock ──────────────────────────────
+// Reservation extension flow (2 steps, mirrors lockWorker/confirmLock):
+//   Step 1  POST /employer/workers/:workerId/extend-lock
+//           → validates, computes additional-days charge, creates Stripe PaymentIntent
+//           → returns { requiresPayment: true, clientSecret, … }
+//   Step 2  POST /employer/workers/:workerId/extend-lock/confirm
+//           → verifies payment_status === "succeeded"
+//           → applies the extension + updates totals + side effects
+// The extension is charged at THIS lock's own dailyFee (the rate quoted at
+// creation), not the current platform_config rate — matches the "days ×
+// daily_fee = additional" figure already shown in the extend modal.
 
 export async function extendLock(req: Request, res: Response, next: NextFunction) {
   try {
@@ -411,7 +425,118 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
       );
     }
 
-    const newExpiry = new Date(lock.lockExpiryDate.getTime() + additional_days * 24 * 3600 * 1000);
+    const employer = await prisma.user.findUnique({
+      where:  { id: employerId },
+      select: {
+        email:           true,
+        employerProfile: { select: { companyName: true, contactPersonName: true } },
+      },
+    });
+
+    const dailyFeeCents   = Math.round(Number(lock.dailyFee) * 100);
+    const additionalCents = dailyFeeCents * additional_days;
+
+    const stripeCustomerId = await getOrCreateCustomer(
+      employerId,
+      employer!.email,
+      employer?.employerProfile?.companyName ?? employer?.employerProfile?.contactPersonName,
+    );
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount:      additionalCents,
+      currency:    "usd",
+      customer:    stripeCustomerId,
+      description: `Worker reservation extension: ${additional_days} day${additional_days !== 1 ? "s" : ""} × $${(dailyFeeCents / 100).toFixed(2)}/day`,
+      metadata:    {
+        type:            "WORKER_LOCK_EXTENSION",
+        employerId,
+        workerId,
+        lockId:          lock.id,
+        additionalDays:  additional_days.toString(),
+        dailyRateCents:  dailyFeeCents.toString(),
+        platform:        "directhire",
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    return res.status(200).json({
+      requiresPayment: true,
+      clientSecret:    paymentIntent.client_secret,
+      additionalCents,
+      dailyRateCents:  dailyFeeCents,
+      additionalDays:  additional_days,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (e) { next(e); }
+}
+
+// ── POST /employer/workers/:workerId/extend-lock/confirm ──────────────────────
+
+export async function confirmExtendLock(req: Request, res: Response, next: NextFunction) {
+  try {
+    const employerId = req.user!.sub;
+    const { workerId } = req.params;
+
+    const parsed = ConfirmExtendSchema.safeParse(req.body);
+    if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
+    const { paymentIntentId } = parsed.data;
+
+    // ── Retrieve and verify PaymentIntent ─────────────────────────────────────
+    type PaymentIntent = Awaited<ReturnType<typeof stripe.paymentIntents.retrieve>>;
+    let paymentIntent: PaymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch {
+      return err(res, "Invalid payment session.", 400);
+    }
+
+    if (paymentIntent.status !== "succeeded") {
+      return err(res, "Payment not completed — please try again.", 402);
+    }
+
+    if (paymentIntent.metadata?.employerId !== employerId) return err(res, "Forbidden.", 403);
+    if (paymentIntent.metadata?.workerId   !== workerId)   return err(res, "Worker mismatch.", 400);
+
+    const lockId = paymentIntent.metadata?.lockId;
+    if (!lockId) return err(res, "Invalid extension payment.", 400);
+
+    // ── Idempotency: already applied → return current lock ────────────────────
+    const existingCharge = await prisma.lockBillingCharge.findFirst({
+      where: { lockId, stripePaymentIntentId: paymentIntentId },
+    });
+    if (existingCharge) {
+      const current = await prisma.workerLock.findUnique({ where: { id: lockId } });
+      return ok(res, current, "Extension already confirmed");
+    }
+
+    // ── Re-fetch: lock must still be this employer's ACTIVE lock ──────────────
+    const lock = await prisma.workerLock.findFirst({
+      where: { id: lockId, workerId, employerId, lockStatus: "ACTIVE" },
+    });
+    if (!lock) {
+      // Released/expired/overridden between initiate and confirm — auto-refund
+      stripe.refunds.create({ payment_intent: paymentIntentId, reason: "duplicate" })
+        .catch(e => console.error("[confirmExtendLock] Auto-refund failed:", e));
+      return err(
+        res,
+        "This reservation is no longer active. Your payment will be refunded.",
+        409,
+        { code: "LOCK_NOT_ACTIVE" },
+      );
+    }
+
+    const additionalDays = parseInt(paymentIntent.metadata?.additionalDays ?? "0");
+    if (!additionalDays || additionalDays < 1) return err(res, "Invalid extension duration in payment.", 400);
+
+    const additionalCents = paymentIntent.amount;
+    const additionalFee   = additionalCents / 100;
+    const newExpiry       = new Date(lock.lockExpiryDate.getTime() + additionalDays * 24 * 3600 * 1000);
+    const newTotalDays    = lock.lockDays + additionalDays;
+
+    const chargeId =
+      typeof paymentIntent.latest_charge === "string"
+        ? paymentIntent.latest_charge
+        : (paymentIntent.latest_charge as { id?: string } | null)?.id ?? null;
 
     const [worker, employer] = await Promise.all([
       prisma.user.findUnique({
@@ -427,18 +552,51 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
     const workerName = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
       .filter(Boolean).join(" ") || "Worker";
 
-    const updated = await prisma.workerLock.update({
-      where: { id: lock.id },
+    // ── Atomic: apply the extension + honest totals ────────────────────────────
+    const [updated] = await prisma.$transaction([
+      prisma.workerLock.update({
+        where: { id: lock.id },
+        data: {
+          lockExpiryDate:    newExpiry,
+          lockDays:          { increment: additionalDays },
+          totalBilled:       { increment: additionalFee },
+          totalDaysBilled:   { increment: additionalDays },
+          expiryWarningSent: false,
+        },
+      }),
+      prisma.user.update({
+        where: { id: workerId },
+        data:  { lockedUntil: newExpiry },
+      }),
+    ]);
+
+    // ── Extension billing charge — already collected by Stripe ────────────────
+    await prisma.lockBillingCharge.create({
       data: {
-        lockExpiryDate:    newExpiry,
-        lockDays:          { increment: additional_days },
-        expiryWarningSent: false,
+        lockId:                lock.id,
+        employerId,
+        workerId,
+        amount:                additionalFee,
+        currency:              "USD",
+        chargeDate:            new Date(),
+        chargeStatus:          "CHARGED",
+        stripePaymentIntentId: paymentIntentId,
+        stripeChargeId:        chargeId ?? undefined,
       },
     });
 
-    await prisma.user.update({
-      where: { id: workerId },
-      data:  { lockedUntil: newExpiry },
+    // ── Payment record ────────────────────────────────────────────────────────
+    await prisma.payment.create({
+      data: {
+        userId:          employerId,
+        stripePaymentId: paymentIntentId,
+        amount:          additionalCents,
+        currency:        "usd",
+        status:          "SUCCEEDED",
+        type:            "WORKER_LOCK",
+        description:     `Worker reservation extension — ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`,
+        metadata:        { workerId, lockId: lock.id, additionalDays },
+      },
     });
 
     Promise.all([
@@ -447,9 +605,11 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
         targetId: workerId,
         action:   "WORKER_LOCK_EXTENDED",
         metadata: {
-          lock_id:         lock.id,
-          additional_days,
-          new_expiry_date: newExpiry.toISOString(),
+          lock_id:                  lock.id,
+          additional_days:          additionalDays,
+          additional_cents:         additionalCents,
+          new_expiry_date:          newExpiry.toISOString(),
+          stripe_payment_intent_id: paymentIntentId,
         },
       }),
       sendWorkerLockExtendedWorkerEmail(
@@ -466,12 +626,12 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
         newExpiry,
         Number(lock.dailyFee),
         lock.currency,
-        totalDays,
+        newTotalDays,
       ),
       prisma.notification.create({
         data: {
           userId:   workerId,
-          type:     "WORKER_LOCK_EXTENDED",    // FIX 5: was "worker_lock_extended"
+          type:     "WORKER_LOCK_EXTENDED",
           title:    "Your reservation has been extended",
           body:     `Your profile reservation has been extended until ${newExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
           link:     "/worker/reservations",

@@ -9,8 +9,9 @@ import {
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
   TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink,
+  CalendarClock, MessageSquare,
 } from 'lucide-react'
-import { employerApi, adminApi } from '@/lib/api-client'
+import { employerApi, adminApi, workerApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
 
 type NotifItem = {
@@ -41,7 +42,18 @@ type NavLink = {
 // Flat links — desktop sidebar only (worker role uses layout.tsx Sidebar instead)
 // NOTE: admin key intentionally removed — admin now renders the grouped
 // ADMIN_LINKS structure below on both desktop and mobile. Kept employer-only.
-const ROLE_LINKS: Record<'employer', NavLink[]> = {
+const ROLE_LINKS: Record<'worker' | 'employer', NavLink[]> = {
+  worker: [
+    { href: '/worker/dashboard',     label: 'Dashboard',       Icon: LayoutGrid    },
+    { href: '/worker/jobs',          label: 'Browse Jobs',     Icon: Search        },
+    { href: '/worker/applications',  label: 'My Applications', Icon: ClipboardList },
+    { href: '/worker/profile',       label: 'My Profile',      Icon: User          },
+    { href: '/worker/documents',     label: 'Documents',       Icon: FolderOpen    },
+    { href: '/worker/payments',      label: 'Payments',        Icon: CreditCard    },
+    { href: '/worker/reservations',  label: 'Reservations',    Icon: CalendarClock },
+    { href: '/worker/messages',      label: 'Messages',        Icon: MessageSquare },
+    { href: '/worker/notifications', label: 'Notifications',   Icon: Bell          },
+  ],
   employer: [
     { href: '/employer/dashboard',    label: 'Dashboard',    Icon: LayoutGrid    },
     { href: '/employer/jobs',         label: 'My Jobs',      Icon: Briefcase     },
@@ -112,18 +124,18 @@ const SIDEBAR_THEME: Record<Role, {
   logoBg:      string
 }> = {
   worker: {
-    activeBg:     'rgba(168,85,247,0.15)',
-    activeText:   '#c084fc',
-    activeIcon:   'rgba(168,85,247,0.20)',
+    activeBg:     'rgba(245,158,11,0.15)',
+    activeText:   '#fbbf24',
+    activeIcon:   'rgba(245,158,11,0.20)',
     inactiveIcon: 'rgba(255,255,255,0.06)',
-    logoBg:       '#9333ea',
+    logoBg:       '#d97706',
   },
   employer: {
-    activeBg:     'rgba(59,130,246,0.15)',
-    activeText:   '#60a5fa',
-    activeIcon:   'rgba(59,130,246,0.20)',
+    activeBg:     'rgba(245,158,11,0.15)',
+    activeText:   '#fbbf24',
+    activeIcon:   'rgba(245,158,11,0.20)',
     inactiveIcon: 'rgba(255,255,255,0.06)',
-    logoBg:       '#2563eb',
+    logoBg:       '#d97706',
   },
   admin: {
     activeBg:     'rgba(245,158,11,0.15)',
@@ -145,22 +157,22 @@ const ROLE_THEME: Record<Role, {
   overlayAccent: string
 }> = {
   worker: {
-    activeBg:      'bg-purple-600/20',
-    activeText:    'text-purple-300',
-    activeIcon:    'bg-purple-600/30',
-    logoBg:        'bg-purple-600',
-    hamburger:     'text-purple-400',
-    sectionLabel:  'text-purple-400/70',
-    overlayAccent: 'border-purple-600/20',
+    activeBg:      'bg-amber-500/15',
+    activeText:    'text-amber-400',
+    activeIcon:    'bg-amber-500/20',
+    logoBg:        'bg-amber-600',
+    hamburger:     'text-amber-400',
+    sectionLabel:  'text-amber-400/70',
+    overlayAccent: 'border-amber-600/20',
   },
   employer: {
-    activeBg:      'bg-blue-600/20',
-    activeText:    'text-blue-300',
-    activeIcon:    'bg-blue-600/30',
-    logoBg:        'bg-blue-600',
-    hamburger:     'text-blue-400',
-    sectionLabel:  'text-blue-400/70',
-    overlayAccent: 'border-blue-600/20',
+    activeBg:      'bg-amber-500/15',
+    activeText:    'text-amber-400',
+    activeIcon:    'bg-amber-500/20',
+    logoBg:        'bg-amber-600',
+    hamburger:     'text-amber-400',
+    sectionLabel:  'text-amber-400/70',
+    overlayAccent: 'border-amber-600/20',
   },
   admin: {
     activeBg:      'bg-amber-500/15',
@@ -197,7 +209,7 @@ export default function DashboardHeader({
   const fetchUnreadCount = useCallback(
     () => role === 'employer' ? employerApi.getUnreadCount()
         : role === 'admin'    ? adminApi.getUnreadCount()
-        : Promise.resolve({ success: false }),
+        : workerApi.getUnreadCount(),
     [role],
   )
   const { unreadCount, refetch: refetchUnreadCount } = useNotificationPolling(fetchUnreadCount)
@@ -208,7 +220,9 @@ export default function DashboardHeader({
     setNotifLoading(true)
     const res = role === 'admin'
       ? await adminApi.getNotifications({ limit: '10' })
-      : await employerApi.getNotifications({ limit: '10' })
+      : role === 'employer'
+        ? await employerApi.getNotifications({ limit: '10' })
+        : await workerApi.getNotifications({ limit: '10' })
     if (res.success) {
       const d = res.data as { data?: NotifItem[] } | NotifItem[] | undefined
       setNotifs(Array.isArray(d) ? d : (d as { data?: NotifItem[] } | undefined)?.data ?? [])
@@ -220,7 +234,8 @@ export default function DashboardHeader({
     setNotifOpen(false)
     if (!n.isRead) {
       if (role === 'admin') await adminApi.markNotificationRead(n.id)
-      else                  await employerApi.markNotificationRead(n.id)
+      else if (role === 'employer') await employerApi.markNotificationRead(n.id)
+      else await workerApi.markNotificationRead(n.id)
       setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x))
       refetchUnreadCount()
     }
@@ -229,7 +244,8 @@ export default function DashboardHeader({
 
   async function handleMarkAllRead() {
     if (role === 'admin') await adminApi.markAllNotificationsRead()
-    else                  await employerApi.markAllNotificationsRead()
+    else if (role === 'employer') await employerApi.markAllNotificationsRead()
+    else await workerApi.markAllNotificationsRead()
     setNotifs(ns => ns.map(x => ({ ...x, isRead: true })))
     refetchUnreadCount()
   }
@@ -272,15 +288,21 @@ export default function DashboardHeader({
 
   useEffect(() => { setMenuOpen(false); setNotifOpen(false) }, [pathname])
 
-  const links = role === 'employer' ? ROLE_LINKS.employer : []
+  const links = role === 'admin' ? [] : ROLE_LINKS[role]
   const sidebarTheme = SIDEBAR_THEME[role]
   const theme = ROLE_THEME[role]
+  const roleHrefs = role === 'admin'
+    ? ADMIN_LINKS.flatMap(group => group.links.map(link => link.href))
+    : links.map(link => link.href)
 
   const isActive = (href: string) => {
     if (href === `/${role}/dashboard` || href === `/${role}`) {
       return pathname === href || pathname === `/${role}/dashboard`
     }
-    return pathname.startsWith(href)
+    const bestMatch = roleHrefs
+      .filter(candidate => pathname === candidate || pathname.startsWith(candidate + '/'))
+      .sort((a, b) => b.length - a.length)[0]
+    return bestMatch === href
   }
 
   const btnStyle: React.CSSProperties = {
@@ -349,7 +371,7 @@ export default function DashboardHeader({
   // Fix 4 — portal escapes any parent stacking context / transform
   const overlay = (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col md:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
+      className={`fixed inset-0 z-[9999] flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
       style={{ background: '#06091A' }}
       aria-hidden={!menuOpen}
     >
@@ -387,7 +409,7 @@ export default function DashboardHeader({
                 {section}
               </p>
               {sectionLinks.map(({ href, label, Icon }) => {
-                const active = pathname === href || pathname.startsWith(href + '/')
+                const active = isActive(href)
                 return (
                   <Link
                     key={href}
@@ -466,7 +488,7 @@ export default function DashboardHeader({
     <>
       {/* ── Mobile header (hidden at md+) ── */}
       <header
-        className="fixed top-0 left-0 right-0 z-40 h-14 md:hidden flex items-center justify-between px-4"
+        className="fixed top-0 left-0 right-0 z-40 h-14 lg:hidden flex items-center justify-between px-4"
         style={{ background: 'rgba(6,9,26,0.97)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
         <Link
@@ -486,12 +508,7 @@ export default function DashboardHeader({
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {role === 'worker' ? (
-            <Link href="/worker/notifications" aria-label="Notifications" style={btnStyle}>
-              <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
-            </Link>
-          ) : (
-            <div ref={mobileNotifRef} style={{ position: 'relative' }}>
+          <div ref={mobileNotifRef} style={{ position: 'relative' }}>
               <button onClick={toggleNotifOpen} aria-label="Notifications" style={btnStyle}>
                 <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(248,250,252,0.75)' }} />
                 {unreadCount > 0 && (
@@ -510,8 +527,7 @@ export default function DashboardHeader({
                   {renderNotifPanel(320)}
                 </div>
               )}
-            </div>
-          )}
+          </div>
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
             <Menu size={20} className={theme.hamburger} />
           </button>
@@ -520,8 +536,9 @@ export default function DashboardHeader({
 
       {/* ── Desktop sidebar (shown at md+) — outer layout/theme unchanged; nav content now mirrors the mobile overlay's admin grouping ── */}
       <aside
-        className="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 z-30 pt-6 pb-8 px-4"
-        style={{ background: '#0b1120', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+        aria-label={`${role} dashboard navigation`}
+        className="dashboard-sidebar hidden lg:flex flex-col fixed left-0 top-0 h-dvh w-64 z-30 pt-6 pb-8 px-4"
+        style={{ background: '#0b1120', borderRight: '1px solid rgba(255,255,255,0.07)', minWidth: 256, maxWidth: 256, overflow: 'hidden' }}
       >
         <Link
           href={`/${role}/dashboard`}
@@ -539,8 +556,7 @@ export default function DashboardHeader({
           </span>
         </Link>
 
-        {(role === 'employer' || role === 'admin') && (
-          <div ref={desktopNotifRef} style={{ position: 'relative', marginBottom: 12 }}>
+        <div ref={desktopNotifRef} style={{ position: 'relative', marginBottom: 12, flexShrink: 0 }}>
             <button
               onClick={toggleNotifOpen}
               style={{
@@ -570,10 +586,9 @@ export default function DashboardHeader({
                 {renderNotifPanel(280)}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
-        <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav className="dashboard-sidebar-nav" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {role === 'admin' ? (
             ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
               <div key={section} className="mb-4">
@@ -581,12 +596,13 @@ export default function DashboardHeader({
                   {section}
                 </p>
                 {sectionLinks.map(({ href, label, Icon }) => {
-                  const active = pathname === href || pathname.startsWith(href + '/')
+                  const active = isActive(href)
                   return (
                     <Link
                       key={href}
                       href={href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
+                      aria-current={active ? 'page' : undefined}
+                      className={`dashboard-sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
                       style={{ color: active ? undefined : 'rgba(255,255,255,0.55)', fontWeight: 500 }}
                     >
                       <Icon size={16} strokeWidth={1.75} />
@@ -603,6 +619,8 @@ export default function DashboardHeader({
                 <Link
                   key={href}
                   href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className="dashboard-sidebar-link"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '9px 12px', borderRadius: 10,
@@ -621,6 +639,7 @@ export default function DashboardHeader({
         </nav>
 
         <button
+          className="dashboard-sidebar-logout"
           onClick={onLogout}
           style={{
             width: '100%', height: 40, borderRadius: 10,

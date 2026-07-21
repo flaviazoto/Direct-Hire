@@ -42,7 +42,8 @@ employerRouter.put("/applications/:id/status",          requireVerifiedEmployer,
 employerRouter.get( "/locks",                           requireVerifiedEmployer,                      lockCtrl.getMyLocks);
 employerRouter.post("/workers/:workerId/lock",          requireVerifiedEmployer, requireSubscription, lockCtrl.lockWorker);
 employerRouter.post("/workers/:workerId/lock/confirm",  requireVerifiedEmployer, requireSubscription, lockCtrl.confirmLock);
-employerRouter.post("/workers/:workerId/extend-lock",   requireVerifiedEmployer, requireSubscription, lockCtrl.extendLock);
+employerRouter.post("/workers/:workerId/extend-lock",         requireVerifiedEmployer, requireSubscription, lockCtrl.extendLock);
+employerRouter.post("/workers/:workerId/extend-lock/confirm", requireVerifiedEmployer, requireSubscription, lockCtrl.confirmExtendLock);
 employerRouter.post("/workers/:workerId/release-lock",  requireVerifiedEmployer,                      lockCtrl.releaseLock);
 employerRouter.get( "/workers/:workerId/lock-status",   requireVerifiedEmployer,                      lockCtrl.getLockStatus);
 

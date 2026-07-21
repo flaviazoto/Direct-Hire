@@ -407,10 +407,12 @@ export const employerApi = {
   getWorkerLockStatus: (workerId: string) => get(`/employer/workers/${workerId}/lock-status`),
   lockWorker: (workerId: string, body: { lock_days: number }) =>
     post(`/employer/workers/${workerId}/lock`, body),
-  confirmLock: (workerId: string, body: { payment_intent_id: string }) =>
+  confirmLock: (workerId: string, body: { paymentIntentId: string }) =>
     post(`/employer/workers/${workerId}/lock/confirm`, body),
   extendWorkerLock: (workerId: string, body: { additional_days: number }) =>
     post(`/employer/workers/${workerId}/extend-lock`, body),
+  confirmExtendWorkerLock: (workerId: string, body: { paymentIntentId: string }) =>
+    post(`/employer/workers/${workerId}/extend-lock/confirm`, body),
   releaseWorkerLock: (workerId: string, body?: { reason?: string }) =>
     post(`/employer/workers/${workerId}/release-lock`, body ?? {}),
   getWorkerApplications: (workerId: string) => get(`/employer/workers/${workerId}/applications`),

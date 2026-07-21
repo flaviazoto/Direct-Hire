@@ -3,8 +3,12 @@
 
 import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -146,6 +150,10 @@ function LocksContent() {
   const [extendDays,    setExtendDays]    = useState(7);
   const [extendLoading, setExtendLoading] = useState(false);
   const [extendError,   setExtendError]   = useState("");
+  const [extendPhase,   setExtendPhase]   = useState<"configure" | "payment">("configure");
+  const [extendClientSecret,    setExtendClientSecret]    = useState("");
+  const [extendPaymentIntentId, setExtendPaymentIntentId] = useState("");
+  const [extendAdditionalCents, setExtendAdditionalCents] = useState(0);
 
   // Release modal
   const [releaseLock,    setReleaseLock]    = useState<Lock | null>(null);
@@ -155,6 +163,16 @@ function LocksContent() {
 
   const anyModal = !!extendLock || !!releaseLock;
 
+  function closeExtendModal() {
+    setExtendLock(null);
+    setExtendDays(7);
+    setExtendError("");
+    setExtendPhase("configure");
+    setExtendClientSecret("");
+    setExtendPaymentIntentId("");
+    setExtendAdditionalCents(0);
+  }
+
   // Body scroll lock + Escape handler
   useEffect(() => {
     if (!anyModal) return;
@@ -162,7 +180,7 @@ function LocksContent() {
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (extendLock  && !extendLoading)  { setExtendLock(null);  setExtendError(""); }
+      if (extendLock  && !extendLoading)  closeExtendModal();
       if (releaseLock && !releaseLoading) { setReleaseLock(null); setReleaseError(""); setReleaseReason(""); }
     }
     document.addEventListener("keydown", onKey);
@@ -208,13 +226,27 @@ function LocksContent() {
     const res = await employerApi.extendWorkerLock(extendLock.worker.id, { additional_days: extendDays });
     setExtendLoading(false);
     if (res.success) {
+      const data = res.data as { clientSecret: string; paymentIntentId: string; additionalCents: number };
+      setExtendClientSecret(data.clientSecret);
+      setExtendPaymentIntentId(data.paymentIntentId);
+      setExtendAdditionalCents(data.additionalCents);
+      setExtendPhase("payment");
+    } else {
+      setExtendError(res.error ?? "Could not extend reservation.");
+    }
+  }
+
+  async function handleExtendConfirmed() {
+    if (!extendLock) return;
+    const res = await employerApi.confirmExtendWorkerLock(extendLock.worker.id, { paymentIntentId: extendPaymentIntentId });
+    if (res.success) {
       const expiry = (res.data as { lockExpiryDate?: string })?.lockExpiryDate;
-      setExtendLock(null);
-      setExtendDays(7);
+      closeExtendModal();
       await fetchLocks(1);
       showToast(`Reservation extended${expiry ? " to " + fmtDateLong(expiry) : ""}`, "ok");
     } else {
-      setExtendError(res.error ?? "Could not extend reservation.");
+      setExtendError(res.error ?? "Extension could not be confirmed. Please contact support.");
+      setExtendPhase("configure");
     }
   }
 
@@ -371,79 +403,111 @@ function LocksContent() {
 
       {/* ── Extend modal ── */}
       {extendLock && (
-        <Modal onClose={() => !extendLoading && (setExtendLock(null), setExtendError(""))}>
+        <Modal onClose={() => !extendLoading && closeExtendModal()}>
           <h2 style={mTitle}>Extend reservation — {extendLock.worker.first_name ?? workerName(extendLock.worker)}</h2>
 
-          {/* Current status */}
-          <div style={mInfoBox}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
-              {[
-                { label: "Current expiry",   value: fmtDateLong(extendLock.lock_expiry_date) },
-                { label: "Lock started",     value: fmtDateLong(extendLock.lock_start_date)  },
-                { label: "Days used so far", value: String(extendLock.total_days_billed)      },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <div style={mInfoLabel}>{label}</div>
-                  <div style={mInfoValue}>{value}</div>
+          {extendPhase === "configure" && (
+            <>
+              {/* Current status */}
+              <div style={mInfoBox}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
+                  {[
+                    { label: "Current expiry",   value: fmtDateLong(extendLock.lock_expiry_date) },
+                    { label: "Lock started",     value: fmtDateLong(extendLock.lock_start_date)  },
+                    { label: "Days used so far", value: String(extendLock.total_days_billed)      },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <div style={mInfoLabel}>{label}</div>
+                      <div style={mInfoValue}>{value}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Presets */}
-          <label style={mLabel}>Additional days</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            {EXTEND_PRESETS.map(d => (
-              <button key={d} onClick={() => setExtendDays(d)} style={{
-                flex:         1,
-                padding:      "8px 0",
-                border:       extendDays === d ? "2px solid #14b8a6" : "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8,
-                background:   extendDays === d ? "rgba(0,144,255,0.1)" : "rgba(255,255,255,0.03)",
-                color:        extendDays === d ? "#14b8a6" : "#a1a1aa",
-                fontWeight:   extendDays === d ? 700 : 400,
-                fontSize:     13, cursor: "pointer", transition: "all 0.1s", fontFamily: "inherit",
-              }}>{d}d</button>
-            ))}
-          </div>
-          <input
-            type="number" min={1} max={30} value={extendDays}
-            onChange={e => setExtendDays(Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
-            style={mInput}
-          />
-
-          {/* Cap/preview */}
-          {extendCapExceeded ? (
-            <div style={{ color: "#f87171", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
-              Cannot exceed 60 days total.<br />
-              You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
-            </div>
-          ) : (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ color: "#4ade80", fontSize: 13, fontWeight: 600 }}>
-                New expiry: {extendNewExpiry ? fmtDateLong(extendNewExpiry) : "—"}
               </div>
-              <div style={{ color: "#71717a", fontSize: 12, marginTop: 3 }}>
-                {extendDays} × {extendLock.currency} {Number(extendLock.daily_fee).toFixed(2)} = {extendLock.currency} {extendAddedCost} additional
+
+              {/* Presets */}
+              <label style={mLabel}>Additional days</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                {EXTEND_PRESETS.map(d => (
+                  <button key={d} onClick={() => setExtendDays(d)} style={{
+                    flex:         1,
+                    padding:      "8px 0",
+                    border:       extendDays === d ? "2px solid #14b8a6" : "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    background:   extendDays === d ? "rgba(0,144,255,0.1)" : "rgba(255,255,255,0.03)",
+                    color:        extendDays === d ? "#14b8a6" : "#a1a1aa",
+                    fontWeight:   extendDays === d ? 700 : 400,
+                    fontSize:     13, cursor: "pointer", transition: "all 0.1s", fontFamily: "inherit",
+                  }}>{d}d</button>
+                ))}
               </div>
-            </div>
+              <input
+                type="number" min={1} max={30} value={extendDays}
+                onChange={e => setExtendDays(Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
+                style={mInput}
+              />
+
+              {/* Cap/preview */}
+              {extendCapExceeded ? (
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
+                  Cannot exceed 60 days total.<br />
+                  You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
+                </div>
+              ) : (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ color: "#4ade80", fontSize: 13, fontWeight: 600 }}>
+                    New expiry: {extendNewExpiry ? fmtDateLong(extendNewExpiry) : "—"}
+                  </div>
+                  <div style={{ color: "#71717a", fontSize: 12, marginTop: 3 }}>
+                    {extendDays} × {extendLock.currency} {Number(extendLock.daily_fee).toFixed(2)} = {extendLock.currency} {extendAddedCost} additional
+                  </div>
+                </div>
+              )}
+
+              {extendError && <div style={{ color: "#f87171", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button onClick={closeExtendModal} disabled={extendLoading} style={{ ...mBtnSecondary, flex: 1 }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExtend}
+                  disabled={extendLoading || extendCapExceeded}
+                  style={{ ...mBtnPrimary, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: extendCapExceeded ? 0.5 : 1, cursor: extendCapExceeded ? "not-allowed" : "pointer" }}
+                >
+                  {extendLoading && <Spinner size="xs" color="white" />}
+                  {extendCapExceeded ? "Confirm extension" : `Confirm & Charge ${extendLock.currency} ${extendAddedCost}`}
+                </button>
+              </div>
+            </>
           )}
 
-          {extendError && <div style={{ color: "#f87171", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
+          {/* Phase 2: Stripe payment */}
+          {extendPhase === "payment" && extendClientSecret && (
+            <>
+              <div style={{ ...mInfoBox, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.25)" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#14b8a6", marginBottom: 6 }}>Extension summary</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#a1a1aa", marginBottom: 3 }}>
+                  <span>Additional days</span>
+                  <span style={{ fontWeight: 600, color: "#e4e4e7" }}>{extendDays} day{extendDays !== 1 ? "s" : ""}</span>
+                </div>
+                <div style={{ borderTop: "1px solid rgba(20,184,166,0.25)", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
+                  <span>Total charged today</span>
+                  <span>${(extendAdditionalCents / 100).toFixed(2)} USD</span>
+                </div>
+              </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button onClick={() => { setExtendLock(null); setExtendError(""); }} disabled={extendLoading} style={{ ...mBtnSecondary, flex: 1 }}>
-              Cancel
-            </button>
-            <button
-              onClick={handleExtend}
-              disabled={extendLoading || extendCapExceeded}
-              style={{ ...mBtnPrimary, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: extendCapExceeded ? 0.5 : 1, cursor: extendCapExceeded ? "not-allowed" : "pointer" }}
-            >
-              {extendLoading && <Spinner size="xs" color="white" />}
-              Confirm extension
-            </button>
-          </div>
+              <Elements stripe={stripePromise} options={{ clientSecret: extendClientSecret, appearance: { theme: "night" } }}>
+                <PaymentForm
+                  onSuccess={handleExtendConfirmed}
+                  onCancel={() => { setExtendPhase("configure"); setExtendError(""); }}
+                />
+              </Elements>
+
+              {extendError && (
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 12 }}>{extendError}</div>
+              )}
+            </>
+          )}
         </Modal>
       )}
 
@@ -665,6 +729,76 @@ function LockCard({
         )}
       </div>
     </div>
+  );
+}
+
+// ── Stripe PaymentForm (must be rendered inside <Elements>) ──────────────────
+
+function PaymentForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => Promise<void>;
+  onCancel:  () => void;
+}) {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setLoading(true);
+    setError("");
+
+    const { error: stripeError } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: {
+        return_url: window.location.href,
+      },
+    });
+
+    if (stripeError) {
+      setError(stripeError.message ?? "Payment failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    await onSuccess();
+    setLoading(false);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: 16 }}>
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+
+      {error && (
+        <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          style={{ ...mBtnSecondary, flex: 1 }}
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={loading || !stripe || !elements}
+          style={{ ...mBtnPrimary, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: !stripe ? 0.6 : 1 }}
+        >
+          {loading && <Spinner size="xs" color="white" />}
+          Pay &amp; confirm extension
+        </button>
+      </div>
+    </form>
   );
 }
 

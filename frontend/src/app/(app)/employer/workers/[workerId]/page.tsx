@@ -168,6 +168,10 @@ function WorkerProfileContent() {
   const [extendDays,      setExtendDays]      = useState(7);
   const [extendLoading,   setExtendLoading]   = useState(false);
   const [extendError,     setExtendError]     = useState("");
+  const [extendPhase,     setExtendPhase]     = useState<"configure" | "payment">("configure");
+  const [extendClientSecret,    setExtendClientSecret]    = useState("");
+  const [extendPaymentIntentId, setExtendPaymentIntentId] = useState("");
+  const [extendAdditionalCents, setExtendAdditionalCents] = useState(0);
 
   // Release modal state
   const [showReleaseModal, setShowReleaseModal] = useState(false);
@@ -240,6 +244,17 @@ function WorkerProfileContent() {
     setStripeDailyRateCents(0);
   }, [modalLoading]);
 
+  const closeExtendModal = useCallback(() => {
+    if (extendLoading) return;
+    setShowExtendModal(false);
+    setExtendDays(7);
+    setExtendPhase("configure");
+    setExtendError("");
+    setExtendClientSecret("");
+    setExtendPaymentIntentId("");
+    setExtendAdditionalCents(0);
+  }, [extendLoading]);
+
   // Escape key + body scroll lock for modals
   const anyModalOpen = showModal || showExtendModal || showReleaseModal || showMsgModal;
   useEffect(() => {
@@ -249,7 +264,7 @@ function WorkerProfileContent() {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       if (showModal        && !modalLoading)   closeReserveModal();
-      if (showExtendModal  && !extendLoading)  setShowExtendModal(false);
+      if (showExtendModal  && !extendLoading)  closeExtendModal();
       if (showReleaseModal && !releaseLoading) setShowReleaseModal(false);
       if (showMsgModal     && !msgSending)     { setShowMsgModal(false); setMsgText(""); setMsgError(""); setMsgSent(false); }
     }
@@ -258,7 +273,7 @@ function WorkerProfileContent() {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, showMsgModal, modalLoading, extendLoading, releaseLoading, msgSending, closeReserveModal]);
+  }, [anyModalOpen, showModal, showExtendModal, showReleaseModal, showMsgModal, modalLoading, extendLoading, releaseLoading, msgSending, closeReserveModal, closeExtendModal]);
 
   function showToast(msg: string, type: "ok" | "err") {
     setToast({ msg, type });
@@ -306,7 +321,7 @@ function WorkerProfileContent() {
   }
 
   async function handleLockConfirmed() {
-    const res = await employerApi.confirmLock(workerId, { payment_intent_id: stripePaymentIntentId });
+    const res = await employerApi.confirmLock(workerId, { paymentIntentId: stripePaymentIntentId });
     if (res.success) {
       closeReserveModal();
       await refetchLock();
@@ -332,13 +347,26 @@ function WorkerProfileContent() {
     const res = await employerApi.extendWorkerLock(workerId, { additional_days: extendDays });
     setExtendLoading(false);
     if (res.success) {
-      setShowExtendModal(false);
-      setExtendDays(7);
+      const data = res.data as { clientSecret: string; paymentIntentId: string; additionalCents: number };
+      setExtendClientSecret(data.clientSecret);
+      setExtendPaymentIntentId(data.paymentIntentId);
+      setExtendAdditionalCents(data.additionalCents);
+      setExtendPhase("payment");
+    } else {
+      setExtendError(res.error ?? "Could not extend reservation.");
+    }
+  }
+
+  async function handleExtendConfirmed() {
+    const res = await employerApi.confirmExtendWorkerLock(workerId, { paymentIntentId: extendPaymentIntentId });
+    if (res.success) {
+      closeExtendModal();
       await refetchLock();
       const newExpiry = (res.data as { lockExpiryDate?: string })?.lockExpiryDate;
       showToast(`Reservation extended${newExpiry ? " to " + fmtDate(newExpiry) : ""}`, "ok");
     } else {
-      setExtendError(res.error ?? "Could not extend reservation.");
+      setExtendError(res.error ?? "Extension could not be confirmed. Please contact support.");
+      setExtendPhase("configure");
     }
   }
 
@@ -1111,103 +1139,137 @@ function WorkerProfileContent() {
 
       {/* ── Extend modal ── */}
       {showExtendModal && lock && (
-        <Modal onClose={() => !extendLoading && setShowExtendModal(false)}>
+        <Modal onClose={() => !extendLoading && closeExtendModal()}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
             Extend reservation — {worker.first_name ?? name}
           </h2>
 
-          {/* Current status row */}
-          <div style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
-            {[
-              { label: "Current expiry",   value: fmtDate(lock.lock_expiry_date) },
-              { label: "Lock started",     value: fmtDate(lock.lock_start_date)  },
-              { label: "Days used so far", value: String(lock.total_days_billed) },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>{label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{value}</div>
+          {extendPhase === "configure" && (
+            <>
+              {/* Current status row */}
+              <div style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
+                {[
+                  { label: "Current expiry",   value: fmtDate(lock.lock_expiry_date) },
+                  { label: "Lock started",     value: fmtDate(lock.lock_start_date)  },
+                  { label: "Days used so far", value: String(lock.total_days_billed) },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{value}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Additional days */}
-          <label style={labelStyle}>Additional days</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            {[3, 7, 14].map(d => (
-              <button
-                key={d}
-                onClick={() => setExtendDays(d)}
-                style={{
-                  flex:         1,
-                  padding:      "8px 0",
-                  border:       extendDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
-                  borderRadius: 8,
-                  background:   extendDays === d ? "#f0fdfa" : "white",
-                  color:        extendDays === d ? "#0d9488" : "#374151",
-                  fontWeight:   extendDays === d ? 700 : 400,
-                  fontSize:     13,
-                  cursor:       "pointer",
-                  transition:   "all 0.1s",
-                }}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
-          <input
-            type="number"
-            min={1}
-            max={30}
-            value={extendDays}
-            onChange={e => setExtendDays(Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
-            style={inputStyle}
-          />
+              {/* Additional days */}
+              <label style={labelStyle}>Additional days</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                {[3, 7, 14].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setExtendDays(d)}
+                    style={{
+                      flex:         1,
+                      padding:      "8px 0",
+                      border:       extendDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
+                      borderRadius: 8,
+                      background:   extendDays === d ? "#f0fdfa" : "white",
+                      color:        extendDays === d ? "#0d9488" : "#374151",
+                      fontWeight:   extendDays === d ? 700 : 400,
+                      fontSize:     13,
+                      cursor:       "pointer",
+                      transition:   "all 0.1s",
+                    }}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={extendDays}
+                onChange={e => setExtendDays(Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
+                style={inputStyle}
+              />
 
-          {/* Cap validator / preview */}
-          {extendCapExceeded ? (
-            <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
-              Cannot exceed 60 days total.<br />
-              You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
-            </div>
-          ) : (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ color: "#059669", fontSize: 13, fontWeight: 600 }}>
-                New expiry: {extendNewExpiry ? fmtDate(extendNewExpiry) : "—"}
+              {/* Cap validator / preview */}
+              {extendCapExceeded ? (
+                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
+                  Cannot exceed 60 days total.<br />
+                  You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
+                </div>
+              ) : (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ color: "#059669", fontSize: 13, fontWeight: 600 }}>
+                    New expiry: {extendNewExpiry ? fmtDate(extendNewExpiry) : "—"}
+                  </div>
+                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 3 }}>
+                    {extendDays} × {lock.currency} {Number(lock.daily_fee).toFixed(2)} = {lock.currency} {extendAddedCost} additional
+                  </div>
+                </div>
+              )}
+
+              {extendError && <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button
+                  onClick={closeExtendModal}
+                  disabled={extendLoading}
+                  style={{ ...btnSecondaryStyle, flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExtend}
+                  disabled={extendLoading || extendCapExceeded}
+                  style={{
+                    ...btnPrimaryStyle,
+                    flex:    2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap:     8,
+                    opacity: extendCapExceeded ? 0.5 : 1,
+                    cursor:  extendCapExceeded ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {extendLoading && <Spinner size="xs" color="white" />}
+                  {extendCapExceeded ? "Confirm extension" : `Confirm & Charge ${lock.currency} ${extendAddedCost}`}
+                </button>
               </div>
-              <div style={{ color: "#64748b", fontSize: 12, marginTop: 3 }}>
-                {extendDays} × {lock.currency} {Number(lock.daily_fee).toFixed(2)} = {lock.currency} {extendAddedCost} additional
-              </div>
-            </div>
+            </>
           )}
 
-          {extendError && <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
+          {/* Phase 2: Stripe payment */}
+          {extendPhase === "payment" && extendClientSecret && (
+            <>
+              <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 6 }}>Extension summary</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+                  <span>Additional days</span>
+                  <span style={{ fontWeight: 600 }}>{extendDays} day{extendDays !== 1 ? "s" : ""}</span>
+                </div>
+                <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                  <span>Total charged today</span>
+                  <span>${(extendAdditionalCents / 100).toFixed(2)} USD</span>
+                </div>
+              </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button
-              onClick={() => { setShowExtendModal(false); setExtendError(""); }}
-              disabled={extendLoading}
-              style={{ ...btnSecondaryStyle, flex: 1 }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleExtend}
-              disabled={extendLoading || extendCapExceeded}
-              style={{
-                ...btnPrimaryStyle,
-                flex:    2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap:     8,
-                opacity: extendCapExceeded ? 0.5 : 1,
-                cursor:  extendCapExceeded ? "not-allowed" : "pointer",
-              }}
-            >
-              {extendLoading && <Spinner size="xs" color="white" />}
-              Confirm extension
-            </button>
-          </div>
+              <Elements stripe={stripePromise} options={{ clientSecret: extendClientSecret, appearance: { theme: "stripe" } }}>
+                <PaymentForm
+                  paymentIntentId={extendPaymentIntentId}
+                  onSuccess={handleExtendConfirmed}
+                  onCancel={() => { setExtendPhase("configure"); setExtendError(""); }}
+                  submitLabel="Pay & confirm extension"
+                />
+              </Elements>
+
+              {extendError && (
+                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{extendError}</div>
+              )}
+            </>
+          )}
         </Modal>
       )}
 
@@ -1393,10 +1455,12 @@ function PaymentForm({
   paymentIntentId: _paymentIntentId,
   onSuccess,
   onCancel,
+  submitLabel = "Pay & confirm reservation",
 }: {
   paymentIntentId: string;
   onSuccess:       () => Promise<void>;
   onCancel:        () => void;
+  submitLabel?:    string;
 }) {
   const stripe   = useStripe();
   const elements = useElements();
@@ -1452,7 +1516,7 @@ function PaymentForm({
           style={{ ...btnPrimaryStyle, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: !stripe ? 0.6 : 1 }}
         >
           {loading && <Spinner size="xs" color="white" />}
-          Pay &amp; confirm reservation
+          {submitLabel}
         </button>
       </div>
     </form>

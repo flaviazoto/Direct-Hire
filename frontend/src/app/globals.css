@@ -496,6 +496,46 @@ input, button, textarea, select { font: inherit; }
 .safe-area-bottom { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .text-balance { text-wrap: balance; }
 
+/* Shared Admin-reference dashboard sidebar */
+.dashboard-sidebar {
+  width: 256px;
+  min-width: 256px;
+  max-width: 256px;
+  height: 100vh;
+  height: 100dvh;
+  flex: 0 0 256px;
+  contain: layout paint;
+}
+
+.dashboard-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.16) transparent;
+  overscroll-behavior: contain;
+}
+
+.dashboard-sidebar-nav::-webkit-scrollbar { width: 5px; }
+.dashboard-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.dashboard-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.16);
+  border-radius: 999px;
+}
+
+.dashboard-sidebar-link:hover {
+  background: rgba(255,255,255,0.055) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+
+.dashboard-sidebar-link[aria-current="page"]:hover {
+  background: rgba(245,158,11,0.15) !important;
+  color: #fbbf24 !important;
+}
+
+.dashboard-sidebar-link:focus-visible,
+.dashboard-sidebar-logout:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
 /* ─── Role-based dashboard accents ────────────────────────────────────────── */
 
 /* Worker: Blue */
