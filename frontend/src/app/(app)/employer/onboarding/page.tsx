@@ -70,13 +70,22 @@ export default function EmployerOnboardingPage() {
   const [requiredSkills, setRequiredSkills]   = useState<string[]>([]);
   const [urgency, setUrgency]                 = useState("");
   const [selectedPlan, setSelectedPlan]       = useState("growth");
-  const [logoUploaded, setLogoUploaded]       = useState(false);
-  const [docUploaded, setDocUploaded]         = useState(false);
   const [logoUploading, setLogoUploading]     = useState(false);
   const [docUploading, setDocUploading]       = useState(false);
 
   const { register, getValues, watch } = useForm({ mode: "onChange" });
   const descValue = watch("businessDescription") ?? "";
+
+  // Derived directly from the store's real upload status (not a separate
+  // local flag) — a previous version set these unconditionally to true after
+  // the upload call resolved, regardless of success/failure, so the Review
+  // step could show "✓ Uploaded" for an upload that had actually failed
+  // server-side (e.g. rejected file type, storage error). Reading status off
+  // the store means this can only ever reflect what really happened.
+  const logoUploaded = store.uploads["COMPANY_LOGO"]?.status === "done";
+  const docUploaded  = store.uploads["BUSINESS_DOCUMENT"]?.status === "done";
+  const logoError    = store.uploads["COMPANY_LOGO"]?.status === "error" ? store.uploads["COMPANY_LOGO"]?.errorMsg : null;
+  const docError     = store.uploads["BUSINESS_DOCUMENT"]?.status === "error" ? store.uploads["BUSINESS_DOCUMENT"]?.errorMsg : null;
 
   // useOnboardingStore() (no selector) returns a fresh merged object on every
   // state change, so depending on `store` directly would re-run this on every
@@ -194,6 +203,15 @@ export default function EmployerOnboardingPage() {
   };
 
   const handleSubmit = async () => {
+    // Mirrors the worker onboarding page's handleFinalSubmit — a client-side
+    // check naming exactly what's missing, so an unset/failed required
+    // upload never has to reach the backend's hard block as the first sign
+    // of trouble.
+    if (!docUploaded) {
+      store.setSubmitError("Upload your business registration document before submitting.");
+      return;
+    }
+
     const ok = await store.submitOnboarding();
     if (ok) router.push("/employer/dashboard?submitted=1");
   };
@@ -201,14 +219,12 @@ export default function EmployerOnboardingPage() {
   const handleLogoUpload = async (file: File) => {
     setLogoUploading(true);
     await store.uploadFile("COMPANY_LOGO", file);
-    setLogoUploaded(true);
     setLogoUploading(false);
   };
 
   const handleDocUpload = async (file: File) => {
     setDocUploading(true);
     await store.uploadFile("BUSINESS_DOCUMENT", file);
-    setDocUploaded(true);
     setDocUploading(false);
   };
 
@@ -339,6 +355,7 @@ export default function EmployerOnboardingPage() {
                 </div>
                 {logoUploading && <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(45,212,191,0.3)", borderTopColor: "#2DD4BF", animation: "spin 0.7s linear infinite" }} />}
               </label>
+              {logoError && <p style={{ fontSize: 12, color: "#f87171", marginTop: 5 }}>⚠ {logoError}</p>}
             </div>
           </div>
         );
@@ -389,7 +406,7 @@ export default function EmployerOnboardingPage() {
               </div>
             </div>
             <div>
-              <label style={labelSt}>Business Registration Document <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>(optional)</span></label>
+              <label style={labelSt}>Business Registration Document <span style={{ color: "#f87171" }}>*</span></label>
               <label style={{
                 display: "flex", alignItems: "center", gap: 12,
                 border: docUploaded ? "2px solid rgba(14,116,144,0.3)" : "2px dashed rgba(255,255,255,0.1)",
@@ -406,6 +423,7 @@ export default function EmployerOnboardingPage() {
                 </div>
                 {docUploading && <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(45,212,191,0.3)", borderTopColor: "#2DD4BF", animation: "spin 0.7s linear infinite" }} />}
               </label>
+              {docError && <p style={{ fontSize: 12, color: "#f87171", marginTop: 5 }}>⚠ {docError}</p>}
             </div>
           </div>
         );

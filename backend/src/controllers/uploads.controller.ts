@@ -6,19 +6,15 @@ import { uploadFile as storageUpload, deleteFile, ALLOWED_MIME, MAX_SIZE, SIGNED
 import type { FileType } from "../types";
 import { insertAuditLog } from "../lib/audit";
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
-
-const IMAGE_SIZE_LIMIT = 5   * 1024 * 1024; // 5 MB
-const VIDEO_SIZE_LIMIT = 100 * 1024 * 1024; // 100 MB
-
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg':      'jpg',
   'image/png':       'png',
   'image/webp':      'webp',
+  'image/svg+xml':   'svg',
   'video/mp4':       'mp4',
   'video/webm':      'webm',
   'video/quicktime': 'mov',
+  'application/pdf': 'pdf',
 };
 
 // ── upload ────────────────────────────────────────────────────
@@ -32,28 +28,23 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
     if (!file)     return err(res, "No file provided", 400);
     if (!fileType) return err(res, "fileType is required", 400);
 
-    // Top-level mime gate — reject anything outside image/video lists
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.mimetype);
-    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.mimetype);
-    if (!isImage && !isVideo) {
-      return err(res, `Unsupported file type. Allowed: ${[...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES].join(', ')}`, 400);
-    }
-
-    // Type-specific size limits
-    const sizeLimit = isImage ? IMAGE_SIZE_LIMIT : VIDEO_SIZE_LIMIT;
-    if (file.size > sizeLimit) {
-      return err(res, `File too large. ${isImage ? 'Images' : 'Videos'} must be under ${isImage ? 5 : 100} MB`, 400);
-    }
-
     // Role-based file type guards
     const workerOnly:   FileType[] = ["PROFILE_PHOTO","WORK_VIDEO","INTRO_VIDEO","MEDICAL_CERTIFICATE"];
     const employerOnly: FileType[] = ["BUSINESS_DOCUMENT","COMPANY_LOGO"];
     if (role === "WORKER"   && employerOnly.includes(fileType)) return err(res, "File type not allowed for workers", 403);
     if (role === "EMPLOYER" && workerOnly.includes(fileType))   return err(res, "File type not allowed for employers", 403);
 
-    // Per-fileType mime + size validation (second layer)
+    // Mime + size validation — checked against the ALLOWED list for this
+    // SPECIFIC fileType (services/storage/index.ts's ALLOWED_MIME/MAX_SIZE),
+    // not a generic image/video-only gate. A prior generic gate here ran
+    // first and hard-rejected anything outside image/jpeg|png|webp and
+    // video/mp4|webm|quicktime — silently blocking application/pdf for
+    // MEDICAL_CERTIFICATE/BUSINESS_DOCUMENT/OTHER and image/svg+xml for
+    // COMPANY_LOGO, all of which ALLOWED_MIME already listed as valid but
+    // which this per-type check was never reached to confirm.
     const allowed = ALLOWED_MIME[fileType];
-    if (allowed && !allowed.includes(file.mimetype)) {
+    if (!allowed) return err(res, `Unknown file type: ${fileType}`, 400);
+    if (!allowed.includes(file.mimetype)) {
       return err(res, `Invalid file type for ${fileType}. Allowed: ${allowed.join(", ")}`, 422);
     }
     const maxSize = MAX_SIZE[fileType];
