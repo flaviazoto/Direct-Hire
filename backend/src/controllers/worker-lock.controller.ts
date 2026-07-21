@@ -185,7 +185,7 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
       automatic_payment_methods: { enabled: true },
     });
 
-    return res.status(200).json({
+    return ok(res, {
       requiresPayment: true,
       clientSecret:    paymentIntent.client_secret,
       totalCents,
@@ -468,7 +468,7 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
       automatic_payment_methods: { enabled: true },
     });
 
-    return res.status(200).json({
+    return ok(res, {
       requiresPayment: true,
       clientSecret:    paymentIntent.client_secret,
       additionalCents,
