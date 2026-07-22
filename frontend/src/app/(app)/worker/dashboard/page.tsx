@@ -108,7 +108,7 @@ function QuickLink({ href, label, sub, Icon }: {
 
 function JobRow({ job }: { job: Job }) {
   return (
-    <Link href={`/worker/jobs/${job.id}`} style={{
+    <Link href="/worker/jobs" style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '14px 16px', borderRadius: 20,
       background: '#0d1424', border: '1px solid rgba(255,255,255,0.07)',

@@ -85,7 +85,7 @@ function JobCard({ job }: { job: Job }) {
   const skills = job.skills?.slice(0, 3) ?? [];
 
   return (
-    <Link href={`/employer/jobs/${job.id}`} style={{ textDecoration: "none" }}>
+    <Link href="/employer/jobs" style={{ textDecoration: "none" }}>
       <div style={{
         background: "var(--navy-2)", border: "1px solid var(--border)",
         borderRadius: "var(--r-lg)", padding: "20px",
