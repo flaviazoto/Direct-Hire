@@ -92,6 +92,7 @@ export async function getSubscriptionStatus(
         id: true, amount: true, currency: true,
         status: true, type: true, description: true, createdAt: true,
         stripeInvoiceId: true,
+        invoice: { select: { id: true, invoiceNumber: true } },
       },
     });
 

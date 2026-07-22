@@ -23,6 +23,7 @@ import {
   sendWorkerLockReleasedEmployerEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
+import { generateInvoice } from "../services/invoices";
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -281,7 +282,7 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
       where:  { id: employerId },
       select: {
         email:           true,
-        employerProfile: { select: { companyName: true, contactPersonName: true } },
+        employerProfile: { select: { companyName: true, contactPersonName: true, nipt: true } },
       },
     });
 
@@ -335,7 +336,8 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
     });
 
     // ── Payment record ────────────────────────────────────────────────────────
-    await prisma.payment.create({
+    const paymentDescription = `Worker reservation — ${lockDays} day${lockDays !== 1 ? "s" : ""}`;
+    const payment = await prisma.payment.create({
       data: {
         userId:          employerId,
         stripePaymentId: paymentIntentId,
@@ -343,10 +345,25 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
         currency:        "usd",
         status:          "SUCCEEDED",
         type:            "WORKER_LOCK",
-        description:     `Worker reservation — ${lockDays} day${lockDays !== 1 ? "s" : ""}`,
+        description:     paymentDescription,
         metadata:        { workerId, lockId: lock.id, lockDays },
       },
     });
+
+    // ── Invoice: PDF + email, non-fatal — never blocks or fails the response ──
+    generateInvoice({
+      paymentId:       payment.id,
+      userId:          employerId,
+      type:            "WORKER_LOCK",
+      amountCents:     totalCents,
+      currency:        "USD",
+      description:     paymentDescription,
+      stripeReference: paymentIntentId,
+      payer: {
+        name: employerName,
+        nipt: employer?.employerProfile?.nipt ?? null,
+      },
+    }).catch(console.error);
 
     // ── Fire-and-forget side effects (FIX 5: valid NotificationType) ──────────
     Promise.all([
@@ -554,7 +571,7 @@ export async function confirmExtendLock(req: Request, res: Response, next: NextF
       }),
       prisma.user.findUnique({
         where:  { id: employerId },
-        select: { email: true, employerProfile: { select: { companyName: true, contactPersonName: true } } },
+        select: { email: true, employerProfile: { select: { companyName: true, contactPersonName: true, nipt: true } } },
       }),
     ]);
 
@@ -595,7 +612,8 @@ export async function confirmExtendLock(req: Request, res: Response, next: NextF
     });
 
     // ── Payment record ────────────────────────────────────────────────────────
-    await prisma.payment.create({
+    const extendDescription = `Worker reservation extension — ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`;
+    const extendPayment = await prisma.payment.create({
       data: {
         userId:          employerId,
         stripePaymentId: paymentIntentId,
@@ -603,10 +621,25 @@ export async function confirmExtendLock(req: Request, res: Response, next: NextF
         currency:        "usd",
         status:          "SUCCEEDED",
         type:            "WORKER_LOCK",
-        description:     `Worker reservation extension — ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`,
+        description:     extendDescription,
         metadata:        { workerId, lockId: lock.id, additionalDays },
       },
     });
+
+    // ── Invoice: PDF + email, non-fatal — never blocks or fails the response ──
+    generateInvoice({
+      paymentId:       extendPayment.id,
+      userId:          employerId,
+      type:            "WORKER_LOCK",
+      amountCents:     additionalCents,
+      currency:        "USD",
+      description:     extendDescription,
+      stripeReference: paymentIntentId,
+      payer: {
+        name: employer?.employerProfile?.companyName ?? employer?.employerProfile?.contactPersonName ?? "Employer",
+        nipt: employer?.employerProfile?.nipt ?? null,
+      },
+    }).catch(console.error);
 
     Promise.all([
       insertAdminAuditLog({
@@ -677,7 +710,7 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
       }),
       prisma.user.findUnique({
         where:  { id: employerId },
-        select: { email: true },
+        select: { email: true, employerProfile: { select: { companyName: true, contactPersonName: true, nipt: true } } },
       }),
     ]);
 
@@ -731,7 +764,8 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
             },
           });
 
-          await prisma.payment.create({
+          const refundDescription = `Partial refund — ${unusedDays} unused day${unusedDays !== 1 ? "s" : ""}`;
+          const refundPayment = await prisma.payment.create({
             data: {
               userId:          employerId,
               stripePaymentId: refund.id,
@@ -739,10 +773,25 @@ export async function releaseLock(req: Request, res: Response, next: NextFunctio
               currency:        "usd",
               status:          "REFUNDED",
               type:            "WORKER_LOCK",
-              description:     `Partial refund — ${unusedDays} unused day${unusedDays !== 1 ? "s" : ""}`,
+              description:     refundDescription,
               metadata:        { lockId: lock.id, unusedDays, workerId },
             },
           });
+
+          // ── Invoice: credit note (negative amount), PDF + email, non-fatal ──
+          generateInvoice({
+            paymentId:       refundPayment.id,
+            userId:          employerId,
+            type:            "WORKER_LOCK",
+            amountCents:     -refundCents,
+            currency:        "USD",
+            description:     refundDescription,
+            stripeReference: refund.id,
+            payer: {
+              name: employer?.employerProfile?.companyName ?? employer?.employerProfile?.contactPersonName ?? "Employer",
+              nipt: employer?.employerProfile?.nipt ?? null,
+            },
+          }).catch(console.error);
         }
       } catch (refundErr) {
         // Refund failure must NOT prevent the release response — log for admin review

@@ -17,6 +17,7 @@ import { decrypt } from "../lib/encrypt";
 import { calculateMatchScore } from "../services/matching";
 import { calculateApplicationFeeAsync } from "../services/pricing";
 import stripe from "../services/stripe";
+import { generateInvoice } from "../services/invoices";
 
 // ── Shared select for list + detail ──────────────────────────────────────────
 
@@ -86,6 +87,7 @@ const WORKER_SCORE_SELECT = {
   workerProfile: {
     select: {
       firstName:          true,
+      lastName:           true,
       yearsExperience:    true,
       expectedSalary:     true,
       trustScore:         true,
@@ -184,6 +186,41 @@ async function createApplicationRecord(opts: {
     data:  { applicationCount: { increment: 1 } },
   });
 
+  // Payment + invoice — pulled out of the fire-and-forget batch below (rather
+  // than left inside it) specifically so the created row's id is available
+  // to pass to generateInvoice. Still non-blocking relative to the response:
+  // awaited here so a signed invoice is more reliably queued before this
+  // function returns, but generateInvoice itself is fire-and-forget and can
+  // never fail this request (internal try/catch, see services/invoices).
+  if (feeCents > 0 && stripePaymentIntentId) {
+    const feeDescription = `Application fee — ${job.title} at ${job.companyName}`;
+    const feePayment = await prisma.payment.create({
+      data: {
+        userId:          workerId,
+        stripePaymentId: stripePaymentIntentId,
+        amount:          feeCents,
+        currency:        "USD",
+        status:          "SUCCEEDED",
+        type:            "APPLICATION_FEE",
+        description:     feeDescription,
+      },
+    });
+
+    const workerName = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
+      .filter(Boolean).join(" ") || "Worker";
+
+    generateInvoice({
+      paymentId:       feePayment.id,
+      userId:          workerId,
+      type:            "APPLICATION_FEE",
+      amountCents:     feeCents,
+      currency:        "USD",
+      description:     feeDescription,
+      stripeReference: stripePaymentIntentId,
+      payer:           { name: workerName },
+    }).catch(console.error);
+  }
+
   // Fire-and-forget side effects — failures logged, never crash the response
   Promise.all([
     insertAdminAuditLog({
@@ -223,20 +260,6 @@ async function createApplicationRecord(opts: {
         metadata: { applicationId: application.id, jobId: job.id },
       },
     }),
-    // Create Payment record when fee was charged
-    ...(feeCents > 0 && stripePaymentIntentId
-      ? [prisma.payment.create({
-          data: {
-            userId:          workerId,
-            stripePaymentId: stripePaymentIntentId,
-            amount:          feeCents,
-            currency:        "USD",
-            status:          "SUCCEEDED",
-            type:            "APPLICATION_FEE",
-            description:     `Application fee — ${job.title} at ${job.companyName}`,
-          },
-        })]
-      : []),
   ]).catch(console.error);
 
   return application;

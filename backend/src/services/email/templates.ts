@@ -1285,3 +1285,33 @@ export function jobMatchTemplate(vars: {
     text: `${vars.jobTitle} looks like a strong fit for your profile (${vars.matchPct}% match). View it at ${vars.jobsUrl}\n\nUnsubscribe from match recommendations: ${vars.unsubscribeUrl}`,
   };
 }
+
+export function invoiceReceiptTemplate(vars: {
+  firstName:     string;
+  invoiceNumber: string;
+  amountDisplay: string; // already formatted, e.g. "USD 6.00" or "-USD 4.00" for a credit note
+  description:   string;
+  isCredit:      boolean;
+  paymentsUrl:   string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge(vars.isCredit ? "CREDIT NOTE" : "✓ PAYMENT RECEIVED", vars.isCredit ? "#B45309" : "#16A34A")}
+    <br/><br/>
+    ${h1(vars.isCredit ? "Your DirectHire credit note" : "Your DirectHire receipt")}
+    ${p(`Hi ${vars.firstName}, ${vars.isCredit ? "a partial refund has been processed for" : "thank you for your payment for"} the following:`)}
+    ${summaryTable(
+      summaryRow("Invoice number", vars.invoiceNumber) +
+      summaryRow("Description",    vars.description) +
+      summaryRow("Amount",         vars.amountDisplay),
+    )}
+    ${p("The PDF invoice is attached to this email, and always available for download from your payments page.")}
+    ${btn(vars.paymentsUrl, "View Payments")}
+    ${divider()}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+  return {
+    subject: vars.isCredit ? `Your DirectHire credit note — ${vars.invoiceNumber}` : `Your DirectHire receipt — ${vars.invoiceNumber}`,
+    html,
+    text: `${vars.isCredit ? "Credit note" : "Receipt"} ${vars.invoiceNumber}: ${vars.description}, ${vars.amountDisplay}. PDF attached; also downloadable from ${vars.paymentsUrl}.`,
+  };
+}

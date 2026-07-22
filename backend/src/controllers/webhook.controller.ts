@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import stripe, { mapStripeStatus } from "../services/stripe";
 import prisma from "../lib/prisma";
 import { sendEmail } from "../services/email";
+import { generateInvoice } from "../services/invoices";
 
 export async function stripeWebhook(req: Request, res: Response) {
   const sig = req.headers["stripe-signature"];
@@ -81,23 +82,31 @@ export async function stripeWebhook(req: Request, res: Response) {
         const userId = sub.metadata?.userId;
         if (!userId) break;
 
-        // Upsert payment record (ignore duplicate invoice)
-        await prisma.$executeRaw`
+        const paymentDescription = "Monthly subscription renewal";
+
+        // Insert payment record (ignore duplicate invoice — Stripe can and
+        // does redeliver webhooks). RETURNING "id" instead of a bare
+        // $executeRaw: ON CONFLICT DO NOTHING returns zero rows when this
+        // invoice.id was already processed by an earlier delivery, which is
+        // exactly the signal needed to avoid generating a second invoice for
+        // the same renewal.
+        const inserted = await prisma.$queryRaw<Array<{ id: string }>>`
           INSERT INTO "Payment"
             ("id","userId","stripePaymentId","stripeInvoiceId","amount","currency","status","type","description","createdAt")
           VALUES (
             gen_random_uuid()::text, ${userId},
             ${(invoice.payment_intent as string) ?? null}, ${invoice.id},
             ${invoice.amount_paid}, ${invoice.currency.toUpperCase()},
-            'SUCCEEDED', 'SUBSCRIPTION', 'Monthly subscription renewal', NOW()
+            'SUCCEEDED', 'SUBSCRIPTION', ${paymentDescription}, NOW()
           )
           ON CONFLICT ("stripeInvoiceId") DO NOTHING
+          RETURNING "id"
         `;
 
         // Send confirmation email
         const user = await prisma.user.findUnique({
           where:   { id: userId },
-          include: { employerProfile: { select: { contactPersonName: true } } },
+          include: { employerProfile: { select: { companyName: true, contactPersonName: true, nipt: true } } },
         });
         if (user) {
           const name = user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there";
@@ -110,6 +119,23 @@ export async function stripeWebhook(req: Request, res: Response) {
             html: confirmEmail(name, amt),
             text: `Hi ${name}, your DirectHire subscription payment of ${amt} was successful.`,
           }).catch(e => console.error("[stripe-webhook] email failed:", e));
+
+          // ── Invoice: PDF + email, non-fatal — only for a genuinely new row ──
+          if (inserted[0]) {
+            generateInvoice({
+              paymentId:       inserted[0].id,
+              userId,
+              type:            "SUBSCRIPTION",
+              amountCents:     invoice.amount_paid,
+              currency:        invoice.currency.toUpperCase(),
+              description:     paymentDescription,
+              stripeReference: (invoice.payment_intent as string) ?? invoice.id,
+              payer: {
+                name: user.employerProfile?.companyName ?? user.employerProfile?.contactPersonName ?? "Employer",
+                nipt: user.employerProfile?.nipt ?? null,
+              },
+            }).catch(console.error);
+          }
         }
         break;
       }

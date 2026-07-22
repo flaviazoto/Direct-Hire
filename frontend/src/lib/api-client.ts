@@ -359,6 +359,7 @@ export const workerApi = {
   markMessageRead: (id: string) => patch(`/worker/messages/${id}/read`),
   getPayments: (params?: Record<string, string>) =>
     get(`/payments${params ? "?" + new URLSearchParams(params) : ""}`),
+  getInvoiceUrl: (invoiceId: string) => get(`/invoices/${invoiceId}/url`),
 };
 
 export const employerApi = {
@@ -384,6 +385,7 @@ export const employerApi = {
   // release route (same one releaseWorkerLock below uses).
   releaseLock: (workerId: string) => post(`/employer/workers/${workerId}/release-lock`, {}),
   getBilling: () => get("/employer/billing"),
+  getInvoiceUrl: (invoiceId: string) => get(`/invoices/${invoiceId}/url`),
   getJobApplications: (jobId: string, params?: Record<string, string>) =>
     get(`/employer/jobs/${jobId}/applications${params ? "?" + new URLSearchParams(params) : ""}`),
   getApplications: (params?: Record<string, string>) =>

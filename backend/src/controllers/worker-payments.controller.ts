@@ -25,6 +25,7 @@ export async function getWorkerPayments(
           description:     true,
           stripeInvoiceId: true,
           createdAt:       true,
+          invoice:         { select: { id: true, invoiceNumber: true } },
         },
       }),
       prisma.payment.count({ where: { userId } }),

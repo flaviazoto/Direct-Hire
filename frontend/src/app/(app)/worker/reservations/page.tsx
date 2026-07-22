@@ -12,11 +12,11 @@ import LockStatusBanner from "@/components/worker/LockStatusBanner";
 
 interface LockRecord {
   id:               string;
-  lock_status:      "ACTIVE" | "EXPIRED" | "RELEASED" | "OVERRIDDEN";
-  lock_start_date:  string;
-  lock_expiry_date: string;
-  lock_days:        number;
-  employer:         { company_name: string };
+  lock_status:      "ACTIVE" | "EXPIRED" | "RELEASED" | "OVERRIDDEN" | string;
+  lock_start_date:  string | null;
+  lock_expiry_date: string | null;
+  lock_days:        number | null;
+  employer?:        { company_name?: string | null } | null;
 }
 
 interface LockHistoryResponse {
@@ -28,16 +28,22 @@ interface LockHistoryResponse {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("en-GB", {
+function fmtDate(d?: string | null) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", {
     day:   "numeric",
     month: "short",
     year:  "numeric",
   });
 }
 
-function daysRemaining(expiry: string) {
-  return Math.max(0, Math.ceil((new Date(expiry).getTime() - Date.now()) / (24 * 3600 * 1000)));
+function daysRemaining(expiry?: string | null) {
+  if (!expiry) return 0;
+  const date = new Date(expiry);
+  if (isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / (24 * 3600 * 1000)));
 }
 
 // ── Status config ─────────────────────────────────────────────────────────────
@@ -54,6 +60,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string; bor
 function LockCard({ lock }: { lock: LockRecord }) {
   const cfg      = STATUS_CFG[lock.lock_status] ?? STATUS_CFG.EXPIRED;
   const daysLeft = lock.lock_status === "ACTIVE" ? daysRemaining(lock.lock_expiry_date) : null;
+  const lockDays = lock.lock_days ?? 0;
 
   return (
     <div style={{
@@ -115,7 +122,7 @@ function LockCard({ lock }: { lock: LockRecord }) {
         {[
           { label: "Reserved from", value: fmtDate(lock.lock_start_date) },
           { label: "Reserved until", value: fmtDate(lock.lock_expiry_date) },
-          { label: "Duration", value: `${lock.lock_days} day${lock.lock_days !== 1 ? "s" : ""}` },
+          { label: "Duration", value: `${lockDays} day${lockDays !== 1 ? "s" : ""}` },
         ].map(({ label, value }) => (
           <div key={label} style={{
             background:   "rgba(255,255,255,0.03)",
@@ -223,11 +230,16 @@ function ReservationsContent() {
     if (pageNum === 1) { setLoading(true); setError(null); } else setLoadingMore(true);
     try {
       const res = await workerApi.getLockHistory({ page: String(pageNum), limit: String(PAGE_SIZE) });
-      if (res.success && res.data) {
-        const d = res.data as LockHistoryResponse;
-        setLocks(prev => append ? [...prev, ...d.data] : d.data);
-        setTotal(d.total);
-        setHasMore(pageNum * PAGE_SIZE < d.total);
+      if (res.success) {
+        // `total`/`page`/`limit` are siblings of `data` at the top level of the
+        // response (see backend/src/lib/response.ts's paginated()), not nested
+        // under `res.data` — `res.data` itself is the bare LockRecord[] array.
+        const d = res as unknown as LockHistoryResponse;
+        const rows = d.data ?? [];
+        const totalCount = d.total ?? 0;
+        setLocks(prev => append ? [...prev, ...rows] : rows);
+        setTotal(totalCount);
+        setHasMore(pageNum * PAGE_SIZE < totalCount);
       } else if (pageNum === 1) {
         setError(res.error ?? "Could not load reservations.");
       } else {

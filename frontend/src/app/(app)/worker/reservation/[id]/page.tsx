@@ -8,25 +8,34 @@ import { LoadingPage } from '@/components/ui';
 interface LockDetail {
   id: string;
   lockStatus: string;
-  lockStartDate: string;
-  lockExpiryDate: string;
-  lockDays: number;
+  lockStartDate: string | null;
+  lockExpiryDate: string | null;
+  lockDays: number | null;
   releaseReason?: string | null;
   createdAt: string;
-  employer: { company_name: string };
+  employer?: { company_name?: string | null } | null;
   timeline?: { event: string; notes: string | null; occurred_at: string }[];
 }
 
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+function fmtDate(d?: string | null) {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function fmtDateTime(d: string) {
-  return new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function fmtDateTime(d?: string | null) {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function daysRemaining(expiry: string) {
-  return Math.max(0, Math.ceil((new Date(expiry).getTime() - Date.now()) / (24 * 3600 * 1000)));
+function daysRemaining(expiry?: string | null) {
+  if (!expiry) return 0;
+  const date = new Date(expiry);
+  if (isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / (24 * 3600 * 1000)));
 }
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -64,6 +73,7 @@ function ReservationDetailContent() {
   const cfg = STATUS_CFG[lock.lockStatus] ?? STATUS_CFG.EXPIRED;
   const daysLeft = lock.lockStatus === 'ACTIVE' ? daysRemaining(lock.lockExpiryDate) : null;
   const companyName = lock.employer?.company_name ?? 'Employer';
+  const lockDays = lock.lockDays ?? 0;
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 680, margin: '0 auto' }}>
@@ -100,7 +110,7 @@ function ReservationDetailContent() {
             { label: 'Status', value: cfg.label },
             { label: 'Reserved from', value: fmtDate(lock.lockStartDate) },
             { label: 'Reserved until', value: fmtDate(lock.lockExpiryDate) },
-            { label: 'Duration', value: `${lock.lockDays} day${lock.lockDays !== 1 ? 's' : ''}` },
+            { label: 'Duration', value: `${lockDays} day${lockDays !== 1 ? 's' : ''}` },
             { label: 'Days remaining', value: daysLeft !== null ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''}` : '—' },
           ].map(({ label, value }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '12px 16px' }}>

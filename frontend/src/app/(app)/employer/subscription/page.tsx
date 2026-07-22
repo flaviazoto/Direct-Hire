@@ -30,6 +30,7 @@ interface SubStatus {
     description:     string | null;
     createdAt:       string;
     stripeInvoiceId: string | null;
+    invoice:         { id: string; invoiceNumber: string } | null;
   }>;
 }
 
@@ -118,6 +119,7 @@ function EmployerSubscriptionContent() {
   const [actionBusy,   setActionBusy]   = useState<string | null>(null);
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCancel,   setShowCancel]   = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
 
   const fromSuccess  = searchParams?.get("success")  === "1";
   const fromCanceled = searchParams?.get("canceled") === "1";
@@ -159,6 +161,20 @@ function EmployerSubscriptionContent() {
       window.location.href = (r.data as { portalUrl: string }).portalUrl;
     } else {
       showToast(r.error ?? "Failed to open billing portal. Try again.", false);
+    }
+  };
+
+  const handleDownloadInvoice = async (invoiceId: string) => {
+    setDownloadingInvoiceId(invoiceId);
+    try {
+      const r = await employerApi.getInvoiceUrl(invoiceId);
+      if (r.success) {
+        window.open((r.data as { url: string }).url, "_blank", "noopener,noreferrer");
+      } else {
+        showToast(r.error ?? "Could not open invoice.", false);
+      }
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -477,6 +493,18 @@ function EmployerSubscriptionContent() {
                       }}>
                         {pmt.status === "SUCCEEDED" ? "PAID" : pmt.status}
                       </span>
+                      {pmt.invoice && (
+                        <button
+                          onClick={() => handleDownloadInvoice(pmt.invoice!.id)}
+                          disabled={downloadingInvoiceId === pmt.invoice.id}
+                          style={{
+                            fontSize: 11, fontWeight: 600, color: "#818CF8", background: "none", border: "none",
+                            padding: 0, cursor: downloadingInvoiceId === pmt.invoice.id ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {downloadingInvoiceId === pmt.invoice.id ? "Preparing…" : "Download invoice"}
+                        </button>
+                      )}
                       {pmt.stripeInvoiceId && (
                         <a
                           href={`https://pay.stripe.com/invoices/${pmt.stripeInvoiceId}`}
@@ -484,7 +512,7 @@ function EmployerSubscriptionContent() {
                           rel="noopener noreferrer"
                           style={{ fontSize: 11, fontWeight: 600, color: "#818CF8", textDecoration: "none" }}
                         >
-                          Download
+                          Stripe receipt
                         </a>
                       )}
                     </div>

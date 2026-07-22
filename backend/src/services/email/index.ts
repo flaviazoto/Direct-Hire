@@ -25,13 +25,19 @@ if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
 }
 
 // ── Provider interface ────────────────────────────────────────
+export interface EmailAttachment {
+  filename: string;
+  content:  Buffer;
+}
+
 interface SendParams {
-  from?:    string;
-  to:       string;
-  replyTo?: string;
-  subject:  string;
-  html:     string;
-  text?:    string;
+  from?:        string;
+  to:           string;
+  replyTo?:     string;
+  subject:      string;
+  html:         string;
+  text?:        string;
+  attachments?: EmailAttachment[];
 }
 
 interface EmailProvider {
@@ -57,6 +63,7 @@ class SmtpProvider implements EmailProvider {
       subject: params.subject,
       html:    params.html,
       text:    params.text,
+      attachments: params.attachments?.map(a => ({ filename: a.filename, content: a.content })),
     });
     return { messageId: info.messageId };
   }
@@ -73,6 +80,9 @@ class ResendProvider implements EmailProvider {
       reply_to: params.replyTo,
       subject:  params.subject,
       html:     params.html,
+      ...(params.attachments?.length
+        ? { attachments: params.attachments.map(a => ({ filename: a.filename, content: a.content })) }
+        : {}),
     });
     if (error) throw new Error(error.message);
     return { messageId: data?.id };
@@ -83,10 +93,11 @@ class ResendProvider implements EmailProvider {
 class ConsoleProvider implements EmailProvider {
   async send(params: SendParams) {
     console.log("📧 [EMAIL]", {
-      from:    params.from ?? FROM_NO_REPLY,
-      to:      params.to,
-      subject: params.subject,
-      preview: params.text?.slice(0, 120) ?? "(html only)",
+      from:        params.from ?? FROM_NO_REPLY,
+      to:          params.to,
+      subject:     params.subject,
+      preview:     params.text?.slice(0, 120) ?? "(html only)",
+      attachments: params.attachments?.map(a => a.filename),
     });
     return { messageId: `console-${Date.now()}` };
   }
@@ -102,16 +113,17 @@ function getProvider(): EmailProvider {
 
 // ── Main send function ────────────────────────────────────────
 export interface SendEmailOptions {
-  userId?:     string;
-  from?:       string;
-  to:          string;
-  replyTo?:    string;
-  emailType:   EmailType;
-  subject:     string;
-  html:        string;
-  text?:       string;
-  templateId?: string;
-  variables?:  Record<string, unknown>;
+  userId?:      string;
+  from?:        string;
+  to:           string;
+  replyTo?:     string;
+  emailType:    EmailType;
+  subject:      string;
+  html:         string;
+  text?:        string;
+  templateId?:  string;
+  variables?:   Record<string, unknown>;
+  attachments?: EmailAttachment[];
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
@@ -146,12 +158,13 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
   try {
     const provider = getProvider();
     const result   = await provider.send({
-      from:    opts.from,
-      to:      opts.to,
-      replyTo: opts.replyTo,
-      subject: opts.subject,
-      html:    opts.html,
-      text:    opts.text,
+      from:        opts.from,
+      to:          opts.to,
+      replyTo:     opts.replyTo,
+      subject:     opts.subject,
+      html:        opts.html,
+      text:        opts.text,
+      attachments: opts.attachments,
     });
     console.log(`[Email sent] "${opts.subject}" → ${opts.to}`);
     if (logId) {
@@ -649,4 +662,39 @@ export async function sendJobMatchEmail(
   });
   await sendEmail({ userId, to, from: FROM_HELLO, emailType: "JOB_MATCH", subject, html, text,
     templateId: "job_match", variables: { jobTitle, matchPct } });
+}
+
+// ── Invoice receipt (TRANSACTIONAL — never suppressible, see lib/unsubscribe.ts) ──
+
+export async function sendInvoiceReceiptEmail(opts: {
+  userId:        string;
+  to:            string;
+  firstName:     string;
+  invoiceNumber: string;
+  amountDisplay: string;
+  description:   string;
+  isCredit:      boolean;
+  pdfBuffer:     Buffer;
+  paymentsPath:  string; // e.g. "/worker/payments" or "/employer/subscription"
+}) {
+  const appUrl = process.env.FRONTEND_URL ?? "https://directhire.cc";
+  const { invoiceReceiptTemplate } = await import("./templates");
+  const { subject, html, text } = invoiceReceiptTemplate({
+    firstName:     opts.firstName,
+    invoiceNumber: opts.invoiceNumber,
+    amountDisplay: opts.amountDisplay,
+    description:   opts.description,
+    isCredit:      opts.isCredit,
+    paymentsUrl:   `${appUrl}${opts.paymentsPath}`,
+  });
+  await sendEmail({
+    userId:      opts.userId,
+    to:          opts.to,
+    from:        FROM_NO_REPLY,
+    emailType:   "INVOICE_RECEIPT",
+    subject, html, text,
+    templateId:  "invoice_receipt",
+    variables:   { invoiceNumber: opts.invoiceNumber, isCredit: opts.isCredit },
+    attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdfBuffer }],
+  });
 }

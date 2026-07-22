@@ -14,18 +14,21 @@ interface LockStatusData {
   lock?: {
     id:               string;
     lock_status:      string;
-    lock_start_date:  string;
-    lock_expiry_date: string;
-    lock_days:        number;
-    days_remaining:   number;
-    employer:         { company_name: string };
-  };
+    lock_start_date:  string | null;
+    lock_expiry_date: string | null;
+    lock_days:        number | null;
+    days_remaining:   number | null;
+    employer?:        { company_name?: string | null } | null;
+  } | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtLong(d: string | Date) {
-  return new Date(d).toLocaleDateString("en-US", {
+function fmtLong(d?: string | Date | null) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     month:   "long",
     day:     "numeric",
@@ -33,16 +36,22 @@ function fmtLong(d: string | Date) {
   });
 }
 
-function fmtShort(d: string | Date) {
-  return new Date(d).toLocaleDateString("en-GB", {
+function fmtShort(d?: string | Date | null) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", {
     day:   "numeric",
     month: "short",
     year:  "numeric",
   });
 }
 
-function daysRemaining(expiry: string) {
-  return Math.max(0, Math.ceil((new Date(expiry).getTime() - Date.now()) / (24 * 3600 * 1000)));
+function daysRemaining(expiry?: string | null) {
+  if (!expiry) return 0;
+  const date = new Date(expiry);
+  if (isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / (24 * 3600 * 1000)));
 }
 
 // ── Explainer modal ───────────────────────────────────────────────────────────

@@ -5,7 +5,8 @@ import * as appCtrl      from "../controllers/worker-applications.controller";
 import * as lockCtrl     from "../controllers/worker-lock-status.controller";
 import * as notifCtrl    from "../controllers/worker-notifications.controller";
 import { getWorkerPayments } from "../controllers/worker-payments.controller";
-import { requireWorker, requireVerifiedWorker } from "../middleware/auth.middleware";
+import { getInvoiceUrl } from "../controllers/invoices.controller";
+import { requireWorker, requireVerifiedWorker, requireAnyAuth } from "../middleware/auth.middleware";
 
 export const workerRouter = Router();
 
@@ -29,6 +30,9 @@ workerRouter.post("/applications/:id/withdraw",  requireVerifiedWorker, appCtrl.
 workerRouter.get( "/applications/:id/contact",   requireVerifiedWorker, appCtrl.getContactDetails);
 workerRouter.post("/applications/:id/interview-response", requireVerifiedWorker, appCtrl.respondToInterview);
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
+
+// ── Invoices (any authenticated role — ownership-checked in the handler) ──────
+workerRouter.get("/invoices/:invoiceId/url", requireAnyAuth, getInvoiceUrl);
 
 // ── Lock status (requireWorker — available regardless of verification status) ──
 // NOTE: prefixed with /worker to match this router's own /worker/notifications

@@ -15,6 +15,7 @@ interface Payment {
   description: string | null;
   stripeInvoiceId: string | null;
   createdAt: string;
+  invoice: { id: string; invoiceNumber: string } | null;
 }
 
 interface PaymentsData {
@@ -105,7 +106,20 @@ export default function WorkerPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
   const [page, setPage]     = useState(1);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const limit = 10;
+
+  async function handleDownloadInvoice(invoiceId: string) {
+    setDownloadingId(invoiceId);
+    try {
+      const res = await (workerApi.getInvoiceUrl(invoiceId) as Promise<{ success: boolean; data?: { url: string }; error?: string }>);
+      if (res.success && res.data?.url) {
+        window.open(res.data.url, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -251,15 +265,18 @@ export default function WorkerPaymentsPage() {
                     <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
                       {pmt.description || typeLabel(pmt.type)}
                     </div>
-                    {pmt.stripeInvoiceId && (
-                      <a
-                        href={`https://pay.stripe.com/invoices/${pmt.stripeInvoiceId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: "11px", color: "#7c3aed", textDecoration: "none" }}
+                    {pmt.invoice && (
+                      <button
+                        onClick={() => handleDownloadInvoice(pmt.invoice!.id)}
+                        disabled={downloadingId === pmt.invoice.id}
+                        style={{
+                          fontSize: "11px", color: "#7c3aed", background: "none", border: "none",
+                          padding: 0, cursor: downloadingId === pmt.invoice.id ? "not-allowed" : "pointer",
+                          textDecoration: "underline",
+                        }}
                       >
-                        Download invoice ↗
-                      </a>
+                        {downloadingId === pmt.invoice.id ? "Preparing…" : "Download invoice ↓"}
+                      </button>
                     )}
                   </div>
                 </div>

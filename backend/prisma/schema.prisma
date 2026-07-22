@@ -86,6 +86,7 @@ enum EmailType {
   APPLICATION_INTERVIEW_REQUESTED
   APPLICATION_ACCEPTED
   APPLICATION_REJECTED
+  INVOICE_RECEIPT
   // Suppressible (marketing-class) — see lib/unsubscribe.ts. Kept as its own
   // type rather than folded into GENERAL specifically so it CAN be
   // suppressed without also suppressing the many transactional emails that
@@ -289,6 +290,7 @@ model User {
   sentMessages          Message[]         @relation("SentMessages")
   receivedMessages      Message[]         @relation("ReceivedMessages")
   payments              Payment[]
+  invoices              Invoice[]
 
   @@index([email])
   @@index([role])
@@ -985,9 +987,54 @@ model Payment {
   createdAt       DateTime @default(now())
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice         Invoice?
 
   @@index([userId])
   @@index([stripeInvoiceId])
+}
+
+// ─────────────────────────────────────────────
+// INVOICES
+// ─────────────────────────────────────────────
+// One Invoice per Payment row (1:1 — paymentId is unique below), generated
+// non-fatally right after the Payment is written at each of the five money-
+// event sites (Stripe subscription webhook, lock confirm, lock extension
+// confirm, lock release refund, application-fee confirm). A refund's invoice
+// is NOT a separate "credit note" type — it mirrors Payment.amount's own
+// existing sign convention (negative = refund, see worker-lock.controller.ts
+// releaseLock) and the PDF template itself titles the document "CREDIT NOTE"
+// instead of "INVOICE" when amountCents is negative. Payment.type already
+// records what the money was for (WORKER_LOCK/SUBSCRIPTION/APPLICATION_FEE);
+// adding a second, redundant type dimension just to say "this one's a
+// refund" would duplicate information the sign already carries losslessly.
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique   // "DH-2026-00001" — see InvoiceCounter below
+  paymentId     String   @unique
+  userId        String
+  type          String              // mirrors Payment.type verbatim
+  amountCents   Int                 // signed — negative = refund/credit note
+  currency      String
+  description   String
+  filePath      String              // storage path (invoices/<userId>/<invoiceNumber>.pdf) — NOT a URL
+  issuedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Atomic per-year invoice-number counter. Incremented via a single
+// `INSERT ... ON CONFLICT (year) DO UPDATE SET "lastNumber" = "lastNumber" + 1
+// RETURNING "lastNumber"` — Postgres serializes concurrent UPDATEs on the
+// same row via a row lock, so two simultaneous invoice generations in the
+// same year can never receive the same number. A plain "count existing
+// invoices + 1" would race under concurrent inserts; this doesn't.
+model InvoiceCounter {
+  year       Int @id
+  lastNumber Int @default(0)
 }
 
 // ─────────────────────────────────────────────

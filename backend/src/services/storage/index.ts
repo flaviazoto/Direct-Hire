@@ -123,6 +123,38 @@ export async function uploadFile(params: UploadParams): Promise<UploadResult> {
   }
 }
 
+// ── Raw buffer upload — for storage consumers that don't fit the Upload model ─
+// Invoices aren't a worker/employer-uploaded document (no FileType, no MIME
+// validation, no review workflow) — they're a generated file the server
+// itself writes and needs to store + later sign a URL for. Reuses the exact
+// same supabaseUpload/localUpload provider branch as uploadFile() below,
+// just without creating an Upload row for it.
+export async function uploadRawBuffer(
+  filePath: string, buffer: Buffer, mimeType: string, isPrivate: boolean,
+): Promise<string> {
+  if (process.env.STORAGE_PROVIDER === "supabase") {
+    return supabaseUpload(buffer, filePath, mimeType, isPrivate);
+  }
+  return localUpload(buffer, filePath);
+}
+
+// ── Signed URL for a private raw-buffer file (e.g. an Invoice.filePath) ──────
+// Same SIGNED_URL_EXPIRY_SECONDS constant every other signed-URL call site in
+// this codebase already shares (uploads.controller.ts, admin-documents.
+// controller.ts, admin.controller.ts, employer.controller.ts) — this is the
+// sixth, kept in sync rather than hardcoding a new expiry.
+export async function getSignedUrlForPath(filePath: string): Promise<string> {
+  if (process.env.STORAGE_PROVIDER === "supabase") {
+    const client = getStorageClient();
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET!;
+    const { data, error } = await client.storage.from(bucket).createSignedUrl(filePath, SIGNED_URL_EXPIRY_SECONDS);
+    if (error || !data?.signedUrl) throw new Error(`Failed to sign URL for ${filePath}: ${error?.message ?? "unknown error"}`);
+    return data.signedUrl;
+  }
+  const appUrl = process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
+  return `${appUrl}/uploads/${filePath}`;
+}
+
 export async function deleteFile(uploadId: string, userId: string): Promise<void> {
   const record = await prisma.upload.findFirst({ where: { id: uploadId, userId } });
   if (!record) throw new Error("File not found");
