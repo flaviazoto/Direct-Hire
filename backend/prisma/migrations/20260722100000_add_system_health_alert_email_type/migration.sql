@@ -1,0 +1,12 @@
+-- Adds SYSTEM_HEALTH_ALERT to the EmailType enum, used by the new production
+-- health monitor (services/health-monitor/index.ts) to alert OWNER_EMAIL when
+-- a scheduled check fails, and to send a recovery notice once it passes
+-- again. Classified transactional (never suppressible) by omission from
+-- lib/unsubscribe.ts's NON_TRANSACTIONAL_EMAIL_TYPES set — same convention as
+-- INVOICE_RECEIPT.
+--
+-- Kept in its own migration, separate from any other DDL, because Postgres
+-- forbids using a newly-added enum value in the same transaction that added
+-- it — the same constraint documented in migration
+-- 20260719190000_add_job_match_email_type.
+ALTER TYPE "EmailType" ADD VALUE IF NOT EXISTS 'SYSTEM_HEALTH_ALERT';

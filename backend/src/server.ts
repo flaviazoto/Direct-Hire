@@ -91,6 +91,14 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "directhire-api", timestamp: new Date().toISOString() });
 });
 
+// /api/health — namespaced alias of the same liveness check (no auth, no DB
+// dependency), added for services/health-monitor's internal checks and for
+// an external uptime monitor (e.g. UptimeRobot) to ping under the same /api/*
+// convention every other route in this app uses.
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 if (process.env.NODE_ENV !== "production") {
   app.use("/uploads", express.static(path.join(process.cwd(), ".uploads")));
 }

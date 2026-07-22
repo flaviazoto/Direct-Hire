@@ -155,6 +155,19 @@ export async function getSignedUrlForPath(filePath: string): Promise<string> {
   return `${appUrl}/uploads/${filePath}`;
 }
 
+// ── Health check — cheap Supabase connectivity probe ──────────────────────────
+// Used by services/health-monitor. `.list("", { limit: 1 })` is the cheapest
+// real round-trip available on the storage client — it confirms the service
+// key, project URL, and bucket name all resolve, without uploading/reading
+// any actual file content. Throws on failure; callers decide what to do with
+// that (this module never sends alerts itself).
+export async function checkStorageConnectivity(): Promise<void> {
+  const client = getStorageClient();
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET!;
+  const { error } = await client.storage.from(bucket).list("", { limit: 1 });
+  if (error) throw new Error(`Supabase storage list failed: ${error.message}`);
+}
+
 export async function deleteFile(uploadId: string, userId: string): Promise<void> {
   const record = await prisma.upload.findFirst({ where: { id: uploadId, userId } });
   if (!record) throw new Error("File not found");

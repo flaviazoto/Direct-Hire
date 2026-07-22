@@ -9,7 +9,7 @@ import {
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
   TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink,
-  CalendarClock, MessageSquare,
+  CalendarClock, MessageSquare, Activity,
 } from 'lucide-react'
 import { employerApi, adminApi, workerApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
@@ -108,6 +108,10 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
   {
     section: 'Locks',
     links: [{ href: '/admin/locks', label: 'Lock Monitor', Icon: Lock }],
+  },
+  {
+    section: 'System',
+    links: [{ href: '/admin/system', label: 'System Health', Icon: Activity }],
   },
   {
     section: 'Settings',

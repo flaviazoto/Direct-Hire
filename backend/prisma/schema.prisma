@@ -87,6 +87,7 @@ enum EmailType {
   APPLICATION_ACCEPTED
   APPLICATION_REJECTED
   INVOICE_RECEIPT
+  SYSTEM_HEALTH_ALERT
   // Suppressible (marketing-class) — see lib/unsubscribe.ts. Kept as its own
   // type rather than folded into GENERAL specifically so it CAN be
   // suppressed without also suppressing the many transactional emails that

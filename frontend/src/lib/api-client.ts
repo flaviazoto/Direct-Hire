@@ -291,6 +291,9 @@ export const adminApi = {
   getLocksSummary: () => get("/admin/locks/summary"),
   getLockDetail: (lockId: string) => get(`/admin/locks/${lockId}`),
   overrideLock: (lockId: string, note: string) => post(`/admin/locks/${lockId}/override`, { note }),
+  // ── System health (scheduled-job monitor) ────────────────────────────────────
+  getSystemHealth: (params?: Record<string, string>) =>
+    get(`/admin/system-health${params ? "?" + new URLSearchParams(params) : ""}`),
   // ── Notifications ────────────────────────────────────────────────────────────
   getNotifications: (params?: Record<string, string>) =>
     get(`/admin/notifications${params ? "?" + new URLSearchParams(params) : ""}`),

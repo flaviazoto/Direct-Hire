@@ -14,14 +14,17 @@
 //   lock-expiry-processor '15 * * * *'  (every hour at :15)
 //   match-score-recalc    '15 2 * * *'  (02:15 UTC daily)
 //   onboarding-reminders  '0 9 * * *'   (09:00 UTC daily)
+//   health-monitor        '*/15 * * * *' (every 15 min, at :00/:15/:30/:45 UTC)
 
 import { runLockDailyBilling, runLockExpiryProcessor } from "./lock-jobs";
 import { runMatchScoreRecalc } from "./scoring-jobs";
 import { runOnboardingReminders } from "./queue";
+import { runHealthCheck } from "./health-monitor";
 
 const LOCK_DAILY_BILLING_CRON    = "5 0 * * *";
 const LOCK_EXPIRY_PROCESSOR_CRON = "15 * * * *";
 const MATCH_SCORE_RECALC_CRON    = "15 2 * * *";
+const HEALTH_MONITOR_CRON        = "*/15 * * * *";
 // Pre-existing handler (queue/index.ts) — was reachable only via the manual
 // /cron HTTP endpoint (cron.routes.ts), never actually scheduled by this
 // file. Registering it here is the "needs one line" fix from the gap
@@ -50,6 +53,14 @@ function msUntilNextHourlyMinute(minute: number): number {
   const next = new Date(now);
   next.setUTCMinutes(minute, 0, 0);
   if (next <= now) next.setUTCHours(next.getUTCHours() + 1);
+  return next.getTime() - now.getTime();
+}
+
+function msUntilNextQuarterHour(): number {
+  const now = new Date();
+  const next = new Date(now);
+  const nextQuarterMinute = Math.ceil((now.getUTCMinutes() + 1) / 15) * 15; // strictly after now; 60 rolls into the next hour via Date normalization
+  next.setUTCMinutes(nextQuarterMinute, 0, 0);
   return next.getTime() - now.getTime();
 }
 
@@ -98,6 +109,25 @@ function scheduleRecurringHourly(
   }, delay);
 }
 
+function scheduleRecurringQuarterHourly(
+  name: string,
+  fn: () => Promise<void>,
+): void {
+  const delay = msUntilNextQuarterHour();
+  console.log(
+    `[Scheduler] ${name} scheduled in ${Math.round(delay / 60000)} min (every 15 min, at :00/:15/:30/:45 UTC)`,
+  );
+  setTimeout(async function tick() {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`[Scheduler] ${name} error:`, err);
+    }
+    const nextDelay = msUntilNextQuarterHour();
+    setTimeout(tick, nextDelay);
+  }, delay);
+}
+
 // ── BullMQ scheduler (production) ────────────────────────────────────────────
 
 async function registerBullMQJobs(): Promise<void> {
@@ -131,8 +161,14 @@ async function registerBullMQJobs(): Promise<void> {
     { name: "onboarding-reminders", data: {} },
   );
 
+  await queue.upsertJobScheduler(
+    "health-monitor",
+    { pattern: HEALTH_MONITOR_CRON, tz: "UTC" },
+    { name: "health-monitor", data: {} },
+  );
+
   await queue.close();
-  console.log("[Scheduler] BullMQ repeat jobs registered: lock-daily-billing, lock-expiry-processor, match-score-recalc, onboarding-reminders");
+  console.log("[Scheduler] BullMQ repeat jobs registered: lock-daily-billing, lock-expiry-processor, match-score-recalc, onboarding-reminders, health-monitor");
 }
 
 // ── BullMQ Worker process (processes scheduled jobs from queue) ───────────────
@@ -156,6 +192,9 @@ export async function startBullMQWorker(): Promise<void> {
           break;
         case "onboarding-reminders":
           await runOnboardingReminders();
+          break;
+        case "health-monitor":
+          await runHealthCheck();
           break;
         default:
           console.warn(`[BullMQ Worker] Unknown job: ${job.name}`);
@@ -192,4 +231,5 @@ export async function startScheduler(): Promise<void> {
   scheduleRecurringHourly("lock-expiry-processor", 15,   runLockExpiryProcessor);
   scheduleRecurringDaily("match-score-recalc",    2, 15, runMatchScoreRecalc);
   scheduleRecurringDaily("onboarding-reminders",  9, 0,  runOnboardingReminders);
+  scheduleRecurringQuarterHourly("health-monitor", runHealthCheck);
 }

@@ -1315,3 +1315,51 @@ export function invoiceReceiptTemplate(vars: {
     text: `${vars.isCredit ? "Credit note" : "Receipt"} ${vars.invoiceNumber}: ${vars.description}, ${vars.amountDisplay}. PDF attached; also downloadable from ${vars.paymentsUrl}.`,
   };
 }
+
+// ── Production health monitor — alert / recovery (services/health-monitor) ───
+
+export function healthCheckAlertTemplate(vars: {
+  checkName: string;
+  error:     string;
+  timestamp: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("ALERT", "#DC2626")}
+    <br/><br/>
+    ${h1(`${vars.checkName} is failing`)}
+    ${p("The production health monitor detected a failing check.")}
+    ${summaryTable(
+      summaryRow("Check",     vars.checkName) +
+      summaryRow("Status",    "Failing") +
+      summaryRow("Error",     vars.error) +
+      summaryRow("Time (UTC)", vars.timestamp),
+    )}
+    ${p("You won't be re-alerted for this same check for 60 minutes. A separate email will be sent once it recovers.")}
+  `);
+  return {
+    subject: `[DirectHire ALERT] ${vars.checkName} failing`,
+    html,
+    text: `Check: ${vars.checkName}\nStatus: Failing\nError: ${vars.error}\nTime (UTC): ${vars.timestamp}`,
+  };
+}
+
+export function healthCheckRecoveryTemplate(vars: {
+  checkName: string;
+  timestamp: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("RECOVERED", "#16A34A")}
+    <br/><br/>
+    ${h1(`${vars.checkName} is passing again`)}
+    ${summaryTable(
+      summaryRow("Check",      vars.checkName) +
+      summaryRow("Status",     "Recovered") +
+      summaryRow("Time (UTC)", vars.timestamp),
+    )}
+  `);
+  return {
+    subject: `[DirectHire RECOVERED] ${vars.checkName} passing again`,
+    html,
+    text: `Check: ${vars.checkName}\nStatus: Recovered\nTime (UTC): ${vars.timestamp}`,
+  };
+}

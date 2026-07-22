@@ -698,3 +698,20 @@ export async function sendInvoiceReceiptEmail(opts: {
     attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdfBuffer }],
   });
 }
+
+// ── Health check alert / recovery (TRANSACTIONAL — never suppressible, see lib/unsubscribe.ts) ──
+// No userId — these go to OWNER_EMAIL (site operator), same as ADMIN_NEW_SUBMISSION.
+
+export async function sendHealthCheckAlertEmail(checkName: string, error: string, timestamp: string) {
+  const { healthCheckAlertTemplate } = await import("./templates");
+  const { subject, html, text } = healthCheckAlertTemplate({ checkName, error, timestamp });
+  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "SYSTEM_HEALTH_ALERT", subject, html, text,
+    templateId: "health_check_alert", variables: { check: checkName, kind: "alert" } });
+}
+
+export async function sendHealthCheckRecoveryEmail(checkName: string, timestamp: string) {
+  const { healthCheckRecoveryTemplate } = await import("./templates");
+  const { subject, html, text } = healthCheckRecoveryTemplate({ checkName, timestamp });
+  await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "SYSTEM_HEALTH_ALERT", subject, html, text,
+    templateId: "health_check_recovery", variables: { check: checkName, kind: "recovery" } });
+}

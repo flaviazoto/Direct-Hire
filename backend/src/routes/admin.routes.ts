@@ -8,6 +8,7 @@ import * as pricingCtrl  from "../controllers/admin-pricing.controller";
 import * as configCtrl   from "../controllers/admin-config.controller";
 import * as revenueCtrl  from "../controllers/admin-revenue.controller";
 import * as externalJobsCtrl from "../controllers/admin-external-jobs.controller";
+import * as systemHealthCtrl from "../controllers/admin-system-health.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is — same cross-role-import pattern already used in
 // employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
@@ -85,6 +86,9 @@ adminRouter.get("/revenue/payments", requireAdmin, revenueCtrl.getPaymentLog);
 // ── Email logs ────────────────────────────────────────────────────────────────
 adminRouter.get("/email-logs",  requireAdmin, ctrl.getEmailLogs);
 adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
+
+// ── System health (scheduled-job monitor) ────────────────────────────────────
+adminRouter.get("/system-health", requireAdmin, systemHealthCtrl.getSystemHealth);
 
 // ── Notifications ──────────────────────────────────────────────────────────────
 adminRouter.get( "/notifications",              requireAdmin, notifCtrl.getNotifications);

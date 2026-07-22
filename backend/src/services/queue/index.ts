@@ -288,7 +288,34 @@ export async function enqueue<N extends JobName>(
 }
 
 // ── Scheduled jobs (called from cron endpoint) ────────────────
+
+const ONBOARDING_REMINDERS_JOB_NAME = "onboarding-reminders";
+
+async function writeOnboardingRemindersJobLog(opts: {
+  status:           "success" | "partial" | "failed";
+  recordsProcessed: number;
+  recordsFailed:    number;
+  errorMessage?:    string;
+  startedAt:        Date;
+}) {
+  const prisma = (await import("../../lib/prisma")).default;
+  const completedAt = new Date();
+  await prisma.jobRunLog.create({
+    data: {
+      jobName:          ONBOARDING_REMINDERS_JOB_NAME,
+      status:           opts.status,
+      recordsProcessed: opts.recordsProcessed,
+      recordsFailed:    opts.recordsFailed,
+      errorMessage:     opts.errorMessage ?? null,
+      startedAt:        opts.startedAt,
+      completedAt,
+      durationMs:       completedAt.getTime() - opts.startedAt.getTime(),
+    },
+  });
+}
+
 export async function runOnboardingReminders(): Promise<void> {
+  const startedAt = new Date();
   const prisma = (await import("../../lib/prisma")).default;
   const cutoff = new Date(Date.now() - 24 * 3600 * 1000); // 24h ago
 
@@ -303,6 +330,7 @@ export async function runOnboardingReminders(): Promise<void> {
 
   if (stale.length === 0) {
     console.log(`[Cron] Sent 0 onboarding reminders.`);
+    await writeOnboardingRemindersJobLog({ status: "success", recordsProcessed: 0, recordsFailed: 0, startedAt });
     return;
   }
 
@@ -339,6 +367,7 @@ export async function runOnboardingReminders(): Promise<void> {
     sent++;
   }
   console.log(`[Cron] Sent ${sent} onboarding reminder(s), skipped ${stale.length - sent} (reminded within the last 7 days).`);
+  await writeOnboardingRemindersJobLog({ status: "success", recordsProcessed: sent, recordsFailed: 0, startedAt });
 }
 
 // ── Verification code cleanup ─────────────────────────────────
