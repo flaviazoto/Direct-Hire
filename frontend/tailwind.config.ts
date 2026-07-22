@@ -20,12 +20,28 @@ const config: Config = {
         '2xl': '1536px',
       },
       fontFamily: {
-        sans:    ["var(--font-body)", "DM Sans", "system-ui", "sans-serif"],
-        display: ["var(--font-display)", "Bricolage Grotesque", "system-ui", "sans-serif"],
-        body:    ["var(--font-body)", "DM Sans", "system-ui", "sans-serif"],
+        sans:    ["var(--font-body)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Manrope", "system-ui", "sans-serif"],
+        body:    ["var(--font-body)", "Inter", "system-ui", "sans-serif"],
+        mono:    ["var(--font-mono)", "IBM Plex Mono", "monospace"],
       },
       colors: {
-        // ── Existing colours kept for backwards compat ──
+        // ── DirectHire design system (current) ──────────────────────────────
+        // Three roles, three colors: worker=teal, employer=violet, admin=gold
+        // (+dark sidebar). Status/verification badges use the semantic colors
+        // below, never these role colors.
+        worker:   { 50:'#F0FDFA',100:'#CCFBF1',200:'#99F6E4',300:'#5EEAD4',400:'#2DD4BF',500:'#14B8A6',600:'#0D9488',700:'#0F766E',800:'#115E59',900:'#134E4A' },
+        employer: { 50:'#F5F3FF',100:'#EDE9FE',200:'#DDD6FE',300:'#C4B5FD',400:'#A78BFA',500:'#8B5CF6',600:'#7C3AED',700:'#6D28D9',800:'#5B21B6',900:'#4C1D95' },
+        admin:    { 50:'#FEFBEA',100:'#FDF3C7',200:'#FBE58A',300:'#F5CE4E',400:'#E0B020',500:'#C89116',600:'#A9780D',700:'#8A5F0A',800:'#6E4A08',900:'#4A3106' },
+        ink:      { 50:'#F8FAFC',100:'#F1F5F9',300:'#CBD5E1',500:'#64748B',800:'#1E293B',950:'#0B1120' },
+        success: '#16A34A',
+        danger:  '#DC2626',
+        warning: '#EA580C',
+        info:    '#2563EB',
+        // ── Legacy palette — kept only until the full site sweep replaces
+        // every remaining inline-hex/old-token page (see design_system memory).
+        // Do not use these in new or converted code; delete this whole block
+        // once no page references navy/brand/surface/old-teal/old-gold anymore.
         navy: {
           DEFAULT: "#08142A",
           mid:     "#0D1F3C",

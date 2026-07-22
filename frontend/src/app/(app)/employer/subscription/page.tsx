@@ -6,6 +6,12 @@
 // and the target of the SUBSCRIPTION_REQUIRED redirect in api-client.ts — so
 // this page is the only place any of those flows can land, regardless of
 // where the employer started.
+//
+// Employer role = violet, per the design system — subscriptions/Worker Lock
+// are explicitly called out as the "premium feature" surface that color is
+// for, so the current-plan hero below is a deliberate solid violet block
+// (not a gradient — the system disallows decorative gradients) rather than
+// the flat white-card resting state used everywhere else on this page.
 
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
@@ -42,7 +48,6 @@ const PLAN = {
   name:     "Employer Monthly",
   price:    "5,000 ALL",
   period:   "/ month",
-  accent:   "#818CF8",
   features: [
     "Unlimited access to the verified worker directory",
     "Full contact details once you reserve a worker",
@@ -79,26 +84,26 @@ function CancelModal({
   onClose:   () => void;
 }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
-      <div style={{ background: "#0F1C35", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 20, padding: 36, maxWidth: 460, width: "100%" }}>
-        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(248,113,113,0.12)", border: "2px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(11,17,32,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
+      <div style={{ background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: 16, padding: 36, maxWidth: 460, width: "100%", boxShadow: "0 24px 64px rgba(11,17,32,0.2)" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(220,38,38,0.1)", border: "2px solid rgba(220,38,38,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <h3 style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#F0F4FF", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
-        <p style={{ fontSize: 13, color: "#4A5980", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
-          Your subscription will remain active until <strong style={{ color: "#8B9CC8" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
+        <h3 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#0B1120", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
+        <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
+          Your subscription will remain active until <strong style={{ color: "#1E293B" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
         </p>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={onClose}
-            style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#8B9CC8", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+            style={{ flex: 1, padding: "12px", background: "#FFFFFF", border: "1px solid #CBD5E1", borderRadius: 10, color: "#1E293B", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
           >
             Keep subscription
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            style={{ flex: 1, padding: "12px", background: loading ? "rgba(248,113,113,0.1)" : "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 10, color: "#F87171", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}
+            style={{ flex: 1, padding: "12px", background: "#DC2626", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Canceling…" : "Yes, cancel"}
           </button>
@@ -191,7 +196,7 @@ function EmployerSubscriptionContent() {
     }
   };
 
-  if (loading) return <LoadingPage color="blue" />;
+  if (loading) return <LoadingPage color="violet" />;
   if (error) {
     return (
       <div style={{ maxWidth: 560, margin: "80px auto", padding: "0 20px" }}>
@@ -211,29 +216,31 @@ function EmployerSubscriptionContent() {
   const currentPlan = sub?.plan?.toUpperCase() ?? null;
   const isCurrentPlan = currentPlan === PLAN.key;
 
+  // Semantic status colors — never the role (violet) color.
   const statusLabel = isActive ? "ACTIVE" : isPastDue ? "PAST DUE" : isTrial ? "TRIAL" : isCanceled ? "CANCELED" : "Inactive";
-  const statusColor = isActive ? "#34D399" : isPastDue ? "#FBBF24" : isTrial ? "#FBBF24" : isCanceled ? "#F87171" : "rgba(255,255,255,0.4)";
-  const statusBg    = isActive ? "rgba(52,211,153,0.18)" : isPastDue ? "rgba(251,191,36,0.18)" : isTrial ? "rgba(251,191,36,0.18)" : isCanceled ? "rgba(248,113,113,0.18)" : "rgba(255,255,255,0.08)";
+  const statusColor = isActive ? "#16A34A" : isPastDue ? "#EA580C" : isTrial ? "#EA580C" : isCanceled ? "#DC2626" : "rgba(255,255,255,0.5)";
+  const statusBg    = isActive ? "rgba(22,163,74,0.18)" : isPastDue ? "rgba(234,88,12,0.18)" : isTrial ? "rgba(234,88,12,0.18)" : isCanceled ? "rgba(220,38,38,0.18)" : "rgba(255,255,255,0.12)";
 
   const BTN: React.CSSProperties = {
-    padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-    cursor: actionBusy ? "not-allowed" : "pointer", transition: "opacity 0.15s",
+    padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 500,
+    cursor: actionBusy ? "not-allowed" : "pointer", transition: "background 0.15s",
     opacity: actionBusy ? 0.6 : 1, border: "none", display: "inline-flex",
     alignItems: "center", gap: 6,
   };
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1000, margin: "0 auto" }}>
+    <div style={{ padding: "32px 40px", maxWidth: 1000, margin: "0 auto", background: "#F8FAFC", minHeight: "100vh" }}>
 
       {/* Toast */}
       {toast && (
         <div style={{
           position: "fixed", top: 24, right: 24, zIndex: 9999,
-          padding: "14px 20px", borderRadius: 12, fontSize: 13, fontWeight: 600,
-          background: toast.ok ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
-          color:      toast.ok ? "#34D399" : "#F87171",
-          border:     `1px solid ${toast.ok ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.3)", maxWidth: 380,
+          padding: "14px 20px", borderRadius: 10, fontSize: 13, fontWeight: 500,
+          background: "#FFFFFF",
+          color:      toast.ok ? "#16A34A" : "#DC2626",
+          borderLeft: `3px solid ${toast.ok ? "#16A34A" : "#DC2626"}`,
+          border:     "1px solid #F1F5F9",
+          boxShadow: "0 12px 32px rgba(11,17,32,0.16)", maxWidth: 380,
         }}>
           {toast.msg}
         </div>
@@ -251,35 +258,35 @@ function EmployerSubscriptionContent() {
 
       {/* URL param banners */}
       {fromSuccess && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 12, background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", color: "#34D399", fontSize: 14, fontWeight: 600 }}>
-          ✓ Subscription activated! Your plan is now active.
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", color: "#16A34A", fontSize: 14, fontWeight: 600 }}>
+          Subscription activated — your plan is now active.
         </div>
       )}
       {fromCanceled && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 12, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)", color: "#FBBF24", fontSize: 14, fontWeight: 600 }}>
-          ⚠ Checkout was canceled. No charges were made.
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(234,88,12,0.06)", border: "1px solid rgba(234,88,12,0.2)", color: "#EA580C", fontSize: 14, fontWeight: 600 }}>
+          Checkout was canceled. No charges were made.
         </div>
       )}
 
       {/* Canceled warning banner */}
       {isCanceled && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 12, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#DC2626", fontSize: 13, fontWeight: 600 }}>
           Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}. You can resubscribe below to continue using DirectHire.
         </div>
       )}
 
       {/* Past-due warning banner */}
       {isPastDue && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(234,88,12,0.05)", border: "1px solid rgba(234,88,12,0.2)", color: "#EA580C", fontSize: 13, fontWeight: 600 }}>
           Your last payment failed. Update your payment method via &quot;Manage billing&quot; below to keep your subscription active.
         </div>
       )}
 
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: "#F0F4FF", margin: "0 0 4px", letterSpacing: "-0.03em" }}>
-          Subscription &amp; Billing
+        <h1 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#0B1120", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+          Subscription &amp; billing
         </h1>
-        <p style={{ fontSize: 14, color: "#4A5980", margin: 0 }}>Manage your plan and payment details</p>
+        <p style={{ fontSize: 14, color: "#64748B", margin: 0 }}>Manage your plan and payment details</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -287,114 +294,111 @@ function EmployerSubscriptionContent() {
         {/* ── Left column: current status hero ─────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
+          {/* Deliberate solid-violet premium panel — see file header note */}
           <div style={{
-            borderRadius: 20, padding: 28, position: "relative", overflow: "hidden",
-            background: "linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%)",
-            boxShadow: "0 8px 32px rgba(99,102,241,0.25)",
+            borderRadius: 16, padding: 28,
+            background: "#6D28D9",
           }}>
-            <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(129,140,248,0.15)", filter: "blur(40px)", pointerEvents: "none" }} />
-            <div style={{ position: "relative" }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
-                Current Plan
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
+              Current plan
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#ffffff" }}>
+                {isCurrentPlan ? PLAN.name : "No plan"}
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 28, color: "#ffffff" }}>
-                  {isCurrentPlan ? PLAN.name : "No Plan"}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: statusBg, color: statusColor }}>
-                  {statusLabel}
-                </span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 6, background: statusBg, color: statusColor }}>
+                {statusLabel}
+              </span>
+            </div>
+
+            {isCurrentPlan && (
+              <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 30, color: "#ffffff", marginBottom: 4 }}>
+                {PLAN.price}
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>{PLAN.period}</span>
               </div>
+            )}
 
-              {isCurrentPlan && (
-                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 34, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
-                  {PLAN.price}
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.5)" }}>{PLAN.period}</span>
-                </div>
+            {(isActive || isPastDue) && sub?.currentPeriodEnd && (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 14 }}>
+                {isPastDue ? "Payment retrying — renews" : "Renews"} {fmtDate(sub.currentPeriodEnd)}
+              </div>
+            )}
+
+            {isTrial && sub?.trialEndsAt && (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 14 }}>
+                Trial ends {fmtDate(sub.trialEndsAt)}
+              </div>
+            )}
+
+            {/* ── Action buttons ── */}
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginTop: 6 }}>
+
+              {isInactive && (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={!!actionBusy}
+                  style={{ ...BTN, background: "#ffffff", color: "#6D28D9", justifyContent: "center" as const, fontWeight: 600 }}
+                >
+                  {actionBusy === "checkout"
+                    ? <><Spinner />Redirecting to Stripe…</>
+                    : `Subscribe — ${PLAN.price} ${PLAN.period.trim()} →`}
+                </button>
               )}
 
-              {(isActive || isPastDue) && sub?.currentPeriodEnd && (
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 14 }}>
-                  {isPastDue ? "Payment retrying — renews" : "Renews"} {fmtDate(sub.currentPeriodEnd)}
-                </div>
-              )}
-
-              {isTrial && sub?.trialEndsAt && (
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 14 }}>
-                  Trial ends {fmtDate(sub.trialEndsAt)}
-                </div>
-              )}
-
-              {/* ── Action buttons ── */}
-              <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginTop: 6 }}>
-
-                {isInactive && (
+              {(isActive || isPastDue) && (
+                <>
                   <button
-                    onClick={handleSubscribe}
+                    onClick={handlePortal}
                     disabled={!!actionBusy}
-                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
+                    style={{ ...BTN, background: "rgba(255,255,255,0.15)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.25)", justifyContent: "center" as const }}
                   >
-                    {actionBusy === "checkout"
-                      ? <><Spinner />Redirecting to Stripe…</>
-                      : `Subscribe — ${PLAN.price} ${PLAN.period.trim()} →`}
+                    {actionBusy === "portal"
+                      ? <><Spinner />Opening portal…</>
+                      : "Manage billing →"}
                   </button>
-                )}
-
-                {(isActive || isPastDue) && (
-                  <>
+                  {isActive && (
                     <button
-                      onClick={handlePortal}
+                      onClick={() => setShowCancel(true)}
                       disabled={!!actionBusy}
-                      style={{ ...BTN, background: "rgba(255,255,255,0.12)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.2)", justifyContent: "center" as const }}
+                      style={{ ...BTN, background: "transparent", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.25)", fontSize: 12, justifyContent: "center" as const }}
                     >
-                      {actionBusy === "portal"
-                        ? <><Spinner />Opening portal…</>
-                        : "Manage billing →"}
+                      Cancel subscription
                     </button>
-                    {isActive && (
-                      <button
-                        onClick={() => setShowCancel(true)}
-                        disabled={!!actionBusy}
-                        style={{ ...BTN, background: "transparent", color: "rgba(248,113,113,0.8)", border: "1px solid rgba(248,113,113,0.2)", fontSize: 12, justifyContent: "center" as const }}
-                      >
-                        Cancel subscription
-                      </button>
-                    )}
-                  </>
-                )}
+                  )}
+                </>
+              )}
 
-                {isCanceled && (
-                  <button
-                    onClick={handleSubscribe}
-                    disabled={!!actionBusy}
-                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
-                  >
-                    {actionBusy === "checkout"
-                      ? <><Spinner />Redirecting to Stripe…</>
-                      : "Resubscribe →"}
-                  </button>
-                )}
+              {isCanceled && (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={!!actionBusy}
+                  style={{ ...BTN, background: "#ffffff", color: "#6D28D9", justifyContent: "center" as const, fontWeight: 600 }}
+                >
+                  {actionBusy === "checkout"
+                    ? <><Spinner />Redirecting to Stripe…</>
+                    : "Resubscribe →"}
+                </button>
+              )}
 
-                {isTrial && (
-                  <button
-                    onClick={handleSubscribe}
-                    disabled={!!actionBusy}
-                    style={{ ...BTN, background: "rgba(255,255,255,0.95)", color: "#312e81", justifyContent: "center" as const }}
-                  >
-                    {actionBusy === "checkout"
-                      ? <><Spinner />Redirecting to Stripe…</>
-                      : "Subscribe to continue →"}
-                  </button>
-                )}
+              {isTrial && (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={!!actionBusy}
+                  style={{ ...BTN, background: "#ffffff", color: "#6D28D9", justifyContent: "center" as const, fontWeight: 600 }}
+                >
+                  {actionBusy === "checkout"
+                    ? <><Spinner />Redirecting to Stripe…</>
+                    : "Subscribe to continue →"}
+                </button>
+              )}
 
-              </div>
             </div>
           </div>
 
           {/* Contact card */}
-          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "20px 24px", textAlign: "center" as const }}>
-            <p style={{ fontSize: 13, color: "#4A5980", marginBottom: 6 }}>Questions about billing?</p>
-            <a href="mailto:support@directhire.cc" style={{ fontSize: 13, fontWeight: 600, color: "#818CF8", textDecoration: "none" }}>
+          <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: "20px 24px", textAlign: "center" as const }}>
+            <p style={{ fontSize: 13, color: "#64748B", marginBottom: 6 }}>Questions about billing?</p>
+            <a href="mailto:support@directhire.cc" style={{ fontSize: 13, fontWeight: 600, color: "#7C3AED", textDecoration: "none" }}>
               support@directhire.cc
             </a>
           </div>
@@ -404,41 +408,41 @@ function EmployerSubscriptionContent() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* The one real plan */}
-          <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#4A5980", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
+          <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#64748B", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
             Plan
           </div>
           <div style={{
-            background: "#0F1C35",
-            border: isCurrentPlan ? "1px solid rgba(129,140,248,0.5)" : "1px solid #1E3258",
-            borderRadius: 18, padding: 24,
-            boxShadow: isCurrentPlan ? "0 0 24px rgba(99,102,241,0.12)" : "none",
+            background: "#FFFFFF",
+            border: isCurrentPlan ? "1px solid #C4B5FD" : "1px solid #F1F5F9",
+            borderRadius: 10, padding: 24,
+            boxShadow: "0 1px 2px rgba(11,17,32,0.04)",
             position: "relative",
           }}>
             {isCurrentPlan && (
               <div style={{
                 position: "absolute", top: -11, left: 24,
-                background: "linear-gradient(135deg,#6366F1,#4F46E5)",
-                color: "#F0F4FF", fontSize: 10, fontWeight: 800,
-                padding: "4px 12px", borderRadius: 999, letterSpacing: "0.06em",
+                background: "#7C3AED",
+                color: "#ffffff", fontSize: 10, fontWeight: 700,
+                padding: "4px 12px", borderRadius: 6, letterSpacing: "0.06em",
               }}>
                 CURRENT PLAN
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 18, color: "#F0F4FF" }}>
+              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 18, color: "#0B1120" }}>
                 {PLAN.name}
               </div>
               <div style={{ textAlign: "right" as const }}>
-                <div style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 800, fontSize: 24, color: PLAN.accent }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 20, color: "#7C3AED" }}>
                   {PLAN.price}
                 </div>
-                <div style={{ fontSize: 12, color: "#4A5980" }}>{PLAN.period}</div>
+                <div style={{ fontSize: 12, color: "#64748B" }}>{PLAN.period}</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
               {PLAN.features.map(f => (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#8B9CC8" }}>
-                  <span style={{ color: "#34D399", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#1E293B" }}>
+                  <span style={{ color: "#16A34A", fontWeight: 700, flexShrink: 0 }}>✓</span>
                   {f}
                 </div>
               ))}
@@ -446,16 +450,16 @@ function EmployerSubscriptionContent() {
           </div>
 
           {/* Invoice history */}
-          <div style={{ background: "#0F1C35", border: "1px solid #1E3258", borderRadius: 20, overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #1E3258", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)", fontWeight: 700, fontSize: 14, color: "#F0F4FF" }}>
-                Billing History
+          <div style={{ background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 2px rgba(11,17,32,0.04)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 600, fontSize: 14, color: "#0B1120" }}>
+                Billing history
               </span>
               {sub?.hasCustomer && (
                 <button
                   onClick={handlePortal}
                   disabled={!!actionBusy}
-                  style={{ background: "none", border: "none", color: "#818CF8", fontSize: 12, fontWeight: 600, cursor: actionBusy ? "not-allowed" : "pointer" }}
+                  style={{ background: "none", border: "none", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: actionBusy ? "not-allowed" : "pointer" }}
                 >
                   All invoices →
                 </button>
@@ -463,7 +467,7 @@ function EmployerSubscriptionContent() {
             </div>
 
             {(!sub?.payments || sub.payments.length === 0) ? (
-              <div style={{ padding: "24px 20px", textAlign: "center" as const, color: "#4A5980", fontSize: 13 }}>
+              <div style={{ padding: "24px 20px", textAlign: "center" as const, color: "#64748B", fontSize: 13 }}>
                 No invoices yet. They will appear here after your first payment.
               </div>
             ) : (
@@ -471,25 +475,25 @@ function EmployerSubscriptionContent() {
                 <div key={pmt.id} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "14px 20px",
-                  borderBottom: i < sub.payments.length - 1 ? "1px solid #1E3258" : "none",
+                  borderBottom: i < sub.payments.length - 1 ? "1px solid #F1F5F9" : "none",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "#F0F4FF", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#0B1120", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pmt.description ?? pmt.type}
                     </div>
-                    <div style={{ fontSize: 12, color: "#4A5980", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
                       {fmtDate(pmt.createdAt)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" as const, flexShrink: 0, marginLeft: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#F0F4FF", marginBottom: 4 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 14, color: "#0B1120", marginBottom: 4 }}>
                       {fmtAmount(pmt.amount, pmt.currency)}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" as const }}>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
-                        background: pmt.status === "SUCCEEDED" ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.15)",
-                        color:      pmt.status === "SUCCEEDED" ? "#34D399" : "#FBBF24",
+                        fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+                        background: pmt.status === "SUCCEEDED" ? "rgba(22,163,74,0.1)" : "rgba(234,88,12,0.1)",
+                        color:      pmt.status === "SUCCEEDED" ? "#16A34A" : "#EA580C",
                       }}>
                         {pmt.status === "SUCCEEDED" ? "PAID" : pmt.status}
                       </span>
@@ -498,7 +502,7 @@ function EmployerSubscriptionContent() {
                           onClick={() => handleDownloadInvoice(pmt.invoice!.id)}
                           disabled={downloadingInvoiceId === pmt.invoice.id}
                           style={{
-                            fontSize: 11, fontWeight: 600, color: "#818CF8", background: "none", border: "none",
+                            fontSize: 11, fontWeight: 600, color: "#7C3AED", background: "none", border: "none",
                             padding: 0, cursor: downloadingInvoiceId === pmt.invoice.id ? "not-allowed" : "pointer",
                           }}
                         >
@@ -510,7 +514,7 @@ function EmployerSubscriptionContent() {
                           href={`https://pay.stripe.com/invoices/${pmt.stripeInvoiceId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ fontSize: 11, fontWeight: 600, color: "#818CF8", textDecoration: "none" }}
+                          style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED", textDecoration: "none" }}
                         >
                           Stripe receipt
                         </a>
@@ -533,7 +537,7 @@ function Spinner() {
   return (
     <span style={{
       display: "inline-block", width: 13, height: 13,
-      border: "2px solid rgba(255,255,255,0.25)", borderTopColor: "currentColor",
+      border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "currentColor",
       borderRadius: "50%", animation: "spin 0.7s linear infinite",
     }} />
   );
@@ -545,7 +549,7 @@ export default function EmployerSubscriptionPage() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <Suspense fallback={<LoadingPage color="blue" />}>
+      <Suspense fallback={<LoadingPage color="violet" />}>
         <EmployerSubscriptionContent />
       </Suspense>
     </>

@@ -1,21 +1,32 @@
 // frontend/src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
-import { Sora, DM_Sans } from "next/font/google";
+import { Inter, Manrope, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
 import { AuthProvider } from "@/context/AuthContext";
 
-const sora = Sora({
+// DirectHire design system fonts — Inter for all UI/body/forms/tables/nav,
+// Manrope for display (marketing H1s, section headers), IBM Plex Mono for
+// every numeric value (scores, IDs, currency, countdowns). Weights capped at
+// 400-700 — never thinner, since lighter weights fail on non-Latin scripts.
+const inter = Inter({
   subsets:  ["latin"],
-  weight:   ["300", "400", "500", "600", "700"],
+  weight:   ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display:  "swap",
+});
+
+const manrope = Manrope({
+  subsets:  ["latin"],
+  weight:   ["400", "500", "600", "700"],
   variable: "--font-display",
   display:  "swap",
 });
 
-const dmSans = DM_Sans({
+const plexMono = IBM_Plex_Mono({
   subsets:  ["latin"],
-  weight:   ["300", "400", "500", "600"],
-  variable: "--font-body",
+  weight:   ["400", "500", "600"],
+  variable: "--font-mono",
   display:  "swap",
 });
 
@@ -39,8 +50,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark" className="scroll-smooth">
-      <body className={`${sora.variable} ${dmSans.variable} antialiased`} style={{ overflowX: 'hidden' }}>
+    <html lang="en" data-theme="light" className="scroll-smooth">
+      <body className={`${inter.variable} ${manrope.variable} ${plexMono.variable} antialiased`} style={{ overflowX: 'hidden' }}>
         <AuthProvider>
           {children}
         </AuthProvider>

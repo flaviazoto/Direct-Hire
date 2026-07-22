@@ -12,6 +12,10 @@ import { userApi, workerApi } from "@/lib/api-client";
 import LockStatusBanner from "@/components/worker/LockStatusBanner";
 import { LoadingPage, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
+// DirectHire design system — worker role = teal. Numeric values (stat
+// counts, match %, profile %) use font-mono/tabular-nums per the design
+// system's "IBM Plex Mono for all numerics" rule.
+
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
 interface ProfileData {
@@ -58,18 +62,18 @@ function getGreeting() {
 
 /* ── Stat card ───────────────────────────────────────────────────────────────── */
 
-function StatCard({ label, value, icon: Icon, color }: {
+function StatCard({ label, value, icon: Icon }: {
   label: string; value: number | string;
-  icon: React.ElementType; color: string;
+  icon: React.ElementType;
 }) {
   return (
     <div style={{
-      background: '#0d1424', border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: 20, padding: '16px',
+      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      borderRadius: 10, padding: '16px', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}>
-      <Icon size={18} style={{ color, marginBottom: 10 }} />
-      <p style={{ fontSize: 26, fontWeight: 800, color: '#f0f4ff', lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', margin: 0 }}>{label}</p>
+      <Icon size={18} style={{ color: '#0D9488', marginBottom: 10 }} />
+      <p style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 26, fontWeight: 600, color: '#0B1120', lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
+      <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>{label}</p>
     </div>
   );
 }
@@ -82,23 +86,23 @@ function QuickLink({ href, label, sub, Icon }: {
   return (
     <Link href={href} style={{
       display: 'flex', flexDirection: 'column', gap: 12,
-      padding: 16, borderRadius: 20,
-      background: '#0d1424', border: '1px solid rgba(255,255,255,0.07)',
-      textDecoration: 'none', transition: 'border-color 0.15s',
+      padding: 16, borderRadius: 10,
+      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      textDecoration: 'none', transition: 'border-color 0.15s', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(168,85,247,0.35)')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = '#5EEAD4')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = '#F1F5F9')}
     >
       <div style={{
-        width: 36, height: 36, borderRadius: 12,
-        background: 'rgba(168,85,247,0.12)',
+        width: 36, height: 36, borderRadius: 10,
+        background: '#CCFBF1',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Icon size={18} style={{ color: '#c084fc' }} />
+        <Icon size={18} style={{ color: '#0D9488' }} />
       </div>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#f0f4ff', margin: '0 0 2px' }}>{label}</p>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', margin: 0 }}>{sub}</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px' }}>{label}</p>
+        <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>{sub}</p>
       </div>
     </Link>
   );
@@ -110,33 +114,34 @@ function JobRow({ job }: { job: Job }) {
   return (
     <Link href="/worker/jobs" style={{
       display: 'flex', alignItems: 'center', gap: 14,
-      padding: '14px 16px', borderRadius: 20,
-      background: '#0d1424', border: '1px solid rgba(255,255,255,0.07)',
-      textDecoration: 'none', transition: 'border-color 0.15s',
+      padding: '14px 16px', borderRadius: 10,
+      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      textDecoration: 'none', transition: 'border-color 0.15s', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(168,85,247,0.35)')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = '#5EEAD4')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = '#F1F5F9')}
     >
       <div style={{
-        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-        background: 'rgba(255,255,255,0.06)',
+        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        background: '#F8FAFC',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Briefcase size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
+        <Briefcase size={18} style={{ color: '#64748B' }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#f0f4ff', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {job.title}
         </p>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', margin: 0 }}>
+        <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
           {job.employer?.companyName ?? 'Company'} · {job.city ?? job.country ?? 'Remote'}
         </p>
       </div>
       {(job.matchScore ?? 0) > 0 && (
         <span style={{
-          fontSize: 11, fontWeight: 700, flexShrink: 0,
-          padding: '3px 10px', borderRadius: 999,
-          background: 'rgba(168,85,247,0.15)', color: '#c084fc',
+          fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
+          fontSize: 11, fontWeight: 600, flexShrink: 0,
+          padding: '4px 10px', borderRadius: 6,
+          background: 'rgba(13,148,136,0.10)', color: '#0D9488',
         }}>
           {job.matchScore}% match
         </span>
@@ -197,7 +202,7 @@ function WorkerDashboardContent() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingPage color="blue" />;
+  if (loading) return <LoadingPage color="teal" />;
   if (error) {
     return (
       <div style={{ maxWidth: 600, margin: "80px auto", padding: "0 20px" }}>
@@ -228,7 +233,7 @@ function WorkerDashboardContent() {
   const unread     = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#05080f', fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: 'var(--font-body)' }}>
       <ToastDisplay toast={toast} />
 
       <div style={{ maxWidth: 1024, margin: '0 auto', padding: '24px 16px 64px' }}
@@ -241,18 +246,18 @@ function WorkerDashboardContent() {
         {/* ── Section 1: Welcome header ──────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, marginTop: 8 }}>
           <div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: '0 0 3px' }}>
-              {getGreeting()} 👋
+            <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 3px' }}>
+              {getGreeting()}
             </p>
-            <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: '#f0f4ff', margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 700, color: '#0B1120', margin: 0, letterSpacing: '-0.02em' }}>
               {firstName}{lastName ? ` ${lastName}` : ''}
             </h1>
           </div>
           <div style={{
             width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-            background: 'linear-gradient(135deg, #9333ea, #6366f1)',
+            background: '#0D9488',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 800, color: '#fff',
+            fontSize: 18, fontWeight: 700, color: '#fff',
           }}>
             {initials}
           </div>
@@ -260,26 +265,26 @@ function WorkerDashboardContent() {
 
         {/* ── Section 2: Profile completion card ────────────────────────────── */}
         <div style={{
-          padding: '20px', borderRadius: 20,
-          border: '1px solid rgba(168,85,247,0.22)',
-          background: 'rgba(168,85,247,0.06)',
+          padding: '20px', borderRadius: 10,
+          border: '1px solid #99F6E4',
+          background: '#F0FDFA',
           marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#f0f4ff', margin: '0 0 3px' }}>Profile strength</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#0B1120', margin: '0 0 3px' }}>Profile strength</p>
+              <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
                 Complete your profile to get more job matches
               </p>
             </div>
-            <span style={{ fontSize: 26, fontWeight: 800, color: '#c084fc', lineHeight: 1 }}>{pct}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 26, fontWeight: 600, color: '#0D9488', lineHeight: 1 }}>{pct}%</span>
           </div>
 
-          {/* Progress bar */}
-          <div style={{ width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: 999, height: 6, marginBottom: 16 }}>
+          {/* Progress bar — thin horizontal bar, worker-500 fill per the design system */}
+          <div style={{ width: '100%', background: '#CCFBF1', borderRadius: 999, height: 6, marginBottom: 16 }}>
             <div style={{
               width: `${pct}%`, height: 6, borderRadius: 999,
-              background: 'linear-gradient(90deg, #9333ea, #6366f1)',
+              background: '#14B8A6',
               transition: 'width 0.6s ease',
             }} />
           </div>
@@ -287,51 +292,51 @@ function WorkerDashboardContent() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Link href="/worker/profile/edit" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 12,
-              background: '#9333ea', color: '#fff',
-              fontSize: 13, fontWeight: 600, textDecoration: 'none',
-              transition: 'opacity 0.15s',
+              padding: '8px 16px', borderRadius: 10,
+              background: '#0D9488', color: '#fff',
+              fontSize: 13, fontWeight: 500, textDecoration: 'none',
+              transition: 'background 0.15s',
             }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+              onMouseEnter={e => (e.currentTarget.style.background = '#0F766E')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#0D9488')}
             >
-              <Pencil size={13} /> Edit Profile
+              <Pencil size={13} /> Edit profile
             </Link>
             <Link href="/worker/documents" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)',
-              fontSize: 13, fontWeight: 600, textDecoration: 'none',
-              transition: 'border-color 0.15s',
+              padding: '8px 16px', borderRadius: 10,
+              background: '#FFFFFF', border: '1px solid #CBD5E1', color: '#1E293B',
+              fontSize: 13, fontWeight: 500, textDecoration: 'none',
+              transition: 'background 0.15s',
             }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
+              onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#FFFFFF')}
             >
-              <Upload size={13} /> Upload Documents
+              <Upload size={13} /> Upload documents
             </Link>
           </div>
         </div>
 
-        {/* ── Section 3: Alert banners ───────────────────────────────────────── */}
+        {/* ── Section 3: Alert banners — semantic colors, not the role color ── */}
         {(isVerified || needsChanges || isRejected || !isApproved) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             {isRejected && (
               <div style={{
-                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,
-                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
+                background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.2)',
                 alignItems: 'flex-start',
               }}>
-                <AlertTriangle size={15} style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }} />
+                <AlertTriangle size={15} style={{ color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#f87171', margin: '0 0 2px' }}>Application not approved</p>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 6px' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#DC2626', margin: '0 0 2px' }}>Application not approved</p>
+                  <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 6px' }}>
                     {user.rejectionReason ?? 'Your application did not meet our verification requirements.'}
                   </p>
                   {/* No self-service resubmit path exists for a REJECTED account
                       (confirmed: onboarding.controller.ts has no reset-and-resubmit
                       flow, unlike NEEDS_CHANGES) — contact support is the only
                       honest next step, not a re-submit CTA we can't back up. */}
-                  <a href="mailto:support@directhire.cc" style={{ fontSize: 12, fontWeight: 600, color: '#fca5a5', textDecoration: 'underline' }}>
+                  <a href="mailto:support@directhire.cc" style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', textDecoration: 'underline' }}>
                     Contact support →
                   </a>
                 </div>
@@ -339,27 +344,27 @@ function WorkerDashboardContent() {
             )}
             {isVerified && (
               <div style={{
-                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,
-                background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
+                background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.2)',
                 alignItems: 'flex-start',
               }}>
-                <CheckCircle size={15} style={{ color: '#4ade80', flexShrink: 0, marginTop: 1 }} />
+                <CheckCircle size={15} style={{ color: '#16A34A', flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#4ade80', margin: '0 0 2px' }}>Documents verified</p>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>Your profile is visible to employers</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', margin: '0 0 2px' }}>Documents verified</p>
+                  <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>Your profile is visible to employers</p>
                 </div>
               </div>
             )}
             {needsChanges && (
               <div style={{
-                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,
-                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
+                background: 'rgba(234,88,12,0.05)', border: '1px solid rgba(234,88,12,0.2)',
                 alignItems: 'flex-start',
               }}>
-                <AlertTriangle size={15} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 1 }} />
+                <AlertTriangle size={15} style={{ color: '#EA580C', flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24', margin: '0 0 2px' }}>Changes requested</p>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#EA580C', margin: '0 0 2px' }}>Changes requested</p>
+                  <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
                     {verification?.changesRequested ?? 'Please check your email for details'}
                   </p>
                 </div>
@@ -367,15 +372,15 @@ function WorkerDashboardContent() {
             )}
             {!isApproved && !needsChanges && pct < 100 && (
               <div style={{
-                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14,
-                background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
+                display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
+                background: '#F0FDFA', border: '1px solid #99F6E4',
                 alignItems: 'center', justifyContent: 'space-between',
               }}>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+                <p style={{ fontSize: 13, color: '#1E293B', margin: 0 }}>
                   Complete your profile to start applying
                 </p>
                 <Link href="/worker/profile/edit" style={{
-                  fontSize: 12, fontWeight: 600, color: '#c084fc',
+                  fontSize: 12, fontWeight: 600, color: '#0D9488',
                   textDecoration: 'none', flexShrink: 0,
                 }}>
                   Continue →
@@ -387,17 +392,17 @@ function WorkerDashboardContent() {
 
         {/* ── Section 4: Stats row ──────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ marginBottom: 20 }}>
-          <StatCard label="Applications"   value={appsSent}    icon={ClipboardList} color="#c084fc" />
-          <StatCard label="Notifications"  value={unread}      icon={Bell}          color="#60a5fa" />
-          <StatCard label="Job matches"    value={jobs.length} icon={Briefcase}     color="#4ade80" />
-          <StatCard label="Interviews"     value={interviews}  icon={Bookmark}      color="#fbbf24" />
+          <StatCard label="Applications"   value={appsSent}    icon={ClipboardList} />
+          <StatCard label="Notifications"  value={unread}      icon={Bell}          />
+          <StatCard label="Job matches"    value={jobs.length} icon={Briefcase}     />
+          <StatCard label="Interviews"     value={interviews}  icon={Bookmark}      />
         </div>
 
         {/* ── Section 5: Quick actions grid ────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ marginBottom: 28 }}>
-          <QuickLink href="/worker/jobs"           label="Browse Jobs"    sub="Find matches"             Icon={Search}        />
+          <QuickLink href="/worker/jobs"           label="Browse jobs"    sub="Find matches"             Icon={Search}        />
           <QuickLink href="/worker/applications"   label="Applications"   sub={`${appsSent} sent`}       Icon={ClipboardList} />
-          <QuickLink href="/worker/profile/edit"   label="Edit Profile"   sub={`${pct}% complete`}       Icon={User}          />
+          <QuickLink href="/worker/profile/edit"   label="Edit profile"   sub={`${pct}% complete`}       Icon={User}          />
           <QuickLink href="/worker/documents"      label="Documents"      sub="Uploads & IDs"            Icon={FolderOpen}    />
         </div>
 
@@ -405,8 +410,8 @@ function WorkerDashboardContent() {
         {jobs.length > 0 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: '#f0f4ff', margin: 0 }}>Recent matches</h2>
-              <Link href="/worker/jobs" style={{ fontSize: 13, color: '#c084fc', textDecoration: 'none' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0B1120', margin: 0 }}>Recent matches</h2>
+              <Link href="/worker/jobs" style={{ fontSize: 13, color: '#0D9488', textDecoration: 'none' }}>
                 View all
               </Link>
             </div>
@@ -420,35 +425,35 @@ function WorkerDashboardContent() {
         {notifications.length > 0 && (
           <div style={{ marginTop: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: '#f0f4ff', margin: 0 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0B1120', margin: 0 }}>
                 Notifications {unread > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: '#9333ea', color: '#fff', marginLeft: 6 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#0D9488', color: '#fff', marginLeft: 6 }}>
                     {unread}
                   </span>
                 )}
               </h2>
-              <Link href="/worker/notifications" style={{ fontSize: 13, color: '#c084fc', textDecoration: 'none' }}>
+              <Link href="/worker/notifications" style={{ fontSize: 13, color: '#0D9488', textDecoration: 'none' }}>
                 View all
               </Link>
             </div>
             <div style={{
-              background: '#0d1424', border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 20, overflow: 'hidden',
+              background: '#FFFFFF', border: '1px solid #F1F5F9',
+              borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
             }}>
               {notifications.slice(0, 3).map((n, i) => (
                 <div key={n.id} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 10,
                   padding: '13px 16px',
-                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  background: !n.isRead ? 'rgba(168,85,247,0.04)' : 'transparent',
+                  borderBottom: i < 2 ? '1px solid #F1F5F9' : 'none',
+                  background: !n.isRead ? '#F0FDFA' : 'transparent',
                 }}>
                   <div style={{
                     width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: 5,
-                    background: n.isRead ? 'transparent' : '#9333ea',
+                    background: n.isRead ? 'transparent' : '#0D9488',
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f0f4ff', margin: '0 0 2px' }}>{n.title}</p>
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px' }}>{n.title}</p>
+                    <p style={{ fontSize: 12, color: '#64748B', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</p>
                   </div>
                 </div>
               ))}
@@ -463,7 +468,7 @@ function WorkerDashboardContent() {
 
 export default function WorkerDashboardPage() {
   return (
-    <Suspense fallback={<LoadingPage color="blue" />}>
+    <Suspense fallback={<LoadingPage color="teal" />}>
       <WorkerDashboardContent />
     </Suspense>
   );

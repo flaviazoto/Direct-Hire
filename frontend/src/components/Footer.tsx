@@ -74,8 +74,8 @@ const SOCIALS = [
 export function Footer() {
   return (
     <footer className="footer-root" style={{
-      background: "var(--surface)",
-      borderTop: "1px solid var(--surface-border)",
+      background: "#F8FAFC",
+      borderTop: "1px solid #F1F5F9",
       paddingTop: "5rem",
     }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 2rem" }}>
@@ -92,7 +92,7 @@ export function Footer() {
             <Link href="/" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 10, marginBottom: "1.25rem" }}>
               <div style={{
                 width: 32, height: 32, borderRadius: 8,
-                background: "var(--blue-500)",
+                background: "#0D9488",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}>
@@ -106,7 +106,7 @@ export function Footer() {
               <span style={{
                 fontFamily: "var(--font-display)", fontWeight: 700,
                 fontSize: 17, letterSpacing: "-0.5px",
-                color: "var(--text-primary)",
+                color: "#0B1120",
               }}>
                 DirectHire
               </span>
@@ -115,7 +115,7 @@ export function Footer() {
             <p style={{
               fontFamily: "var(--font-body)",
               fontSize: 14, lineHeight: 1.75,
-              color: "var(--text-secondary)",
+              color: "#1E293B",
               maxWidth: 240, margin: "0 0 1.5rem",
             }}>
               The AI-powered global employment platform.
@@ -131,21 +131,21 @@ export function Footer() {
                   style={{
                     width: 44, height: 44, borderRadius: "50%",
                     background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid #E2E8F0",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "var(--text-muted)",
+                    color: "#64748B",
                     textDecoration: "none",
                     transition: "border-color 0.15s, color 0.15s, background 0.15s",
                     flexShrink: 0,
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = "var(--blue-400)";
-                    e.currentTarget.style.color = "var(--blue-400)";
-                    e.currentTarget.style.background = "rgba(0,144,255,0.06)";
+                    e.currentTarget.style.borderColor = "#0D9488";
+                    e.currentTarget.style.color = "#0D9488";
+                    e.currentTarget.style.background = "rgba(13,148,136,0.08)";
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.borderColor = "#E2E8F0";
+                    e.currentTarget.style.color = "#64748B";
                     e.currentTarget.style.background = "transparent";
                   }}
                 >
@@ -157,8 +157,8 @@ export function Footer() {
             {/* SOC 2 badge */}
             <span style={{
               display: "inline-block",
-              background: "rgba(0,144,255,0.1)",
-              color: "var(--blue-400)",
+              background: "rgba(13,148,136,0.1)",
+              color: "#0D9488",
               fontSize: 11, fontWeight: 600,
               fontFamily: "var(--font-body)",
               padding: "4px 12px",
@@ -177,7 +177,7 @@ export function Footer() {
                 fontSize: 11, fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                color: "var(--text-muted)",
+                color: "#64748B",
                 marginBottom: "1rem",
               }}>
                 {col.heading}
@@ -190,15 +190,15 @@ export function Footer() {
                     style={{
                       fontFamily: "var(--font-body)",
                       fontSize: 14,
-                      color: "var(--text-secondary)",
+                      color: "#1E293B",
                       textDecoration: "none",
                       lineHeight: 2.4,
                       transition: "color 0.15s",
                       display: "block",
                       minHeight: 44,
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "var(--blue-400)")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#0D9488")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "#1E293B")}
                   >
                     {l.label}
                   </Link>
@@ -209,7 +209,7 @@ export function Footer() {
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "3rem 0 0" }} />
+        <div style={{ height: 1, background: "#F1F5F9", margin: "3rem 0 0" }} />
 
         {/* Bottom bar */}
         <div className="footer-bottom" style={{
@@ -221,7 +221,7 @@ export function Footer() {
           flexWrap: "wrap",
           gap: "1rem",
         }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#64748B" }}>
             © {new Date().getFullYear()} DirectHire Ltd. All rights reserved.
           </span>
 
@@ -233,20 +233,20 @@ export function Footer() {
                 style={{
                   fontFamily: "var(--font-body)",
                   fontSize: 13,
-                  color: "var(--text-muted)",
+                  color: "#64748B",
                   textDecoration: "none",
                   transition: "color 0.15s",
                   minHeight: 44, display: "inline-flex", alignItems: "center",
                 }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
+                onMouseEnter={e => (e.currentTarget.style.color = "#1E293B")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#64748B")}
               >
                 {l.label}
               </Link>
             ))}
           </div>
 
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#64748B", fontStyle: "italic" }}>
             Built with AI. Trusted globally.
           </span>
         </div>

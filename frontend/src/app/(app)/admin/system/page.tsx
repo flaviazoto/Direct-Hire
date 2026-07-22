@@ -122,7 +122,7 @@ function JobCard({ job }: { job: JobCardData }) {
             </div>
           )}
           {job.jobName === "health-monitor" && (
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 10, fontStyle: "italic" }}>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 10, fontStyle: "italic" }}>
               Per-check breakdown isn&apos;t stored — only the overall pass/partial/fail status for this run.
               A failed run&apos;s error message above lists which check(s) failed.
             </div>

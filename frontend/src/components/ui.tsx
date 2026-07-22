@@ -13,7 +13,7 @@ export function cn(...inputs: ClassValue[]) {
 
 interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
-  color?: "blue" | "white" | "teal" | "amber";
+  color?: "blue" | "white" | "teal" | "amber" | "violet";
   className?: string;
 }
 
@@ -25,10 +25,11 @@ const SPIN_SZ: Record<string, string> = {
 };
 
 const SPIN_CLR: Record<string, string> = {
-  white: "border-white/20 border-t-white",
-  blue:  "border-blue-500/20 border-t-[#0090FF]",
-  teal:  "border-teal-500/20 border-t-teal-400",
-  amber: "border-amber-500/20 border-t-amber-400",
+  white:  "border-white/20 border-t-white",
+  blue:   "border-blue-500/20 border-t-[#0090FF]",
+  teal:   "border-worker-500/20 border-t-worker-600",
+  amber:  "border-admin-500/20 border-t-admin-500",
+  violet: "border-employer-500/20 border-t-employer-600",
 };
 
 export function Spinner({ size = "md", color = "blue", className }: SpinnerProps) {
@@ -45,9 +46,20 @@ export function Spinner({ size = "md", color = "blue", className }: SpinnerProps
 }
 
 // ─── Button ───────────────────────────────────────────────────────────────────
+// DirectHire design system: primary is role-scoped (bg-{role}-600, hover
+// bg-{role}-700) — pass `role` so it knows which one. Secondary/ghost/
+// destructive are role-agnostic by design (never brand-colored). Sentence-
+// case, active-voice labels are a call-site concern, not this component's.
+
+export type DHRole = "worker" | "employer" | "admin";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  // "outline"/"teal"/"amber" are legacy aliases kept only for call sites not
+  // yet converted to the role-scoped system (outline -> secondary, teal ->
+  // primary role="worker", amber -> primary role="admin") — new code should
+  // use variant + role instead of these.
   variant?: "primary" | "secondary" | "ghost" | "danger" | "outline" | "teal" | "amber";
+  role?: DHRole;
   size?: "xs" | "sm" | "md" | "lg";
   loading?: boolean;
   leftIcon?: React.ReactNode;
@@ -60,60 +72,71 @@ type ButtonStyleMap = {
   hover: React.CSSProperties;
 };
 
-function getButtonStyle(variant: string): ButtonStyleMap {
+const ROLE_BUTTON_COLORS: Record<DHRole, { base: string; hover: string }> = {
+  worker:   { base: "#0D9488", hover: "#0F766E" }, // worker-600 / 700
+  employer: { base: "#7C3AED", hover: "#6D28D9" }, // employer-600 / 700
+  admin:    { base: "#C89116", hover: "#A9780D" }, // admin-500 / 600
+};
+
+function getButtonStyle(variant: string, role: DHRole | undefined): ButtonStyleMap {
   switch (variant) {
-    case "primary":
+    case "primary": {
+      const colors = ROLE_BUTTON_COLORS[role ?? "worker"];
       return {
-        base:  { background: "linear-gradient(135deg, #0090FF, #0070cc)", color: "#ffffff", border: "none" },
-        hover: { transform: "scale(1.01)", boxShadow: "0 0 20px rgba(0,144,255,0.4)" },
+        base:  { background: colors.base, color: "#ffffff", border: "none" },
+        hover: { background: colors.hover },
       };
+    }
     case "secondary":
       return {
-        base:  { background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", color: "#a1a1aa" },
-        hover: { border: "1px solid rgba(255,255,255,0.2)", color: "#ffffff" },
+        base:  { background: "#FFFFFF", border: "1px solid #CBD5E1", color: "#1E293B" },
+        hover: { background: "#F8FAFC" },
       };
     case "ghost":
       return {
-        base:  { background: "transparent", border: "none", color: "#a1a1aa" },
-        hover: { background: "rgba(255,255,255,0.05)", color: "#ffffff" },
-      };
-    case "outline":
-      return {
-        base:  { background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#e4e4e7" },
-        hover: { border: "1px solid rgba(255,255,255,0.25)" },
+        base:  { background: "transparent", border: "none", color: "#1E293B" },
+        hover: { background: "#F1F5F9" },
       };
     case "danger":
       return {
-        base:  { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" },
-        hover: { background: "rgba(239,68,68,0.20)" },
+        base:  { background: "#DC2626", border: "none", color: "#ffffff" },
+        hover: { background: "#B91C1C" },
+      };
+    case "outline":
+      return {
+        base:  { background: "#FFFFFF", border: "1px solid #CBD5E1", color: "#1E293B" },
+        hover: { background: "#F8FAFC" },
       };
     case "teal":
       return {
-        base:  { background: "linear-gradient(135deg, #14b8a6, #0d9488)", color: "#ffffff", border: "none" },
-        hover: { boxShadow: "0 0 20px rgba(20,184,166,0.4)", transform: "scale(1.01)" },
+        base:  { background: ROLE_BUTTON_COLORS.worker.base, color: "#ffffff", border: "none" },
+        hover: { background: ROLE_BUTTON_COLORS.worker.hover },
       };
     case "amber":
       return {
-        base:  { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#ffffff", border: "none" },
-        hover: { boxShadow: "0 0 20px rgba(245,158,11,0.4)", transform: "scale(1.01)" },
+        base:  { background: ROLE_BUTTON_COLORS.admin.base, color: "#ffffff", border: "none" },
+        hover: { background: ROLE_BUTTON_COLORS.admin.hover },
       };
-    default:
+    default: {
+      const colors = ROLE_BUTTON_COLORS[role ?? "worker"];
       return {
-        base:  { background: "linear-gradient(135deg, #0090FF, #0070cc)", color: "#ffffff", border: "none" },
-        hover: { transform: "scale(1.01)", boxShadow: "0 0 20px rgba(0,144,255,0.4)" },
+        base:  { background: colors.base, color: "#ffffff", border: "none" },
+        hover: { background: colors.hover },
       };
+    }
   }
 }
 
 const BTN_SIZE_STYLES: Record<string, React.CSSProperties> = {
-  xs: { height: "28px", padding: "0 12px", fontSize: "12px", borderRadius: "8px", gap: "4px" },
-  sm: { height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "8px", gap: "6px" },
+  xs: { height: "28px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", gap: "4px" },
+  sm: { height: "36px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", gap: "6px" },
   md: { height: "40px", padding: "0 20px", fontSize: "14px", borderRadius: "10px", gap: "8px" },
   lg: { height: "48px", padding: "0 28px", fontSize: "15px", borderRadius: "10px", gap: "8px" },
 };
 
 export function Button({
   variant = "primary",
+  role,
   size = "md",
   loading,
   leftIcon,
@@ -124,29 +147,27 @@ export function Button({
   style,
   ...props
 }: ButtonProps) {
-  const [hovered, setHovered] = React.useState(false);
-  const styleMap = getButtonStyle(variant);
+  const styleMap = getButtonStyle(variant, role);
   const sizeStyle = BTN_SIZE_STYLES[size];
 
   const combinedStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
-    fontWeight: 600,
+    fontFamily: "var(--font-body,'Inter',system-ui,sans-serif)",
+    fontWeight: 500,
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "normal",
-    transition: "all 0.15s ease",
+    transition: "background 0.15s ease",
     outline: "none",
     flexShrink: 1,
     minWidth: 0,
     maxWidth: "100%",
-    opacity: props.disabled || loading ? 0.4 : 1,
+    opacity: props.disabled || loading ? 0.5 : 1,
     pointerEvents: props.disabled || loading ? "none" : undefined,
     ...sizeStyle,
     ...styleMap.base,
-    ...(hovered ? styleMap.hover : {}),
     ...style,
   };
 
@@ -158,18 +179,18 @@ export function Button({
     });
   }
 
-  const isDark = variant === "ghost" || variant === "outline" || variant === "secondary";
+  const isLight = variant === "ghost" || variant === "secondary" || variant === "outline";
 
   return (
     <button
       style={combinedStyle}
-      className={cn("dh-page-header", className)}
+      className={cn(className)}
       disabled={props.disabled || loading}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={(e) => Object.assign((e.currentTarget as HTMLButtonElement).style, styleMap.hover)}
+      onMouseLeave={(e) => Object.assign((e.currentTarget as HTMLButtonElement).style, styleMap.base)}
       {...props}
     >
-      {loading ? <Spinner size="xs" color={isDark ? "blue" : "white"} /> : leftIcon}
+      {loading ? <Spinner size="xs" color={isLight ? "blue" : "white"} /> : leftIcon}
       {children}
       {!loading && rightIcon}
     </button>
@@ -181,10 +202,10 @@ export function Button({
 type AlertVariant = "info" | "success" | "warning" | "error";
 
 const ALERT_STYLES: Record<AlertVariant, { bg: string; border: string; color: string; icon: string }> = {
-  info:    { bg: "rgba(0,144,255,0.08)",    border: "1px solid rgba(0,144,255,0.2)",    color: "#93c5fd", icon: "ℹ" },
-  success: { bg: "rgba(34,197,94,0.08)",   border: "1px solid rgba(34,197,94,0.2)",   color: "#86efac", icon: "✓" },
-  warning: { bg: "rgba(245,158,11,0.08)",  border: "1px solid rgba(245,158,11,0.2)",  color: "#fcd34d", icon: "⚠" },
-  error:   { bg: "rgba(239,68,68,0.08)",   border: "1px solid rgba(239,68,68,0.2)",   color: "#fca5a5", icon: "✕" },
+  info:    { bg: "rgba(37,99,235,0.06)",  border: "1px solid rgba(37,99,235,0.2)",  color: "#2563EB", icon: "ℹ" },
+  success: { bg: "rgba(22,163,74,0.06)",  border: "1px solid rgba(22,163,74,0.2)",  color: "#16A34A", icon: "✓" },
+  warning: { bg: "rgba(234,88,12,0.06)",  border: "1px solid rgba(234,88,12,0.2)",  color: "#EA580C", icon: "⚠" },
+  error:   { bg: "rgba(220,38,38,0.06)",  border: "1px solid rgba(220,38,38,0.2)",  color: "#DC2626", icon: "✕" },
 };
 
 export function Alert({
@@ -266,40 +287,29 @@ export function Card({
   style,
   ...rest
 }: CardProps) {
-  const [hovered, setHovered] = React.useState(false);
-
+  // Flat is the resting state everywhere: white card + 1px ink-100 border +
+  // shadow-sm. "elevated" is for the rare non-modal/non-dropdown case that
+  // genuinely needs more lift; still capped at shadow-md, never a decorative
+  // shadow.
   const variantStyles: Record<string, React.CSSProperties> = {
-    default:  { background: "#161616", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "16px" },
-    elevated: { background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" },
-    flat:     { background: "#111111", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "16px" },
-    ghost:    { background: "transparent", border: "none", borderRadius: "16px" },
+    default:  { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px", boxShadow: "0 1px 2px rgba(11,17,32,0.04)" },
+    elevated: { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px", boxShadow: "0 4px 12px rgba(11,17,32,0.08)" },
+    flat:     { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px" },
+    ghost:    { background: "transparent", border: "none", borderRadius: "10px" },
   };
-
-  const isHoverable = variant === "default" || variant === "elevated";
-  const hoverStyle: React.CSSProperties =
-    hovered && (isHoverable || !!onClick)
-      ? { border: "1px solid rgba(255,255,255,0.12)", transform: "translateY(-1px)" }
-      : {};
 
   return (
     <div
       {...rest}
       onClick={onClick}
-      onMouseEnter={(e) => {
-        setHovered(true);
-        onMouseEnter?.(e);
-      }}
-      onMouseLeave={(e) => {
-        setHovered(false);
-        onMouseLeave?.(e);
-      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={className}
       style={{
-        transition: "all 0.2s ease",
+        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
         cursor: onClick ? "pointer" : undefined,
         ...variantStyles[variant],
         ...style,
-        ...hoverStyle,
       }}
     >
       {children}
@@ -330,16 +340,16 @@ export function CardHeader({
         alignItems: "center",
         justifyContent: "space-between",
         padding: "20px 24px",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid #F1F5F9",
         ...style,
       }}
     >
       <div>
         <h3
           style={{
-            fontSize: "14px",
+            fontSize: "18px",
             fontWeight: 600,
-            color: "#ffffff",
+            color: "#0B1120",
             margin: 0,
             letterSpacing: "-0.01em",
           }}
@@ -347,7 +357,7 @@ export function CardHeader({
           {title}
         </h3>
         {description && (
-          <p style={{ fontSize: "12px", color: "#71717a", margin: "3px 0 0 0" }}>{description}</p>
+          <p style={{ fontSize: "14px", color: "#64748B", margin: "3px 0 0 0" }}>{description}</p>
         )}
       </div>
       {action && <div style={{ flexShrink: 0, marginLeft: "16px" }}>{action}</div>}
@@ -392,9 +402,9 @@ export function CardFooter({
       className={className}
       style={{
         padding: "16px 24px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "rgba(17,17,17,0.5)",
-        borderRadius: "0 0 16px 16px",
+        borderTop: "1px solid #F1F5F9",
+        background: "#F8FAFC",
+        borderRadius: "0 0 10px 10px",
         ...style,
       }}
     >
@@ -404,22 +414,40 @@ export function CardFooter({
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
+// Design system rule: text-xs, rounded-[6px], 4px/10px padding, background =
+// 10% tint of the color, text = full color, no border. `variant` is still a
+// flat color key (badges are semantic-status, not role-branded), but the
+// legacy names below now point at the exact success/danger/warning/info hex
+// values rather than ad-hoc dark-mode shades.
 
 type BadgeVariantKey =
   | "blue" | "green" | "red" | "amber" | "purple"
   | "teal" | "slate" | "cyan" | "orange";
 
-const BADGE_STYLES: Record<BadgeVariantKey, { bg: string; color: string; border: string; dot: string }> = {
-  blue:   { bg: "rgba(0,144,255,0.12)",    color: "#60a5fa", border: "1px solid rgba(0,144,255,0.2)",    dot: "rgba(0,144,255,0.8)" },
-  green:  { bg: "rgba(34,197,94,0.12)",   color: "#4ade80", border: "1px solid rgba(34,197,94,0.2)",   dot: "rgba(34,197,94,0.8)" },
-  red:    { bg: "rgba(239,68,68,0.12)",   color: "#f87171", border: "1px solid rgba(239,68,68,0.2)",   dot: "rgba(239,68,68,0.8)" },
-  amber:  { bg: "rgba(245,158,11,0.12)",  color: "#fbbf24", border: "1px solid rgba(245,158,11,0.2)",  dot: "rgba(245,158,11,0.8)" },
-  purple: { bg: "rgba(124,58,237,0.12)",  color: "#a78bfa", border: "1px solid rgba(124,58,237,0.2)",  dot: "rgba(124,58,237,0.8)" },
-  teal:   { bg: "rgba(20,184,166,0.12)",  color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.2)",  dot: "rgba(20,184,166,0.8)" },
-  slate:  { bg: "rgba(255,255,255,0.06)", color: "#a1a1aa", border: "1px solid rgba(255,255,255,0.1)", dot: "rgba(161,161,170,0.8)" },
-  cyan:   { bg: "rgba(6,182,212,0.12)",   color: "#22d3ee", border: "1px solid rgba(6,182,212,0.2)",   dot: "rgba(6,182,212,0.8)" },
-  orange: { bg: "rgba(249,115,22,0.12)",  color: "#fb923c", border: "1px solid rgba(249,115,22,0.2)",  dot: "rgba(249,115,22,0.8)" },
+const BADGE_STYLES: Record<BadgeVariantKey, { bg: string; color: string; dot: string }> = {
+  blue:   { bg: "rgba(37,99,235,0.10)",  color: "#2563EB", dot: "#2563EB" }, // info
+  green:  { bg: "rgba(22,163,74,0.10)",  color: "#16A34A", dot: "#16A34A" }, // success
+  red:    { bg: "rgba(220,38,38,0.10)",  color: "#DC2626", dot: "#DC2626" }, // danger
+  amber:  { bg: "rgba(234,88,12,0.10)",  color: "#EA580C", dot: "#EA580C" }, // warning
+  purple: { bg: "rgba(124,58,237,0.10)", color: "#7C3AED", dot: "#7C3AED" }, // employer-600
+  teal:   { bg: "rgba(13,148,136,0.10)", color: "#0D9488", dot: "#0D9488" }, // worker-600
+  slate:  { bg: "#F1F5F9",               color: "#64748B", dot: "#64748B" }, // ink-500 on ink-100
+  cyan:   { bg: "rgba(37,99,235,0.10)",  color: "#2563EB", dot: "#2563EB" }, // alias of info
+  orange: { bg: "rgba(234,88,12,0.10)",  color: "#EA580C", dot: "#EA580C" }, // alias of warning
 };
+
+// Status → semantic-color mapping the spec calls for: pending→warning,
+// shortlisted/interview→info, hired/approved→success, rejected/suspended→danger.
+const STATUS_BADGE_VARIANT: Record<string, BadgeVariantKey> = {
+  PENDING: "amber", PENDING_REVIEW: "amber", DRAFT: "slate",
+  SHORTLISTED: "blue", INTERVIEW: "blue", INTERVIEWED: "blue", APPLICATION_INTERVIEW_REQUESTED: "blue",
+  HIRED: "green", APPROVED: "green", ACCEPTED: "green", ACTIVE: "green", SUCCEEDED: "green",
+  REJECTED: "red", SUSPENDED: "red", FAILED: "red", REVOKED: "red",
+};
+
+export function statusBadgeVariant(status: string): BadgeVariantKey {
+  return STATUS_BADGE_VARIANT[status.toUpperCase()] ?? "slate";
+}
 
 export function Badge({
   children,
@@ -441,14 +469,13 @@ export function Badge({
         display: "inline-flex",
         alignItems: "center",
         gap: "5px",
-        padding: "3px 10px",
-        borderRadius: "999px",
-        fontSize: "11px",
+        padding: "4px 10px",
+        borderRadius: "6px",
+        fontSize: "12px",
         fontWeight: 600,
         letterSpacing: "0.01em",
         background: s.bg,
         color: s.color,
-        border: s.border,
         lineHeight: 1.4,
       }}
     >
@@ -460,7 +487,6 @@ export function Badge({
             borderRadius: "50%",
             background: s.dot,
             flexShrink: 0,
-            boxShadow: `0 0 6px ${s.dot}`,
           }}
         />
       )}
@@ -902,9 +928,9 @@ export function EmptyState({
           style={{
             width: "64px",
             height: "64px",
-            borderRadius: "20px",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "16px",
+            background: "#F8FAFC",
+            border: "1px solid #F1F5F9",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -917,11 +943,11 @@ export function EmptyState({
       <div
         style={{
           fontSize: "18px",
-          fontWeight: 700,
-          color: "#ffffff",
+          fontWeight: 600,
+          color: "#0B1120",
           marginTop: "20px",
           letterSpacing: "-0.02em",
-          fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
+          fontFamily: "var(--font-body,'Inter',system-ui,sans-serif)",
         }}
       >
         {title}
@@ -930,7 +956,7 @@ export function EmptyState({
         <p
           style={{
             fontSize: "14px",
-            color: "#71717a",
+            color: "#64748B",
             maxWidth: "400px",
             lineHeight: 1.6,
             margin: "8px 0 0 0",
@@ -964,29 +990,29 @@ export function ErrorState({
     <div
       className={className}
       style={{
-        background: "rgba(239,68,68,0.06)",
-        border: "1px solid rgba(239,68,68,0.15)",
-        borderRadius: 14,
+        background: "rgba(220,38,38,0.05)",
+        border: "1px solid rgba(220,38,38,0.15)",
+        borderRadius: 10,
         padding: "32px 24px",
         textAlign: "center",
       }}
     >
       <div style={{ fontSize: 24, marginBottom: 8 }}>⚠</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>{title}</div>
-      {message && <div style={{ fontSize: 13, color: "#71717a", marginBottom: retry ? 16 : 0 }}>{message}</div>}
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#DC2626", marginBottom: 6 }}>{title}</div>
+      {message && <div style={{ fontSize: 13, color: "#64748B", marginBottom: retry ? 16 : 0 }}>{message}</div>}
       {retry && (
         <button
           onClick={retry}
           style={{
-            background: "rgba(239,68,68,0.1)",
-            border: "1px solid rgba(239,68,68,0.2)",
-            borderRadius: 8,
+            background: "#DC2626",
+            border: "none",
+            borderRadius: 10,
             padding: "8px 20px",
-            color: "#f87171",
+            color: "#ffffff",
             fontSize: 13,
             cursor: "pointer",
             fontFamily: "inherit",
-            fontWeight: 600,
+            fontWeight: 500,
           }}
         >
           Retry
@@ -1338,11 +1364,12 @@ export function Pagination({
 
 // ─── LoadingPage ──────────────────────────────────────────────────────────────
 
-export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amber" | "slate" }) {
-  const spinMap: Record<string, "blue" | "teal" | "amber"> = {
+export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amber" | "violet" | "slate" }) {
+  const spinMap: Record<string, "blue" | "teal" | "amber" | "violet"> = {
     blue: "blue",
     teal: "teal",
     amber: "amber",
+    violet: "violet",
     slate: "blue",
   };
   return (
@@ -1354,7 +1381,7 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "var(--navy-950,#060B18)",
+        background: "#FFFFFF",
         gap: "16px",
       }}
     >
@@ -1364,11 +1391,10 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
             width: "48px",
             height: "48px",
             borderRadius: "14px",
-            background: "linear-gradient(135deg, #0090FF, #7C3AED)",
+            background: "#0D9488",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 0 24px rgba(0,144,255,0.3)",
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -1381,9 +1407,9 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
           style={{
             fontSize: "16px",
             fontWeight: 700,
-            color: "#ffffff",
+            color: "#0B1120",
             letterSpacing: "-0.02em",
-            fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)",
+            fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)",
           }}
         >
           DirectHire
@@ -1401,9 +1427,10 @@ export type ToastData = { msg: string; type: "ok" | "err" | "warn" } | null;
 export function ToastDisplay({ toast }: { toast: ToastData }) {
   if (!toast) return null;
 
-  const iconBg    = toast.type === "ok" ? "rgba(34,197,94,0.2)"  : toast.type === "warn" ? "rgba(245,158,11,0.2)"  : "rgba(239,68,68,0.2)";
-  const iconColor = toast.type === "ok" ? "#4ade80"              : toast.type === "warn" ? "#fbbf24"              : "#f87171";
-  const borderColor = toast.type === "ok" ? "#22c55e"            : toast.type === "warn" ? "#f59e0b"              : "#ef4444";
+  // Semantic color of the event, never a role color.
+  const iconBg      = toast.type === "ok" ? "rgba(22,163,74,0.12)"  : toast.type === "warn" ? "rgba(234,88,12,0.12)"  : "rgba(220,38,38,0.12)";
+  const iconColor   = toast.type === "ok" ? "#16A34A"               : toast.type === "warn" ? "#EA580C"              : "#DC2626";
+  const borderColor = iconColor;
 
   return (
     <div
@@ -1417,13 +1444,12 @@ export function ToastDisplay({ toast }: { toast: ToastData }) {
         alignItems: "center",
         gap: "12px",
         padding: "16px 20px",
-        background: "rgba(20,20,20,0.95)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "#FFFFFF",
+        border: "1px solid #F1F5F9",
         borderLeft: `3px solid ${borderColor}`,
-        borderRadius: "14px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        borderRadius: "10px",
+        boxShadow: "0 12px 32px rgba(11,17,32,0.16)",
         maxWidth: "360px",
-        backdropFilter: "blur(20px)",
       }}
     >
       <div
@@ -1447,9 +1473,9 @@ export function ToastDisplay({ toast }: { toast: ToastData }) {
         style={{
           fontSize: "14px",
           fontWeight: 500,
-          color: "#ffffff",
+          color: "#0B1120",
           lineHeight: 1.4,
-          fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
+          fontFamily: "var(--font-body,'Inter',system-ui,sans-serif)",
         }}
       >
         {toast.msg}

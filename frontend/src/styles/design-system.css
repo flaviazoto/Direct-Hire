@@ -1,4 +1,12 @@
 /* ─── DirectHire Premium Design System ─────────────────────────────────────── */
+/* DEPRECATED (dark glassmorphism system) — being replaced by the Tailwind-
+   token light system in tailwind.config.ts (worker/employer/admin/ink scales,
+   Inter/Manrope/IBM Plex Mono). Kept in place only so not-yet-converted pages
+   keep rendering correctly; do not add new usages of --navy/--glass/.dh-card
+   etc. or build new UI against this file. Delete once every page is swept
+   over — see the design_system project memory for status. Semantic status
+   tokens below (--success/--warning/--danger/--info) ARE current — role-
+   agnostic, safe to keep using during the transition. */
 
 :root {
   /* ── Base surfaces ─────────────────────────────────────────────────────────── */
@@ -32,10 +40,11 @@
   --admin-3:       #fca5a5;
   --admin-glow:    rgba(220,38,38,0.25);
 
-  /* ── Semantic ───────────────────────────────────────────────────────────────── */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger:  #f43f5e;
+  /* ── Semantic (status/verification badges — role-agnostic) ───────────────────── */
+  --success: #16A34A;
+  --warning: #EA580C;
+  --danger:  #DC2626;
+  --info:    #2563EB;
   --gold:    #f59e0b;
 
   /* ── Surfaces ───────────────────────────────────────────────────────────────── */
