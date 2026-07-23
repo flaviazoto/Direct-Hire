@@ -127,6 +127,9 @@ export default function InteractiveGlobe() {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     renderer.domElement.style.width   = "100%";
     renderer.domElement.style.height  = "100%";
     renderer.domElement.style.display = "block";
@@ -159,12 +162,12 @@ export default function InteractiveGlobe() {
     };
 
     // ── Lights ─────────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0x3b6fcc, 0.9));
-    const sun = new THREE.DirectionalLight(0x7aafff, 1.5);
-    sun.position.set(4, 2, 5);
+    scene.add(new THREE.HemisphereLight(0xc7dcff, 0x061126, 1.35));
+    const sun = new THREE.DirectionalLight(0xfff4df, 3.1);
+    sun.position.set(-4, 3, 6);
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x062050, 0.6);
-    rim.position.set(-4, -1, -3);
+    const rim = new THREE.DirectionalLight(0x5b8cff, 1.15);
+    rim.position.set(5, -1, -4);
     scene.add(rim);
 
     // ── Globe group ────────────────────────────────────────────────────────────
@@ -173,24 +176,70 @@ export default function InteractiveGlobe() {
     globeGroupRef.current = globeGroup;
 
     // ── Earth mesh ─────────────────────────────────────────────────────────────
-    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64);
+    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 96, 96);
     const earthMat = new THREE.MeshPhongMaterial({
-      color:             0x1a3a6b,
-      specular:          new THREE.Color(0x1a3a6e),
-      shininess:         20,
-      emissive:          new THREE.Color(0x060e22),
-      emissiveIntensity: 0.45,
+      color:             0xffffff,
+      specular:          new THREE.Color(0x8fb8df),
+      shininess:         24,
+      normalScale:       new THREE.Vector2(0.65, 0.65),
+      emissive:          new THREE.Color(0x010713),
+      emissiveIntensity: 0.12,
     });
     globeGroup.add(new THREE.Mesh(earthGeo, earthMat));
 
     const textureLoader = new THREE.TextureLoader();
+    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+    const prepareColorTexture = (texture: THREE.Texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = maxAnisotropy;
+      return texture;
+    };
     const earthTexture  = textureLoader.load(
-      "https://unpkg.com/three-globe/example/img/earth-night.jpg",
-      (tex) => { earthMat.map = tex; earthMat.needsUpdate = true; },
+      "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
+      (tex) => {
+        earthMat.map = prepareColorTexture(tex);
+        earthMat.needsUpdate = true;
+      },
       undefined,
       () => { /* texture failed — solid colour fallback */ },
     );
     void earthTexture;
+
+    const earthNormal = textureLoader.load(
+      "https://threejs.org/examples/textures/planets/earth_normal_2048.jpg",
+      (tex) => {
+        tex.anisotropy = maxAnisotropy;
+        earthMat.normalMap = tex;
+        earthMat.needsUpdate = true;
+      },
+    );
+    const earthSpecular = textureLoader.load(
+      "https://threejs.org/examples/textures/planets/earth_specular_2048.jpg",
+      (tex) => {
+        tex.anisotropy = maxAnisotropy;
+        earthMat.specularMap = tex;
+        earthMat.needsUpdate = true;
+      },
+    );
+    const cloudMaterial = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+    });
+    const cloudTexture = textureLoader.load(
+      "https://threejs.org/examples/textures/planets/earth_clouds_1024.png",
+      (tex) => {
+        cloudMaterial.map = prepareColorTexture(tex);
+        cloudMaterial.alphaMap = tex;
+        cloudMaterial.needsUpdate = true;
+      },
+    );
+    const cloudMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(GLOBE_RADIUS * 1.006, 96, 96),
+      cloudMaterial,
+    );
+    globeGroup.add(cloudMesh);
 
     // ── Atmosphere glow ────────────────────────────────────────────────────────
     globeGroup.add(new THREE.Mesh(
@@ -210,9 +259,9 @@ export default function InteractiveGlobe() {
       new THREE.SphereGeometry(GLOBE_RADIUS + 14, 48, 48),
       new THREE.ShaderMaterial({
         uniforms: {
-          glowColor:   { value: new THREE.Color(0x0d3b8c) },
-          coefficient: { value: 0.28 },
-          power:       { value: 5.5 },
+          glowColor:   { value: new THREE.Color(0x6ba5ff) },
+          coefficient: { value: 0.2 },
+          power:       { value: 6.2 },
         },
         vertexShader:   HALO_VERT,
         fragmentShader: HALO_FRAG,
@@ -224,8 +273,8 @@ export default function InteractiveGlobe() {
     ));
 
     // ── Grid lines ─────────────────────────────────────────────────────────────
-    const gridMat    = new THREE.LineBasicMaterial({ color: 0x1e54b7, transparent: true, opacity: 0.18 });
-    const equatorMat = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.30 });
+    const gridMat    = new THREE.LineBasicMaterial({ color: 0xaac8ed, transparent: true, opacity: 0.035 });
+    const equatorMat = new THREE.LineBasicMaterial({ color: 0xc8dcf5, transparent: true, opacity: 0.055 });
 
     function addLine(pts: THREE.Vector3[], mat: THREE.LineBasicMaterial) {
       globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
@@ -246,7 +295,7 @@ export default function InteractiveGlobe() {
     // ── Wireframe overlay ──────────────────────────────────────────────────────
     globeGroup.add(new THREE.Mesh(
       new THREE.SphereGeometry(GLOBE_RADIUS * 1.001, 36, 18),
-      new THREE.MeshBasicMaterial({ color: 0x0090FF, wireframe: true, transparent: true, opacity: 0.04 }),
+      new THREE.MeshBasicMaterial({ color: 0xb7d2ef, wireframe: true, transparent: true, opacity: 0.012 }),
     ));
 
     // ── Connection arcs ────────────────────────────────────────────────────────
@@ -510,6 +559,8 @@ export default function InteractiveGlobe() {
         }
       }
 
+      cloudMesh.rotation.y += 0.00018;
+
       const camDir = camera.position.clone().normalize();
 
       dotData.forEach(({ mesh, localPos }, i) => {
@@ -563,6 +614,10 @@ export default function InteractiveGlobe() {
         }
       });
       renderer.dispose();
+      earthTexture.dispose();
+      earthNormal.dispose();
+      earthSpecular.dispose();
+      cloudTexture.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
       if (css2dRenderer && el.contains(css2dRenderer.domElement)) {
         el.removeChild(css2dRenderer.domElement);
