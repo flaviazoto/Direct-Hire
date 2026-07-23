@@ -68,12 +68,12 @@ function StatCard({ label, value, icon: Icon }: {
 }) {
   return (
     <div style={{
-      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)',
       borderRadius: 10, padding: '16px', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}>
       <Icon size={18} style={{ color: '#0D9488', marginBottom: 10 }} />
-      <p style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 26, fontWeight: 600, color: '#0B1120', lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
-      <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>{label}</p>
+      <p style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 26, fontWeight: 600, color: '#ffffff', lineHeight: 1, margin: '0 0 4px' }}>{value}</p>
+      <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{label}</p>
     </div>
   );
 }
@@ -87,22 +87,22 @@ function QuickLink({ href, label, sub, Icon }: {
     <Link href={href} style={{
       display: 'flex', flexDirection: 'column', gap: 12,
       padding: 16, borderRadius: 10,
-      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)',
       textDecoration: 'none', transition: 'border-color 0.15s', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#5EEAD4')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#F1F5F9')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(20,184,166,0.4)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
     >
       <div style={{
         width: 36, height: 36, borderRadius: 10,
-        background: '#CCFBF1',
+        background: 'rgba(20,184,166,0.15)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Icon size={18} style={{ color: '#0D9488' }} />
       </div>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px' }}>{label}</p>
-        <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>{sub}</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', margin: '0 0 2px' }}>{label}</p>
+        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{sub}</p>
       </div>
     </Link>
   );
@@ -115,24 +115,24 @@ function JobRow({ job }: { job: Job }) {
     <Link href="/worker/jobs" style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '14px 16px', borderRadius: 10,
-      background: '#FFFFFF', border: '1px solid #F1F5F9',
+      background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)',
       textDecoration: 'none', transition: 'border-color 0.15s', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
     }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#5EEAD4')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#F1F5F9')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(20,184,166,0.4)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
     >
       <div style={{
         width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-        background: '#F8FAFC',
+        background: 'rgba(255,255,255,0.06)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Briefcase size={18} style={{ color: '#64748B' }} />
+        <Briefcase size={18} style={{ color: '#94a3b8' }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {job.title}
         </p>
-        <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
           {job.employer?.companyName ?? 'Company'} · {job.city ?? job.country ?? 'Remote'}
         </p>
       </div>
@@ -233,7 +233,7 @@ function WorkerDashboardContent() {
   const unread     = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--glass-base)', fontFamily: 'var(--font-body)' }}>
       <ToastDisplay toast={toast} />
 
       <div style={{ maxWidth: 1024, margin: '0 auto', padding: '24px 16px 64px' }}
@@ -246,10 +246,10 @@ function WorkerDashboardContent() {
         {/* ── Section 1: Welcome header ──────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, marginTop: 8 }}>
           <div>
-            <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 3px' }}>
+            <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 3px' }}>
               {getGreeting()}
             </p>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 700, color: '#0B1120', margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 700, color: '#ffffff', margin: 0, letterSpacing: '-0.02em' }}>
               {firstName}{lastName ? ` ${lastName}` : ''}
             </h1>
           </div>
@@ -266,14 +266,14 @@ function WorkerDashboardContent() {
         {/* ── Section 2: Profile completion card ────────────────────────────── */}
         <div style={{
           padding: '20px', borderRadius: 10,
-          border: '1px solid #99F6E4',
-          background: '#F0FDFA',
+          border: '1px solid rgba(20,184,166,0.3)',
+          background: 'rgba(20,184,166,0.08)',
           marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#0B1120', margin: '0 0 3px' }}>Profile strength</p>
-              <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#ffffff', margin: '0 0 3px' }}>Profile strength</p>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
                 Complete your profile to get more job matches
               </p>
             </div>
@@ -281,7 +281,7 @@ function WorkerDashboardContent() {
           </div>
 
           {/* Progress bar — thin horizontal bar, worker-500 fill per the design system */}
-          <div style={{ width: '100%', background: '#CCFBF1', borderRadius: 999, height: 6, marginBottom: 16 }}>
+          <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', borderRadius: 999, height: 6, marginBottom: 16 }}>
             <div style={{
               width: `${pct}%`, height: 6, borderRadius: 999,
               background: '#14B8A6',
@@ -305,12 +305,12 @@ function WorkerDashboardContent() {
             <Link href="/worker/documents" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 10,
-              background: '#FFFFFF', border: '1px solid #CBD5E1', color: '#1E293B',
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff',
               fontSize: 13, fontWeight: 500, textDecoration: 'none',
               transition: 'background 0.15s',
             }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#FFFFFF')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Upload size={13} /> Upload documents
             </Link>
@@ -329,7 +329,7 @@ function WorkerDashboardContent() {
                 <AlertTriangle size={15} style={{ color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#DC2626', margin: '0 0 2px' }}>Application not approved</p>
-                  <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 6px' }}>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 6px' }}>
                     {user.rejectionReason ?? 'Your application did not meet our verification requirements.'}
                   </p>
                   {/* No self-service resubmit path exists for a REJECTED account
@@ -351,7 +351,7 @@ function WorkerDashboardContent() {
                 <CheckCircle size={15} style={{ color: '#16A34A', flexShrink: 0, marginTop: 1 }} />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', margin: '0 0 2px' }}>Documents verified</p>
-                  <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>Your profile is visible to employers</p>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>Your profile is visible to employers</p>
                 </div>
               </div>
             )}
@@ -364,7 +364,7 @@ function WorkerDashboardContent() {
                 <AlertTriangle size={15} style={{ color: '#EA580C', flexShrink: 0, marginTop: 1 }} />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#EA580C', margin: '0 0 2px' }}>Changes requested</p>
-                  <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
                     {verification?.changesRequested ?? 'Please check your email for details'}
                   </p>
                 </div>
@@ -373,10 +373,10 @@ function WorkerDashboardContent() {
             {!isApproved && !needsChanges && pct < 100 && (
               <div style={{
                 display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
-                background: '#F0FDFA', border: '1px solid #99F6E4',
+                background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.3)',
                 alignItems: 'center', justifyContent: 'space-between',
               }}>
-                <p style={{ fontSize: 13, color: '#1E293B', margin: 0 }}>
+                <p style={{ fontSize: 13, color: '#cbd5e1', margin: 0 }}>
                   Complete your profile to start applying
                 </p>
                 <Link href="/worker/profile/edit" style={{
@@ -410,7 +410,7 @@ function WorkerDashboardContent() {
         {jobs.length > 0 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0B1120', margin: 0 }}>Recent matches</h2>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#ffffff', margin: 0 }}>Recent matches</h2>
               <Link href="/worker/jobs" style={{ fontSize: 13, color: '#0D9488', textDecoration: 'none' }}>
                 View all
               </Link>
@@ -425,7 +425,7 @@ function WorkerDashboardContent() {
         {notifications.length > 0 && (
           <div style={{ marginTop: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0B1120', margin: 0 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#ffffff', margin: 0 }}>
                 Notifications {unread > 0 && (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#0D9488', color: '#fff', marginLeft: 6 }}>
                     {unread}
@@ -437,23 +437,23 @@ function WorkerDashboardContent() {
               </Link>
             </div>
             <div style={{
-              background: '#FFFFFF', border: '1px solid #F1F5F9',
+              background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(11,17,32,0.04)',
             }}>
               {notifications.slice(0, 3).map((n, i) => (
                 <div key={n.id} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 10,
                   padding: '13px 16px',
-                  borderBottom: i < 2 ? '1px solid #F1F5F9' : 'none',
-                  background: !n.isRead ? '#F0FDFA' : 'transparent',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                  background: !n.isRead ? 'rgba(20,184,166,0.08)' : 'transparent',
                 }}>
                   <div style={{
                     width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: 5,
                     background: n.isRead ? 'transparent' : '#0D9488',
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0B1120', margin: '0 0 2px' }}>{n.title}</p>
-                    <p style={{ fontSize: 12, color: '#64748B', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', margin: '0 0 2px' }}>{n.title}</p>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</p>
                   </div>
                 </div>
               ))}

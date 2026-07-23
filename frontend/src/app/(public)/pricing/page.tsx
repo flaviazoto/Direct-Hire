@@ -2,14 +2,17 @@
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 
-// DirectHire design system, public pages. The highlighted "Growth" plan is
-// employer subscription content, so it gets the employer role color
-// (violet) as its accent — everywhere else on this page is neutral brand
-// chrome. The dedicated "Worker pricing" section below uses the worker role
-// color (teal) instead, since that content is specifically about workers.
-// Currency figures use font-mono/tabular-nums per the numerics rule.
+// DirectHire glassmorphism design system, public pages. The highlighted
+// "Growth" plan is employer subscription content, so it gets the employer
+// role color (violet) as its accent on top of the shared dark-glass base —
+// everywhere else on this page is neutral brand chrome. The dedicated
+// "Worker pricing" section below uses the worker role color (teal) instead,
+// since that content is specifically about workers. Currency figures use
+// font-mono/tabular-nums per the numerics rule. Cards here are a small,
+// static set (not a scrolling list), so backdrop-blur via .glass-card is
+// fine per the performance rule.
 
-function Check({ color = "#16A34A" }: { color?: string }) {
+function Check({ color = "#4ade80" }: { color?: string }) {
   return <span style={{ color, fontWeight: 700, fontSize: 16, marginRight: 10 }}>✓</span>;
 }
 
@@ -22,7 +25,7 @@ const BTN_PRIMARY: React.CSSProperties = {
 const BTN_SECONDARY: React.CSSProperties = {
   display: "block", textAlign: "center", padding: "14px 28px",
   borderRadius: 10, fontSize: 15, fontWeight: 500, textDecoration: "none",
-  background: "#FFFFFF", color: "#1E293B", border: "1px solid #CBD5E1",
+  background: "transparent", color: "#ffffff", border: "1px solid rgba(255,255,255,0.1)",
 };
 
 const PLANS = [
@@ -91,43 +94,43 @@ const COMPARE = [
 
 export default function PricingPage() {
   return (
-    <main style={{ background:"#FFFFFF", minHeight:"100vh", color:"#0B1120", overflowX:"hidden" }}>
+    <main style={{ background:"var(--glass-base)", minHeight:"100vh", color:"#ffffff", overflowX:"hidden" }}>
       {/* HERO */}
-      <section className="pub-hero" style={{ padding:"140px 32px 80px", textAlign:"center", background:"#FFFFFF" }}>
-        <div className="container">
+      <section className="pub-hero" style={{ padding:"140px 32px 80px", textAlign:"center", background:"var(--glass-base)", position: "relative", overflow: "hidden" }}>
+        <div aria-hidden className="glass-glow" style={{ top: -120, left: "50%", transform: "translateX(-50%)", width: 600, height: 500, background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)" }} />
+        <div className="container" style={{ position: "relative" }}>
           <div style={{
             display:"inline-flex", alignItems:"center", gap:8,
             padding:"6px 16px", borderRadius:999,
-            background:"rgba(13,148,136,0.08)", border:"1px solid rgba(13,148,136,0.2)",
+            background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.25)",
             marginBottom:24,
           }}>
-            <span style={{ fontSize:12, fontWeight:600, color:"#0D9488", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Simple, transparent pricing</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"#818cf8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Simple, transparent pricing</span>
           </div>
-          <h1 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:700, fontSize:"clamp(2rem, 4vw, 3.5rem)", lineHeight:1.1, letterSpacing:"-0.02em", color:"#0B1120", marginBottom:20 }}>
+          <h1 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:700, fontSize:"clamp(2rem, 4vw, 3.5rem)", lineHeight:1.1, letterSpacing:"-0.02em", color:"#ffffff", marginBottom:20 }}>
             Plans for every hiring team
           </h1>
-          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:18, lineHeight:1.7, color:"#1E293B", marginBottom:12 }}>
+          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:18, lineHeight:1.7, color:"#cbd5e1", marginBottom:12 }}>
             All plans include a 14-day free trial. No credit card required until the trial ends.
           </p>
-          <p style={{ fontSize:14, color:"#64748B", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Workers always register free. Application fees are charged per job application and vary by region.</p>
+          <p style={{ fontSize:14, color:"#94a3b8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Workers always register free. Application fees are charged per job application and vary by region.</p>
         </div>
       </section>
 
       {/* PLANS */}
-      <section style={{ padding:"20px 0 100px", background:"#FFFFFF" }}>
+      <section style={{ padding:"20px 0 100px", background:"var(--glass-base)" }}>
         <div className="container">
           <div className="pricing-plans-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24, alignItems:"start" }}>
             {PLANS.map(plan => (
-              <div key={plan.id} style={{
-                background:"#FFFFFF",
-                border:plan.highlight ? "1px solid #C4B5FD" : "1px solid #F1F5F9",
-                borderRadius:16, padding:"36px 32px", position:"relative",
-                boxShadow:plan.highlight ? "0 4px 24px rgba(124,58,237,0.12)" : "0 1px 2px rgba(11,17,32,0.04)",
+              <div key={plan.id} className="glass-card" style={{
+                borderColor: plan.highlight ? "rgba(124,58,237,0.4)" : undefined,
+                boxShadow: plan.highlight ? "0 4px 24px rgba(124,58,237,0.2), 0 25px 50px -12px rgba(0,0,0,0.5)" : undefined,
+                padding:"36px 32px", position:"relative",
               }}>
                 {plan.highlight && (
                   <div style={{
                     position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)",
-                    background:"#6D28D9",
+                    background:"linear-gradient(135deg, #7C3AED, #6D28D9)",
                     color:"#fff", fontSize:11, fontWeight:700,
                     padding:"5px 16px", borderRadius:999,
                     letterSpacing:"0.08em", whiteSpace:"nowrap",
@@ -137,32 +140,33 @@ export default function PricingPage() {
                   </div>
                 )}
                 <div style={{ marginBottom:24 }}>
-                  <div style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:700, fontSize:20, color:"#0B1120", marginBottom:6 }}>{plan.name}</div>
-                  <p style={{ fontSize:14, color:"#64748B", lineHeight:1.6, marginBottom:20, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{plan.desc}</p>
+                  <div style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:700, fontSize:20, color:"#ffffff", marginBottom:6 }}>{plan.name}</div>
+                  <p style={{ fontSize:14, color:"#94a3b8", lineHeight:1.6, marginBottom:20, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{plan.desc}</p>
                   <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
                     <span style={{
                       fontFamily:"var(--font-mono)", fontVariantNumeric:"tabular-nums",
                       fontWeight:600, fontSize:44,
-                      color:plan.highlight ? "#7C3AED" : "#0B1120",
+                      color:plan.highlight ? "#a78bfa" : "#ffffff",
                     }}>{plan.price}</span>
-                    {plan.period && <span style={{ fontSize:15, color:"#64748B", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{plan.period}</span>}
+                    {plan.period && <span style={{ fontSize:15, color:"#94a3b8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{plan.period}</span>}
                   </div>
                 </div>
 
                 <Link href={plan.id === "enterprise" ? "/contact" : "/register"}
-                  style={{ ...(plan.highlight ? BTN_PRIMARY : BTN_SECONDARY), marginBottom:28 }}>
+                  className={plan.highlight ? "btn-gradient" : "btn-glass"}
+                  style={{ ...(plan.highlight ? {} : BTN_SECONDARY), marginBottom:28, textAlign: "center" }}>
                   {plan.cta} →
                 </Link>
 
                 <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   {plan.features.map(f => (
-                    <div key={f} style={{ display:"flex", alignItems:"flex-start", fontSize:14, color:"#1E293B", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>
-                      <Check color={plan.highlight ? "#7C3AED" : "#16A34A"}/>{f}
+                    <div key={f} style={{ display:"flex", alignItems:"flex-start", fontSize:14, color:"#cbd5e1", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>
+                      <Check color={plan.highlight ? "#a78bfa" : "#4ade80"}/>{f}
                     </div>
                   ))}
                   {plan.notIncluded.map(f => (
-                    <div key={f} style={{ display:"flex", alignItems:"center", fontSize:14, color:"#94A3B8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>
-                      <span style={{ color:"#94A3B8", marginRight:10, fontWeight:700 }}>✕</span>{f}
+                    <div key={f} style={{ display:"flex", alignItems:"center", fontSize:14, color:"#64748b", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>
+                      <span style={{ color:"#64748b", marginRight:10, fontWeight:700 }}>✕</span>{f}
                     </div>
                   ))}
                 </div>
@@ -173,29 +177,29 @@ export default function PricingPage() {
       </section>
 
       {/* COMPARISON TABLE */}
-      <section className="section-sm" style={{ background:"#F8FAFC", borderTop:"1px solid #F1F5F9" }}>
+      <section className="section-sm" style={{ background:"rgba(255,255,255,0.02)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div className="container">
-          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#0B1120", marginBottom:40, textAlign:"center" }}>Full comparison</h2>
-          <div className="pricing-table-shell" style={{ maxWidth:900, margin:"0 auto", border:"1px solid #F1F5F9", borderRadius:16, overflow:"hidden", background:"#FFFFFF" }}>
-            <div className="pricing-table-row" style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", background:"#F8FAFC", padding:"14px 24px", borderBottom:"1px solid #F1F5F9" }}>
-              <div style={{ fontSize:12, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Feature</div>
+          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:40, textAlign:"center" }}>Full comparison</h2>
+          <div className="pricing-table-shell glass-card" style={{ maxWidth:900, margin:"0 auto", overflow:"hidden" }}>
+            <div className="pricing-table-row" style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", background:"rgba(255,255,255,0.04)", padding:"14px 24px", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Feature</div>
               {["Starter","Growth","Enterprise"].map(n => (
-                <div key={n} style={{ fontSize:13, fontWeight:700, color:"#0B1120", textAlign:"center", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{n}</div>
+                <div key={n} style={{ fontSize:13, fontWeight:700, color:"#ffffff", textAlign:"center", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{n}</div>
               ))}
             </div>
             {COMPARE.map((row, i) => (
               <div key={i} className="pricing-table-row" style={{
                 display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
                 padding:"14px 24px",
-                borderBottom:i < COMPARE.length - 1 ? "1px solid #F1F5F9" : "none",
-                background:i % 2 === 0 ? "#FAFBFC" : "transparent",
+                borderBottom:i < COMPARE.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                background:i % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent",
               }}>
-                <div style={{ fontSize:14, color:"#1E293B", fontWeight:500, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{row.feature}</div>
+                <div style={{ fontSize:14, color:"#cbd5e1", fontWeight:500, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{row.feature}</div>
                 {[row.starter, row.growth, row.enterprise].map((v, j) => (
                   <div key={j} style={{
                     fontSize:13, textAlign:"center",
                     fontFamily: /^[0-9]/.test(v) ? "var(--font-mono)" : "var(--font-body,'Inter',system-ui,sans-serif)",
-                    color:v === "✕" ? "#94A3B8" : v === "✓" ? "#16A34A" : "#0B1120",
+                    color:v === "✕" ? "#64748b" : v === "✓" ? "#4ade80" : "#ffffff",
                     fontWeight:v === "✕" || v === "✓" ? 700 : 500,
                   }}>{v}</div>
                 ))}
@@ -206,21 +210,21 @@ export default function PricingPage() {
       </section>
 
       {/* WORKER PRICING — worker role color (teal), this section is specifically about workers */}
-      <section className="section-sm" style={{ background:"#FFFFFF", borderTop:"1px solid #F1F5F9" }}>
+      <section className="section-sm" style={{ background:"var(--glass-base)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div className="container" style={{ textAlign:"center" }}>
-          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#0B1120", marginBottom:16 }}>Worker pricing</h2>
-          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#1E293B", maxWidth:640, margin:"0 auto 32px" }}>
-            Registering and building your profile is completely free. A small application fee applies when you apply to a specific job post. This fee varies based on the region, job salary level, and market demand — typically between <strong style={{ color:"#0B1120" }}>€8 and €85</strong>.
+          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:16 }}>Worker pricing</h2>
+          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#cbd5e1", maxWidth:640, margin:"0 auto 32px" }}>
+            Registering and building your profile is completely free. A small application fee applies when you apply to a specific job post. This fee varies based on the region, job salary level, and market demand — typically between <strong style={{ color:"#ffffff" }}>€8 and €85</strong>.
           </p>
           <div className="worker-pricing-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, maxWidth:600, margin:"0 auto" }}>
             {[
-              { label:"Profile creation", value:"Free",   color:"#0D9488" },
-              { label:"AI job matching",  value:"Free",   color:"#0D9488" },
-              { label:"Application fee",  value:"€8–€85", color:"#0D9488" },
+              { label:"Profile creation", value:"Free",   color:"#2dd4bf" },
+              { label:"AI job matching",  value:"Free",   color:"#2dd4bf" },
+              { label:"Application fee",  value:"€8–€85", color:"#2dd4bf" },
             ].map(({ label, value, color }) => (
-              <div key={label} style={{ padding:"24px 20px", background:"#F0FDFA", border:"1px solid #99F6E4", borderRadius:10 }}>
+              <div key={label} style={{ padding:"24px 20px", background:"rgba(20,184,166,0.08)", border:"1px solid rgba(20,184,166,0.25)", borderRadius:10 }}>
                 <div style={{ fontFamily:"var(--font-mono)", fontVariantNumeric:"tabular-nums", fontWeight:600, fontSize:24, color, marginBottom:6 }}>{value}</div>
-                <div style={{ fontSize:14, color:"#64748B", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{label}</div>
+                <div style={{ fontSize:14, color:"#94a3b8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{label}</div>
               </div>
             ))}
           </div>
@@ -228,9 +232,9 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="section-sm" style={{ background:"#F8FAFC", borderTop:"1px solid #F1F5F9" }}>
+      <section className="section-sm" style={{ background:"rgba(255,255,255,0.02)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div className="container">
-          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#0B1120", marginBottom:40, textAlign:"center" }}>Pricing FAQ</h2>
+          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:40, textAlign:"center" }}>Pricing FAQ</h2>
           <div style={{ maxWidth:700, margin:"0 auto" }}>
             {[
               { q:"Is the 14-day trial really free?", a:"Yes. No credit card is required to start. You get full access to your chosen plan for 14 days. Your card is only charged after the trial ends — or you can cancel before then at no cost." },
@@ -238,9 +242,9 @@ export default function PricingPage() {
               { q:"What happens to my data if I cancel?", a:"You retain access until your billing period ends. After cancellation, your data is retained for 30 days then permanently deleted, in compliance with GDPR." },
               { q:"Do you offer discounts for staffing agencies?", a:"Yes. Contact our sales team for volume pricing, staffing agency rates, and custom enterprise agreements." },
             ].map((item, i, arr) => (
-              <div key={i} style={{ padding:"24px 0", borderBottom:i < arr.length - 1 ? "1px solid #F1F5F9" : "none" }}>
-                <div style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:17, color:"#0B1120", marginBottom:10 }}>{item.q}</div>
-                <p style={{ fontSize:15, color:"#64748B", lineHeight:1.65, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{item.a}</p>
+              <div key={i} style={{ padding:"24px 0", borderBottom:i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
+                <div style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:17, color:"#ffffff", marginBottom:10 }}>{item.q}</div>
+                <p style={{ fontSize:15, color:"#94a3b8", lineHeight:1.65, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{item.a}</p>
               </div>
             ))}
           </div>
@@ -248,13 +252,13 @@ export default function PricingPage() {
       </section>
 
       {/* CTA */}
-      <section className="section-sm" style={{ background:"#FFFFFF", borderTop:"1px solid #F1F5F9", textAlign:"center" }}>
+      <section className="section-sm" style={{ background:"var(--glass-base)", borderTop:"1px solid rgba(255,255,255,0.07)", textAlign:"center" }}>
         <div className="container">
-          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#0B1120", marginBottom:16 }}>Start your free trial today</h2>
-          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#1E293B", maxWidth:440, margin:"0 auto 32px" }}>14 days free on all plans. No credit card required.</p>
+          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:16 }}>Start your free trial today</h2>
+          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#cbd5e1", maxWidth:440, margin:"0 auto 32px" }}>14 days free on all plans. No credit card required.</p>
           <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
-            <Link href="/register" style={{ ...BTN_PRIMARY, display:"inline-block", padding:"14px 32px" }}>Start free trial →</Link>
-            <Link href="/contact" style={{ ...BTN_SECONDARY, display:"inline-block", padding:"14px 32px" }}>Talk to sales</Link>
+            <Link href="/register" className="btn-gradient" style={{ display:"inline-block", padding:"14px 32px" }}>Start free trial →</Link>
+            <Link href="/contact" className="btn-glass" style={{ display:"inline-block", padding:"14px 32px" }}>Talk to sales</Link>
           </div>
         </div>
       </section>

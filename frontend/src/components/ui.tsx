@@ -89,13 +89,13 @@ function getButtonStyle(variant: string, role: DHRole | undefined): ButtonStyleM
     }
     case "secondary":
       return {
-        base:  { background: "#FFFFFF", border: "1px solid #CBD5E1", color: "#1E293B" },
-        hover: { background: "#F8FAFC" },
+        base:  { background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#ffffff" },
+        hover: { background: "rgba(255,255,255,0.05)" },
       };
     case "ghost":
       return {
-        base:  { background: "transparent", border: "none", color: "#1E293B" },
-        hover: { background: "#F1F5F9" },
+        base:  { background: "transparent", border: "none", color: "#ffffff" },
+        hover: { background: "rgba(255,255,255,0.05)" },
       };
     case "danger":
       return {
@@ -104,8 +104,8 @@ function getButtonStyle(variant: string, role: DHRole | undefined): ButtonStyleM
       };
     case "outline":
       return {
-        base:  { background: "#FFFFFF", border: "1px solid #CBD5E1", color: "#1E293B" },
-        hover: { background: "#F8FAFC" },
+        base:  { background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#ffffff" },
+        hover: { background: "rgba(255,255,255,0.05)" },
       };
     case "teal":
       return {
@@ -179,8 +179,6 @@ export function Button({
     });
   }
 
-  const isLight = variant === "ghost" || variant === "secondary" || variant === "outline";
-
   return (
     <button
       style={combinedStyle}
@@ -190,7 +188,7 @@ export function Button({
       onMouseLeave={(e) => Object.assign((e.currentTarget as HTMLButtonElement).style, styleMap.base)}
       {...props}
     >
-      {loading ? <Spinner size="xs" color={isLight ? "blue" : "white"} /> : leftIcon}
+      {loading ? <Spinner size="xs" color="white" /> : leftIcon}
       {children}
       {!loading && rightIcon}
     </button>
@@ -291,11 +289,17 @@ export function Card({
   // shadow-sm. "elevated" is for the rare non-modal/non-dropdown case that
   // genuinely needs more lift; still capped at shadow-md, never a decorative
   // shadow.
+  // "Flat" glass is the resting state — container-level card, translucent +
+  // blurred (see the .glass-card token in globals.css; kept as this JS object
+  // for call sites that use <Card> directly rather than className="glass-card").
+  // NEVER use Card for a repeated list row — see the performance rule; list
+  // rows should use the solid-translucent-no-blur pattern (admin-theme.ts's
+  // `rowBg`) instead.
   const variantStyles: Record<string, React.CSSProperties> = {
-    default:  { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px", boxShadow: "0 1px 2px rgba(11,17,32,0.04)" },
-    elevated: { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px", boxShadow: "0 4px 12px rgba(11,17,32,0.08)" },
-    flat:     { background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: "10px" },
-    ghost:    { background: "transparent", border: "none", borderRadius: "10px" },
+    default:  { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(99,102,241,0.08)" },
+    elevated: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6), 0 8px 32px rgba(99,102,241,0.12)" },
+    flat:     { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" },
+    ghost:    { background: "transparent", border: "none", borderRadius: "16px" },
   };
 
   return (
@@ -340,7 +344,7 @@ export function CardHeader({
         alignItems: "center",
         justifyContent: "space-between",
         padding: "20px 24px",
-        borderBottom: "1px solid #F1F5F9",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
         ...style,
       }}
     >
@@ -349,7 +353,7 @@ export function CardHeader({
           style={{
             fontSize: "18px",
             fontWeight: 600,
-            color: "#0B1120",
+            color: "#ffffff",
             margin: 0,
             letterSpacing: "-0.01em",
           }}
@@ -357,7 +361,7 @@ export function CardHeader({
           {title}
         </h3>
         {description && (
-          <p style={{ fontSize: "14px", color: "#64748B", margin: "3px 0 0 0" }}>{description}</p>
+          <p style={{ fontSize: "14px", color: "#94a3b8", margin: "3px 0 0 0" }}>{description}</p>
         )}
       </div>
       {action && <div style={{ flexShrink: 0, marginLeft: "16px" }}>{action}</div>}
@@ -402,9 +406,9 @@ export function CardFooter({
       className={className}
       style={{
         padding: "16px 24px",
-        borderTop: "1px solid #F1F5F9",
-        background: "#F8FAFC",
-        borderRadius: "0 0 10px 10px",
+        borderTop: "1px solid rgba(255,255,255,0.07)",
+        background: "rgba(0,0,0,0.15)",
+        borderRadius: "0 0 16px 16px",
         ...style,
       }}
     >
@@ -429,9 +433,9 @@ const BADGE_STYLES: Record<BadgeVariantKey, { bg: string; color: string; dot: st
   green:  { bg: "rgba(22,163,74,0.10)",  color: "#16A34A", dot: "#16A34A" }, // success
   red:    { bg: "rgba(220,38,38,0.10)",  color: "#DC2626", dot: "#DC2626" }, // danger
   amber:  { bg: "rgba(234,88,12,0.10)",  color: "#EA580C", dot: "#EA580C" }, // warning
-  purple: { bg: "rgba(124,58,237,0.10)", color: "#7C3AED", dot: "#7C3AED" }, // employer-600
-  teal:   { bg: "rgba(13,148,136,0.10)", color: "#0D9488", dot: "#0D9488" }, // worker-600
-  slate:  { bg: "#F1F5F9",               color: "#64748B", dot: "#64748B" }, // ink-500 on ink-100
+  purple: { bg: "rgba(124,58,237,0.14)", color: "#A78BFA", dot: "#A78BFA" }, // employer-400 — -600 fails AA as text on the dark glass base
+  teal:   { bg: "rgba(13,148,136,0.14)", color: "#2DD4BF", dot: "#2DD4BF" }, // worker-400 — same reason
+  slate:  { bg: "rgba(255,255,255,0.08)", color: "#94a3b8", dot: "#94a3b8" }, // slate-400 on translucent white
   cyan:   { bg: "rgba(37,99,235,0.10)",  color: "#2563EB", dot: "#2563EB" }, // alias of info
   orange: { bg: "rgba(234,88,12,0.10)",  color: "#EA580C", dot: "#EA580C" }, // alias of warning
 };
@@ -512,7 +516,7 @@ export function StatCard({
   label,
   value,
   icon,
-  iconBg = "#0090FF",
+  iconBg = "#6366F1",
   trend,
   valueColor,
   subtitle,
@@ -526,8 +530,10 @@ export function StatCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: "#161616",
-        border: hovered ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: hovered ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.1)",
         borderRadius: "16px",
         padding: "24px",
         transition: "all 0.2s ease",
@@ -588,19 +594,20 @@ export function StatCard({
       <div
         style={{
           fontSize: "28px",
-          fontWeight: 800,
+          fontWeight: 700,
           color: valueColor ?? "#ffffff",
           lineHeight: 1,
           marginBottom: "6px",
-          fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
-          letterSpacing: "-0.03em",
+          fontFamily: "var(--font-mono)",
+          fontVariantNumeric: "tabular-nums",
+          letterSpacing: "-0.01em",
         }}
       >
         {value}
       </div>
-      <div style={{ fontSize: "12px", color: "#71717a", fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 500 }}>{label}</div>
       {subtitle && (
-        <div style={{ fontSize: "11px", color: "#525252", marginTop: "3px" }}>{subtitle}</div>
+        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "3px" }}>{subtitle}</div>
       )}
     </div>
   );
@@ -621,11 +628,11 @@ export function Input({ label, error, hint, leftIcon, className, id, style, ...p
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    background: "#111111",
+    background: "rgba(255,255,255,0.05)",
     border: error
       ? "1px solid #ef4444"
       : focused
-      ? "1px solid #0090FF"
+      ? "1px solid #6366F1"
       : "1px solid rgba(255,255,255,0.08)",
     borderRadius: "10px",
     padding: leftIcon ? "10px 14px 10px 40px" : "10px 14px",
@@ -637,7 +644,7 @@ export function Input({ label, error, hint, leftIcon, className, id, style, ...p
     boxShadow: focused
       ? error
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(0,144,255,0.12)"
+        : "0 0 0 3px rgba(99,102,241,0.15)"
       : "none",
     ...style,
   };
@@ -714,11 +721,11 @@ export function SelectInput({
 
   const selectStyle: React.CSSProperties = {
     width: "100%",
-    background: "#111111",
+    background: "rgba(255,255,255,0.05)",
     border: error
       ? "1px solid #ef4444"
       : focused
-      ? "1px solid #0090FF"
+      ? "1px solid #6366F1"
       : "1px solid rgba(255,255,255,0.08)",
     borderRadius: "10px",
     padding: "10px 36px 10px 14px",
@@ -736,7 +743,7 @@ export function SelectInput({
     boxShadow: focused
       ? error
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(0,144,255,0.12)"
+        : "0 0 0 3px rgba(99,102,241,0.15)"
       : "none",
     ...style,
   };
@@ -759,12 +766,12 @@ export function SelectInput({
         {...props}
       >
         {placeholder && (
-          <option value="" style={{ background: "#1a1a1a", color: "#ffffff" }}>
+          <option value="" style={{ background: "#1e293b", color: "#ffffff" }}>
             {placeholder}
           </option>
         )}
         {options.map(o => (
-          <option key={o.value} value={o.value} style={{ background: "#1a1a1a", color: "#ffffff" }}>
+          <option key={o.value} value={o.value} style={{ background: "#1e293b", color: "#ffffff" }}>
             {o.label}
           </option>
         ))}
@@ -790,11 +797,11 @@ export function Textarea({ label, error, hint, className, id, style, ...props }:
 
   const textareaStyle: React.CSSProperties = {
     width: "100%",
-    background: "#111111",
+    background: "rgba(255,255,255,0.05)",
     border: error
       ? "1px solid #ef4444"
       : focused
-      ? "1px solid #0090FF"
+      ? "1px solid #6366F1"
       : "1px solid rgba(255,255,255,0.08)",
     borderRadius: "10px",
     padding: "10px 14px",
@@ -808,7 +815,7 @@ export function Textarea({ label, error, hint, className, id, style, ...props }:
     boxShadow: focused
       ? error
         ? "0 0 0 3px rgba(239,68,68,0.12)"
-        : "0 0 0 3px rgba(0,144,255,0.12)"
+        : "0 0 0 3px rgba(99,102,241,0.15)"
       : "none",
     ...style,
   };
@@ -929,8 +936,8 @@ export function EmptyState({
             width: "64px",
             height: "64px",
             borderRadius: "16px",
-            background: "#F8FAFC",
-            border: "1px solid #F1F5F9",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -944,7 +951,7 @@ export function EmptyState({
         style={{
           fontSize: "18px",
           fontWeight: 600,
-          color: "#0B1120",
+          color: "#ffffff",
           marginTop: "20px",
           letterSpacing: "-0.02em",
           fontFamily: "var(--font-body,'Inter',system-ui,sans-serif)",
@@ -956,7 +963,7 @@ export function EmptyState({
         <p
           style={{
             fontSize: "14px",
-            color: "#64748B",
+            color: "#94a3b8",
             maxWidth: "400px",
             lineHeight: 1.6,
             margin: "8px 0 0 0",
@@ -998,8 +1005,8 @@ export function ErrorState({
       }}
     >
       <div style={{ fontSize: 24, marginBottom: 8 }}>⚠</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#DC2626", marginBottom: 6 }}>{title}</div>
-      {message && <div style={{ fontSize: 13, color: "#64748B", marginBottom: retry ? 16 : 0 }}>{message}</div>}
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#f87171", marginBottom: 6 }}>{title}</div>
+      {message && <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: retry ? 16 : 0 }}>{message}</div>}
       {retry && (
         <button
           onClick={retry}
@@ -1122,7 +1129,7 @@ export function Divider({ label, className }: { label?: string; className?: stri
         style={{
           fontSize: "12px",
           color: "#71717a",
-          background: "var(--navy-950,#060B18)",
+          background: "var(--glass-base)",
           padding: "0 4px",
         }}
       >
@@ -1137,7 +1144,7 @@ export function Divider({ label, className }: { label?: string; className?: stri
 
 export function ProgressBar({
   value,
-  color = "#0090FF",
+  color = "#6366F1",
   showLabel,
   size = "sm",
   className,
@@ -1198,7 +1205,7 @@ export function ProgressBar({
 
 const TAG_STYLES: Record<string, React.CSSProperties> = {
   default: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#a1a1aa" },
-  blue:    { background: "rgba(0,144,255,0.08)",   border: "1px solid rgba(0,144,255,0.15)",   color: "#60a5fa" },
+  blue:    { background: "rgba(99,102,241,0.08)",  border: "1px solid rgba(99,102,241,0.15)",  color: "#818cf8" },
   teal:    { background: "rgba(20,184,166,0.08)",  border: "1px solid rgba(20,184,166,0.15)",  color: "#2dd4bf" },
 };
 
@@ -1287,13 +1294,13 @@ export function Pagination({
       fontWeight: 500,
       cursor: disabled ? "not-allowed" : "pointer",
       border: active
-        ? "1px solid #0090FF"
+        ? "1px solid #6366F1"
         : hovered && !disabled
         ? "1px solid rgba(255,255,255,0.15)"
         : "1px solid rgba(255,255,255,0.06)",
-      background: active ? "#0090FF" : "transparent",
+      background: active ? "linear-gradient(135deg, #4F46E5, #9333EA)" : "transparent",
       color: active ? "#ffffff" : hovered && !disabled ? "#ffffff" : "#a1a1aa",
-      boxShadow: active ? "0 0 12px rgba(0,144,255,0.3)" : "none",
+      boxShadow: active ? "0 0 12px rgba(99,102,241,0.3)" : "none",
       opacity: disabled ? 0.3 : 1,
       transition: "all 0.15s ease",
       fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
@@ -1381,7 +1388,7 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "#FFFFFF",
+        background: "var(--glass-base)",
         gap: "16px",
       }}
     >
@@ -1391,7 +1398,7 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
             width: "48px",
             height: "48px",
             borderRadius: "14px",
-            background: "#0D9488",
+            background: "linear-gradient(135deg, #4F46E5, #9333EA)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1407,7 +1414,7 @@ export function LoadingPage({ color = "blue" }: { color?: "blue" | "teal" | "amb
           style={{
             fontSize: "16px",
             fontWeight: 700,
-            color: "#0B1120",
+            color: "#ffffff",
             letterSpacing: "-0.02em",
             fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)",
           }}
@@ -1444,11 +1451,13 @@ export function ToastDisplay({ toast }: { toast: ToastData }) {
         alignItems: "center",
         gap: "12px",
         padding: "16px 20px",
-        background: "#FFFFFF",
-        border: "1px solid #F1F5F9",
+        background: "rgba(30,41,59,0.9)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: "1px solid rgba(255,255,255,0.1)",
         borderLeft: `3px solid ${borderColor}`,
         borderRadius: "10px",
-        boxShadow: "0 12px 32px rgba(11,17,32,0.16)",
+        boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
         maxWidth: "360px",
       }}
     >
@@ -1473,7 +1482,7 @@ export function ToastDisplay({ toast }: { toast: ToastData }) {
         style={{
           fontSize: "14px",
           fontWeight: 500,
-          color: "#0B1120",
+          color: "#ffffff",
           lineHeight: 1.4,
           fontFamily: "var(--font-body,'Inter',system-ui,sans-serif)",
         }}

@@ -17,9 +17,9 @@ function Section({ id, title, children }: { id: string; title: string; children:
     <div id={id} style={{ marginBottom: 52, scrollMarginTop: 110 }}>
       <h2 style={{
         fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)",
-        fontWeight: 700, fontSize: 22, color: "var(--text-primary,#F0F4FF)",
+        fontWeight: 700, fontSize: 22, color: "#ffffff",
         marginBottom: 16, paddingBottom: 12,
-        borderBottom: "2px solid rgba(0,144,255,0.15)",
+        borderBottom: "2px solid rgba(99,102,241,0.15)",
       }}>
         {title}
       </h2>
@@ -31,7 +31,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 function P({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 15, color: "var(--text-muted,#4A5980)",
+      fontSize: 15, color: "#94a3b8",
       lineHeight: 1.85, marginBottom: 14,
       fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
     }}>
@@ -60,18 +60,18 @@ export default function CookiesPage() {
   }, []);
 
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
+    <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
-        background: "var(--navy-950,#060B18)",
+        background: "var(--glass-base)",
         padding: "140px 32px 60px",
         position: "relative", overflow: "hidden",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: "radial-gradient(ellipse, rgba(0,144,255,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div className="container" style={{ position: "relative" }}>
-          <div style={{ display: "inline-flex", padding: "6px 16px", borderRadius: 999, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", marginBottom: 24 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#60A5FA", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>Legal</span>
+          <div style={{ display: "inline-flex", padding: "6px 16px", borderRadius: 999, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>Legal</span>
           </div>
           <h1 style={{
             fontFamily: "var(--font-display)", fontWeight: 800,
@@ -87,12 +87,12 @@ export default function CookiesPage() {
       </section>
 
       {/* ── CONTENT + SIDEBAR ────────────────────────────────────────────────── */}
-      <section style={{ padding: "72px 32px 120px", background: "var(--navy-900,#0A1628)" }}>
+      <section style={{ padding: "72px 32px 120px", background: "var(--glass-base)" }}>
         <div className="container">
 
           {/* Notice banner */}
-          <div style={{ background: "rgba(0,144,255,0.06)", border: "1px solid rgba(0,144,255,0.15)", borderRadius: 14, padding: "18px 22px", marginBottom: 56 }}>
-            <p style={{ fontSize: 14, color: "#60A5FA", fontWeight: 500, lineHeight: 1.65, margin: 0, fontFamily: "var(--font-body)" }}>
+          <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 14, padding: "18px 22px", marginBottom: 56 }}>
+            <p style={{ fontSize: 14, color: "#818cf8", fontWeight: 500, lineHeight: 1.65, margin: 0, fontFamily: "var(--font-body)" }}>
               DirectHire uses only strictly necessary cookies. We do not use advertising, tracking, or third-party marketing cookies.
             </p>
           </div>
@@ -113,8 +113,8 @@ export default function CookiesPage() {
                       href={`#${item.id}`}
                       style={{
                         fontSize: 13, padding: "6px 0 6px 12px",
-                        borderLeft: `2px solid ${isActive ? "var(--blue-500,#0090FF)" : "transparent"}`,
-                        color: isActive ? "var(--blue-400,#60A5FA)" : "rgba(255,255,255,0.5)",
+                        borderLeft: `2px solid ${isActive ? "var(--blue-500,#4F46E5)" : "transparent"}`,
+                        color: isActive ? "var(--blue-400,#818cf8)" : "rgba(255,255,255,0.5)",
                         textDecoration: "none", fontFamily: "var(--font-body)",
                         transition: "color 0.15s, border-color 0.15s",
                         lineHeight: 1.5,
@@ -143,9 +143,9 @@ export default function CookiesPage() {
 
               <Section id="section-2" title="2. Essential cookies">
                 <P>Essential cookies are required for the platform to function. They cannot be disabled because removing them would break core features including login, session management, and security.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Authentication:</strong> JWT access tokens are stored as HttpOnly, Secure, SameSite=Strict cookies. These expire with your session or after a configured idle timeout.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>CSRF protection:</strong> a CSRF token cookie is set to prevent cross-site request forgery on form submissions.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Session state:</strong> a short-lived session identifier used to keep you logged in across page navigations without requiring re-authentication.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Authentication:</strong> JWT access tokens are stored as HttpOnly, Secure, SameSite=Strict cookies. These expire with your session or after a configured idle timeout.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>CSRF protection:</strong> a CSRF token cookie is set to prevent cross-site request forgery on form submissions.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Session state:</strong> a short-lived session identifier used to keep you logged in across page navigations without requiring re-authentication.</P>
               </Section>
 
               <Section id="section-3" title="3. Analytics cookies">
@@ -161,24 +161,24 @@ export default function CookiesPage() {
 
               <Section id="section-5" title="5. Managing cookies">
                 <P>You can control and delete cookies through your browser settings. Instructions for the most common browsers:</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Chrome:</strong> Settings → Privacy and security → Cookies and other site data.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Firefox:</strong> Settings → Privacy &amp; Security → Cookies and Site Data.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Safari:</strong> Preferences → Privacy → Manage Website Data.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Edge:</strong> Settings → Cookies and site permissions → Cookies and site data.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Chrome:</strong> Settings → Privacy and security → Cookies and other site data.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Firefox:</strong> Settings → Privacy &amp; Security → Cookies and Site Data.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Safari:</strong> Preferences → Privacy → Manage Website Data.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Edge:</strong> Settings → Cookies and site permissions → Cookies and site data.</P>
                 <P>Note: disabling essential cookies will prevent you from logging in and using the platform.</P>
               </Section>
 
               <Section id="section-6" title="6. Contact">
-                <P>If you have questions about our use of cookies or this policy, contact our Data Protection team at <a href="mailto:privacy@directhire.io" style={{ color: "#60A5FA", textDecoration: "none" }}>privacy@directhire.io</a>.</P>
+                <P>If you have questions about our use of cookies or this policy, contact our Data Protection team at <a href="mailto:privacy@directhire.io" style={{ color: "#818cf8", textDecoration: "none" }}>privacy@directhire.io</a>.</P>
                 <P>DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania.</P>
               </Section>
 
               {/* Footer strip */}
-              <div style={{ borderTop: "1px solid var(--surface-border,#1E3258)", paddingTop: 32, marginTop: 16, display: "flex", gap: 24, flexWrap: "wrap" as const }}>
-                <a href="/terms" style={{ fontSize: 13, color: "#60A5FA", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Terms of Service</a>
-                <a href="/privacy" style={{ fontSize: 13, color: "#60A5FA", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Privacy Policy</a>
-                <a href="/contact" style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", textDecoration: "none", fontFamily: "var(--font-body)" }}>Contact Us</a>
-                <span style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", marginLeft: "auto", fontFamily: "var(--font-body)" }}>© {new Date().getFullYear()} DirectHire Ltd</span>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 32, marginTop: 16, display: "flex", gap: 24, flexWrap: "wrap" as const }}>
+                <a href="/terms" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Terms of Service</a>
+                <a href="/privacy" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Privacy Policy</a>
+                <a href="/contact" style={{ fontSize: 13, color: "#94a3b8", textDecoration: "none", fontFamily: "var(--font-body)" }}>Contact Us</a>
+                <span style={{ fontSize: 13, color: "#94a3b8", marginLeft: "auto", fontFamily: "var(--font-body)" }}>© {new Date().getFullYear()} DirectHire Ltd</span>
               </div>
             </div>
           </div>

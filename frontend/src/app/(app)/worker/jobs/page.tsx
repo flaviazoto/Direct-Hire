@@ -658,7 +658,7 @@ function PaymentStep({
           width: "100%", height: 44, borderRadius: 10, border: "none",
           background: paying || !stripe
             ? "rgba(124,58,237,0.3)"
-            : "linear-gradient(135deg, #7c3aed, #0090FF)",
+            : "linear-gradient(135deg, #7c3aed, #4F46E5)",
           color: "#fff", fontSize: 14, fontWeight: 700,
           cursor: paying || !stripe ? "not-allowed" : "pointer",
           fontFamily: "inherit",
@@ -747,20 +747,16 @@ function ApplyModal({
       {/* Backdrop */}
       <div
         onClick={step === "review" ? onClose : undefined}
-        style={{
-          position: "fixed", inset: 0, zIndex: 1000,
-          background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)",
-        }}
+        className="glass-scrim"
+        style={{ zIndex: 1000 }}
       />
 
       {/* Modal */}
-      <div style={{
+      <div className="glass-modal" style={{
         position: "fixed", top: "50%", left: "50%",
         transform: "translate(-50%, -50%)",
         zIndex: 1001, width: "min(520px, 95vw)",
-        background: "#111", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 18, padding: "28px",
-        boxShadow: "0 24px 80px rgba(0,0,0,0.85)",
+        padding: "28px",
         maxHeight: "90vh", overflowY: "auto",
       }}>
 
@@ -768,7 +764,7 @@ function ApplyModal({
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
             <div style={{
-              fontSize: 10, fontWeight: 700, color: "#0090FF",
+              fontSize: 10, fontWeight: 700, color: "#818cf8",
               letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5,
             }}>
               {step === "payment" ? "Complete payment" : "Apply for position"}
@@ -897,14 +893,14 @@ function ApplyModal({
               style={{
                 width: "100%", height: 44, borderRadius: 10, border: "none",
                 background: submitting
-                  ? "rgba(0,144,255,0.3)"
+                  ? "rgba(99,102,241,0.3)"
                   : feeCents > 0
-                    ? "linear-gradient(135deg, #7c3aed, #0090FF)"
-                    : "linear-gradient(135deg, #0090FF, #0070cc)",
+                    ? "linear-gradient(135deg, #7c3aed, #4F46E5)"
+                    : "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                 color: "#fff", fontSize: 14, fontWeight: 700,
                 cursor: submitting ? "not-allowed" : "pointer",
                 fontFamily: "inherit",
-                boxShadow: submitting ? "none" : "0 2px 20px rgba(0,144,255,0.3)",
+                boxShadow: submitting ? "none" : "0 2px 20px rgba(99,102,241,0.3)",
                 transition: "all 0.15s",
               }}
             >

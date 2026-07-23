@@ -159,12 +159,11 @@ function RevokeModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)",zIndex:200 }} />
-      <div style={{
+      <div onClick={onClose} className="glass-scrim" style={{ zIndex:200 }} />
+      <div className="glass-modal" style={{
         position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
         zIndex:201,width:480,maxWidth:"calc(100vw - 32px)",
-        background:"#141414",border:`1px solid ${C.border}`,borderRadius:16,
-        padding:28,boxShadow:"0 24px 80px rgba(0,0,0,0.6)",
+        padding:28,
       }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18 }}>
           <div>
@@ -237,12 +236,11 @@ function ConfirmModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(6px)",zIndex:200 }} />
-      <div style={{
+      <div onClick={onClose} className="glass-scrim" style={{ zIndex:200 }} />
+      <div className="glass-modal" style={{
         position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
         zIndex:201,width:420,maxWidth:"calc(100vw - 32px)",
-        background:"#141414",border:`1px solid ${C.border}`,borderRadius:16,
-        padding:28,boxShadow:"0 24px 80px rgba(0,0,0,0.6)",
+        padding:28,
       }}>
         <h3 style={{ fontSize:16,fontWeight:700,color:C.text,margin:"0 0 10px" }}>{title}</h3>
         <p style={{ fontSize:13,color:C.muted,marginBottom:20,lineHeight:1.6 }}>{body}</p>

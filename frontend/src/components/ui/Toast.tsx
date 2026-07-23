@@ -41,10 +41,11 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
     <div style={{
       display: "flex", alignItems: "flex-start", gap: 12,
       minWidth: 280, maxWidth: 380,
-      background: "var(--navy-2, #0b1120)",
-      border: "1px solid var(--border, rgba(59,130,246,0.12))",
+      background: "rgba(30,41,59,0.9)",
+      backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+      border: "1px solid rgba(255,255,255,0.1)",
       borderLeft: `4px solid ${cfg.borderColor}`,
-      borderRadius: "var(--r-md, 12px)",
+      borderRadius: 12,
       padding: "14px 16px",
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
       fontFamily: "var(--font-body, 'DM Sans', system-ui, sans-serif)",
@@ -61,7 +62,7 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
       }}>{cfg.icon}</div>
 
       {/* Message */}
-      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--white, #f8fafc)", lineHeight: 1.5, paddingTop: 3 }}>
+      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#ffffff", lineHeight: 1.5, paddingTop: 3 }}>
         {item.message}
       </span>
 
@@ -70,12 +71,12 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
         onClick={() => { setVisible(false); setTimeout(() => onDismiss(item.id), 300); }}
         style={{
           background: "none", border: "none", cursor: "pointer",
-          color: "var(--muted, rgba(248,250,252,0.5))", fontSize: 16, lineHeight: 1,
+          color: "#94a3b8", fontSize: 16, lineHeight: 1,
           flexShrink: 0, padding: "2px 4px", borderRadius: 4,
           transition: "color 0.15s",
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = "var(--white, #f8fafc)"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "var(--muted, rgba(248,250,252,0.5))"; }}
+        onMouseEnter={e => { e.currentTarget.style.color = "#ffffff"; }}
+        onMouseLeave={e => { e.currentTarget.style.color = "#94a3b8"; }}
         aria-label="Dismiss"
       >×</button>
     </div>

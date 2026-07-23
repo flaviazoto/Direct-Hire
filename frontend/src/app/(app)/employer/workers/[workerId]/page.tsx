@@ -1052,10 +1052,10 @@ function WorkerProfileContent() {
       {/* ── Reserve modal ── */}
       {showModal && (
         <Modal onClose={closeReserveModal}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", margin: "0 0 4px" }}>
             Reserve {worker.first_name ?? name}
           </h2>
-          <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
+          <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 20px" }}>
             Other employers cannot contact or hire this worker during the reservation.
           </p>
 
@@ -1071,10 +1071,10 @@ function WorkerProfileContent() {
                     style={{
                       flex:         1,
                       padding:      "8px 0",
-                      border:       modalDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
+                      border:       modalDays === d ? "2px solid #0d9488" : "1px solid rgba(255,255,255,0.1)",
                       borderRadius: 8,
-                      background:   modalDays === d ? "#f0fdfa" : "white",
-                      color:        modalDays === d ? "#0d9488" : "#374151",
+                      background:   modalDays === d ? "rgba(13,148,136,0.15)" : "rgba(255,255,255,0.05)",
+                      color:        modalDays === d ? "#2DD4BF" : "#cbd5e1",
                       fontWeight:   modalDays === d ? 700 : 400,
                       fontSize:     13,
                       cursor:       "pointer",
@@ -1096,32 +1096,32 @@ function WorkerProfileContent() {
               />
 
               {lockRate ? (
-                <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: 14, marginTop: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 8 }}>Pricing</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 4 }}>
+                <div style={{ background: "rgba(13,148,136,0.1)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 10, padding: 14, marginTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF", marginBottom: 8 }}>Pricing</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 4 }}>
                     <span>Daily rate</span>
                     <span style={{ fontWeight: 600 }}>{lockRate.rateDisplay} / day · platform rate</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 4 }}>
                     <span>Duration</span>
                     <span style={{ fontWeight: 600 }}>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
                   </div>
-                  <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                  <div style={{ borderTop: "1px solid rgba(13,148,136,0.25)", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
                     <span>Total</span>
                     <span>${((lockRate.dailyRateCents * modalDays) / 100).toFixed(2)} USD</span>
                   </div>
-                  <div style={{ fontSize: 11, color: "#0d9488", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "#2DD4BF", marginTop: 4 }}>
                     Charged upfront. Unused days are refunded automatically if you release early.
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14, marginTop: 16 }}>
-                  <div style={{ fontSize: 13, color: "#64748b" }}>Loading platform rate…</div>
+                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 14, marginTop: 16 }}>
+                  <div style={{ fontSize: 13, color: "#94a3b8" }}>Loading platform rate…</div>
                 </div>
               )}
 
               {modalError && (
-                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{modalError}</div>
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 12 }}>{modalError}</div>
               )}
 
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -1146,21 +1146,21 @@ function WorkerProfileContent() {
           {modalPhase === "payment" && stripeClientSecret && (
             <>
               {/* Cost summary */}
-              <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 6 }}>Reservation summary</div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+              <div style={{ background: "rgba(13,148,136,0.1)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF", marginBottom: 6 }}>Reservation summary</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 3 }}>
                   <span>Duration</span>
                   <span style={{ fontWeight: 600 }}>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 3 }}>
                   <span>Daily rate</span>
                   <span style={{ fontWeight: 600 }}>${(stripeDailyRateCents / 100).toFixed(2)} USD</span>
                 </div>
-                <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                <div style={{ borderTop: "1px solid rgba(13,148,136,0.25)", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
                   <span>Total charged today</span>
                   <span>${(stripeTotalCents / 100).toFixed(2)} USD</span>
                 </div>
-                <div style={{ fontSize: 11, color: "#0d9488", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "#2DD4BF", marginTop: 4 }}>
                   Unused days are refunded automatically if you release early.
                 </div>
               </div>
@@ -1175,7 +1175,7 @@ function WorkerProfileContent() {
               </Elements>
 
               {modalError && (
-                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{modalError}</div>
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 12 }}>{modalError}</div>
               )}
             </>
           )}
@@ -1185,14 +1185,14 @@ function WorkerProfileContent() {
       {/* ── Extend modal ── */}
       {showExtendModal && lock && (
         <Modal onClose={() => !extendLoading && closeExtendModal()}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", margin: "0 0 4px" }}>
             Extend reservation — {worker.first_name ?? name}
           </h2>
 
           {extendPhase === "configure" && (
             <>
               {/* Current status row */}
-              <div style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
                 {[
                   { label: "Current expiry",   value: fmtDate(lock.lock_expiry_date) },
                   { label: "Lock started",     value: fmtDate(lock.lock_start_date)  },
@@ -1200,7 +1200,7 @@ function WorkerProfileContent() {
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{value}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1" }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -1215,10 +1215,10 @@ function WorkerProfileContent() {
                     style={{
                       flex:         1,
                       padding:      "8px 0",
-                      border:       extendDays === d ? "2px solid #0d9488" : "1px solid #e2e8f0",
+                      border:       extendDays === d ? "2px solid #0d9488" : "1px solid rgba(255,255,255,0.1)",
                       borderRadius: 8,
-                      background:   extendDays === d ? "#f0fdfa" : "white",
-                      color:        extendDays === d ? "#0d9488" : "#374151",
+                      background:   extendDays === d ? "rgba(13,148,136,0.15)" : "rgba(255,255,255,0.05)",
+                      color:        extendDays === d ? "#2DD4BF" : "#cbd5e1",
                       fontWeight:   extendDays === d ? 700 : 400,
                       fontSize:     13,
                       cursor:       "pointer",
@@ -1240,22 +1240,22 @@ function WorkerProfileContent() {
 
               {/* Cap validator / preview */}
               {extendCapExceeded ? (
-                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
                   Cannot exceed 60 days total.<br />
                   You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
                 </div>
               ) : (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ color: "#059669", fontSize: 13, fontWeight: 600 }}>
+                  <div style={{ color: "#4ade80", fontSize: 13, fontWeight: 600 }}>
                     New expiry: {extendNewExpiry ? fmtDate(extendNewExpiry) : "—"}
                   </div>
-                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 3 }}>
+                  <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 3 }}>
                     {extendDays} × {lock.currency} {Number(lock.daily_fee).toFixed(2)} = {lock.currency} {extendAddedCost} additional
                   </div>
                 </div>
               )}
 
-              {extendError && <div style={{ color: "#dc2626", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
+              {extendError && <div style={{ color: "#f87171", fontSize: 13, marginTop: 10 }}>{extendError}</div>}
 
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
                 <button
@@ -1289,13 +1289,13 @@ function WorkerProfileContent() {
           {/* Phase 2: Stripe payment */}
           {extendPhase === "payment" && extendClientSecret && (
             <>
-              <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px" }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#0d9488", marginBottom: 6 }}>Extension summary</div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#374151", marginBottom: 3 }}>
+              <div style={{ background: "rgba(13,148,136,0.1)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 10, padding: "12px 14px", margin: "14px 0 20px" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF", marginBottom: 6 }}>Extension summary</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 3 }}>
                   <span>Additional days</span>
                   <span style={{ fontWeight: 600 }}>{extendDays} day{extendDays !== 1 ? "s" : ""}</span>
                 </div>
-                <div style={{ borderTop: "1px solid #99f6e4", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                <div style={{ borderTop: "1px solid rgba(13,148,136,0.25)", paddingTop: 8, marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
                   <span>Total charged today</span>
                   <span>${(extendAdditionalCents / 100).toFixed(2)} USD</span>
                 </div>
@@ -1312,7 +1312,7 @@ function WorkerProfileContent() {
               </Elements>
 
               {extendError && (
-                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 12 }}>{extendError}</div>
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 12 }}>{extendError}</div>
               )}
             </>
           )}
@@ -1322,18 +1322,18 @@ function WorkerProfileContent() {
       {/* ── Message modal ── */}
       {showMsgModal && (
         <Modal onClose={() => { if (!msgSending) { setShowMsgModal(false); setMsgText(""); setMsgError(""); setMsgSent(false); } }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", margin: "0 0 4px" }}>
             Message {worker.first_name ?? name}
           </h2>
-          <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
+          <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 20px" }}>
             Your message will be sent to the worker&apos;s email address.
           </p>
 
           {msgSent ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 6 }}>Message sent!</div>
-              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#ffffff", marginBottom: 6 }}>Message sent!</div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>
                 {worker.first_name ?? name} will receive your message by email.
               </div>
               <button
@@ -1366,7 +1366,7 @@ function WorkerProfileContent() {
               </div>
 
               {msgError && (
-                <div style={{ color: "#dc2626", fontSize: 13, marginTop: 8 }}>{msgError}</div>
+                <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{msgError}</div>
               )}
 
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
@@ -1403,17 +1403,17 @@ function WorkerProfileContent() {
       {/* ── Release modal ── */}
       {showReleaseModal && lock && (
         <Modal onClose={() => !releaseLoading && setShowReleaseModal(false)}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 10px" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", margin: "0 0 10px" }}>
             Release reservation?
           </h2>
 
           {/* Amber warning */}
-          <div style={{ fontSize: 13, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: "#fbbf24", background: "rgba(217,119,6,0.12)", border: "1px solid rgba(217,119,6,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
             {worker.first_name ?? name} will become available to other employers immediately.
           </div>
 
           {/* Summary card */}
-          <div style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
+          <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 0" }}>
             {[
               { label: "Active since",   value: fmtDate(lock.lock_start_date) },
               { label: "Days billed",    value: String(lock.total_days_billed) },
@@ -1421,7 +1421,7 @@ function WorkerProfileContent() {
             ].map(({ label, value }) => (
               <div key={label}>
                 <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>{label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{value}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1" }}>{value}</div>
               </div>
             ))}
           </div>
@@ -1450,12 +1450,12 @@ function WorkerProfileContent() {
           </div>
 
           {/* Danger warning */}
-          <div style={{ fontSize: 12, color: "#dc2626", marginTop: 10, fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: "#f87171", marginTop: 10, fontWeight: 500 }}>
             This cannot be undone.
           </div>
 
           {releaseError && (
-            <div style={{ color: "#dc2626", fontSize: 13, marginTop: 8 }}>{releaseError}</div>
+            <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{releaseError}</div>
           )}
 
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -1550,7 +1550,7 @@ function PaymentForm({
       </div>
 
       {error && (
-        <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 12 }}>{error}</div>
+        <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>
       )}
 
       <div style={{ display: "flex", gap: 10 }}>
@@ -1657,12 +1657,14 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
     <div
       role="dialog"
       aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+      className="glass-scrim"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
       onClick={onClose}
     >
       <div
         ref={panelRef}
-        style={{ background: "white", borderRadius: 16, padding: "28px 32px", maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", outline: "none" }}
+        className="glass-modal"
+        style={{ padding: "28px 32px", maxWidth: 480, width: "100%", outline: "none" }}
         onClick={e => e.stopPropagation()}
         tabIndex={-1}
       >
@@ -1678,18 +1680,18 @@ const labelStyle: CSSProperties = {
   display:     "block",
   fontSize:    13,
   fontWeight:  600,
-  color:       "#374151",
+  color:       "#94a3b8",
   marginBottom: 6,
 };
 
 const inputStyle: CSSProperties = {
   width:        "100%",
   padding:      "10px 12px",
-  border:       "1px solid #e2e8f0",
+  border:       "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
   fontSize:     14,
-  color:        "#0f172a",
-  background:   "white",
+  color:        "#ffffff",
+  background:   "rgba(255,255,255,0.05)",
   boxSizing:    "border-box",
   outline:      "none",
 };
@@ -1707,9 +1709,9 @@ const btnPrimaryStyle: CSSProperties = {
 
 const btnSecondaryStyle: CSSProperties = {
   padding:      "11px 0",
-  background:   "white",
-  color:        "#374151",
-  border:       "1px solid #e2e8f0",
+  background:   "transparent",
+  color:        "#cbd5e1",
+  border:       "1px solid rgba(255,255,255,0.1)",
   borderRadius: 10,
   fontSize:     14,
   fontWeight:   500,

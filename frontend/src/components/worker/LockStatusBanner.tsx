@@ -86,7 +86,7 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
       body: (
         <>
           Contact our support team at{" "}
-          <a href="mailto:support@directhire.io" style={{ color: "#d97706", textDecoration: "underline" }}>
+          <a href="mailto:support@directhire.io" style={{ color: "#fbbf24", textDecoration: "underline" }}>
             support@directhire.io
           </a>
         </>
@@ -96,10 +96,8 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      className="glass-scrim"
       style={{
-        position:       "fixed",
-        inset:          0,
-        background:     "rgba(0,0,0,0.5)",
         display:        "flex",
         alignItems:     "center",
         justifyContent: "center",
@@ -109,13 +107,11 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
+        className="glass-modal"
         style={{
-          background:   "white",
-          borderRadius: 16,
           padding:      "32px 36px",
           maxWidth:     480,
           width:        "100%",
-          boxShadow:    "0 24px 64px rgba(0,0,0,0.2)",
           maxHeight:    "90vh",
           overflowY:    "auto",
         }}
@@ -127,15 +123,15 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
             width:          36,
             height:         36,
             borderRadius:   "50%",
-            background:     "#FEF3C7",
+            background:     "rgba(217,119,6,0.15)",
             display:        "flex",
             alignItems:     "center",
             justifyContent: "center",
             flexShrink:     0,
           }}>
-            <LockIcon size={18} color="#D97706" />
+            <LockIcon size={18} color="#f59e0b" />
           </div>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#08142A", margin: 0 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#ffffff", margin: 0 }}>
             About profile reservations
           </h2>
         </div>
@@ -144,10 +140,10 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {sections.map(s => (
             <div key={s.heading}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", marginBottom: 4 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>
                 {s.heading}
               </div>
-              <div style={{ fontSize: 13, color: "#57534e", lineHeight: 1.65 }}>
+              <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.65 }}>
                 {s.body}
               </div>
             </div>
@@ -156,19 +152,7 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
 
         {/* Footer */}
         <div style={{ marginTop: 24 }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding:      "10px 24px",
-              background:   "#1c1917",
-              color:        "white",
-              border:       "none",
-              borderRadius: 8,
-              fontSize:     14,
-              fontWeight:   600,
-              cursor:       "pointer",
-            }}
-          >
+          <button onClick={onClose} className="btn-gradient" style={{ padding: "10px 24px", fontSize: 14 }}>
             Close
           </button>
         </div>

@@ -55,8 +55,8 @@ function LoginPageContent() {
       metric: "2.4M+",
       metricLabel: "Verified Workers",
       body: "Our AI matches verified global talent with employers across every timezone — instantly.",
-      accentColor: "#0090FF",
-      secondaryColor: "#6366F1",
+      accentColor: "#6366F1",
+      secondaryColor: "#9333EA",
       icon: (
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"/>
@@ -76,7 +76,7 @@ function LoginPageContent() {
       metricLabel: "Avg Match Score",
       body: "Five-dimension AI scoring finds your perfect candidate before your coffee gets cold.",
       accentColor: "#818cf8",
-      secondaryColor: "#0090FF",
+      secondaryColor: "#6366F1",
       icon: (
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -95,8 +95,8 @@ function LoginPageContent() {
       metric: "99.2%",
       metricLabel: "Verified Profiles",
       body: "Every profile is AI-screened for authenticity, so you hire with complete confidence.",
-      accentColor: "#10d9b5",
-      secondaryColor: "#0090FF",
+      accentColor: "#a78bfa",
+      secondaryColor: "#9333EA",
       icon: (
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -136,20 +136,20 @@ function LoginPageContent() {
     width: "100%",
     padding: "12px 14px",
     minHeight: 48,
-    background: "#ffffff",
+    background: "rgba(255,255,255,0.05)",
     border: focusedField === name
-      ? "1px solid #0090FF"
+      ? "1px solid rgba(99,102,241,0.5)"
       : error && (name === "email" || name === "password")
-        ? "1px solid #ef4444"
-        : "1px solid #d1d5db",
-    borderRadius: 8,
-    color: "#111827",
+        ? "1px solid rgba(239,68,68,0.5)"
+        : "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    color: "#ffffff",
     fontSize: 16,
     outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
+    transition: "border-color 0.2s, box-shadow 0.2s, background 0.2s",
     boxSizing: "border-box" as const,
     fontFamily: "var(--font-body)",
-    boxShadow: focusedField === name ? "0 0 0 3px rgba(0,144,255,0.1)" : "none",
+    boxShadow: focusedField === name ? "0 0 0 3px rgba(99,102,241,0.15)" : "none",
   });
 
   const handleSubmit = async () => {
@@ -186,7 +186,7 @@ function LoginPageContent() {
       const status = raw.accountStatus;
       if (status === "PENDING_EMAIL_VERIFICATION") {
         setErrorType("amber"); setError("Please verify your email first.");
-        setErrorExtra(<a href={`/auth/verify-email?email=${encodeURIComponent(email)}`} style={{ display: "inline-block", marginTop: 6, color: "#d97706", fontWeight: 700, textDecoration: "underline", fontSize: 13 }}>Verify your email →</a>);
+        setErrorExtra(<a href={`/auth/verify-email?email=${encodeURIComponent(email)}`} style={{ display: "inline-block", marginTop: 6, color: "#fbbf24", fontWeight: 700, textDecoration: "underline", fontSize: 13 }}>Verify your email →</a>);
       } else if (status === "PENDING_REVIEW") {
         setErrorType("amber"); setError("Your account is currently under review. We'll email you when approved."); setErrorExtra(null);
       } else if (status === "REJECTED") {
@@ -212,7 +212,7 @@ function LoginPageContent() {
 
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: 14, fontWeight: 500,
-    color: "#374151", marginBottom: 6, fontFamily: "var(--font-body)",
+    color: "#cbd5e1", marginBottom: 6, fontFamily: "var(--font-body)",
   };
 
   return (
@@ -223,18 +223,14 @@ function LoginPageContent() {
         @keyframes float2 { 0%,100% { transform: translateY(-10px); } 50% { transform: translateY(0px); } }
         .login-left { overflow-y: auto; }
         .login-left::-webkit-scrollbar { width: 4px; }
-        .login-left::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+        .login-left::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
         .login-oauth-btn {
           width: 100%; min-height: 48px; padding: 10px 16px;
-          background: #ffffff; border: 1px solid #d1d5db;
-          border-radius: 8px; display: flex; align-items: center;
+          border-radius: 12px; display: flex; align-items: center;
           justify-content: center; gap: 8px;
-          color: #374151; font-size: 16px; font-weight: 500;
-          cursor: pointer; transition: background 0.15s, border-color 0.15s;
+          font-size: 16px;
           font-family: var(--font-body);
         }
-        .login-oauth-btn:hover:not(:disabled) { background: #f9fafb; border-color: #9ca3af; }
-        .login-oauth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .login-right-panel { display: flex; }
         @media (max-width: 768px) {
           .login-shell { min-height: 100dvh !important; height: auto !important; overflow: visible !important; }
@@ -242,24 +238,28 @@ function LoginPageContent() {
           .login-left { width: 100% !important; min-height: 100dvh !important; align-items: flex-start !important; padding: 32px 24px !important; }
           .login-left > div { max-width: 440px !important; margin: 0 auto !important; }
         }
-        input::placeholder { color: #9ca3af; }
+        input::placeholder { color: #94a3b8; }
       ` }} />
 
       <div className="login-shell" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
 
         {/* ── LEFT COLUMN ─────────────────────────────────────────────────────── */}
         <div className="login-left" style={{
-          width: "45%", background: "#05080f",
+          width: "45%", background: "var(--glass-base)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          padding: "3rem 2rem",
+          padding: "3rem 2rem", position: "relative", overflow: "hidden",
         }}>
-          <div style={{ width: "100%", maxWidth: 440 }}>
+          {/* Subtle indigo/purple glow accents */}
+          <div aria-hidden className="glass-glow" style={{ top: -140, left: -140, width: 420, height: 420, background: "radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)" }} />
+          <div aria-hidden className="glass-glow" style={{ bottom: -160, right: -100, width: 380, height: 380, background: "radial-gradient(circle, rgba(147,51,234,0.08) 0%, transparent 70%)" }} />
+
+          <div style={{ width: "100%", maxWidth: 440, position: "relative", zIndex: 1 }}>
 
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 8,
-                background: "linear-gradient(135deg, #0070CC, #0090FF)",
+                background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               }}>
                 <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 11, color: "#fff" }}>DH</span>
@@ -276,9 +276,9 @@ function LoginPageContent() {
               }}>
                 Welcome back
               </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "#64748b", margin: 0 }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "#94a3b8", margin: 0 }}>
                 New to DirectHire?{" "}
-                <Link href="/register" style={{ color: "#0090FF", fontWeight: 500, textDecoration: "none" }}>
+                <Link href="/register" style={{ color: "#818cf8", fontWeight: 500, textDecoration: "none" }}>
                   Create an account.
                 </Link>
               </p>
@@ -288,11 +288,11 @@ function LoginPageContent() {
             {notice && (
               <div style={{
                 marginTop: "1.25rem",
-                background: noticeType === "success" ? "#f0fdf4" : "#fef2f2",
-                border: noticeType === "success" ? "1px solid #bbf7d0" : "1px solid #fecaca",
-                borderRadius: 8, padding: "10px 14px",
+                background: noticeType === "success" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                border: noticeType === "success" ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(239,68,68,0.25)",
+                borderRadius: 12, padding: "10px 14px",
                 fontSize: 13, lineHeight: 1.5,
-                color: noticeType === "success" ? "#166534" : "#dc2626",
+                color: noticeType === "success" ? "#4ade80" : "#f87171",
                 fontFamily: "var(--font-body)",
               }}>
                 {notice}
@@ -335,11 +335,11 @@ function LoginPageContent() {
                     aria-label={showPw ? "Hide password" : "Show password"}
                     style={{
                       position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                      background: "none", border: "none", cursor: "pointer", color: "#9ca3af",
+                      background: "none", border: "none", cursor: "pointer", color: "#94a3b8",
                       display: "flex", alignItems: "center", padding: 4, transition: "color 0.15s",
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#9ca3af"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#cbd5e1"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
                   >
                     {showPw ? <EyeOff /> : <EyeOpen />}
                   </button>
@@ -353,8 +353,8 @@ function LoginPageContent() {
                     onClick={() => setRememberMe(s => !s)}
                     style={{
                       width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                      border: rememberMe ? "1px solid #0090FF" : "1px solid #d1d5db",
-                      background: rememberMe ? "#0090FF" : "#ffffff",
+                      border: rememberMe ? "1px solid #6366F1" : "1px solid rgba(255,255,255,0.2)",
+                      background: rememberMe ? "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))" : "rgba(255,255,255,0.05)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       cursor: "pointer", transition: "all 0.15s",
                     }}
@@ -368,7 +368,7 @@ function LoginPageContent() {
                   <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "white" }}>Remember for 30 days</span>
                 </label>
                 <Link href="/forgot-password" style={{
-                  fontFamily: "var(--font-body)", fontSize: 13, color: "#0090FF", textDecoration: "none", fontWeight: 500,
+                  fontFamily: "var(--font-body)", fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 500,
                 }}>
                   Forgot password?
                 </Link>
@@ -377,11 +377,11 @@ function LoginPageContent() {
               {/* Error */}
               {error && (
                 <div style={{
-                  background: errorType === "amber" ? "#fffbeb" : "#fef2f2",
-                  border: errorType === "amber" ? "1px solid #fde68a" : "1px solid #fecaca",
-                  borderRadius: 8, padding: "10px 14px",
+                  background: errorType === "amber" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
+                  border: errorType === "amber" ? "1px solid rgba(245,158,11,0.25)" : "1px solid rgba(239,68,68,0.25)",
+                  borderRadius: 12, padding: "10px 14px",
                   fontSize: 13, lineHeight: 1.5,
-                  color: errorType === "amber" ? "#92400e" : "#dc2626",
+                  color: errorType === "amber" ? "#fbbf24" : "#f87171",
                   fontFamily: "var(--font-body)",
                 }}>
                   {error}{errorExtra}
@@ -391,20 +391,14 @@ function LoginPageContent() {
               {/* Sign in button */}
               <button
                 type="button"
+                className="btn-gradient"
                 onClick={handleSubmit}
                 disabled={loading}
                 style={{
                   width: "100%", height: 52,
-                  background: "#0090FF", border: "none", borderRadius: 8,
-                  color: "#fff", fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.8 : 1,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  transition: "filter 0.15s",
+                  fontFamily: "var(--font-display)", fontSize: 16,
                   marginTop: 8,
                 }}
-                onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.1)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)"; }}
               >
                 {loading
                   ? <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", animation: "spin 0.7s linear infinite" }} />
@@ -414,15 +408,15 @@ function LoginPageContent() {
 
               {/* Divider */}
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-                <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#9ca3af", whiteSpace: "nowrap" }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#94a3b8", whiteSpace: "nowrap" }}>or</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
               </div>
 
               {/* OAuth buttons */}
-              <button type="button" className="login-oauth-btn" onClick={() => handleOAuth("google")} disabled={!!oauthLoading || loading}>
+              <button type="button" className="login-oauth-btn btn-glass" onClick={() => handleOAuth("google")} disabled={!!oauthLoading || loading}>
                 {oauthLoading === "google"
-                  ? <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #d1d5db", borderTopColor: "#4285F4", animation: "spin 0.7s linear infinite" }} />
+                  ? <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.15)", borderTopColor: "#818cf8", animation: "spin 0.7s linear infinite" }} />
                   : <GoogleIcon />
                 }
                 Sign in with Google
@@ -432,12 +426,12 @@ function LoginPageContent() {
             {/* Terms */}
             <p style={{
               textAlign: "center", marginTop: "1.5rem",
-              fontSize: 12, color: "#9ca3af", fontFamily: "var(--font-body)", lineHeight: 1.6,
+              fontSize: 12, color: "#94a3b8", fontFamily: "var(--font-body)", lineHeight: 1.6,
             }}>
               By signing in you agree to our{" "}
-              <Link href="/terms" style={{ color: "#64748b", textDecoration: "underline" }}>Terms</Link>
+              <Link href="/terms" style={{ color: "#cbd5e1", textDecoration: "underline" }}>Terms</Link>
               {" "}and{" "}
-              <Link href="/privacy" style={{ color: "#64748b", textDecoration: "underline" }}>Privacy Policy</Link>
+              <Link href="/privacy" style={{ color: "#cbd5e1", textDecoration: "underline" }}>Privacy Policy</Link>
             </p>
 
           </div>
@@ -452,16 +446,16 @@ function LoginPageContent() {
           alignItems: "center",
           justifyContent: "center",
         }}>
-          {/* Layer 1 — blue orb */}
-          <div aria-hidden style={{ position: "absolute", top: -100, right: -100, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,144,255,0.2) 0%, transparent 65%)", filter: "blur(80px)", pointerEvents: "none" }} />
+          {/* Layer 1 — indigo orb */}
+          <div aria-hidden className="glass-glow" style={{ top: -100, right: -100, width: 500, height: 500, background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 65%)" }} />
           {/* Layer 2 — purple orb */}
-          <div aria-hidden style={{ position: "absolute", bottom: -80, left: -60, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 65%)", filter: "blur(80px)", pointerEvents: "none" }} />
+          <div aria-hidden className="glass-glow" style={{ bottom: -80, left: -60, width: 400, height: 400, background: "radial-gradient(circle, rgba(147,51,234,0.15) 0%, transparent 65%)" }} />
           {/* Layer 3 — noise texture */}
           <div aria-hidden style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.008) 2px, rgba(255,255,255,0.008) 4px)", pointerEvents: "none" }} />
           {/* Layer 4 — glowing horizontal line */}
-          <div aria-hidden style={{ position: "absolute", top: "40%", left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent 0%, rgba(0,144,255,0.3) 30%, rgba(99,102,241,0.4) 50%, rgba(0,144,255,0.3) 70%, transparent 100%)", filter: "blur(1px)", pointerEvents: "none" }} />
+          <div aria-hidden style={{ position: "absolute", top: "40%", left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.3) 30%, rgba(147,51,234,0.4) 50%, rgba(99,102,241,0.3) 70%, transparent 100%)", filter: "blur(1px)", pointerEvents: "none" }} />
           {/* Layer 5 — corner accent top-left */}
-          <div aria-hidden style={{ position: "absolute", top: 0, left: 0, width: 200, height: 200, background: "linear-gradient(135deg, rgba(0,144,255,0.08) 0%, transparent 60%)", borderBottomRightRadius: "100%", pointerEvents: "none" }} />
+          <div aria-hidden style={{ position: "absolute", top: 0, left: 0, width: 200, height: 200, background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, transparent 60%)", borderBottomRightRadius: "100%", pointerEvents: "none" }} />
 
           {/* Centered carousel */}
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2, padding: "0 2.5rem" }}>
@@ -469,6 +463,7 @@ function LoginPageContent() {
               {SLIDES.map((slide, i) => (
                 <div
                   key={i}
+                  className="glass-card"
                   style={{
                     position: i === 0 ? "relative" : "absolute",
                     top: 0, left: 0, right: 0,
@@ -476,12 +471,8 @@ function LoginPageContent() {
                     transform: activeSlide === i ? "translateY(0)" : "translateY(16px)",
                     transition: "opacity 0.7s ease, transform 0.7s ease",
                     pointerEvents: activeSlide === i ? "auto" : "none",
-                    background: "rgba(255,255,255,0.04)",
-                    border: `1px solid ${slide.accentColor}33`,
-                    borderRadius: 24,
+                    borderColor: `${slide.accentColor}33`,
                     padding: "2.25rem 2rem",
-                    backdropFilter: "blur(24px)",
-                    WebkitBackdropFilter: "blur(24px)",
                     boxShadow: `0 24px 80px rgba(0,0,0,0.5), 0 0 40px ${slide.accentColor}1a, inset 0 1px 0 rgba(255,255,255,0.08)`,
                   }}
                 >
@@ -551,7 +542,7 @@ function LoginPageContent() {
                     height: 3,
                     width: activeSlide === i ? 24 : 6,
                     borderRadius: 2,
-                    background: activeSlide === i ? "#0090FF" : "rgba(255,255,255,0.2)",
+                    background: activeSlide === i ? "#6366F1" : "rgba(255,255,255,0.2)",
                     transition: "all 0.4s ease",
                   }} />
                 ))}
@@ -574,8 +565,8 @@ function LoginPageContent() {
 
 function LoginFallback() {
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid #e5e7eb", borderTopColor: "#0090FF", animation: "spin 0.7s linear infinite" }} />
+    <div style={{ minHeight: "100vh", background: "var(--glass-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.1)", borderTopColor: "#6366F1", animation: "spin 0.7s linear infinite" }} />
       <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
     </div>
   );

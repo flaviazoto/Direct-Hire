@@ -102,11 +102,13 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 
   return (
     <div role="dialog" aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+      className="glass-scrim"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
       onClick={onClose}
     >
       <div ref={panelRef} tabIndex={-1}
-        style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "28px 32px", maxWidth: 480, width: "100%", boxShadow: "0 24px 64px rgba(0,0,0,0.6)", outline: "none" }}
+        className="glass-modal"
+        style={{ padding: "28px 32px", maxWidth: 480, width: "100%", outline: "none" }}
         onClick={e => e.stopPropagation()}
       >
         {children}

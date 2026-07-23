@@ -99,9 +99,9 @@ function ForceReleaseModal({
   const tooShort = note.trim().length < 5;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onCancel}>
-      <div style={{ background: "#141414", border: `1px solid ${C.border}`, borderRadius: 18, width: "100%", maxWidth: 440, padding: 28 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: 99, background: "rgba(220,38,38,0.12)", color: C.accent, fontSize: 12, fontWeight: 700, marginBottom: 18 }}>
+    <div className="glass-scrim" style={{ zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onCancel}>
+      <div className="glass-modal" style={{ width: "100%", maxWidth: 440, padding: 28 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: 99, background: "rgba(220,38,38,0.12)", color: "#f87171", fontSize: 12, fontWeight: 700, marginBottom: 18 }}>
           Force-release reservation
         </div>
         <p style={{ color: C.secondary, fontSize: 13, lineHeight: 1.6, margin: "0 0 16px" }}>
@@ -123,7 +123,7 @@ function ForceReleaseModal({
           <button
             onClick={() => onConfirm(note.trim())}
             disabled={tooShort || loading}
-            style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: tooShort || loading ? "rgba(113,113,122,0.1)" : "rgba(220,38,38,0.15)", border: `1px solid ${tooShort || loading ? C.border : "rgba(220,38,38,0.4)"}`, color: tooShort || loading ? C.muted : C.accent, cursor: tooShort || loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: tooShort || loading ? "rgba(113,113,122,0.1)" : "rgba(220,38,38,0.15)", border: `1px solid ${tooShort || loading ? C.border : "rgba(220,38,38,0.4)"}`, color: tooShort || loading ? C.muted : "#f87171", cursor: tooShort || loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
           >
             {loading ? "…" : "Force-release"}
           </button>

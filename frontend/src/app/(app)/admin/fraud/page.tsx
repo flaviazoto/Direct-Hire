@@ -55,11 +55,13 @@ function ReinstateModal({
 }) {
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      className="glass-scrim"
+      style={{ zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={onCancel}
     >
       <div
-        style={{ background: "#141414", border: `1px solid ${C.border}`, borderRadius: 18, width: "100%", maxWidth: 380, padding: 28, textAlign: "center" }}
+        className="glass-modal"
+        style={{ width: "100%", maxWidth: 380, padding: 28, textAlign: "center" }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 22 }}>

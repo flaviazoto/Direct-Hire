@@ -54,7 +54,7 @@ function fmtDate(iso: string): string {
 function Chip({ children, color = "gray" }: { children: React.ReactNode; color?: "gray" | "teal" | "blue" | "violet" | "green" }) {
   const s: Record<string, { color: string; bg: string; border: string }> = {
     gray:   { color: "#a1a1aa", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.1)"  },
-    teal:   { color: "#5eead4", bg: "rgba(0,144,255,0.1)",    border: "rgba(0,144,255,0.25)"   },
+    teal:   { color: "#5eead4", bg: "rgba(99,102,241,0.1)",   border: "rgba(99,102,241,0.25)"  },
     blue:   { color: "#93c5fd", bg: "rgba(96,165,250,0.1)",   border: "rgba(96,165,250,0.25)"  },
     violet: { color: "#c4b5fd", bg: "rgba(167,139,250,0.1)",  border: "rgba(167,139,250,0.25)" },
     green:  { color: "#86efac", bg: "rgba(74,222,128,0.1)",   border: "rgba(74,222,128,0.25)"  },
@@ -173,7 +173,7 @@ export default async function PublicJobDetailPage({ params }: { params: { id: st
   const returnTo = `/jobs/${job.id}`;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--glass-base)", fontFamily: "var(--font-body)" }}>
       {/* eslint-disable-next-line react/no-danger -- JSON-LD requires raw script injection; escaped below to prevent breaking out of the tag */}
       <script
         type="application/ld+json"
@@ -186,8 +186,8 @@ export default async function PublicJobDetailPage({ params }: { params: { id: st
           ← Back to all jobs
         </Link>
 
-        {/* Header card */}
-        <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: 32, marginBottom: 24 }}>
+        {/* Header card — the job-detail hero; blur is appropriate here per the performance rule */}
+        <div className="glass-card" style={{ padding: 32, marginBottom: 24 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#fff", lineHeight: 1.25, margin: "0 0 8px" }}>{job.title}</h1>
           <p style={{ fontSize: 15, color: "#a1a1aa", margin: "0 0 20px" }}>
             {job.companyName} · {[job.city, job.country].filter(Boolean).join(", ")}
@@ -212,7 +212,7 @@ export default async function PublicJobDetailPage({ params }: { params: { id: st
         </div>
 
         {/* CTA card */}
-        <div style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(0,144,255,0.06))", border: "1px solid rgba(20,184,166,0.25)", borderRadius: 16, padding: 24, marginBottom: 24, textAlign: "center" as const }}>
+        <div style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(99,102,241,0.06))", border: "1px solid rgba(20,184,166,0.25)", borderRadius: 16, padding: 24, marginBottom: 24, textAlign: "center" as const }}>
           <p style={{ fontSize: 14, color: "#e4e4e7", margin: "0 0 16px" }}>Sign in or create a free account to apply for this role.</p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" as const }}>
             <Link
@@ -223,7 +223,8 @@ export default async function PublicJobDetailPage({ params }: { params: { id: st
             </Link>
             <Link
               href={`/register?redirect=${encodeURIComponent(returnTo)}`}
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 44, padding: "0 24px", borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#a1a1aa", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+              className="btn-glass"
+              style={{ height: 44, padding: "0 24px", fontSize: 14, textDecoration: "none" }}
             >
               Create an account
             </Link>
@@ -232,31 +233,31 @@ export default async function PublicJobDetailPage({ params }: { params: { id: st
 
         {/* Skills */}
         {job.requiredSkills?.length > 0 && (
-          <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 24, marginBottom: 16 }}>
+          <div className="glass-card" style={{ padding: 24, marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: "#555", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 12 }}>Required skills</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {job.requiredSkills.map(s => (
-                <span key={s} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.2)", color: "#5eead4" }}>{s}</span>
+                <span key={s} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", color: "#5eead4" }}>{s}</span>
               ))}
             </div>
           </div>
         )}
 
         {/* Description */}
-        <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 24, marginBottom: 16 }}>
+        <div className="glass-card" style={{ padding: 24, marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>About this role</h2>
           <p style={{ fontSize: 14, color: "#a1a1aa", lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" as const }}>{job.description}</p>
         </div>
 
         {/* Requirements */}
-        <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 24, marginBottom: 16 }}>
+        <div className="glass-card" style={{ padding: 24, marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>Requirements</h2>
           <p style={{ fontSize: 14, color: "#a1a1aa", lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" as const }}>{job.requirements}</p>
         </div>
 
         {/* Benefits */}
         {job.benefits && (
-          <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 24, marginBottom: 16 }}>
+          <div className="glass-card" style={{ padding: 24, marginBottom: 16 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 12px" }}>Benefits</h2>
             <p style={{ fontSize: 14, color: "#a1a1aa", lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" as const }}>{job.benefits}</p>
           </div>

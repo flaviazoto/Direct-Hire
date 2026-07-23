@@ -766,6 +766,146 @@ input, button, textarea, select { font: inherit; }
   }
 }
 
+/* ─── Glassmorphism design system — Phase 1 (auth pages pilot) ─────────────────
+   Tokens only; consumed by (auth)/login, register, forgot-password,
+   reset-password. Reuse these classes for any future glass surface rather
+   than re-declaring the blur/border/shadow recipe inline. */
+
+:root {
+  --glass-base:    #0B1121; /* app-wide deep dark-blue base for glass surfaces */
+  --glass-indigo:  #4F46E5; /* indigo-600 — WCAG-AA-safe gradient start (see note below) */
+  --glass-indigo-500: #6366F1; /* indigo-500 — decorative use only (borders/glows), not under white text */
+  --glass-purple:  #9333EA; /* purple-600 — gradient end */
+}
+
+/* .glass-card — semi-transparent panel with backdrop blur. CONTAINERS ONLY:
+   page-level panels, sticky headers, modals. Never per-row in a scrolling
+   list (blur is expensive to composite at scroll-frame rate). */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(99, 102, 241, 0.1);
+}
+
+/* .btn-gradient — primary CTA. indigo-600 → purple-600 (see WCAG note above
+   .glass-indigo): indigo-500 was the literal spec but fails AA (~3.6:1) for
+   white button text at this size; indigo-600 passes (~5.2:1) while keeping
+   the same visual family. */
+.btn-gradient {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--glass-indigo), var(--glass-purple));
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+}
+.btn-gradient:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 10px 25px -3px rgba(99, 102, 241, 0.35), 0 0 20px rgba(99, 102, 241, 0.25);
+}
+.btn-gradient:active:not(:disabled) { filter: brightness(0.97); }
+.btn-gradient:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* .btn-glass — secondary/tertiary action on a glass surface. */
+.btn-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.btn-glass:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* .input-glass — dark glass form field. Placeholder uses solid slate-400
+   (not a dimmed/alpha version) specifically to keep placeholder legibility
+   comfortably above AA on the dark glass background. */
+.input-glass {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.input-glass::placeholder { color: #94a3b8; } /* slate-400 */
+.input-glass:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+}
+.input-glass.input-glass-error {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.input-glass.input-glass-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* .glass-glow — soft radial accent blob for page backgrounds. Position/size
+   via inline style per instance (they legitimately vary per page); color,
+   blur, and shape are the token. */
+.glass-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+}
+
+/* ── Phase 4: overlay/floating UI tokens ─────────────────────────────────
+   .glass-scrim — the dimmed backdrop behind a modal. Darker + slightly
+   blurred so page content behind it stays legible-but-secondary. */
+.glass-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* .glass-modal — heavier glass than .glass-card, for the modal content box
+   itself: stronger blur, larger radius, a subtle indigo glow in the shadow
+   to tie it to the .btn-gradient brand gradient. Container-only (one
+   instance on screen at a time) — the performance rule does not apply. */
+.glass-modal {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  box-shadow: 0 25px 70px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.18);
+}
+
+/* .glass-dropdown — lighter glass for popovers/dropdowns (notification
+   panels, menus): less blur, tighter radius, lighter shadow than a modal
+   since it's anchored to a trigger rather than centered over a scrim. */
+.glass-dropdown {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.45);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

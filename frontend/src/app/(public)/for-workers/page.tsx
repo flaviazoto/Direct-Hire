@@ -22,10 +22,10 @@ const BENEFITS = [
 ];
 
 const HOW_STEPS = [
-  { num: "1", title: "Create your profile", desc: "Register free and complete your structured onboarding — personal details, skills, experience, language proficiency, and target countries. Estimated time: 8–12 minutes.", color: "#0090FF" },
-  { num: "2", title: "Upload verification documents", desc: "Add a profile photo, a 30-second work video, an intro video, and a medical certificate. Passport number is text entry only — no scan required.", color: "#0070CC" },
-  { num: "3", title: "Get reviewed & approved", desc: "Our team reviews your profile within 24–48 hours. Once approved, your profile becomes searchable and our AI begins matching you.", color: "#60A5FA" },
-  { num: "4", title: "Receive ranked job matches", desc: "The AI immediately surfaces your top matches, ranked by compatibility score. Browse, filter by country, and see detailed score breakdowns for each role.", color: "#0090FF" },
+  { num: "1", title: "Create your profile", desc: "Register free and complete your structured onboarding — personal details, skills, experience, language proficiency, and target countries. Estimated time: 8–12 minutes.", color: "#4F46E5" },
+  { num: "2", title: "Upload verification documents", desc: "Add a profile photo, a 30-second work video, an intro video, and a medical certificate. Passport number is text entry only — no scan required.", color: "#7C3AED" },
+  { num: "3", title: "Get reviewed & approved", desc: "Our team reviews your profile within 24–48 hours. Once approved, your profile becomes searchable and our AI begins matching you.", color: "#818cf8" },
+  { num: "4", title: "Receive ranked job matches", desc: "The AI immediately surfaces your top matches, ranked by compatibility score. Browse, filter by country, and see detailed score breakdowns for each role.", color: "#4F46E5" },
   { num: "5", title: "Apply and track", desc: "Apply with one click. Track your application pipeline — Pending → Shortlisted → Interview Requested → Hired. Get email and dashboard notifications at every stage.", color: "#34D399" },
 ];
 
@@ -50,11 +50,11 @@ export default function ForWorkersPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)", overflowX: "hidden" }}>
+    <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff", overflowX: "hidden" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="pub-hero" style={{ background: "var(--navy-950,#060B18)", padding: "140px 32px 100px", position: "relative", overflow: "hidden" }}>
+      <section className="pub-hero" style={{ background: "var(--glass-base)", padding: "140px 32px 100px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "-10%", right: "0", width: 600, height: 600, borderRadius: "50%", background: "rgba(0,100,220,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: "-20%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "rgba(0,144,255,0.05)", filter: "blur(120px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: "-20%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "rgba(99,102,241,0.05)", filter: "blur(120px)", pointerEvents: "none" }} />
 
         <div className="container" style={{ position: "relative" }}>
           <div className="hero-split" style={{ display: "flex", alignItems: "center", gap: "4rem" }}>
@@ -64,13 +64,13 @@ export default function ForWorkersPage() {
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "6px 16px", borderRadius: 999,
-                background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)",
+                background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)",
                 marginBottom: 28,
               }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#60A5FA", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>For Workers</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>For Workers</span>
               </div>
 
-              <h1 className="text-display-lg" style={{ color: "var(--text-primary,#F0F4FF)", marginBottom: 24, textAlign: "left" as const }}>
+              <h1 className="text-display-lg" style={{ color: "#ffffff", marginBottom: 24, textAlign: "left" as const }}>
                 Your skills deserve<br />
                 <span className="text-gradient-blue">global opportunities</span>
               </h1>
@@ -92,8 +92,8 @@ export default function ForWorkersPage() {
                   { v: "Free",    l: "To create profile"  },
                 ].map(s => (
                   <div key={s.l}>
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 28, color: "#0090FF" }}>{s.v}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", marginTop: 4, fontFamily: "var(--font-body)" }}>{s.l}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 28, color: "#4F46E5" }}>{s.v}</div>
+                    <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, fontFamily: "var(--font-body)" }}>{s.l}</div>
                   </div>
                 ))}
               </div>
@@ -122,8 +122,8 @@ export default function ForWorkersPage() {
                   <div style={{ position: "relative" as const, flexShrink: 0 }}>
                     <div style={{
                       width: 120, height: 120, borderRadius: "50%",
-                      border: "8px solid rgba(0,144,255,0.15)",
-                      borderTopColor: "#0090FF",
+                      border: "8px solid rgba(99,102,241,0.15)",
+                      borderTopColor: "#4F46E5",
                       borderRightColor: "#6366F1",
                       animation: "rotateSlow 4s linear infinite",
                     }} />
@@ -133,7 +133,7 @@ export default function ForWorkersPage() {
                     }}>
                       <span style={{
                         fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 32,
-                        background: "linear-gradient(135deg,#0090FF,#6366F1)",
+                        background: "linear-gradient(135deg,var(--glass-indigo),var(--glass-purple))",
                         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                         lineHeight: 1,
                       }}>87</span>
@@ -157,7 +157,7 @@ export default function ForWorkersPage() {
                       <div style={{ height: 4, borderRadius: 999, background: "rgba(255,255,255,0.06)" }}>
                         <div style={{
                           height: "100%", borderRadius: 999, width: `${bar.pct}%`,
-                          background: "linear-gradient(90deg,#0090FF,#6366F1)",
+                          background: "linear-gradient(90deg,var(--glass-indigo),var(--glass-purple))",
                         }} />
                       </div>
                     </div>
@@ -181,10 +181,10 @@ export default function ForWorkersPage() {
       </section>
 
       {/* ── BENEFITS ─────────────────────────────────────────────────────────── */}
-      <section className="section" style={{ background: "var(--navy-900,#0A1628)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
+      <section className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 72 }}>
-            <h2 className="text-display-md" style={{ color: "var(--text-primary,#F0F4FF)", marginBottom: 14 }}>Why workers choose DirectHire</h2>
+            <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 14 }}>Why workers choose DirectHire</h2>
             <p className="text-body-lg" style={{ maxWidth: 500, margin: "0 auto" }}>Everything you need to find a great international job — in one place.</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 20 }} className="benefits-grid">
@@ -196,8 +196,8 @@ export default function ForWorkersPage() {
                 transition: "border-color 0.2s, box-shadow 0.2s",
               }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,144,255,0.3)";
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 28px rgba(0,144,255,0.1)";
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(99,102,241,0.3)";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 28px rgba(99,102,241,0.1)";
                 }}
                 onMouseLeave={e => {
                   (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
@@ -206,11 +206,11 @@ export default function ForWorkersPage() {
               >
                 <div style={{
                   width: 46, height: 46, borderRadius: 12,
-                  background: "rgba(0,144,255,0.12)",
+                  background: "rgba(99,102,241,0.12)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 20, marginBottom: 16, flexShrink: 0,
                 }}>{b.icon}</div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--text-primary,#F0F4FF)", marginBottom: 8 }}>{b.title}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "#ffffff", marginBottom: 8 }}>{b.title}</div>
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>{b.desc}</p>
               </div>
             ))}
@@ -219,15 +219,15 @@ export default function ForWorkersPage() {
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
-      <section className="section" style={{ background: "var(--navy-950,#060B18)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
+      <section className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <h2 className="text-display-md" style={{ color: "var(--text-primary,#F0F4FF)" }}>How it works for workers</h2>
+            <h2 className="text-display-md" style={{ color: "#ffffff" }}>How it works for workers</h2>
           </div>
           <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 0 }}>
             {HOW_STEPS.map((s, i) => (
               <div key={i} style={{
-                borderLeft: "3px solid rgba(0,144,255,0.2)",
+                borderLeft: "3px solid rgba(99,102,241,0.2)",
                 paddingLeft: 24,
                 paddingBottom: i < HOW_STEPS.length - 1 ? 36 : 0,
                 position: "relative" as const,
@@ -241,8 +241,8 @@ export default function ForWorkersPage() {
                   flexShrink: 0,
                 }}>{s.num}</div>
                 <div style={{ paddingTop: 6 }}>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "var(--text-primary,#F0F4FF)", marginBottom: 8 }}>{s.title}</div>
-                  <p style={{ fontSize: 15, color: "var(--text-muted,#4A5980)", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>{s.desc}</p>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "#ffffff", marginBottom: 8 }}>{s.title}</div>
+                  <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -251,11 +251,11 @@ export default function ForWorkersPage() {
       </section>
 
       {/* ── COUNTRIES ────────────────────────────────────────────────────────── */}
-      <section className="section" style={{ background: "var(--navy-900,#0A1628)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
+      <section className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 className="text-display-md" style={{ color: "var(--text-primary,#F0F4FF)", marginBottom: 12 }}>Popular destinations</h2>
-            <p className="text-body" style={{ color: "var(--text-muted,#4A5980)" }}>Active job openings across 94 countries right now</p>
+            <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 12 }}>Popular destinations</h2>
+            <p className="text-body" style={{ color: "#94a3b8" }}>Active job openings across 94 countries right now</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }} className="countries-grid">
             {COUNTRIES.map(c => (
@@ -272,7 +272,7 @@ export default function ForWorkersPage() {
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = "rgba(0,144,255,0.3)";
+                  el.style.borderColor = "rgba(99,102,241,0.3)";
                   el.style.transform = "translateY(-2px)";
                   el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)";
                   const arrow = el.querySelector(".country-arrow") as HTMLElement | null;
@@ -289,10 +289,10 @@ export default function ForWorkersPage() {
               >
                 <span style={{ fontSize: 28 }}>{c.flag}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary,#F0F4FF)", fontFamily: "var(--font-body)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
-                  <div style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", fontFamily: "var(--font-body)" }}>{c.jobs} open roles</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#ffffff", fontFamily: "var(--font-body)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
+                  <div style={{ fontSize: 13, color: "#94a3b8", fontFamily: "var(--font-body)" }}>{c.jobs} open roles</div>
                 </div>
-                <span className="country-arrow" style={{ fontSize: 16, color: "rgba(0,144,255,0.6)", opacity: 0, transition: "opacity 0.2s", flexShrink: 0 }}>→</span>
+                <span className="country-arrow" style={{ fontSize: 16, color: "rgba(99,102,241,0.6)", opacity: 0, transition: "opacity 0.2s", flexShrink: 0 }}>→</span>
               </Link>
             ))}
           </div>
@@ -300,10 +300,10 @@ export default function ForWorkersPage() {
       </section>
 
       {/* ── FAQ ──────────────────────────────────────────────────────────────── */}
-      <section id="faq" className="section" style={{ background: "var(--navy-950,#060B18)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
+      <section id="faq" className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <h2 className="text-display-md" style={{ color: "var(--text-primary,#F0F4FF)" }}>Frequently asked questions</h2>
+            <h2 className="text-display-md" style={{ color: "#ffffff" }}>Frequently asked questions</h2>
           </div>
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
             {FAQ.map((item, i) => (
@@ -313,7 +313,7 @@ export default function ForWorkersPage() {
                   style={{
                     display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center",
                     padding: "22px 0", background: "none", border: "none", cursor: "pointer",
-                    fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--text-primary,#F0F4FF)",
+                    fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "#ffffff",
                     textAlign: "left" as const, gap: 16,
                   }}
                 >
@@ -334,13 +334,13 @@ export default function ForWorkersPage() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────────────── */}
-      <section className="section-sm" style={{ background: "var(--navy-900,#0A1628)", borderTop: "1px solid var(--surface-border,#1E3258)", textAlign: "center", overflow: "hidden", position: "relative" }}>
-        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 400, borderRadius: "50%", background: "rgba(0,144,255,0.06)", filter: "blur(80px)", pointerEvents: "none" }} />
+      <section className="section-sm" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)", textAlign: "center", overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 400, borderRadius: "50%", background: "rgba(99,102,241,0.06)", filter: "blur(80px)", pointerEvents: "none" }} />
         <div className="container" style={{ position: "relative" }}>
 
           {/* Testimonial quote */}
           <blockquote style={{
-            borderLeft: "3px solid #0090FF",
+            borderLeft: "3px solid #4F46E5",
             paddingLeft: 16,
             margin: "0 auto 2rem",
             maxWidth: 520,
@@ -354,7 +354,7 @@ export default function ForWorkersPage() {
             </footer>
           </blockquote>
 
-          <h2 className="text-display-md" style={{ color: "var(--text-primary,#F0F4FF)", marginBottom: 16 }}>Start your international career today</h2>
+          <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 16 }}>Start your international career today</h2>
           <p className="text-body-lg" style={{ maxWidth: 480, margin: "0 auto 36px" }}>Free to register. Profile takes about 10 minutes. Our AI matches you to jobs in 94 countries.</p>
           <Link href="/register" className="btn-primary">Create Free Profile →</Link>
         </div>

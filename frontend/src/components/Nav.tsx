@@ -83,28 +83,24 @@ export function Nav() {
     if (isLoggedIn) {
       return (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-          <Link href={dashHref} style={{
-            padding: "0 18px", borderRadius: 8, minHeight: 44,
-            border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
-            color: "rgba(255,255,255,0.75)", fontFamily: "var(--font-body)",
-            fontSize: 13, fontWeight: 500,
-            transition: "all 0.2s", textDecoration: "none",
-            display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" as const,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.75)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
-          >
+          <Link href={dashHref} className="btn-glass" style={{
+            padding: "0 18px", minHeight: 44,
+            fontFamily: "var(--font-body)",
+            fontSize: 13,
+            textDecoration: "none",
+            whiteSpace: "nowrap" as const,
+          }}>
             Dashboard
           </Link>
           <button onClick={handleLogout} style={{
-            fontSize: 13, color: "rgba(255,255,255,0.45)",
+            fontSize: 13, color: "#94a3b8",
             background: "none", border: "none", cursor: "pointer",
             fontFamily: "var(--font-body)", padding: "0 4px", minHeight: 44,
             transition: "color 0.2s", whiteSpace: "nowrap" as const,
             display: "inline-flex", alignItems: "center",
           }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.75)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.45)"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#cbd5e1"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
           >
             {greeting ? `Log out (${greeting})` : "Log out"}
           </button>
@@ -113,32 +109,22 @@ export function Nav() {
     }
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-        <Link href="/login" style={{
-          padding: "0 18px", borderRadius: 8, minHeight: 44,
-          border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
-          color: "rgba(255,255,255,0.75)", fontFamily: "var(--font-body)",
-          fontSize: 13, fontWeight: 500,
-          transition: "all 0.2s", textDecoration: "none",
-          display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" as const,
-        }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.75)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
-        >
+        <Link href="/login" className="btn-glass" style={{
+          padding: "0 18px", minHeight: 44,
+          fontFamily: "var(--font-body)",
+          fontSize: 13,
+          textDecoration: "none",
+          whiteSpace: "nowrap" as const,
+        }}>
           Sign in
         </Link>
-        <Link href="/register" style={{
-          padding: "0 20px", borderRadius: 8, minHeight: 44,
-          background: "linear-gradient(135deg, #0090FF, #6366F1)",
-          color: "#fff", fontFamily: "var(--font-body)",
-          fontSize: 13, fontWeight: 600,
-          border: "none", textDecoration: "none",
-          display: "inline-flex", alignItems: "center",
-          boxShadow: "0 0 20px rgba(0,144,255,0.25)",
-          transition: "all 0.2s", whiteSpace: "nowrap" as const,
-        }}
-          onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; e.currentTarget.style.boxShadow = "0 0 28px rgba(0,144,255,0.4)"; }}
-          onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(0,144,255,0.25)"; }}
-        >
+        <Link href="/register" className="btn-gradient" style={{
+          padding: "0 20px", minHeight: 44,
+          fontFamily: "var(--font-body)",
+          fontSize: 13,
+          textDecoration: "none",
+          whiteSpace: "nowrap" as const,
+        }}>
           Get started
         </Link>
       </div>
@@ -150,7 +136,7 @@ export function Nav() {
       className={`fixed inset-0 z-[9999] flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
         menuOpen ? "translate-y-0 pointer-events-auto" : "translate-y-full pointer-events-none"
       }`}
-      style={{ background: "#06091A" }}
+      style={{ background: "var(--glass-base)" }}
       aria-hidden={!menuOpen}
     >
       {/* Top bar */}
@@ -163,7 +149,7 @@ export function Nav() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-            background: "linear-gradient(135deg, #0090FF, #6366F1)",
+            background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff" }}>DH</span>
@@ -197,16 +183,16 @@ export function Nav() {
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "12px 12px", borderRadius: 16, marginBottom: 4,
                 textDecoration: "none",
-                background: isActive ? "rgba(0,144,255,0.1)" : "transparent",
-                color: isActive ? "#60A5FA" : "rgba(255,255,255,0.8)",
+                background: isActive ? "rgba(99,102,241,0.12)" : "transparent",
+                color: isActive ? "#818cf8" : "rgba(255,255,255,0.8)",
                 transition: "background 0.15s",
               }}
             >
               <div style={{
                 width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                background: isActive ? "rgba(0,144,255,0.15)" : "rgba(255,255,255,0.06)",
+                background: isActive ? "rgba(99,102,241,0.18)" : "rgba(255,255,255,0.06)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: isActive ? "#60A5FA" : "rgba(255,255,255,0.55)",
+                color: isActive ? "#818cf8" : "rgba(255,255,255,0.55)",
               }}>
                 <Icon size={20} strokeWidth={1.75} />
               </div>
@@ -229,40 +215,30 @@ export function Nav() {
       }}>
         {!loading && isLoggedIn ? (
           <>
-            <Link href={dashHref} style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              height: 48, borderRadius: 16, textDecoration: "none",
-              background: "linear-gradient(135deg, #0090FF, #6366F1)",
-              color: "#fff", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14,
+            <Link href={dashHref} className="btn-gradient" style={{
+              flex: 1, height: 48, textDecoration: "none",
+              fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               Dashboard
             </Link>
-            <button onClick={() => { setMenuOpen(false); handleLogout(); }} style={{
-              flex: 1, height: 48, borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
-              color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-body)",
-              fontWeight: 500, fontSize: 14, cursor: "pointer",
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="btn-glass" style={{
+              flex: 1, height: 48,
+              fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               {greeting ? `Log out (${greeting})` : "Log out"}
             </button>
           </>
         ) : !loading ? (
           <>
-            <Link href="/login" style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              height: 48, borderRadius: 16, textDecoration: "none",
-              border: "1px solid rgba(255,255,255,0.15)", background: "transparent",
-              color: "rgba(255,255,255,0.8)", fontFamily: "var(--font-body)",
-              fontWeight: 500, fontSize: 14,
+            <Link href="/login" className="btn-glass" style={{
+              flex: 1, height: 48, textDecoration: "none",
+              fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               <LogIn size={16} /> Log in
             </Link>
-            <Link href="/register" style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              height: 48, borderRadius: 16, textDecoration: "none",
-              background: "linear-gradient(135deg, #0090FF, #6366F1)",
-              color: "#fff", fontFamily: "var(--font-body)",
-              fontWeight: 600, fontSize: 14,
+            <Link href="/register" className="btn-gradient" style={{
+              flex: 1, height: 48, textDecoration: "none",
+              fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               <UserPlus size={16} /> Register
             </Link>
@@ -276,7 +252,7 @@ export function Nav() {
     <>
       <header className="nav-header" style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        background: "rgba(5,13,26,0.95)",
+        background: "rgba(11,17,33,0.85)",
         backdropFilter: "blur(24px) saturate(200%)",
         WebkitBackdropFilter: "blur(24px) saturate(200%)",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -293,7 +269,7 @@ export function Nav() {
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: "linear-gradient(135deg, #0090FF, #6366F1)",
+              background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff", letterSpacing: "-0.5px" }}>DH</span>
@@ -331,7 +307,7 @@ export function Nav() {
                   {isActive && (
                     <div style={{
                       height: 3, width: "100%", marginTop: 3,
-                      background: "linear-gradient(90deg, #0090FF, #6366F1)",
+                      background: "linear-gradient(90deg, var(--glass-indigo), var(--glass-purple))",
                       borderRadius: 2,
                     }} />
                   )}

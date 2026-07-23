@@ -17,7 +17,7 @@ function GlobePlaceholder() {
     <div style={{ position: "relative", width: "100%", maxWidth: 540, aspectRatio: "1", flexShrink: 0, margin: "0 auto" }}>
       <div style={{
         width: "100%", height: "100%", borderRadius: "50%",
-        background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #010913 100%)",
+        background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #0B1121 100%)",
         position: "relative", overflow: "hidden",
         boxShadow: "0 0 80px rgba(30,84,183,0.2), 0 0 160px rgba(99,102,241,0.08)",
       }}>
@@ -135,30 +135,37 @@ const PRICING_FAQ = [
 ];
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
+// CARD/FLOAT_CARD mirror the .glass-card token's exact recipe (globals.css) —
+// kept as local objects rather than switching every spread usage below to
+// className, but the values are identical, not reinvented. Both are page-
+// level/hero decorative panels (a handful of static content cards and 2-3
+// floating badges), not a scrolling list, so backdrop-blur is appropriate
+// here per the performance rule.
 
 const CARD: React.CSSProperties = {
-  background: "rgba(255,255,255,0.025)",
-  border: "1px solid rgba(255,255,255,0.07)",
-  borderRadius: 20,
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 16,
+  backdropFilter: "blur(24px)",
+  WebkitBackdropFilter: "blur(24px)",
+  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(99,102,241,0.1)",
 };
 
 const FLOAT_CARD: React.CSSProperties = {
-  background: "rgba(5,15,30,0.75)",
-  border: "1px solid rgba(0,144,255,0.2)",
-  borderRadius: 18,
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(99,102,241,0.2)",
+  borderRadius: 16,
   padding: "16px 20px",
-  backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+  backdropFilter: "blur(24px)",
+  WebkitBackdropFilter: "blur(24px)",
+  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(99,102,241,0.1)",
 };
 
 // ── Check icon ────────────────────────────────────────────────────────────────
 
 function Check() {
   return (
-    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(0,144,255,0.12)", border: "1px solid rgba(99,102,241,0.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
   );
@@ -182,13 +189,13 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div ref={pageRef} style={{ background: "#010913", minHeight: "100vh", overflowX: "hidden" }}>
+    <div ref={pageRef} style={{ background: "#0B1121", minHeight: "100vh", overflowX: "hidden" }}>
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="relative flex items-center bg-[#010913] overflow-hidden pt-20 pb-16 lg:pt-32 lg:pb-24 min-h-auto">
+      <section className="relative flex items-center bg-[#0B1121] overflow-hidden pt-20 pb-16 lg:pt-32 lg:pb-24 min-h-auto">
         {/* Blue orb top-left */}
         <div aria-hidden className="absolute -top-48 -left-32 sm:-left-40 md:-left-48 w-96 h-96 sm:w-[36rem] sm:h-[36rem] md:w-[56rem] md:h-[56rem] rounded-full pointer-events-none" style={{
-          background: "radial-gradient(circle, rgba(0,144,255,0.10) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)",
           filter: "blur(80px)",
         }} />
         {/* Purple orb top-right */}
@@ -204,7 +211,7 @@ export default function LandingPage() {
             <h1 className="dh-reveal hero-h1 font-display font-black leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8">
               Find World-Class Talent<br />
               <span style={{
-                background: "linear-gradient(135deg, #0090FF 0%, #818cf8 50%, #6366F1 100%)",
+                background: "linear-gradient(135deg, var(--glass-indigo) 0%, #818cf8 50%, var(--glass-purple) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -224,8 +231,8 @@ export default function LandingPage() {
                 {["AK", "SR", "MJ", "EC", "PO"].map((init, i) => (
                   <div key={i} style={{
                     width: 40, height: 40, borderRadius: "50%",
-                    background: "linear-gradient(135deg, #0090FF, #6366F1)",
-                    border: "2px solid #010913",
+                    background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
+                    border: "2px solid #0B1121",
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff",
                     marginLeft: i === 0 ? 0 : -10,
@@ -247,8 +254,8 @@ export default function LandingPage() {
               <Link href="/register?role=employer" style={{
                 display: "inline-flex", alignItems: "center",
                 padding: "14px 28px",
-                background: "linear-gradient(135deg, #0090FF, #6366F1)",
-                boxShadow: "0 0 40px rgba(0,144,255,0.4)",
+                background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
+                boxShadow: "0 0 40px rgba(99,102,241,0.4)",
                 borderRadius: 12, color: "#fff",
                 fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700,
                 textDecoration: "none", transition: "filter 0.2s",
@@ -320,7 +327,7 @@ export default function LandingPage() {
             {/* Glow behind globe */}
             <div aria-hidden style={{
               position: "absolute", width: 600, height: 600, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(0,144,255,0.07) 0%, transparent 65%)",
+              background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)",
               pointerEvents: "none", zIndex: 0,
             }} />
             {/* Globe */}
@@ -338,9 +345,9 @@ export default function LandingPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: "50%",
-                  background: "rgba(0,144,255,0.15)", border: "1px solid rgba(0,144,255,0.3)",
+                  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "#0090FF",
+                  fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "#818cf8",
                   flexShrink: 0,
                 }}>DE</div>
                 <div>
@@ -378,11 +385,11 @@ export default function LandingPage() {
               animationDelay: "1s",
               zIndex: 2,
             }}>
-              <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 700, color: "#0090FF", marginBottom: 6 }}>
+              <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 700, color: "#818cf8", marginBottom: 6 }}>
                 Match score: 92%
               </div>
               <div style={{ width: "100%", height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
-                <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 2 }} />
+                <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, var(--glass-indigo), var(--glass-purple))", borderRadius: 2 }} />
               </div>
             </div>
           </div>
@@ -448,7 +455,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
-      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+      <section className="lp-section" style={{ background: "#0B1121", overflowX: "hidden" }}>
         <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "5rem" }}>
             <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>
@@ -552,8 +559,8 @@ export default function LandingPage() {
               }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLDivElement;
-                  el.style.borderColor = "rgba(0,144,255,0.3)";
-                  el.style.boxShadow = "0 0 28px rgba(0,144,255,0.1)";
+                  el.style.borderColor = "rgba(99,102,241,0.3)";
+                  el.style.boxShadow = "0 0 28px rgba(99,102,241,0.1)";
                   el.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={e => {
@@ -565,7 +572,7 @@ export default function LandingPage() {
               >
                 <div style={{
                   width: 48, height: 48, borderRadius: 14,
-                  background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.18)",
+                  background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.18)",
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
                 }}>
                   {f.icon}
@@ -584,7 +591,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOR WORKERS ──────────────────────────────────────────────────────── */}
-      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+      <section className="lp-section" style={{ background: "#0B1121", overflowX: "hidden" }}>
         <div className="lp-container alt-grid" style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }}>
           {/* LEFT: text */}
           <div style={{ maxWidth: 480 }}>
@@ -654,7 +661,7 @@ export default function LandingPage() {
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "#818cf8" }}>92%</span>
               </div>
               <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, #0090FF, #6366F1)", borderRadius: 3 }} />
+                <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, var(--glass-indigo), var(--glass-purple))", borderRadius: 3 }} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
@@ -736,15 +743,15 @@ export default function LandingPage() {
 
             {/* Results highlight band */}
             <div className="dh-reveal" style={{
-              background: "rgba(0,144,255,0.06)",
-              border: "1px solid rgba(0,144,255,0.12)",
+              background: "rgba(99,102,241,0.06)",
+              border: "1px solid rgba(99,102,241,0.12)",
               borderRadius: 12, padding: "18px 22px",
               display: "flex", alignItems: "center", flexWrap: "wrap" as const, gap: "1.5rem",
               marginTop: "1.5rem", marginBottom: "2rem",
             }}>
               {["78% lock-to-hire rate", "< 24h candidate list", "2,800+ companies"].map((item, i) => (
                 <div key={item} style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                  {i > 0 && <span style={{ color: "rgba(0,144,255,0.4)", fontSize: 16 }}>•</span>}
+                  {i > 0 && <span style={{ color: "rgba(99,102,241,0.4)", fontSize: 16 }}>•</span>}
                   <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>{item}</span>
                 </div>
               ))}
@@ -765,7 +772,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────────────── */}
-      <section className="lp-section" style={{ background: "#010913", overflowX: "hidden" }}>
+      <section className="lp-section" style={{ background: "#0B1121", overflowX: "hidden" }}>
         <div className="lp-container" style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "4rem" }}>
             <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>Pricing</div>
@@ -782,16 +789,16 @@ export default function LandingPage() {
               <div key={i} className="dh-reveal" style={{ position: "relative" as const }}>
                 {plan.featured && (
                   <div style={{ textAlign: "center" as const, marginBottom: 10 }}>
-                    <span style={{ display: "inline-block", background: "linear-gradient(135deg, #0090FF, #6366F1)", color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body)", padding: "4px 16px", borderRadius: 999, letterSpacing: "0.06em" }}>
+                    <span style={{ display: "inline-block", background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))", color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body)", padding: "4px 16px", borderRadius: 999, letterSpacing: "0.06em" }}>
                       Most popular
                     </span>
                   </div>
                 )}
                 <div style={{
                   ...(plan.featured ? {
-                    background: "linear-gradient(#010913, #010913) padding-box, linear-gradient(135deg, #0090FF, #6366F1) border-box",
+                    background: "linear-gradient(#0B1121, #0B1121) padding-box, linear-gradient(135deg, var(--glass-indigo), var(--glass-purple)) border-box",
                     border: "1px solid transparent",
-                    boxShadow: "0 0 48px rgba(0,144,255,0.2), 0 0 96px rgba(99,102,241,0.1)",
+                    boxShadow: "0 0 48px rgba(99,102,241,0.2), 0 0 96px rgba(99,102,241,0.1)",
                   } : CARD),
                   borderRadius: 20,
                   padding: "2.5rem 2rem",
@@ -806,7 +813,7 @@ export default function LandingPage() {
                       fontFamily: "var(--font-display)", fontSize: 44, fontWeight: 900,
                       letterSpacing: "-2px", lineHeight: 1,
                       ...(plan.featured ? {
-                        background: "linear-gradient(135deg, #0090FF, #6366F1)",
+                        background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                         backgroundClip: "text",
@@ -826,9 +833,9 @@ export default function LandingPage() {
                     display: "block", textAlign: "center" as const, textDecoration: "none",
                     padding: "13px 0", borderRadius: 10, fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700,
                     ...(plan.featured ? {
-                      background: "linear-gradient(135deg, #0090FF, #6366F1)",
+                      background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                       color: "#fff",
-                      boxShadow: "0 0 24px rgba(0,144,255,0.3)",
+                      boxShadow: "0 0 24px rgba(99,102,241,0.3)",
                     } : {
                       background: "rgba(255,255,255,0.05)",
                       border: "1px solid rgba(255,255,255,0.1)",
@@ -940,7 +947,7 @@ export default function LandingPage() {
       <div style={{ margin: "4rem 1.5rem" }}>
         <section className="dh-reveal" style={{
           borderRadius: 28, padding: "6rem 2rem", textAlign: "center" as const,
-          background: "linear-gradient(135deg, #0070CC 0%, #4F46E5 60%, #7C3AED 100%)",
+          background: "linear-gradient(135deg, var(--glass-indigo) 0%, var(--glass-purple) 100%)",
           position: "relative" as const, overflow: "hidden",
         }}>
           {/* Grid shimmer */}
@@ -985,7 +992,7 @@ export default function LandingPage() {
             <div className="cta-banner-buttons" style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" as const }}>
               <Link href="/register" style={{
                 display: "inline-flex", alignItems: "center", padding: "15px 36px",
-                background: "#fff", color: "#0070CC", borderRadius: 12,
+                background: "#fff", color: "#4F46E5", borderRadius: 12,
                 fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700,
                 textDecoration: "none", transition: "opacity 0.2s",
               }}

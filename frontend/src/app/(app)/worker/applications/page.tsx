@@ -376,28 +376,25 @@ function WithdrawModal({ jobTitle, onConfirm, onCancel, loading }: {
   }, [onCancel]);
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9999,
-      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)",
+    <div className="glass-scrim" style={{
+      zIndex: 9999,
       display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
     }}
       onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
     >
-      <div style={{
-        background: "#161616", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 18, padding: 28, maxWidth: 400, width: "100%",
-      }}>
+      <div className="glass-modal" style={{ padding: 28, maxWidth: 400, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
           Withdraw application?
         </div>
-        <div style={{ fontSize: 13, color: "#71717a", lineHeight: 1.6, marginBottom: 24 }}>
-          Withdraw your application for <strong style={{ color: "#a1a1aa" }}>{jobTitle}</strong>?
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 24 }}>
+          Withdraw your application for <strong style={{ color: "#cbd5e1" }}>{jobTitle}</strong>?
           This cannot be undone.
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button
             onClick={onCancel}
-            style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
+            className="btn-glass"
+            style={{ padding: "9px 18px", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}
           >
             Cancel
           </button>

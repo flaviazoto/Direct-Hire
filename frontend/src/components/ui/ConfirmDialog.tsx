@@ -36,22 +36,18 @@ export function ConfirmDialog({
 
   const confirmBg = danger
     ? "linear-gradient(135deg, #dc2626, #ef4444)"
-    : "var(--blue-2, #1e54b7)";
+    : "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))";
   const confirmShadow = danger
     ? "0 4px 18px rgba(220,38,38,0.4)"
-    : "0 4px 18px rgba(30,84,183,0.4)";
+    : "0 4px 18px rgba(99,102,241,0.35)";
 
   return (
     <>
       {/* Overlay */}
       <div
         onClick={onCancel}
-        style={{
-          position: "fixed", inset: 0, zIndex: 9990,
-          background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(6px)",
-          animation: "fadeIn 0.15s ease",
-        }}
+        className="glass-scrim"
+        style={{ zIndex: 9990, animation: "fadeIn 0.15s ease" }}
       />
 
       {/* Dialog card */}
@@ -60,13 +56,9 @@ export function ConfirmDialog({
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "20px",
       }}>
-        <div style={{
-          background: "var(--navy-2, #0b1120)",
-          border: "1px solid var(--border, rgba(59,130,246,0.12))",
-          borderRadius: "var(--r-xl, 24px)",
+        <div className="glass-modal" style={{
           padding: "36px 32px",
           maxWidth: 420, width: "100%",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
           fontFamily: "var(--font-body, 'DM Sans', system-ui, sans-serif)",
           animation: "scaleIn 0.2s cubic-bezier(0.16,1,0.3,1)",
         }}>
@@ -76,7 +68,7 @@ export function ConfirmDialog({
             <div style={{
               width: 52, height: 52, borderRadius: "50%", margin: "0 auto 4px",
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: danger ? "rgba(220,38,38,0.12)" : "rgba(30,84,183,0.12)",
+              background: danger ? "rgba(220,38,38,0.12)" : "rgba(99,102,241,0.15)",
               fontSize: 22,
             }}>
               {danger ? "⚠️" : "❓"}
@@ -87,14 +79,14 @@ export function ConfirmDialog({
           <h2 style={{
             fontFamily: "var(--font-display, 'Sora', sans-serif)",
             fontWeight: 700, fontSize: 20,
-            color: "var(--white, #f8fafc)",
+            color: "#ffffff",
             textAlign: "center", margin: "0 0 12px",
             letterSpacing: "-0.5px",
           }}>{title}</h2>
 
           {/* Message */}
           <p style={{
-            fontSize: 14, color: "var(--muted, rgba(248,250,252,0.5))",
+            fontSize: 14, color: "#94a3b8",
             textAlign: "center", lineHeight: 1.65, margin: "0 0 28px",
           }}>{message}</p>
 
@@ -103,17 +95,12 @@ export function ConfirmDialog({
             {/* Cancel — ghost */}
             <button
               onClick={onCancel}
+              className="btn-glass"
               style={{
-                flex: 1, padding: "12px 20px", borderRadius: 10,
-                background: "transparent",
-                border: "1px solid var(--border, rgba(59,130,246,0.12))",
-                color: "var(--white, #f8fafc)",
+                flex: 1, padding: "12px 20px",
                 fontFamily: "var(--font-body, 'DM Sans', system-ui, sans-serif)",
-                fontSize: 14, fontWeight: 600, cursor: "pointer",
-                transition: "border-color 0.15s, background 0.15s",
+                fontSize: 14,
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border, rgba(59,130,246,0.12))"; e.currentTarget.style.background = "transparent"; }}
             >{cancelLabel}</button>
 
             {/* Confirm — filled */}

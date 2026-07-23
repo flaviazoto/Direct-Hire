@@ -22,9 +22,9 @@ function Section({ id, title, children }: { id: string; title: string; children:
     <div id={id} style={{ marginBottom: 52, scrollMarginTop: 110 }}>
       <h2 style={{
         fontFamily: "var(--font-display,'Bricolage Grotesque',system-ui,sans-serif)",
-        fontWeight: 700, fontSize: 22, color: "var(--text-primary,#F0F4FF)",
+        fontWeight: 700, fontSize: 22, color: "#ffffff",
         marginBottom: 16, paddingBottom: 12,
-        borderBottom: "2px solid rgba(0,144,255,0.15)",
+        borderBottom: "2px solid rgba(99,102,241,0.15)",
       }}>
         {title}
       </h2>
@@ -36,7 +36,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 function P({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 15, color: "var(--text-muted,#4A5980)",
+      fontSize: 15, color: "#94a3b8",
       lineHeight: 1.85, marginBottom: 14,
       fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
     }}>
@@ -65,18 +65,18 @@ export default function PrivacyPage() {
   }, []);
 
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
+    <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
-        background: "var(--navy-950,#060B18)",
+        background: "var(--glass-base)",
         padding: "140px 32px 60px",
         position: "relative", overflow: "hidden",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: "radial-gradient(ellipse, rgba(0,144,255,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div className="container" style={{ position: "relative" }}>
-          <div style={{ display: "inline-flex", padding: "6px 16px", borderRadius: 999, background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.2)", marginBottom: 24 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#60A5FA", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>Legal</span>
+          <div style={{ display: "inline-flex", padding: "6px 16px", borderRadius: 999, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)" }}>Legal</span>
           </div>
           <h1 style={{
             fontFamily: "var(--font-display)", fontWeight: 800,
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
       </section>
 
       {/* ── CONTENT + SIDEBAR ────────────────────────────────────────────────── */}
-      <section style={{ padding: "72px 32px 120px", background: "var(--navy-900,#0A1628)" }}>
+      <section style={{ padding: "72px 32px 120px", background: "var(--glass-base)" }}>
         <div className="container">
 
           {/* GDPR badge */}
@@ -119,8 +119,8 @@ export default function PrivacyPage() {
                       href={`#${item.id}`}
                       style={{
                         fontSize: 13, padding: "6px 0 6px 12px",
-                        borderLeft: `2px solid ${isActive ? "var(--blue-500,#0090FF)" : "transparent"}`,
-                        color: isActive ? "var(--blue-400,#60A5FA)" : "rgba(255,255,255,0.5)",
+                        borderLeft: `2px solid ${isActive ? "var(--blue-500,#4F46E5)" : "transparent"}`,
+                        color: isActive ? "var(--blue-400,#818cf8)" : "rgba(255,255,255,0.5)",
                         textDecoration: "none", fontFamily: "var(--font-body)",
                         transition: "color 0.15s, border-color 0.15s",
                         lineHeight: 1.5,
@@ -147,32 +147,32 @@ export default function PrivacyPage() {
               </Section>
 
               <Section id="section-2" title="2. What Data We Collect">
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Account data:</strong> name, email address, phone number, password (hashed).</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Profile data (workers):</strong> date of birth, nationality, country of residence, passport number (encrypted), marital status, family details, skills, experience, language proficiency, work preferences.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Profile data (employers):</strong> company name, NIPT, QKR number, administrator ID (encrypted), business description, industry, company size, address.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Uploaded files:</strong> profile photos, work videos, introduction videos, medical certificates, and business registration documents. All stored encrypted on secure servers.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Usage data:</strong> pages visited, features used, timestamps, IP addresses, device type, and browser.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Payment data:</strong> subscription status and billing cycle. Full payment card data is handled by our payment processor and never stored on our servers.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Account data:</strong> name, email address, phone number, password (hashed).</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Profile data (workers):</strong> date of birth, nationality, country of residence, passport number (encrypted), marital status, family details, skills, experience, language proficiency, work preferences.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Profile data (employers):</strong> company name, NIPT, QKR number, administrator ID (encrypted), business description, industry, company size, address.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Uploaded files:</strong> profile photos, work videos, introduction videos, medical certificates, and business registration documents. All stored encrypted on secure servers.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Usage data:</strong> pages visited, features used, timestamps, IP addresses, device type, and browser.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Payment data:</strong> subscription status and billing cycle. Full payment card data is handled by our payment processor and never stored on our servers.</P>
               </Section>
 
               <Section id="section-3" title="3. How We Use Your Data">
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>To provide the service:</strong> matching workers with employers, fraud detection, email notifications, and platform functionality.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>AI matching:</strong> your profile data is used to score compatibility with job postings. This processing is necessary to deliver the service you signed up for.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Security:</strong> we use usage data and profile data to detect fraud, duplicate accounts, and suspicious activity.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Communications:</strong> we send transactional emails (account events, application updates) and platform notifications. You may opt out of non-essential communications.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>To provide the service:</strong> matching workers with employers, fraud detection, email notifications, and platform functionality.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>AI matching:</strong> your profile data is used to score compatibility with job postings. This processing is necessary to deliver the service you signed up for.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Security:</strong> we use usage data and profile data to detect fraud, duplicate accounts, and suspicious activity.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Communications:</strong> we send transactional emails (account events, application updates) and platform notifications. You may opt out of non-essential communications.</P>
               </Section>
 
               <Section id="section-4" title="4. Legal Basis for Processing (GDPR)">
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Contract performance:</strong> processing necessary to provide the platform service you agreed to.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Legitimate interests:</strong> fraud detection, platform security, and service improvement.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Consent:</strong> optional features such as marketing emails.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Contract performance:</strong> processing necessary to provide the platform service you agreed to.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Legitimate interests:</strong> fraud detection, platform security, and service improvement.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Consent:</strong> optional features such as marketing emails.</P>
               </Section>
 
               <Section id="section-5" title="5. Data Sharing">
                 <P>We share your data only in the following circumstances:</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>With employers:</strong> workers&apos; profile information, match scores, and uploaded materials are visible to verified employers who have an active subscription and are searching for candidates matching your profile. Your contact details are only shared when you apply to a job or are shortlisted.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery, and payment processing. All providers are contractually bound to process your data only as instructed.</P>
-                <P><strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>Legal requirements:</strong> we may disclose data to comply with applicable law or lawful requests from authorities.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>With employers:</strong> workers&apos; profile information, match scores, and uploaded materials are visible to verified employers who have an active subscription and are searching for candidates matching your profile. Your contact details are only shared when you apply to a job or are shortlisted.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery, and payment processing. All providers are contractually bound to process your data only as instructed.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Legal requirements:</strong> we may disclose data to comply with applicable law or lawful requests from authorities.</P>
                 <P>We do not sell your data. We do not share data with advertisers.</P>
               </Section>
 
@@ -185,12 +185,12 @@ export default function PrivacyPage() {
               </Section>
 
               <Section id="section-8" title="8. Your Rights (GDPR)">
-                <P>You have the right to: <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>access</strong> your personal data; <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>correct</strong> inaccurate data; <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>delete</strong> your account and associated data; <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>export</strong> your data in a portable format; <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>restrict</strong> or object to certain processing; <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>withdraw consent</strong> at any time.</P>
+                <P>You have the right to: <strong style={{ color: "#cbd5e1" }}>access</strong> your personal data; <strong style={{ color: "#cbd5e1" }}>correct</strong> inaccurate data; <strong style={{ color: "#cbd5e1" }}>delete</strong> your account and associated data; <strong style={{ color: "#cbd5e1" }}>export</strong> your data in a portable format; <strong style={{ color: "#cbd5e1" }}>restrict</strong> or object to certain processing; <strong style={{ color: "#cbd5e1" }}>withdraw consent</strong> at any time.</P>
                 <P>To exercise these rights, email privacy@directhire.io. We will respond within 30 days.</P>
               </Section>
 
               <Section id="section-9" title="9. Cookies">
-                <P>We use only strictly necessary cookies for authentication (JWT tokens stored as HttpOnly cookies) and session management. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#60A5FA", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
+                <P>We use only strictly necessary cookies for authentication (JWT tokens stored as HttpOnly cookies) and session management. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
               </Section>
 
               <Section id="section-10" title="10. Changes to This Policy">
@@ -203,11 +203,11 @@ export default function PrivacyPage() {
               </Section>
 
               {/* Footer strip */}
-              <div style={{ borderTop: "1px solid var(--surface-border,#1E3258)", paddingTop: 32, marginTop: 16, display: "flex", gap: 24, flexWrap: "wrap" as const }}>
-                <a href="/terms" style={{ fontSize: 13, color: "#60A5FA", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Terms of Service</a>
-                <a href="/cookies" style={{ fontSize: 13, color: "#60A5FA", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Cookie Policy</a>
-                <a href="/contact" style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", textDecoration: "none", fontFamily: "var(--font-body)" }}>Contact Us</a>
-                <span style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", marginLeft: "auto", fontFamily: "var(--font-body)" }}>© {new Date().getFullYear()} DirectHire Ltd</span>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 32, marginTop: 16, display: "flex", gap: 24, flexWrap: "wrap" as const }}>
+                <a href="/terms" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Terms of Service</a>
+                <a href="/cookies" style={{ fontSize: 13, color: "#818cf8", textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-body)" }}>Cookie Policy</a>
+                <a href="/contact" style={{ fontSize: 13, color: "#94a3b8", textDecoration: "none", fontFamily: "var(--font-body)" }}>Contact Us</a>
+                <span style={{ fontSize: 13, color: "#94a3b8", marginLeft: "auto", fontFamily: "var(--font-body)" }}>© {new Date().getFullYear()} DirectHire Ltd</span>
               </div>
             </div>
           </div>

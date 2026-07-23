@@ -70,40 +70,40 @@ export default function ContactPage() {
 
   const inputBase: React.CSSProperties = {
     width: "100%", padding: "13px 16px",
-    border: "1.5px solid var(--surface-border,#1E3258)", borderRadius: 12,
+    border: "1.5px solid rgba(255,255,255,0.1)", borderRadius: 12,
     fontSize: 15, outline: "none",
     fontFamily: "var(--font-body,'DM Sans',system-ui,sans-serif)",
-    color: "var(--text-primary,#F0F4FF)",
-    background: "var(--surface,#0F1C35)",
+    color: "#ffffff",
+    background: "rgba(255,255,255,0.05)",
     boxSizing: "border-box" as const,
     transition: "border-color 0.15s, box-shadow 0.15s",
   };
 
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      e.currentTarget.style.borderColor = "rgba(0,144,255,0.5)";
-      e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(0,144,255,0.1)";
+      e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)";
+      e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(99,102,241,0.1)";
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      e.currentTarget.style.borderColor = "var(--surface-border,#1E3258)";
+      e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
       e.currentTarget.style.boxShadow   = "none";
     },
   };
 
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)" }}>
+    <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section style={{ padding: "140px 32px 80px", background: "var(--navy-950,#060B18)", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "-10%", left: "50%", transform: "translateX(-50%)", width: 600, height: 500, borderRadius: "50%", background: "rgba(0,144,255,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />
+      <section style={{ padding: "140px 32px 80px", background: "var(--glass-base)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "-10%", left: "50%", transform: "translateX(-50%)", width: 600, height: 500, borderRadius: "50%", background: "rgba(99,102,241,0.08)", filter: "blur(120px)", pointerEvents: "none" }} />
         <div className="container" style={{ position: "relative" }}>
           <div className="contact-hero-split" style={{ display: "flex", alignItems: "center", gap: "4rem" }}>
 
             {/* Left: copy */}
             <div style={{ flex: "0 0 60%" }}>
-              <p style={{ color: "#60A5FA", fontWeight: 600, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)", marginBottom: 20 }}>
+              <p style={{ color: "#818cf8", fontWeight: 600, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, fontFamily: "var(--font-body)", marginBottom: 20 }}>
                 Contact us
               </p>
-              <h1 className="text-display-lg" style={{ color: "var(--text-primary,#F0F4FF)", marginBottom: 16, textAlign: "left" as const }}>Get in touch</h1>
+              <h1 className="text-display-lg" style={{ color: "#ffffff", marginBottom: 16, textAlign: "left" as const }}>Get in touch</h1>
               <p className="text-body-lg" style={{ maxWidth: 460 }}>Have a question, a partnership idea, or need help? We&apos;re here.</p>
             </div>
 
@@ -120,7 +120,7 @@ export default function ContactPage() {
                 </div>
                 <div style={{
                   fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 38, letterSpacing: "-2px",
-                  background: "linear-gradient(135deg,#0090FF,#6366F1)",
+                  background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                   lineHeight: 1, marginBottom: 4,
                 }}>
@@ -161,12 +161,12 @@ export default function ContactPage() {
           <div className="contact-grid" style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 64, alignItems: "start" }}>
 
             {/* Form card */}
-            <div className="card-surface contact-form-card" style={{ padding: "48px 44px" }}>
+            <div className="glass-card contact-form-card" style={{ padding: "48px 44px" }}>
               {sent ? (
                 <div style={{ textAlign: "center", padding: "40px 0" }}>
                   <div style={{ fontSize: 48, marginBottom: 20 }}>✅</div>
-                  <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: "var(--text-primary,#F0F4FF)", marginBottom: 12 }}>Message sent!</h3>
-                  <p style={{ color: "var(--text-muted,#4A5980)", fontSize: 15, lineHeight: 1.65, fontFamily: "var(--font-body)", marginBottom: 24 }}>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: "#ffffff", marginBottom: 12 }}>Message sent!</h3>
+                  <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.65, fontFamily: "var(--font-body)", marginBottom: 24 }}>
                     We&apos;ll get back to you within 24 hours. Check your inbox for a confirmation.
                   </p>
                   <button
@@ -184,12 +184,12 @@ export default function ContactPage() {
                 </div>
               ) : (
                 <>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "var(--text-primary,#F0F4FF)", marginBottom: 28 }}>Send a message</h2>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "#ffffff", marginBottom: 28 }}>Send a message</h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="name-email-grid">
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary,#8B9CC8)", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Your Name *</label>
+                        <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Your Name *</label>
                         <input
                           style={inputBase}
                           value={form.name}
@@ -199,7 +199,7 @@ export default function ContactPage() {
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary,#8B9CC8)", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Email Address *</label>
+                        <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Email Address *</label>
                         <input
                           style={inputBase}
                           type="email"
@@ -212,7 +212,7 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary,#8B9CC8)", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Subject</label>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Subject</label>
                       <select
                         style={{ ...inputBase, appearance: "none" as const }}
                         value={form.subject}
@@ -230,7 +230,7 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary,#8B9CC8)", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Message *</label>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1", marginBottom: 6, display: "block", fontFamily: "var(--font-body)" }}>Message *</label>
                       <textarea
                         style={{ ...inputBase, resize: "vertical" as const, minHeight: 140 }}
                         value={form.message}
@@ -257,8 +257,8 @@ export default function ContactPage() {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         padding: "15px", borderRadius: 12, fontWeight: 700, fontSize: 16,
                         color: "#F0F4FF", border: "none", cursor: loading || !form.name || !form.email || !form.message ? "not-allowed" : "pointer",
-                        background: "linear-gradient(135deg,#0090FF,#0070CC)",
-                        boxShadow: "0 6px 20px rgba(0,144,255,0.3)",
+                        background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
+                        boxShadow: "0 6px 20px rgba(99,102,241,0.3)",
                         opacity: loading || !form.name || !form.email || !form.message ? 0.6 : 1,
                         fontFamily: "var(--font-body)",
                         transition: "opacity 0.15s",
@@ -285,27 +285,27 @@ export default function ContactPage() {
 
               {/* Channel cards */}
               {CHANNELS.map(ch => (
-                <div key={ch.label} className="card-surface" style={{ padding: "20px 24px", display: "flex", gap: 14, alignItems: "center" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(0,144,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{ch.icon}</div>
+                <div key={ch.label} className="glass-card" style={{ padding: "20px 24px", display: "flex", gap: 14, alignItems: "center" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(99,102,241,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{ch.icon}</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)", fontFamily: "var(--font-body)" }}>{ch.label}</div>
-                    <div style={{ fontSize: 14, color: "#60A5FA", fontWeight: 600, fontFamily: "var(--font-body)" }}>{ch.value}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted,#4A5980)", fontFamily: "var(--font-body)" }}>{ch.desc}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#ffffff", fontFamily: "var(--font-body)" }}>{ch.label}</div>
+                    <div style={{ fontSize: 14, color: "#818cf8", fontWeight: 600, fontFamily: "var(--font-body)" }}>{ch.value}</div>
+                    <div style={{ fontSize: 12, color: "#94a3b8", fontFamily: "var(--font-body)" }}>{ch.desc}</div>
                   </div>
                 </div>
               ))}
 
               {/* Response time card */}
-              <div className="card-surface" style={{ padding: "20px 24px" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)", marginBottom: 6, fontFamily: "var(--font-body)" }}>Response time</div>
-                <p style={{ fontSize: 14, color: "var(--text-muted,#4A5980)", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>
-                  We typically respond within <strong style={{ color: "var(--text-secondary,#8B9CC8)" }}>24 hours</strong> on business days. Urgent support issues are prioritized on Growth and Enterprise plans.
+              <div className="glass-card" style={{ padding: "20px 24px" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#ffffff", marginBottom: 6, fontFamily: "var(--font-body)" }}>Response time</div>
+                <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>
+                  We typically respond within <strong style={{ color: "#cbd5e1" }}>24 hours</strong> on business days. Urgent support issues are prioritized on Growth and Enterprise plans.
                 </p>
               </div>
 
               {/* Social links card */}
-              <div className="card-surface" style={{ padding: "20px 24px" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)", marginBottom: 14, fontFamily: "var(--font-body)" }}>Follow us</div>
+              <div className="glass-card" style={{ padding: "20px 24px" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#ffffff", marginBottom: 14, fontFamily: "var(--font-body)" }}>Follow us</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {SOCIALS.map(({ label, href, Icon }) => (
                     <a
@@ -323,9 +323,9 @@ export default function ContactPage() {
                       }}
                       onMouseEnter={e => {
                         const el = e.currentTarget as HTMLAnchorElement;
-                        el.style.background = "rgba(0,144,255,0.12)";
-                        el.style.color = "#60A5FA";
-                        el.style.borderColor = "rgba(0,144,255,0.25)";
+                        el.style.background = "rgba(99,102,241,0.12)";
+                        el.style.color = "#818cf8";
+                        el.style.borderColor = "rgba(99,102,241,0.25)";
                       }}
                       onMouseLeave={e => {
                         const el = e.currentTarget as HTMLAnchorElement;
@@ -341,9 +341,9 @@ export default function ContactPage() {
               </div>
 
               {/* Registered office */}
-              <div style={{ background: "rgba(0,144,255,0.06)", border: "1px solid rgba(0,144,255,0.15)", borderRadius: 16, padding: "20px 24px" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary,#F0F4FF)", marginBottom: 6, fontFamily: "var(--font-body)" }}>🏢 Registered office</div>
-                <p style={{ fontSize: 13, color: "var(--text-muted,#4A5980)", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>
+              <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 16, padding: "20px 24px" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#ffffff", marginBottom: 6, fontFamily: "var(--font-body)" }}>🏢 Registered office</div>
+                <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.65, fontFamily: "var(--font-body)", margin: 0 }}>
                   DirectHire Ltd<br />
                   Rruga e Durrësit 42<br />
                   Tirana, Albania

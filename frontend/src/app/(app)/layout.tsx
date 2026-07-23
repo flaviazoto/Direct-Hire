@@ -32,11 +32,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="app-shell" style={{ minHeight: "100dvh", background: "var(--navy, #05080f)" }}>
+    <div className="app-shell" style={{ minHeight: "100dvh", background: "var(--glass-base)" }}>
       <DashboardHeader role={role} onLogout={handleLogout} />
       <main
         className="app-main pt-14 lg:pt-0 lg:pl-64"
-        style={{ minWidth: 0, minHeight: "100dvh", background: "var(--navy, #05080f)", overflowX: "hidden" }}
+        style={{ minWidth: 0, minHeight: "100dvh", background: "var(--glass-base)", overflowX: "hidden" }}
       >
         <div key={pathname} data-page-root style={{ minWidth: 0, width: "100%" }}>
           {children}

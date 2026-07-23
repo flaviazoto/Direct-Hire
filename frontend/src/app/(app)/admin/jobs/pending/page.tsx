@@ -198,15 +198,11 @@ function ActionModal({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{
-          position: "fixed", inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(6px)",
-          zIndex: 200,
-        }}
+        className="glass-scrim"
+        style={{ zIndex: 200 }}
       />
       {/* Modal */}
-      <div style={{
+      <div className="glass-modal" style={{
         position:  "fixed",
         top:       "50%",
         left:      "50%",
@@ -214,11 +210,7 @@ function ActionModal({
         zIndex:    201,
         width:     500,
         maxWidth:  "calc(100vw - 32px)",
-        background: "#141414",
-        border:    `1px solid ${C.border}`,
-        borderRadius: 16,
         padding:   28,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
       }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>

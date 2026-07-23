@@ -181,7 +181,7 @@ function Chip({
 }: { children: React.ReactNode; color?: "gray" | "teal" | "blue" | "violet" | "green" | "amber" }) {
   const s: Record<string, { color: string; bg: string; border: string }> = {
     gray:   { color: "#a1a1aa", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.1)"  },
-    teal:   { color: "#5eead4", bg: "rgba(0,144,255,0.1)",   border: "rgba(0,144,255,0.25)"  },
+    teal:   { color: "#5eead4", bg: "rgba(99,102,241,0.1)",  border: "rgba(99,102,241,0.25)"  },
     blue:   { color: "#93c5fd", bg: "rgba(96,165,250,0.1)",   border: "rgba(96,165,250,0.25)"  },
     violet: { color: "#c4b5fd", bg: "rgba(167,139,250,0.1)",  border: "rgba(167,139,250,0.25)" },
     green:  { color: "#86efac", bg: "rgba(74,222,128,0.1)",   border: "rgba(74,222,128,0.25)"  },
@@ -212,7 +212,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function SkillTag({ label, onRemove }: { label: string; onRemove?: () => void }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "2px 8px", borderRadius: 6,
-      background: "rgba(0,144,255,0.1)", border: "1px solid rgba(0,144,255,0.25)", color: "#5eead4" }}>
+      background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", color: "#5eead4" }}>
       {label}
       {onRemove && (
         <button onClick={onRemove} style={{ background: "none", border: "none", cursor: "pointer", color: "#5eead4", padding: 0, lineHeight: 1, fontSize: 13, fontFamily: "inherit" }}>×</button>
@@ -259,7 +259,7 @@ function FilterSidebar({
           value={filters.search}
           onChange={e => onChange({ search: e.target.value })}
           placeholder="Title, company, keyword…"
-          style={{ width: "100%", background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "9px 12px", fontSize: 13, color: "#fff", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+          className="input-glass" style={{ width: "100%", padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
         />
       </div>
 
@@ -267,10 +267,10 @@ function FilterSidebar({
       <div>
         <label style={LabelStyle}>Country</label>
         <select value={filters.country} onChange={e => onChange({ country: e.target.value })}
-          style={{ width: "100%", background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "9px 12px", fontSize: 13, color: filters.country ? "#fff" : "#71717a", outline: "none", fontFamily: "inherit", appearance: "none", cursor: "pointer" }}>
+          className="input-glass" style={{ width: "100%", padding: "9px 12px", fontSize: 13, color: filters.country ? "#fff" : "#94a3b8", outline: "none", fontFamily: "inherit", appearance: "none", cursor: "pointer" }}>
           <option value="">All countries</option>
           {countries.map(c => (
-            <option key={c.country} value={c.country} style={{ background: "#1a1a1a" }}>
+            <option key={c.country} value={c.country} style={{ background: "#1e293b" }}>
               {c.country} ({c.count})
             </option>
           ))}
@@ -281,9 +281,9 @@ function FilterSidebar({
       <div>
         <label style={LabelStyle}>Category</label>
         <select value={filters.category} onChange={e => onChange({ category: e.target.value })}
-          style={{ width: "100%", background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "9px 12px", fontSize: 13, color: filters.category ? "#fff" : "#71717a", outline: "none", fontFamily: "inherit", appearance: "none", cursor: "pointer" }}>
+          className="input-glass" style={{ width: "100%", padding: "9px 12px", fontSize: 13, color: filters.category ? "#fff" : "#94a3b8", outline: "none", fontFamily: "inherit", appearance: "none", cursor: "pointer" }}>
           <option value="">All categories</option>
-          {categories.map(c => <option key={c} value={c} style={{ background: "#1a1a1a" }}>{c}</option>)}
+          {categories.map(c => <option key={c} value={c} style={{ background: "#1e293b" }}>{c}</option>)}
         </select>
       </div>
 
@@ -307,9 +307,9 @@ function FilterSidebar({
         <label style={LabelStyle}>Salary range</label>
         <div style={{ display: "flex", gap: 8 }}>
           <input type="number" value={filters.salaryMin} onChange={e => onChange({ salaryMin: e.target.value })}
-            placeholder="Min" style={{ flex: 1, background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "9px 10px", fontSize: 13, color: "#fff", outline: "none", fontFamily: "inherit", minWidth: 0 }} />
+            placeholder="Min" className="input-glass" style={{ flex: 1, padding: "9px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", minWidth: 0 }} />
           <input type="number" value={filters.salaryMax} onChange={e => onChange({ salaryMax: e.target.value })}
-            placeholder="Max" style={{ flex: 1, background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "9px 10px", fontSize: 13, color: "#fff", outline: "none", fontFamily: "inherit", minWidth: 0 }} />
+            placeholder="Max" className="input-glass" style={{ flex: 1, padding: "9px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", minWidth: 0 }} />
         </div>
       </div>
 
@@ -331,8 +331,8 @@ function FilterSidebar({
           <input value={skillInput} onChange={e => setSkillInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
             placeholder="Add skill…"
-            style={{ flex: 1, background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "#fff", outline: "none", fontFamily: "inherit", minWidth: 0 }} />
-          <button onClick={addSkill} style={{ background: "rgba(0,144,255,0.12)", border: "1px solid rgba(0,144,255,0.25)", borderRadius: 8, padding: "7px 12px", color: "#5eead4", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+</button>
+            className="input-glass" style={{ flex: 1, padding: "7px 10px", fontSize: 12, outline: "none", fontFamily: "inherit", minWidth: 0 }} />
+          <button onClick={addSkill} style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 8, padding: "7px 12px", color: "#5eead4", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+</button>
         </div>
       </div>
 
@@ -537,7 +537,7 @@ function ApplyModal({
       style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget && !submitting) onCancel(); }}
     >
-      <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 28, maxWidth: 480, width: "100%" }}>
+      <div className="glass-card" style={{ padding: 28, maxWidth: 480, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
           Apply for {job.title}
         </div>
@@ -666,9 +666,9 @@ function JobCard({
   return (
     <div
       onClick={onClick}
-      style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20, cursor: "pointer", transition: "border-color 0.15s, background 0.15s" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"; e.currentTarget.style.background = "#1a1a1a"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "#161616"; }}
+      style={{ background: "rgba(30,41,59,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20, cursor: "pointer", transition: "border-color 0.15s, background 0.15s" }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"; e.currentTarget.style.background = "rgba(30,41,59,0.8)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(30,41,59,0.6)"; }}
     >
       {/* Title row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
@@ -728,7 +728,7 @@ function JobCard({
             <button
               onClick={() => onApply(job.id)}
               disabled={applying}
-              style={{ height: 36, padding: "0 18px", borderRadius: 9, background: applying ? "rgba(0,144,255,0.3)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: applying ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "opacity 0.15s" }}>
+              style={{ height: 36, padding: "0 18px", borderRadius: 9, background: applying ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: applying ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "opacity 0.15s" }}>
               {applying ? "Applying…" : "Apply now"}
             </button>
           )
@@ -746,7 +746,7 @@ function ExternalJobCard({ job }: { job: Job }) {
   const salary = fmtExternalSalary(job);
 
   return (
-    <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20 }}>
+    <div style={{ background: "rgba(30,41,59,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4 }}>
@@ -818,13 +818,15 @@ function SlideOver({
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 201,
         width: "min(560px, 100vw)",
-        background: "#161616",
-        borderLeft: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        borderLeft: "1px solid rgba(255,255,255,0.1)",
         display: "flex", flexDirection: "column",
         overflowY: "auto",
       }}>
-        {/* Header */}
-        <div style={{ padding: "24px 28px 20px", borderBottom: "1px solid rgba(255,255,255,0.07)", position: "sticky", top: 0, background: "#161616", zIndex: 1 }}>
+        {/* Header — sticky, blur is appropriate here per the performance rule */}
+        <div style={{ padding: "24px 28px 20px", borderBottom: "1px solid rgba(255,255,255,0.07)", position: "sticky", top: 0, background: "rgba(15,23,42,0.7)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", zIndex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 6 }}>{job.title}</div>
@@ -928,11 +930,11 @@ function SlideOver({
           )}
         </div>
 
-        {/* Footer CTA */}
-        <div style={{ padding: "20px 28px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "#161616" }}>
+        {/* Footer CTA — sticky-adjacent, blur is appropriate here per the performance rule */}
+        <div style={{ padding: "20px 28px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(15,23,42,0.7)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}>
           {!auth.loaded ? null : !auth.isLoggedIn ? (
             <Link href="/login?redirect=/jobs"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48, borderRadius: 12, background: "linear-gradient(135deg,#0090FF,#0070cc)", color: "#fff", fontSize: 15, fontWeight: 700, textDecoration: "none", fontFamily: "inherit" }}>
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 48, borderRadius: 12, background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))", color: "#fff", fontSize: 15, fontWeight: 700, textDecoration: "none", fontFamily: "inherit" }}>
               Sign in to apply
             </Link>
           ) : auth.role === "WORKER" && auth.accountStatus === "VERIFIED" ? (
@@ -944,7 +946,7 @@ function SlideOver({
               <button
                 onClick={() => onApply(job.id)}
                 disabled={applying}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 48, borderRadius: 12, background: applying ? "rgba(0,144,255,0.4)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: applying ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: applying ? "none" : "0 4px 16px rgba(0,144,255,0.35)", transition: "all 0.15s" }}>
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 48, borderRadius: 12, background: applying ? "rgba(99,102,241,0.4)" : "linear-gradient(135deg,#14b8a6,#0d9488)", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: applying ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: applying ? "none" : "0 4px 16px rgba(99,102,241,0.35)", transition: "all 0.15s" }}>
                 {applying ? "Submitting application…" : "Apply now"}
               </button>
             )
@@ -1191,7 +1193,7 @@ function JobBoardContent() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--glass-base)", fontFamily: "var(--font-body)" }}>
       <ToastDisplay toast={toast} />
 
       {/* Apply modal */}
@@ -1216,8 +1218,8 @@ function JobBoardContent() {
       {selectedJob && detailLoading && (
         <>
           <div onClick={() => setSelectedJob(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "#161616", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(0,144,255,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(99,102,241,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
           </div>
         </>
       )}
@@ -1225,7 +1227,7 @@ function JobBoardContent() {
       {selectedJob && detailError && (
         <>
           <div onClick={() => { setSelectedJob(null); setDetailError(null); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "#161616", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
             <ErrorState
               message={detailError}
               retry={() => selectedJob && openJob(selectedJob)}
@@ -1266,7 +1268,7 @@ function JobBoardContent() {
           <div style={{ display: "flex", gap: 32, paddingTop: 32, paddingBottom: 48, alignItems: "flex-start" }}>
             {/* ── LEFT SIDEBAR ── */}
             <div style={{ width: 260, flexShrink: 0, position: "sticky", top: 88 }} className="desktop-sidebar">
-              <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20 }}>
+              <div style={{ background: "rgba(30,41,59,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 20 }}>Filters</div>
                 <FilterSidebar filters={filters} onChange={updateFilters} categories={categories} countries={countries} onClear={clearFilters} />
               </div>
@@ -1293,7 +1295,7 @@ function JobBoardContent() {
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {Array.from({ length: 6 }, (_, i) => (
-                    <div key={i} style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20, height: 140, opacity: 1 - i * 0.12 }}>
+                    <div key={i} style={{ background: "rgba(30,41,59,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 20, height: 140, opacity: 1 - i * 0.12 }}>
                       <div style={{ width: "60%", height: 16, background: "rgba(255,255,255,0.05)", borderRadius: 6, marginBottom: 10 }} />
                       <div style={{ width: "40%", height: 12, background: "rgba(255,255,255,0.04)", borderRadius: 6 }} />
                     </div>
@@ -1302,7 +1304,7 @@ function JobBoardContent() {
               ) : error ? (
                 <ErrorState message={error} retry={fetchJobs} title="Could not load jobs" />
               ) : jobs.length === 0 ? (
-                <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "56px 32px", textAlign: "center" }}>
+                <div style={{ background: "rgba(30,41,59,0.6)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "56px 32px", textAlign: "center" }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>No jobs found</div>
                   <div style={{ fontSize: 13, color: "#71717a", marginBottom: 20 }}>Try adjusting your filters or clearing the search.</div>
@@ -1377,8 +1379,8 @@ function FilterIcon() {
 export default function JobBoardPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(0,144,255,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
+      <div style={{ minHeight: "100vh", background: "var(--glass-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(99,102,241,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     }>

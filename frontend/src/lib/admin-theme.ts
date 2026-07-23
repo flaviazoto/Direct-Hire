@@ -1,21 +1,21 @@
-// Shared design constants for all admin pages — DirectHire design system.
-// Admin role = gold (desaturated, never the warning/orange hue) + light
-// surfaces for page content. The sidebar itself stays dark (bg-ink-950) per
-// the design system's "admin sidebar is dark; worker/employer are light"
-// rule — that's handled in DashboardHeader.tsx, not here.
+// Shared design constants for all admin pages — DirectHire glassmorphism
+// design system (Phase 3). Admin role = gold (desaturated, never the
+// warning/orange hue) on the shared dark glass surface — all three roles
+// now share one glass shell (DashboardHeader.tsx), so admin page content
+// uses the same translucent/blurred surface language, just accented gold.
 import type React from "react";
 
 export const C = {
-  bg:          "#F8FAFC", // ink-50
-  card:        "#FFFFFF",
-  cardHover:   "#F8FAFC", // ink-50
-  border:      "#F1F5F9", // ink-100
-  borderHover: "#CBD5E1", // ink-300
-  text:        "#0B1120", // ink-950
-  muted:       "#64748B", // ink-500
-  secondary:   "#1E293B", // ink-800
-  accent:      "#C89116", // admin-500 (gold) — BRAND color only. Never use for destructive actions/status — use `danger` below.
-  teal:        "#14B8A6", // worker-500 — only for cross-role references (e.g. a worker row shown on an admin page)
+  bg:          "var(--glass-base)",
+  card:        "rgba(255,255,255,0.05)",
+  cardHover:   "rgba(255,255,255,0.07)",
+  border:      "rgba(255,255,255,0.1)",
+  borderHover: "rgba(255,255,255,0.18)",
+  text:        "#ffffff",
+  muted:       "#94a3b8",
+  secondary:   "#cbd5e1",
+  accent:      "#E0B020", // admin-400 (gold, lightened for legibility on dark glass) — BRAND color only. Never use for destructive actions/status — use `danger` below.
+  teal:        "#2DD4BF", // worker-400 — only for cross-role references (e.g. a worker row shown on an admin page)
   blue:        "#2563EB", // info
   green:       "#16A34A", // success
   yellow:      "#EA580C", // warning
@@ -26,8 +26,8 @@ export const C = {
   danger:      "#DC2626",
   warning:     "#EA580C",
   info:        "#2563EB",
-  inputBg:     "#FFFFFF",
-  inputBorder: "#CBD5E1", // ink-300
+  inputBg:     "rgba(255,255,255,0.05)",
+  inputBorder: "rgba(255,255,255,0.1)",
 } as const;
 
 // Reusable style helpers
@@ -38,13 +38,24 @@ export const pill = (color: string, bg: string, border: string) => ({
   border: `1px solid ${border}`, whiteSpace: "nowrap" as const,
 });
 
+// .glass-card equivalent, expressed as a JS object for call sites that spread
+// it into an inline style (mirrors the exact recipe in globals.css so this
+// stays one visual token, not a second one) — container-level use only, see
+// the performance rule for table rows/lists (no per-row blur).
 export const card = (extra?: React.CSSProperties) => ({
   background: C.card,
   border: `1px solid ${C.border}`,
-  borderRadius: 10,
-  boxShadow: "0 1px 2px rgba(11,17,32,0.04)",
+  borderRadius: 16,
+  backdropFilter: "blur(24px)",
+  WebkitBackdropFilter: "blur(24px)",
+  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(200,145,22,0.08)",
   ...extra,
 });
+
+// Table/list row background — solid translucent, NEVER blurred (admin tables
+// can be 50+ rows; per-row backdrop-filter is the exact cost the performance
+// rule exists to avoid).
+export const rowBg = "rgba(30,41,59,0.6)";
 
 export const inputStyle: React.CSSProperties = {
   background: C.inputBg,

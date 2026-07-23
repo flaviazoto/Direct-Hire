@@ -204,12 +204,12 @@ function RejectModal({
   }, [onCancel]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+    <div className="glass-scrim" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18, padding: 28, maxWidth: 440, width: "100%" }}>
+      <div className="glass-modal" style={{ padding: 28, maxWidth: 440, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 6 }}>Not moving forward?</div>
-        <div style={{ fontSize: 13, color: "#71717a", marginBottom: 18 }}>
-          Rejecting <strong style={{ color: "#a1a1aa" }}>{name}</strong>. The candidate will be notified. Add an internal reason (optional — not shared with the candidate).
+        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 18 }}>
+          Rejecting <strong style={{ color: "#cbd5e1" }}>{name}</strong>. The candidate will be notified. Add an internal reason (optional — not shared with the candidate).
         </div>
         <textarea
           value={reason}
@@ -224,7 +224,7 @@ function RejectModal({
           }}
         />
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
+          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#cbd5e1", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
             Cancel
           </button>
           <button
@@ -257,14 +257,14 @@ function InterviewModal({
   }, [onCancel]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+    <div className="glass-scrim" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18, padding: 28, maxWidth: 480, width: "100%" }}>
+      <div className="glass-modal" style={{ padding: 28, maxWidth: 480, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 6 }}>Invite to interview</div>
-        <div style={{ fontSize: 13, color: "#71717a", marginBottom: 18 }}>
-          Inviting <strong style={{ color: "#a1a1aa" }}>{name}</strong> to an interview.
+        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 18 }}>
+          Inviting <strong style={{ color: "#cbd5e1" }}>{name}</strong> to an interview.
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
           Interview instructions (optional)
         </div>
         <textarea
@@ -279,11 +279,11 @@ function InterviewModal({
             resize: "vertical", outline: "none", marginBottom: 12,
           }}
         />
-        <div style={{ fontSize: 12, color: "#555", lineHeight: 1.5, marginBottom: 22, background: "rgba(0,144,255,0.04)", border: "1px solid rgba(0,144,255,0.15)", borderRadius: 8, padding: "8px 12px" }}>
+        <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5, marginBottom: 22, background: "rgba(0,144,255,0.04)", border: "1px solid rgba(0,144,255,0.15)", borderRadius: 8, padding: "8px 12px" }}>
           The candidate will receive your contact details and these instructions.
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
+          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#cbd5e1", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
             Cancel
           </button>
           <button
@@ -314,17 +314,17 @@ function AcceptModal({
   }, [onCancel]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+    <div className="glass-scrim" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 18, padding: 28, maxWidth: 420, width: "100%" }}>
+      <div className="glass-modal" style={{ padding: 28, maxWidth: 420, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 10 }}>
           Accept {name} for {jobTitle}?
         </div>
-        <div style={{ fontSize: 13, color: "#71717a", lineHeight: 1.6, marginBottom: 24 }}>
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 24 }}>
           You&apos;re about to accept this candidate. They&apos;ll be notified and their contact details will be available in your dashboard.
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#a1a1aa", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
+          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#cbd5e1", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
             Cancel
           </button>
           <button
@@ -384,13 +384,14 @@ function ProfileDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(0,0,0,0.5)" }} onClick={() => !modal && onClose()} />
+      <div className="glass-scrim" style={{ zIndex: 8000 }} onClick={() => !modal && onClose()} />
 
       {/* Drawer */}
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 8001,
-        width: "min(440px, 100vw)", background: "#0e0e0e",
-        borderLeft: "1px solid rgba(255,255,255,0.08)",
+        width: "min(440px, 100vw)", background: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        borderLeft: "1px solid rgba(255,255,255,0.1)",
         display: "flex", flexDirection: "column",
         boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
         animation: "slideIn 0.22s ease",
@@ -402,10 +403,10 @@ function ProfileDrawer({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{name}</div>
-            {location && <div style={{ fontSize: 12, color: "#71717a", marginTop: 2 }}>{location}</div>}
+            {location && <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{location}</div>}
             <div style={{ marginTop: 5 }}><StatusPill status={app.status} /></div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
         </div>
 
         {/* Scrollable body */}
@@ -416,19 +417,19 @@ function ProfileDrawer({
             {profile.years_experience != null && (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{profile.years_experience}</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>yrs exp</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>yrs exp</div>
               </div>
             )}
             {salary && (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#86efac" }}>{salary}</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>expected / mo</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>expected / mo</div>
               </div>
             )}
             {app.match_score != null && (
               <div style={{ background: "rgba(0,144,255,0.06)", border: "1px solid rgba(0,144,255,0.2)", borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#60A5FA" }}>{Number(app.match_score)}%</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>match</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>match</div>
               </div>
             )}
           </div>
@@ -445,7 +446,7 @@ function ProfileDrawer({
                 {app.interview_response === "ACCEPTED" ? "✓ Accepted the interview invitation" : "Declined the interview invitation"}
               </span>
               {app.interview_response_message && (
-                <span style={{ fontSize: 12, color: "#a1a1aa", fontStyle: "italic" }}>{`"${app.interview_response_message}"`}</span>
+                <span style={{ fontSize: 12, color: "#cbd5e1", fontStyle: "italic" }}>{`"${app.interview_response_message}"`}</span>
               )}
             </div>
           )}
@@ -453,14 +454,14 @@ function ProfileDrawer({
           {/* Skills */}
           {profile.skills.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Skills</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Skills</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.skills.map(({ skill }) => {
                   const matched = requiredSkills.has(skill.toLowerCase());
                   return (
                     <span key={skill} style={{
                       fontSize: 12, padding: "4px 10px", borderRadius: 8, fontWeight: matched ? 700 : 500,
-                      color: matched ? "#60A5FA" : "#a1a1aa",
+                      color: matched ? "#60A5FA" : "#cbd5e1",
                       background: matched ? "rgba(0,144,255,0.1)" : "rgba(255,255,255,0.04)",
                       border: `1px solid ${matched ? "rgba(0,144,255,0.3)" : "rgba(255,255,255,0.08)"}`,
                     }}>
@@ -475,11 +476,11 @@ function ProfileDrawer({
           {/* Languages */}
           {profile.languages.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Languages</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Languages</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.languages.map(l => (
-                  <span key={l.language} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, color: "#a1a1aa", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    {l.language} <span style={{ color: "#555" }}>· {l.proficiencyLevel}</span>
+                  <span key={l.language} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, color: "#cbd5e1", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {l.language} <span style={{ color: "#94a3b8" }}>· {l.proficiencyLevel}</span>
                   </span>
                 ))}
               </div>
@@ -489,8 +490,8 @@ function ProfileDrawer({
           {/* Cover letter */}
           {app.cover_letter && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Cover letter</div>
-              <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Cover letter</div>
+              <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.7, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
                 {app.cover_letter}
               </div>
             </div>

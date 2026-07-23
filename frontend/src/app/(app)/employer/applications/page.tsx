@@ -54,7 +54,7 @@ function InterviewModal({ app, onClose, onConfirm }: { app: Application; onClose
   const [submitting, setSubmitting] = useState(false);
 
   const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Applicant";
-  const INP: React.CSSProperties = { width: "100%", background: "var(--navy-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "10px 14px", fontSize: 14, color: "var(--white)", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
+  const INP: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 14px", fontSize: 14, color: "#ffffff", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
 
   const handleConfirm = async () => {
     if (!date || !time) return;
@@ -64,30 +64,30 @@ function InterviewModal({ app, onClose, onConfirm }: { app: Application; onClose
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-      <div style={{ background: "var(--navy-2)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 20, padding: 36, maxWidth: 520, width: "100%", fontFamily: "var(--font-body)" }}>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--white)", margin: "0 0 6px" }}>Schedule Interview</h2>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px" }}>
+    <div className="glass-scrim" style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
+      <div className="glass-modal" style={{ padding: 36, maxWidth: 520, width: "100%", fontFamily: "var(--font-body)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "#ffffff", margin: "0 0 6px" }}>Schedule Interview</h2>
+        <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 24px" }}>
           {name} — {app.jobPost?.title ?? "Position"}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Date</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Date</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={INP} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Time</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Time</label>
               <input type="time" value={time} onChange={e => setTime(e.target.value)} style={INP} />
             </div>
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 10 }}>Interview Type</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 10 }}>Interview Type</label>
             <div style={{ display: "flex", gap: 8 }}>
               {["Video Call", "Phone", "In-Person"].map(t => (
-                <div key={t} onClick={() => setType(t)} style={{ flex: 1, padding: 14, border: `1px solid ${type === t ? "var(--blue-3)" : "var(--border)"}`, borderRadius: "var(--r-md)", background: type === t ? "rgba(59,130,246,0.08)" : "var(--glass)", cursor: "pointer", textAlign: "center" as const, fontSize: 13, fontWeight: 500, color: type === t ? "var(--blue-4)" : "var(--muted)", transition: "all 0.2s" }}>
+                <div key={t} onClick={() => setType(t)} style={{ flex: 1, padding: 14, border: `1px solid ${type === t ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, background: type === t ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.05)", cursor: "pointer", textAlign: "center" as const, fontSize: 13, fontWeight: 500, color: type === t ? "#818cf8" : "#94a3b8", transition: "all 0.2s" }}>
                   {t === "Video Call" ? "🎥" : t === "Phone" ? "📞" : "🏢"}<br />{t}
                 </div>
               ))}
@@ -95,14 +95,14 @@ function InterviewModal({ app, onClose, onConfirm }: { app: Application; onClose
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Notes (optional)</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Notes (optional)</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Any specific instructions for the candidate..." style={{ ...INP, resize: "vertical" as const }} />
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "12px", background: "var(--glass)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", color: "var(--white)", fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleConfirm} disabled={!date || !time || submitting} style={{ flex: 2, padding: "12px", background: "var(--blue-2)", border: "none", borderRadius: "var(--r-md)", color: "white", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, cursor: (!date || !time) ? "not-allowed" : "pointer", opacity: (!date || !time) ? 0.6 : 1, boxShadow: "0 4px 20px rgba(30,84,183,0.35)" }}>
+          <button onClick={onClose} className="btn-glass" style={{ flex: 1, padding: "12px", fontFamily: "var(--font-body)", fontSize: 14 }}>Cancel</button>
+          <button onClick={handleConfirm} disabled={!date || !time || submitting} className="btn-gradient" style={{ flex: 2, padding: "12px", fontFamily: "var(--font-display)", fontSize: 14, opacity: (!date || !time) ? 0.6 : 1 }}>
             {submitting ? "Sending..." : "Send Interview Invite"}
           </button>
         </div>
@@ -120,7 +120,7 @@ function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClo
   const [submitting,   setSubmitting]   = useState(false);
 
   const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Applicant";
-  const INP: React.CSSProperties = { width: "100%", background: "var(--navy-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "10px 14px", fontSize: 14, color: "var(--white)", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
+  const INP: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 14px", fontSize: 14, color: "#ffffff", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
 
   const handleConfirm = async () => {
     setSubmitting(true);
@@ -129,28 +129,28 @@ function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClo
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-      <div style={{ background: "var(--navy-2)", border: "1px solid rgba(13,148,136,0.3)", borderRadius: 20, padding: 36, maxWidth: 480, width: "100%", fontFamily: "var(--font-body)" }}>
+    <div className="glass-scrim" style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
+      <div className="glass-modal" style={{ padding: 36, maxWidth: 480, width: "100%", fontFamily: "var(--font-body)" }}>
         <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(13,148,136,0.15)", border: "2px solid rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--employer-2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
 
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--white)", margin: "0 0 8px", textAlign: "center" as const }}>Confirm Hire</h2>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px", textAlign: "center" as const }}>
-          You are about to hire <strong style={{ color: "var(--white)" }}>{name}</strong> for <strong style={{ color: "var(--white)" }}>{app.jobPost?.title ?? "this position"}</strong>.
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "#ffffff", margin: "0 0 8px", textAlign: "center" as const }}>Confirm Hire</h2>
+        <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 24px", textAlign: "center" as const }}>
+          You are about to hire <strong style={{ color: "#ffffff" }}>{name}</strong> for <strong style={{ color: "#ffffff" }}>{app.jobPost?.title ?? "this position"}</strong>.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 14 }}>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Salary Offered (monthly)</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Salary Offered (monthly)</label>
             <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="e.g. 5000" style={INP} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Start Date</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Start Date</label>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={INP} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Contract Type</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Contract Type</label>
             <select value={contractType} onChange={e => setContractType(e.target.value)} style={INP}>
               <option>Full-time</option>
               <option>Part-time</option>
@@ -159,14 +159,14 @@ function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClo
             </select>
           </div>
 
-          <div style={{ background: "rgba(13,148,136,0.08)", border: "1px solid rgba(13,148,136,0.2)", borderRadius: "var(--r-md)", padding: "14px 16px", fontSize: 13, color: "var(--employer-3)", lineHeight: 1.65 }}>
+          <div style={{ background: "rgba(13,148,136,0.08)", border: "1px solid rgba(13,148,136,0.2)", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "#5eead4", lineHeight: 1.65 }}>
             The worker will be notified and their profile will become available to other employers after hiring is confirmed.
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "12px", background: "var(--glass)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", color: "var(--white)", fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleConfirm} disabled={submitting} style={{ flex: 2, padding: "12px", background: "linear-gradient(135deg, var(--employer-primary), var(--employer-2))", border: "none", borderRadius: "var(--r-md)", color: "white", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 20px var(--employer-glow)" }}>
+          <button onClick={onClose} className="btn-glass" style={{ flex: 1, padding: "12px", fontFamily: "var(--font-body)", fontSize: 14 }}>Cancel</button>
+          <button onClick={handleConfirm} disabled={submitting} style={{ flex: 2, padding: "12px", background: "linear-gradient(135deg, #0d9488, #14b8a6)", border: "none", borderRadius: 12, color: "white", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 20px rgba(13,148,136,0.25)" }}>
             {submitting ? "Confirming..." : "Confirm Hire ✓"}
           </button>
         </div>
@@ -179,7 +179,15 @@ function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClo
 
 function Toast({ msg, type }: { msg: string; type: "ok" | "err" }) {
   return (
-    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: type === "ok" ? "rgba(16,185,129,0.12)" : "rgba(244,63,94,0.12)", border: `1px solid ${type === "ok" ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)"}`, borderRadius: "var(--r-md)", padding: "14px 20px", color: type === "ok" ? "var(--success)" : "var(--danger)", fontFamily: "var(--font-body)", fontSize: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.3)", maxWidth: 360 }}>
+    <div style={{
+      position: "fixed", bottom: 24, right: 24, zIndex: 9999,
+      background: "rgba(30,41,59,0.9)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+      borderLeft: `3px solid ${type === "ok" ? "#16A34A" : "#DC2626"}`,
+      border: "1px solid rgba(255,255,255,0.1)",
+      borderRadius: 10, padding: "14px 20px",
+      color: type === "ok" ? "#4ade80" : "#f87171",
+      fontFamily: "var(--font-body)", fontSize: 14, boxShadow: "0 12px 32px rgba(0,0,0,0.4)", maxWidth: 360,
+    }}>
       {msg}
     </div>
   );

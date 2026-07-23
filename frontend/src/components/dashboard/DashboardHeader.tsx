@@ -71,11 +71,12 @@ type AdminLinkGroup = {
   links: { href: string; label: string; Icon: React.ElementType }[]
 }
 
-// DirectHire design system: worker = teal, employer = violet, admin = gold
-// (+ dark sidebar — the only role whose chrome stays dark; worker/employer
-// sidebars are light). These are genuinely distinct per role now — they used
-// to all resolve to the same amber, which made every role's nav visually
-// identical.
+// DirectHire glassmorphism design system (Phase 3): worker = teal, employer =
+// violet, admin = gold — ALL THREE roles now share the same dark glass shell
+// (.glass-card-style translucent + blurred sidebar over the shared
+// --glass-base canvas). Only the accent color differs per role; there is no
+// longer a light-vs-dark split between roles like the previous iteration —
+// that's why the old `isDark` branching throughout this file is gone.
 
 // Grouped links — used by BOTH the admin desktop sidebar and mobile overlay
 const ADMIN_LINKS: AdminLinkGroup[] = [
@@ -125,77 +126,35 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
   },
 ]
 
-// CSS values — desktop sidebar. worker/employer render on a LIGHT sidebar
-// (inactiveIcon is a dark-on-light tint); admin stays on its dark ink-950
-// sidebar (inactiveIcon is a light-on-dark tint), matching the design system.
-const SIDEBAR_THEME: Record<Role, {
-  activeBg:    string
-  activeText:  string
-  activeIcon:  string
-  inactiveIcon:string
-  logoBg:      string
+// Per-role accent — the ONE thing that still varies by role. Everything else
+// (surface, blur, text colors) is now shared across all three.
+const ROLE_ACCENT: Record<Role, {
+  solid:       string // logo chip, active icon-tile fill
+  activeText:  string // active nav label + left-border color
+  activeBg:    string // active nav row translucent tint
+  hamburgerClass: string
+  sectionLabelClass: string
 }> = {
   worker: {
-    activeBg:     'rgba(20,184,166,0.12)',
-    activeText:   '#0D9488',
-    activeIcon:   'rgba(20,184,166,0.18)',
-    inactiveIcon: 'rgba(11,17,32,0.05)',
-    logoBg:       '#0D9488',
+    solid:       '#0D9488',
+    activeText:  '#2DD4BF',
+    activeBg:    'rgba(20,184,166,0.14)',
+    hamburgerClass: 'text-worker-400',
+    sectionLabelClass: 'text-worker-400/70',
   },
   employer: {
-    activeBg:     'rgba(139,92,246,0.12)',
-    activeText:   '#7C3AED',
-    activeIcon:   'rgba(139,92,246,0.18)',
-    inactiveIcon: 'rgba(11,17,32,0.05)',
-    logoBg:       '#7C3AED',
+    solid:       '#7C3AED',
+    activeText:  '#A78BFA',
+    activeBg:    'rgba(139,92,246,0.14)',
+    hamburgerClass: 'text-employer-400',
+    sectionLabelClass: 'text-employer-400/70',
   },
   admin: {
-    activeBg:     'rgba(200,145,22,0.16)',
-    activeText:   '#E0B020',
-    activeIcon:   'rgba(200,145,22,0.22)',
-    inactiveIcon: 'rgba(255,255,255,0.06)',
-    logoBg:       '#C89116',
-  },
-}
-
-// Tailwind classes — mobile overlay only. worker/employer overlays are light
-// (dark active-text on a light tint); admin's overlay stays dark, so its
-// active-text needs to read against a dark background instead.
-const ROLE_THEME: Record<Role, {
-  activeBg:      string
-  activeText:    string
-  activeIcon:    string
-  logoBg:        string
-  hamburger:     string
-  sectionLabel:  string
-  overlayAccent: string
-}> = {
-  worker: {
-    activeBg:      'bg-worker-50',
-    activeText:    'text-worker-700',
-    activeIcon:    'bg-worker-100',
-    logoBg:        'bg-worker-600',
-    hamburger:     'text-worker-700',
-    sectionLabel:  'text-ink-500',
-    overlayAccent: 'border-worker-100',
-  },
-  employer: {
-    activeBg:      'bg-employer-50',
-    activeText:    'text-employer-700',
-    activeIcon:    'bg-employer-100',
-    logoBg:        'bg-employer-600',
-    hamburger:     'text-employer-700',
-    sectionLabel:  'text-ink-500',
-    overlayAccent: 'border-employer-100',
-  },
-  admin: {
-    activeBg:      'bg-admin-500/15',
-    activeText:    'text-admin-400',
-    activeIcon:    'bg-admin-500/20',
-    logoBg:        'bg-admin-600',
-    hamburger:     'text-admin-400',
-    sectionLabel:  'text-admin-400/70',
-    overlayAccent: 'border-admin-600/20',
+    solid:       '#C89116',
+    activeText:  '#E0B020',
+    activeBg:    'rgba(200,145,22,0.16)',
+    hamburgerClass: 'text-admin-400',
+    sectionLabelClass: 'text-admin-400/70',
   },
 }
 
@@ -303,11 +262,7 @@ export default function DashboardHeader({
   useEffect(() => { setMenuOpen(false); setNotifOpen(false) }, [pathname])
 
   const links = role === 'admin' ? [] : ROLE_LINKS[role]
-  const sidebarTheme = SIDEBAR_THEME[role]
-  const theme = ROLE_THEME[role]
-  // Only admin keeps a dark sidebar/nav — worker and employer are light per
-  // the design system. Drives every background/text branch below.
-  const isDark = role === 'admin'
+  const accent = ROLE_ACCENT[role]
   const roleHrefs = role === 'admin'
     ? ADMIN_LINKS.flatMap(group => group.links.map(link => link.href))
     : links.map(link => link.href)
@@ -331,13 +286,13 @@ export default function DashboardHeader({
     textDecoration: 'none',
   }
 
-  // ── Notification dropdown (employer only) ───────────────────────────────────
+  // ── Notification dropdown ────────────────────────────────────────────────
   function renderNotifList() {
     if (notifLoading) {
-      return <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>Loading…</div>
+      return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading…</div>
     }
     if (notifs.length === 0) {
-      return <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>No notifications yet</div>
+      return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No notifications yet</div>
     }
     return notifs.map(n => (
       <button
@@ -346,36 +301,33 @@ export default function DashboardHeader({
         style={{
           width: '100%', display: 'flex', flexDirection: 'column', gap: 4,
           padding: '12px 16px',
-          background: n.isRead ? 'transparent' : `${sidebarTheme.activeBg}`,
-          border: 'none', borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #F1F5F9',
+          background: n.isRead ? 'transparent' : accent.activeBg,
+          border: 'none', borderBottom: '1px solid rgba(255,255,255,0.07)',
           cursor: 'pointer', textAlign: 'left',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: '50%', background: sidebarTheme.activeText, flexShrink: 0 }} />}
-          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#f1f5f9' : '#0B1120' }}>{n.title}</span>
+          {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent.activeText, flexShrink: 0 }} />}
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>{n.title}</span>
         </div>
-        <span style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748B', lineHeight: 1.4 }}>{n.body}</span>
-        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: isDark ? '#4b5563' : '#94A3B8' }}>{timeAgo(n.createdAt)}</span>
+        <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{n.body}</span>
+        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#64748b' }}>{timeAgo(n.createdAt)}</span>
       </button>
     ))
   }
 
   function renderNotifPanel(width: number) {
     return (
-      <div style={{
+      <div className="glass-dropdown" style={{
         width, maxWidth: '90vw', maxHeight: 420, overflow: 'hidden',
-        background: isDark ? '#111827' : '#FFFFFF',
-        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #F1F5F9',
-        borderRadius: 14, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 12px 32px rgba(11,17,32,0.12)',
         display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ padding: '12px 16px', borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#f8fafc' : '#0B1120' }}>Notifications</span>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>Notifications</span>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              style={{ fontSize: 11, fontWeight: 600, color: sidebarTheme.activeText, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ fontSize: 11, fontWeight: 600, color: accent.activeText, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               Mark all read
             </button>
@@ -386,20 +338,49 @@ export default function DashboardHeader({
     )
   }
 
+  // Shared nav-row renderer for BOTH the desktop sidebar and mobile overlay —
+  // glass-appropriate "3px role-colored left border, no fill" active state,
+  // now consistent across all three roles (admin used a different bg-fill
+  // pattern previously; unified here since all roles share one glass shell).
+  function NavRow({ href, label, Icon, compact }: { href: string; label: string; Icon: React.ElementType; compact?: boolean }) {
+    const active = isActive(href)
+    return (
+      <Link
+        key={href}
+        href={href}
+        aria-current={active ? 'page' : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: compact ? 10 : 16,
+          padding: compact ? '9px 12px' : '12px 12px',
+          borderRadius: compact ? 10 : 16,
+          textDecoration: 'none', fontSize: compact ? 13 : 15, fontWeight: 500,
+          background: active ? accent.activeBg : 'transparent',
+          color: active ? accent.activeText : 'rgba(255,255,255,0.65)',
+          borderLeft: active ? `3px solid ${accent.activeText}` : '3px solid transparent',
+          transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+        }}
+      >
+        <Icon size={compact ? 16 : 20} strokeWidth={1.75} />
+        <span style={{ flex: 1 }}>{label}</span>
+        {!compact && <ChevronRight size={16} style={{ color: 'rgba(255,255,255,0.25)' }} />}
+      </Link>
+    )
+  }
+
   // Fix 4 — portal escapes any parent stacking context / transform
   const overlay = (
     <div
       className={`fixed inset-0 z-[9999] flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${menuOpen ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
-      style={{ background: isDark ? '#06091A' : '#FFFFFF' }}
+      style={{ background: 'var(--glass-base)' }}
       aria-hidden={!menuOpen}
     >
       {/* Top bar: logo + close */}
-      <div className={`flex items-center justify-between px-5 pt-14 pb-5 border-b ${theme.overlayAccent} flex-shrink-0`}>
+      <div className="flex items-center justify-between px-5 pt-14 pb-5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl ${theme.logoBg} flex items-center justify-center text-white font-bold text-sm`}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: accent.solid }}>
             DH
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: isDark ? '#F0F4FF' : '#0B1120' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#ffffff' }}>
             DirectHire
           </span>
         </div>
@@ -408,10 +389,10 @@ export default function DashboardHeader({
           aria-label="Close menu"
           style={{
             width: 36, height: 36, borderRadius: '50%',
-            background: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+            background: 'rgba(255,255,255,0.08)',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: isDark ? 'rgba(255,255,255,0.7)' : '#1E293B',
+            color: 'rgba(255,255,255,0.7)',
           }}
         >
           <X size={18} />
@@ -423,57 +404,23 @@ export default function DashboardHeader({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
             <div key={section} className="mb-4">
-              <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
+              <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-1`}>
                 {section}
               </p>
-              {sectionLinks.map(({ href, label, Icon }) => {
-                const active = isActive(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
-                    style={{ color: active ? undefined : (isDark ? 'rgba(255,255,255,0.8)' : '#1E293B') }}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? theme.activeIcon : ''}`}
-                      style={{ background: active ? undefined : (isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9') }}
-                    >
-                      <Icon size={16} strokeWidth={1.75} />
-                    </div>
-                    <span className="font-medium flex-1">{label}</span>
-                    <ChevronRight size={14} style={{ color: isDark ? 'rgba(255,255,255,0.25)' : '#CBD5E1' }} />
-                  </Link>
-                )
-              })}
+              {sectionLinks.map(({ href, label, Icon }) => (
+                <div key={href} className="mb-0.5"><NavRow href={href} label={label} Icon={Icon} /></div>
+              ))}
             </div>
           ))}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-2`}>
+          <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-2`}>
             Menu
           </p>
-          {links.map(({ href, label, Icon }) => {
-            const active = isActive(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-4 px-3 py-3 rounded-xl mb-1 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
-                style={{ color: active ? undefined : (isDark ? 'rgba(255,255,255,0.8)' : '#1E293B') }}
-              >
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? theme.activeIcon : ''}`}
-                  style={{ background: active ? undefined : (isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9') }}
-                >
-                  <Icon size={20} strokeWidth={1.75} />
-                </div>
-                <span className="font-medium flex-1" style={{ fontFamily: 'var(--font-body)', fontSize: 15 }}>{label}</span>
-                <ChevronRight size={16} style={{ color: isDark ? 'rgba(255,255,255,0.25)' : '#CBD5E1' }} />
-              </Link>
-            )
-          })}
+          {links.map(({ href, label, Icon }) => (
+            <div key={href} className="mb-1"><NavRow href={href} label={label} Icon={Icon} /></div>
+          ))}
         </div>
       )}
 
@@ -481,7 +428,7 @@ export default function DashboardHeader({
       <div style={{
         padding: '16px 16px',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
-        borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         flexShrink: 0,
       }}>
         <button
@@ -490,7 +437,7 @@ export default function DashboardHeader({
             width: '100%', height: 48, borderRadius: 16,
             border: '1px solid rgba(220,38,38,0.28)',
             background: 'rgba(220,38,38,0.08)',
-            color: '#DC2626',
+            color: '#f87171',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14,
             cursor: 'pointer',
@@ -504,13 +451,13 @@ export default function DashboardHeader({
 
   return (
     <>
-      {/* ── Mobile header (hidden at md+) ── */}
+      {/* ── Mobile header (hidden at md+) — sticky container, blur is appropriate here ── */}
       <header
         className="fixed top-0 left-0 right-0 z-40 h-14 lg:hidden flex items-center justify-between px-4"
         style={{
-          background: isDark ? 'rgba(6,9,26,0.97)' : 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-          borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9',
+          background: 'rgba(11,17,33,0.85)',
+          backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <Link
@@ -519,26 +466,26 @@ export default function DashboardHeader({
         >
           <div style={{
             width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-            background: sidebarTheme.logoBg,
+            background: accent.solid,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, color: '#fff' }}>DH</span>
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: isDark ? '#fff' : '#0B1120', letterSpacing: '-0.02em' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#ffffff', letterSpacing: '-0.02em' }}>
             DirectHire
           </span>
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div ref={mobileNotifRef} style={{ position: 'relative' }}>
-              <button onClick={toggleNotifOpen} aria-label="Notifications" style={{ ...btnStyle, background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9' }}>
-                <Bell size={17} strokeWidth={1.75} style={{ color: isDark ? 'rgba(248,250,252,0.75)' : '#1E293B' }} />
+              <button onClick={toggleNotifOpen} aria-label="Notifications" style={btnStyle}>
+                <Bell size={17} strokeWidth={1.75} style={{ color: 'rgba(255,255,255,0.75)' }} />
                 {unreadCount > 0 && (
                   <span style={{
                     position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16,
                     borderRadius: 8, background: '#DC2626', color: 'white',
                     fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', padding: '0 3px', border: isDark ? '2px solid rgba(6,9,26,0.97)' : '2px solid #fff',
+                    justifyContent: 'center', padding: '0 3px', border: '2px solid rgba(11,17,33,0.97)',
                   }}>
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
@@ -550,19 +497,20 @@ export default function DashboardHeader({
                 </div>
               )}
           </div>
-          <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={{ ...btnStyle, background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9' }}>
-            <Menu size={20} className={theme.hamburger} />
+          <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={btnStyle}>
+            <Menu size={20} className={accent.hamburgerClass} />
           </button>
         </div>
       </header>
 
-      {/* ── Desktop sidebar (shown at md+) — outer layout/theme unchanged; nav content now mirrors the mobile overlay's admin grouping ── */}
+      {/* ── Desktop sidebar (shown at md+) — glass surface, blur is appropriate here ── */}
       <aside
         aria-label={`${role} dashboard navigation`}
         className="dashboard-sidebar hidden lg:flex flex-col fixed left-0 top-0 h-dvh w-64 z-30 pt-6 pb-8 px-4"
         style={{
-          background: isDark ? '#0B1120' : '#FFFFFF',
-          borderRight: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #F1F5F9',
+          background: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderRight: '1px solid rgba(255,255,255,0.1)',
           minWidth: 256, maxWidth: 256, overflow: 'hidden',
         }}
       >
@@ -572,12 +520,12 @@ export default function DashboardHeader({
         >
           <div style={{
             width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-            background: sidebarTheme.logoBg,
+            background: accent.solid,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, color: '#fff' }}>DH</span>
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: isDark ? '#fff' : '#0B1120', letterSpacing: '-0.02em' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: '#ffffff', letterSpacing: '-0.02em' }}>
             DirectHire
           </span>
         </Link>
@@ -588,8 +536,8 @@ export default function DashboardHeader({
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                 padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC',
-                color: isDark ? 'rgba(255,255,255,0.7)' : '#1E293B',
+                background: 'rgba(255,255,255,0.04)',
+                color: 'rgba(255,255,255,0.7)',
                 fontSize: 13, fontWeight: 500,
               }}
             >
@@ -619,54 +567,16 @@ export default function DashboardHeader({
           {role === 'admin' ? (
             ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
               <div key={section} className="mb-4">
-                <p className={`text-[10px] font-semibold ${theme.sectionLabel} uppercase tracking-widest px-3 mb-1`}>
+                <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-1`}>
                   {section}
                 </p>
-                {sectionLinks.map(({ href, label, Icon }) => {
-                  const active = isActive(href)
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      aria-current={active ? 'page' : undefined}
-                      className={`dashboard-sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 transition-colors text-sm no-underline ${active ? `${theme.activeBg} ${theme.activeText}` : ''}`}
-                      style={{ color: active ? undefined : (isDark ? 'rgba(255,255,255,0.55)' : '#64748B'), fontWeight: 500 }}
-                    >
-                      <Icon size={16} strokeWidth={1.75} />
-                      {label}
-                    </Link>
-                  )
-                })}
+                {sectionLinks.map(({ href, label, Icon }) => (
+                  <div key={href} className="mb-0.5"><NavRow href={href} label={label} Icon={Icon} compact /></div>
+                ))}
               </div>
             ))
           ) : (
-            links.map(({ href, label, Icon }) => {
-              const active = isActive(href)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  className="dashboard-sidebar-link"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 10,
-                    textDecoration: 'none', fontSize: 13, fontWeight: 500,
-                    background: active ? sidebarTheme.activeBg : 'transparent',
-                    color: active ? sidebarTheme.activeText : (isDark ? 'rgba(255,255,255,0.55)' : '#64748B'),
-                    // Active item = 3px role-colored LEFT border, no fill —
-                    // sidebarTheme.activeBg above stays as a subtle tint per
-                    // this component's existing hover/press language, but the
-                    // left border is what the design system actually keys on.
-                    borderLeft: active ? `3px solid ${sidebarTheme.activeText}` : '3px solid transparent',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >
-                  <Icon size={16} strokeWidth={1.75} />
-                  {label}
-                </Link>
-              )
-            })
+            links.map(({ href, label, Icon }) => <NavRow key={href} href={href} label={label} Icon={Icon} compact />)
           )}
         </nav>
 
@@ -677,7 +587,7 @@ export default function DashboardHeader({
             width: '100%', height: 40, borderRadius: 10,
             border: '1px solid rgba(220,38,38,0.28)',
             background: 'rgba(220,38,38,0.08)',
-            color: '#DC2626',
+            color: '#f87171',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13,
             cursor: 'pointer',

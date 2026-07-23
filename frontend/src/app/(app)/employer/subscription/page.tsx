@@ -85,18 +85,18 @@ function CancelModal({
 }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(11,17,32,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
-      <div style={{ background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: 16, padding: 36, maxWidth: 460, width: "100%", boxShadow: "0 24px 64px rgba(11,17,32,0.2)" }}>
+      <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 36, maxWidth: 460, width: "100%", boxShadow: "0 24px 64px rgba(11,17,32,0.2)" }}>
         <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(220,38,38,0.1)", border: "2px solid rgba(220,38,38,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <h3 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#0B1120", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
-        <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
-          Your subscription will remain active until <strong style={{ color: "#1E293B" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
+        <h3 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#ffffff", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
+        <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
+          Your subscription will remain active until <strong style={{ color: "#cbd5e1" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
         </p>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={onClose}
-            style={{ flex: 1, padding: "12px", background: "#FFFFFF", border: "1px solid #CBD5E1", borderRadius: 10, color: "#1E293B", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+            style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#cbd5e1", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
           >
             Keep subscription
           </button>
@@ -218,7 +218,7 @@ function EmployerSubscriptionContent() {
 
   // Semantic status colors — never the role (violet) color.
   const statusLabel = isActive ? "ACTIVE" : isPastDue ? "PAST DUE" : isTrial ? "TRIAL" : isCanceled ? "CANCELED" : "Inactive";
-  const statusColor = isActive ? "#16A34A" : isPastDue ? "#EA580C" : isTrial ? "#EA580C" : isCanceled ? "#DC2626" : "rgba(255,255,255,0.5)";
+  const statusColor = isActive ? "#4ade80" : isPastDue ? "#fb923c" : isTrial ? "#fb923c" : isCanceled ? "#f87171" : "rgba(255,255,255,0.5)";
   const statusBg    = isActive ? "rgba(22,163,74,0.18)" : isPastDue ? "rgba(234,88,12,0.18)" : isTrial ? "rgba(234,88,12,0.18)" : isCanceled ? "rgba(220,38,38,0.18)" : "rgba(255,255,255,0.12)";
 
   const BTN: React.CSSProperties = {
@@ -229,18 +229,19 @@ function EmployerSubscriptionContent() {
   };
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1000, margin: "0 auto", background: "#F8FAFC", minHeight: "100vh" }}>
+    <div style={{ padding: "32px 40px", maxWidth: 1000, margin: "0 auto", background: "var(--glass-base)", minHeight: "100vh" }}>
 
       {/* Toast */}
       {toast && (
         <div style={{
           position: "fixed", top: 24, right: 24, zIndex: 9999,
           padding: "14px 20px", borderRadius: 10, fontSize: 13, fontWeight: 500,
-          background: "#FFFFFF",
-          color:      toast.ok ? "#16A34A" : "#DC2626",
+          background: "rgba(30,41,59,0.9)",
+          backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+          color:      toast.ok ? "#4ade80" : "#f87171",
           borderLeft: `3px solid ${toast.ok ? "#16A34A" : "#DC2626"}`,
-          border:     "1px solid #F1F5F9",
-          boxShadow: "0 12px 32px rgba(11,17,32,0.16)", maxWidth: 380,
+          border:     "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 12px 32px rgba(0,0,0,0.4)", maxWidth: 380,
         }}>
           {toast.msg}
         </div>
@@ -258,35 +259,35 @@ function EmployerSubscriptionContent() {
 
       {/* URL param banners */}
       {fromSuccess && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", color: "#16A34A", fontSize: 14, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", color: "#4ade80", fontSize: 14, fontWeight: 600 }}>
           Subscription activated — your plan is now active.
         </div>
       )}
       {fromCanceled && (
-        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(234,88,12,0.06)", border: "1px solid rgba(234,88,12,0.2)", color: "#EA580C", fontSize: 14, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(234,88,12,0.06)", border: "1px solid rgba(234,88,12,0.2)", color: "#fb923c", fontSize: 14, fontWeight: 600 }}>
           Checkout was canceled. No charges were made.
         </div>
       )}
 
       {/* Canceled warning banner */}
       {isCanceled && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#DC2626", fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600 }}>
           Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}. You can resubscribe below to continue using DirectHire.
         </div>
       )}
 
       {/* Past-due warning banner */}
       {isPastDue && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(234,88,12,0.05)", border: "1px solid rgba(234,88,12,0.2)", color: "#EA580C", fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(234,88,12,0.05)", border: "1px solid rgba(234,88,12,0.2)", color: "#fb923c", fontSize: 13, fontWeight: 600 }}>
           Your last payment failed. Update your payment method via &quot;Manage billing&quot; below to keep your subscription active.
         </div>
       )}
 
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#0B1120", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+        <h1 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#ffffff", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
           Subscription &amp; billing
         </h1>
-        <p style={{ fontSize: 14, color: "#64748B", margin: 0 }}>Manage your plan and payment details</p>
+        <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>Manage your plan and payment details</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -294,10 +295,13 @@ function EmployerSubscriptionContent() {
         {/* ── Left column: current status hero ─────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-          {/* Deliberate solid-violet premium panel — see file header note */}
+          {/* Deliberate violet-glass premium panel — see file header note */}
           <div style={{
             borderRadius: 16, padding: 28,
-            background: "#6D28D9",
+            background: "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(109,40,217,0.35))",
+            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+            border: "1px solid rgba(139,92,246,0.4)",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(139,92,246,0.15)",
           }}>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
               Current plan
@@ -396,9 +400,9 @@ function EmployerSubscriptionContent() {
           </div>
 
           {/* Contact card */}
-          <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: "20px 24px", textAlign: "center" as const }}>
-            <p style={{ fontSize: 13, color: "#64748B", marginBottom: 6 }}>Questions about billing?</p>
-            <a href="mailto:support@directhire.cc" style={{ fontSize: 13, fontWeight: 600, color: "#7C3AED", textDecoration: "none" }}>
+          <div style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 10, padding: "20px 24px", textAlign: "center" as const }}>
+            <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 6 }}>Questions about billing?</p>
+            <a href="mailto:support@directhire.cc" style={{ fontSize: 13, fontWeight: 600, color: "#A78BFA", textDecoration: "none" }}>
               support@directhire.cc
             </a>
           </div>
@@ -408,12 +412,12 @@ function EmployerSubscriptionContent() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* The one real plan */}
-          <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#64748B", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
+          <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#94a3b8", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
             Plan
           </div>
           <div style={{
-            background: "#FFFFFF",
-            border: isCurrentPlan ? "1px solid #C4B5FD" : "1px solid #F1F5F9",
+            background: "rgba(255,255,255,0.05)",
+            border: isCurrentPlan ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.1)",
             borderRadius: 10, padding: 24,
             boxShadow: "0 1px 2px rgba(11,17,32,0.04)",
             position: "relative",
@@ -429,20 +433,20 @@ function EmployerSubscriptionContent() {
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 18, color: "#0B1120" }}>
+              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 18, color: "#ffffff" }}>
                 {PLAN.name}
               </div>
               <div style={{ textAlign: "right" as const }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 20, color: "#7C3AED" }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 20, color: "#A78BFA" }}>
                   {PLAN.price}
                 </div>
-                <div style={{ fontSize: 12, color: "#64748B" }}>{PLAN.period}</div>
+                <div style={{ fontSize: 12, color: "#94a3b8" }}>{PLAN.period}</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
               {PLAN.features.map(f => (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#1E293B" }}>
-                  <span style={{ color: "#16A34A", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cbd5e1" }}>
+                  <span style={{ color: "#4ade80", fontWeight: 700, flexShrink: 0 }}>✓</span>
                   {f}
                 </div>
               ))}
@@ -450,16 +454,16 @@ function EmployerSubscriptionContent() {
           </div>
 
           {/* Invoice history */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #F1F5F9", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 2px rgba(11,17,32,0.04)" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 600, fontSize: 14, color: "#0B1120" }}>
+          <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 600, fontSize: 14, color: "#ffffff" }}>
                 Billing history
               </span>
               {sub?.hasCustomer && (
                 <button
                   onClick={handlePortal}
                   disabled={!!actionBusy}
-                  style={{ background: "none", border: "none", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: actionBusy ? "not-allowed" : "pointer" }}
+                  style={{ background: "none", border: "none", color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: actionBusy ? "not-allowed" : "pointer" }}
                 >
                   All invoices →
                 </button>
@@ -467,7 +471,7 @@ function EmployerSubscriptionContent() {
             </div>
 
             {(!sub?.payments || sub.payments.length === 0) ? (
-              <div style={{ padding: "24px 20px", textAlign: "center" as const, color: "#64748B", fontSize: 13 }}>
+              <div style={{ padding: "24px 20px", textAlign: "center" as const, color: "#94a3b8", fontSize: 13 }}>
                 No invoices yet. They will appear here after your first payment.
               </div>
             ) : (
@@ -475,25 +479,25 @@ function EmployerSubscriptionContent() {
                 <div key={pmt.id} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "14px 20px",
-                  borderBottom: i < sub.payments.length - 1 ? "1px solid #F1F5F9" : "none",
+                  borderBottom: i < sub.payments.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "#0B1120", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#ffffff", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pmt.description ?? pmt.type}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                       {fmtDate(pmt.createdAt)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" as const, flexShrink: 0, marginLeft: 12 }}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 14, color: "#0B1120", marginBottom: 4 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 14, color: "#ffffff", marginBottom: 4 }}>
                       {fmtAmount(pmt.amount, pmt.currency)}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" as const }}>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
                         background: pmt.status === "SUCCEEDED" ? "rgba(22,163,74,0.1)" : "rgba(234,88,12,0.1)",
-                        color:      pmt.status === "SUCCEEDED" ? "#16A34A" : "#EA580C",
+                        color:      pmt.status === "SUCCEEDED" ? "#4ade80" : "#fb923c",
                       }}>
                         {pmt.status === "SUCCEEDED" ? "PAID" : pmt.status}
                       </span>
@@ -502,7 +506,7 @@ function EmployerSubscriptionContent() {
                           onClick={() => handleDownloadInvoice(pmt.invoice!.id)}
                           disabled={downloadingInvoiceId === pmt.invoice.id}
                           style={{
-                            fontSize: 11, fontWeight: 600, color: "#7C3AED", background: "none", border: "none",
+                            fontSize: 11, fontWeight: 600, color: "#A78BFA", background: "none", border: "none",
                             padding: 0, cursor: downloadingInvoiceId === pmt.invoice.id ? "not-allowed" : "pointer",
                           }}
                         >
@@ -514,7 +518,7 @@ function EmployerSubscriptionContent() {
                           href={`https://pay.stripe.com/invoices/${pmt.stripeInvoiceId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED", textDecoration: "none" }}
+                          style={{ fontSize: 11, fontWeight: 600, color: "#A78BFA", textDecoration: "none" }}
                         >
                           Stripe receipt
                         </a>

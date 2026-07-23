@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function JobNotFound() {
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", padding: 24 }}>
+    <div style={{ minHeight: "100vh", background: "var(--glass-base)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", padding: 24 }}>
       <div style={{ textAlign: "center", maxWidth: 420 }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: "0 0 8px" }}>Job not found</h1>

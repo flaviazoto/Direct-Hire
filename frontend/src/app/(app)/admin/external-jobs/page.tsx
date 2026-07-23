@@ -106,9 +106,9 @@ function ExternalJobModal({
 
   return (
     <>
-      <div onClick={() => !saving && onClose()} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 300 }} />
+      <div onClick={() => !saving && onClose()} className="glass-scrim" style={{ zIndex: 300 }} />
       <div style={{ position: "fixed", inset: 0, zIndex: 301, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, maxWidth: 560, width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
+        <div className="glass-modal" style={{ padding: 28, maxWidth: 560, width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: "0 0 4px" }}>
             {isEdit ? "Edit external job" : "Add external job"}
           </h2>

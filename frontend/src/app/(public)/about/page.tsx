@@ -11,8 +11,8 @@ const VALUES = [
 ];
 
 const PILLARS = [
-  { title: "AI-first matching", color: "#0090FF", body: "Five-dimension scoring that gets smarter with every hire." },
-  { title: "Fraud protection",  color: "#60A5FA", body: "Pattern detection and risk scoring on every profile." },
+  { title: "AI-first matching", color: "#4F46E5", body: "Five-dimension scoring that gets smarter with every hire." },
+  { title: "Fraud protection",  color: "#818cf8", body: "Pattern detection and risk scoring on every profile." },
   { title: "Worker dignity",    color: "#FBBF24", body: "Workers never pay to apply. Employers pay for quality." },
   { title: "Admin oversight",   color: "#34D399", body: "Every user, job, and transaction reviewed by humans." },
 ];
@@ -26,12 +26,12 @@ const STATS = [
 
 export default function AboutPage() {
   return (
-    <main style={{ background: "var(--navy-950,#060B18)", minHeight: "100vh", color: "var(--text-primary,#F0F4FF)", overflowX: "hidden" }}>
+    <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff", overflowX: "hidden" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section style={{
         minHeight: "80vh",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "var(--navy-950,#060B18)",
+        background: "var(--glass-base)",
         position: "relative", overflow: "hidden",
         paddingTop: 120, paddingBottom: 100,
       }}>
@@ -39,7 +39,7 @@ export default function AboutPage() {
         <div style={{
           position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
           width: 700, height: 500,
-          background: "radial-gradient(ellipse, rgba(0,144,255,0.1) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)",
           pointerEvents: "none",
         }} />
 
@@ -57,7 +57,7 @@ export default function AboutPage() {
 
         <div className="container" style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
           <p style={{
-            color: "#60A5FA", fontWeight: 600, fontSize: "0.8rem",
+            color: "#818cf8", fontWeight: 600, fontSize: "0.8rem",
             letterSpacing: "0.08em", textTransform: "uppercase" as const,
             fontFamily: "var(--font-body)", marginBottom: 20,
           }}>
@@ -77,14 +77,14 @@ export default function AboutPage() {
           {/* Horizontal rule accent */}
           <div style={{
             width: 80, height: 2, margin: "2rem auto 0",
-            background: "linear-gradient(90deg, #0090FF, #6366F1)",
+            background: "linear-gradient(90deg, var(--glass-indigo), var(--glass-purple))",
             borderRadius: 2,
           }} />
         </div>
       </section>
 
       {/* ── WHY WE BUILT THIS ────────────────────────────────────────────────── */}
-      <section className="section" style={{ background: "var(--navy-900,#0A1628)", borderTop: "1px solid var(--surface-border,#1E3258)" }}>
+      <section className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
             <div>
@@ -103,11 +103,11 @@ export default function AboutPage() {
 
               {/* Quote callout */}
               <blockquote style={{
-                borderLeft: "4px solid #0090FF",
+                borderLeft: "4px solid #4F46E5",
                 borderRadius: "0 12px 12px 0",
                 padding: "1rem 1.5rem",
                 margin: "2rem 0 0",
-                background: "rgba(0,144,255,0.04)",
+                background: "rgba(99,102,241,0.04)",
               }}>
                 <p style={{
                   fontSize: 20, fontStyle: "italic",
@@ -121,7 +121,7 @@ export default function AboutPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {PILLARS.map(v => (
-                <div key={v.title} className="card-surface"
+                <div key={v.title} className="glass-card"
                   style={{ padding: "20px 24px", display: "flex", gap: 16, alignItems: "flex-start" }}>
                   <div style={{ width: 3, borderRadius: 99, background: v.color, alignSelf: "stretch", flexShrink: 0 }} />
                   <div>
@@ -140,7 +140,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── VALUES ───────────────────────────────────────────────────────────── */}
-      <section className="section" style={{ background: "var(--navy-950,#060B18)" }}>
+      <section className="section" style={{ background: "var(--glass-base)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 56 }}>
             <h2 className="text-display-md" style={{ color: "#F0F4FF" }}>
@@ -158,8 +158,8 @@ export default function AboutPage() {
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLDivElement;
-                  el.style.borderColor = "rgba(0,144,255,0.3)";
-                  el.style.boxShadow = "0 0 24px rgba(0,144,255,0.08)";
+                  el.style.borderColor = "rgba(99,102,241,0.3)";
+                  el.style.boxShadow = "0 0 24px rgba(99,102,241,0.08)";
                   el.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={e => {
@@ -172,7 +172,7 @@ export default function AboutPage() {
                 {/* Icon with background circle */}
                 <div style={{
                   width: 60, height: 60, borderRadius: "50%",
-                  background: "rgba(0,144,255,0.08)",
+                  background: "rgba(99,102,241,0.08)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   margin: "0 auto 16px",
                 }}>
@@ -201,7 +201,7 @@ export default function AboutPage() {
               }}>
                 <div style={{
                   fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 40,
-                  background: "linear-gradient(135deg, #0090FF, #6366F1)",
+                  background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                   lineHeight: 1, marginBottom: 10,
                 }}>{s.n}</div>
@@ -218,8 +218,8 @@ export default function AboutPage() {
 
       {/* ── CTA ──────────────────────────────────────────────────────────────── */}
       <section className="section-sm" style={{
-        background: "var(--navy-900,#0A1628)",
-        borderTop: "1px solid var(--surface-border,#1E3258)",
+        background: "var(--glass-base)",
+        borderTop: "1px solid rgba(255,255,255,0.1)",
         textAlign: "center",
       }}>
         <div className="container">
