@@ -140,6 +140,7 @@ function EmployerDashboardContent() {
   const [loading, setLoading]             = useState(true);
   const [toast, setToast]                 = useState<ToastData>(null);
   const [stats, setStats]                 = useState({ totalApplicants: 0, shortlisted: 0, interviewed: 0 });
+  const [subStatus, setSubStatus]         = useState<{ status: string; currentPeriodEnd: string | null; trialEndsAt: string | null } | null>(null);
 
   const showToast = useCallback((msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -156,7 +157,8 @@ function EmployerDashboardContent() {
       employerApi.getJobs({ limit: "6" }),
       employerApi.getApplications({ limit: "5" }),
       employerApi.getLocks({ status: "ACTIVE", limit: "1" }),
-    ]).then(([pRes, jRes, aRes, lRes]) => {
+      employerApi.getSubscriptionStatus(),
+    ]).then(([pRes, jRes, aRes, lRes, sRes]) => {
       if (!pRes.success) { router.push("/login"); return; }
       setProfileData(pRes.data as EmpProfileData);
 
@@ -175,6 +177,9 @@ function EmployerDashboardContent() {
         const d = lRes.data as { total?: number };
         setActiveLockCount(d.total ?? 0);
       }
+      if (sRes.success && sRes.data) {
+        setSubStatus(sRes.data as { status: string; currentPeriodEnd: string | null; trialEndsAt: string | null });
+      }
       setLoading(false);
     });
   }, [router]);
@@ -192,6 +197,23 @@ function EmployerDashboardContent() {
   const isActive    = onbStatus === "APPROVED";
   const needsAction = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus);
   const unread      = notifications.filter(n => !n.isRead).length;
+
+  // Compact subscription-status signal for the "Billing" quick-nav card —
+  // mirrors the state names on /employer/subscription (ACTIVE/TRIAL/
+  // PAST_DUE/CANCELED/INACTIVE) so the two never disagree.
+  const daysUntil = (iso: string | null) => iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)) : null;
+  const subState = subStatus?.status ?? "INACTIVE";
+  const billingSub =
+    subState === "ACTIVE"    ? "Active" :
+    subState === "PAST_DUE"  ? "Payment failed" :
+    subState === "CANCELED"  ? `Ends in ${daysUntil(subStatus?.currentPeriodEnd ?? null) ?? "—"}d` :
+    (subState === "TRIAL" || subState === "TRIALING") ? `Trial · ${daysUntil(subStatus?.trialEndsAt ?? null) ?? "—"}d left` :
+    "Subscribe to unlock";
+  const billingAccent =
+    subState === "ACTIVE"   ? "rgba(13,148,136,0.12)" :
+    subState === "PAST_DUE" ? "rgba(220,38,38,0.14)" :
+    subState === "CANCELED" ? "rgba(245,158,11,0.14)" :
+    "rgba(13,148,136,0.12)";
 
   // Real totals across ALL of this employer's applications (backend groupBy),
   // not just the recent-5 list — topApps below stays scoped to that 5-item feed.
@@ -432,7 +454,6 @@ function EmployerDashboardContent() {
             { href: "/employer/workers",     icon: "🔍", label: "Find Workers",   sub: "Browse all talent" },
             { href: "/employer/applications",icon: "👥", label: "Applications",   sub: `${totalApplicants} total` },
             { href: "/employer/locks",       icon: "🔒", label: "Reservations",   sub: activeLockCount ? `${activeLockCount} active` : "Manage holds" },
-            { href: "/employer/subscription", icon: "💳", label: "Billing",        sub: profile?.subscriptionPlan ?? "Choose a plan" },
           ].map(({ href, icon, label, sub }) => (
             <Link key={href} href={href} className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] no-underline transition-all hover:border-teal-500/35 hover:bg-teal-500/5">
               <div className="w-10 h-10 rounded-xl bg-teal-500/12 flex items-center justify-center text-xl flex-shrink-0">{icon}</div>
@@ -442,6 +463,20 @@ function EmployerDashboardContent() {
               </div>
             </Link>
           ))}
+          <Link href="/employer/subscription" style={{
+            background: "var(--navy-2)", border: "1px solid var(--border)", borderRadius: 16, padding: 16,
+            display: "flex", flexDirection: "column", gap: 12, minHeight: 100,
+            textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.35)"; e.currentTarget.style.background = "rgba(20,184,166,0.05)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--navy-2)"; }}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: billingAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💳</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Billing</div>
+              <div style={{ fontSize: 12, color: subState === "PAST_DUE" ? "#f87171" : "var(--muted)" }}>{billingSub}</div>
+            </div>
+          </Link>
         </div>
 
       </div>

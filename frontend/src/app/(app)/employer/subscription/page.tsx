@@ -7,6 +7,14 @@
 // this page is the only place any of those flows can land, regardless of
 // where the employer started.
 //
+// ONE real plan, no fake tiers — this platform has exactly one Stripe price
+// (STRIPE_EMPLOYER_PRICE_ID). The price/currency shown below is read live
+// from Stripe via GET /employer/subscription/status's `planPrice` field
+// (billing.controller.ts) rather than hardcoded, since a hardcoded number
+// can silently drift from whatever the real configured price is. Every
+// benefit listed traces to a real requireSubscription-gated route or a real
+// platform-config value — see the per-item comments below.
+//
 // Employer role = violet, per the design system — subscriptions/Worker Lock
 // are explicitly called out as the "premium feature" surface that color is
 // for, so the current-plan hero below is a deliberate solid violet block
@@ -20,6 +28,12 @@ import { LoadingPage, ErrorState } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface PlanPrice {
+  amountCents: number;
+  currency:    string;
+  interval:    string;
+}
+
 interface SubStatus {
   status:           string;
   plan:             string | null;
@@ -27,6 +41,7 @@ interface SubStatus {
   trialEndsAt:      string | null;
   hasCustomer:      boolean;
   cancelAtPeriodEnd: boolean;
+  planPrice:        PlanPrice | null;
   payments: Array<{
     id:              string;
     amount:          number;
@@ -40,22 +55,13 @@ interface SubStatus {
   }>;
 }
 
-// ── The one real plan — matches the single STRIPE_EMPLOYER_PRICE_ID configured
-// server-side. No fake tiers: if a second real plan is ever added in Stripe,
-// add it here alongside a second env-configured price ID, not before.
-const PLAN = {
-  key:      "EMPLOYER_MONTHLY",
-  name:     "Employer Monthly",
-  price:    "5,000 ALL",
-  period:   "/ month",
-  features: [
-    "Unlimited access to the verified worker directory",
-    "Full contact details once you reserve a worker",
-    "Post unlimited job listings",
-    "Worker Lock™ reservation system",
-    "Priority employer support",
-  ],
-};
+interface LockRate {
+  dailyRateCents: number;
+  currency:       string;
+  maxDays:        number;
+  maxConcurrent:  number;
+  rateDisplay:    string;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -68,6 +74,27 @@ function fmtAmount(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency", currency: currency.toUpperCase(), maximumFractionDigits: 2,
   }).format(cents / 100);
+}
+
+function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
+}
+
+/** Every line here traces to a real requireSubscription-gated route, or a
+ *  real platform-config value read from GET /employer/lock-rate — nothing
+ *  invented. See STEP 1 verification notes in the accompanying report. */
+function buildBenefits(lockRate: LockRate | null): string[] {
+  return [
+    "Browse the full verified worker directory",
+    "View complete contact details — email & phone — on every worker's profile",
+    "Message workers directly",
+    "Post and manage unlimited job listings",
+    "Review applicants and make hiring decisions",
+    lockRate
+      ? `Reserve up to ${lockRate.maxConcurrent} worker${lockRate.maxConcurrent === 1 ? "" : "s"} at a time, for up to ${lockRate.maxDays} days each (${lockRate.rateDisplay}/day reservation fee applies separately)`
+      : "Reserve workers exclusively for a limited time (a daily reservation fee applies separately)",
+  ];
 }
 
 // ── Cancel confirmation modal ─────────────────────────────────────────────────
@@ -91,7 +118,7 @@ function CancelModal({
         </div>
         <h3 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontSize: 20, fontWeight: 700, color: "#ffffff", margin: "0 0 10px", textAlign: "center" }}>Cancel subscription?</h3>
         <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.65, textAlign: "center", margin: "0 0 20px" }}>
-          Your subscription will remain active until <strong style={{ color: "#cbd5e1" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
+          You&apos;ll keep full access — browsing, job posts, applications, reservations — until <strong style={{ color: "#cbd5e1" }}>{fmtDate(periodEnd)}</strong>. You will not be charged again after that date.
         </p>
         <div style={{ display: "flex", gap: 10 }}>
           <button
@@ -113,12 +140,28 @@ function CancelModal({
   );
 }
 
+// ── Benefits list (shared by the no-sub/trial card and the plan-details card) ─
+
+function BenefitsList({ benefits }: { benefits: string[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+      {benefits.map(b => (
+        <div key={b} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#cbd5e1", lineHeight: 1.5 }}>
+          <span style={{ color: "#4ade80", fontWeight: 700, flexShrink: 0 }}>✓</span>
+          {b}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function EmployerSubscriptionContent() {
   const searchParams = useSearchParams();
 
   const [sub,          setSub]          = useState<SubStatus | null>(null);
+  const [lockRate,      setLockRate]     = useState<LockRate | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string | null>(null);
   const [actionBusy,   setActionBusy]   = useState<string | null>(null);
@@ -137,9 +180,13 @@ function EmployerSubscriptionContent() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await employerApi.getSubscriptionStatus();
-    if (r.success) setSub(r.data as SubStatus);
-    else setError(r.error ?? "Could not load your subscription status.");
+    const [subRes, rateRes] = await Promise.all([
+      employerApi.getSubscriptionStatus(),
+      employerApi.getLockRate(),
+    ]);
+    if (subRes.success) setSub(subRes.data as SubStatus);
+    else setError(subRes.error ?? "Could not load your subscription status.");
+    if (rateRes.success) setLockRate(rateRes.data as LockRate);
     setLoading(false);
   }, []);
 
@@ -211,13 +258,22 @@ function EmployerSubscriptionContent() {
   const isInactive  = status === "INACTIVE" || !sub;
   const isCanceled  = status === "CANCELED";
   // Two distinct "trial" values exist: TRIAL is set at onboarding (before ever
-  // subscribing); TRIALING comes from an actual Stripe trial subscription.
+  // subscribing); TRIALING would come from an actual Stripe-side trial period
+  // on the price (not currently configured — see report — but handled for
+  // forward-compatibility since mapStripeStatus can produce it).
   const isTrial     = status === "TRIAL" || status === "TRIALING";
-  const currentPlan = sub?.plan?.toUpperCase() ?? null;
-  const isCurrentPlan = currentPlan === PLAN.key;
+  const showPlanCard = isInactive || isTrial;
+
+  const priceDisplay = sub?.planPrice
+    ? `${fmtAmount(sub.planPrice.amountCents, sub.planPrice.currency)}`
+    : null;
+  const intervalDisplay = sub?.planPrice ? `/ ${sub.planPrice.interval}` : "";
+  const benefits = buildBenefits(lockRate);
+  const trialDays = daysUntil(sub?.trialEndsAt);
+  const cancelDays = daysUntil(sub?.currentPeriodEnd);
 
   // Semantic status colors — never the role (violet) color.
-  const statusLabel = isActive ? "ACTIVE" : isPastDue ? "PAST DUE" : isTrial ? "TRIAL" : isCanceled ? "CANCELED" : "Inactive";
+  const statusLabel = isActive ? "ACTIVE" : isPastDue ? "PAST DUE" : isTrial ? "TRIAL" : isCanceled ? "CANCELED" : "NO PLAN";
   const statusColor = isActive ? "#4ade80" : isPastDue ? "#fb923c" : isTrial ? "#fb923c" : isCanceled ? "#f87171" : "rgba(255,255,255,0.5)";
   const statusBg    = isActive ? "rgba(22,163,74,0.18)" : isPastDue ? "rgba(234,88,12,0.18)" : isTrial ? "rgba(234,88,12,0.18)" : isCanceled ? "rgba(220,38,38,0.18)" : "rgba(255,255,255,0.12)";
 
@@ -269,17 +325,20 @@ function EmployerSubscriptionContent() {
         </div>
       )}
 
-      {/* Canceled warning banner */}
-      {isCanceled && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600 }}>
-          Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}. You can resubscribe below to continue using DirectHire.
+      {/* PAST_DUE — clear warning: what's restricted right now, and how to fix it */}
+      {isPastDue && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(234,88,12,0.06)", border: "1px solid rgba(234,88,12,0.3)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fb923c", marginBottom: 4 }}>⚠ Your last payment failed</div>
+          <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+            Candidate browsing, job posting, application review, and worker reservations are paused until this is resolved. Update your payment method to restore access.
+          </div>
         </div>
       )}
 
-      {/* Past-due warning banner */}
-      {isPastDue && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(234,88,12,0.05)", border: "1px solid rgba(234,88,12,0.2)", color: "#fb923c", fontSize: 13, fontWeight: 600 }}>
-          Your last payment failed. Update your payment method via &quot;Manage billing&quot; below to keep your subscription active.
+      {/* CANCELED — access-until date, resubscribe CTA */}
+      {isCanceled && (
+        <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600 }}>
+          Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}{cancelDays != null ? ` (${cancelDays} day${cancelDays === 1 ? "" : "s"} left)` : ""}. Resubscribe below to keep uninterrupted access.
         </div>
       )}
 
@@ -304,21 +363,25 @@ function EmployerSubscriptionContent() {
             boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 8px 32px rgba(139,92,246,0.15)",
           }}>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, marginBottom: 6 }}>
-              Current plan
+              {isInactive ? "Employer plan" : "Your plan"}
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#ffffff" }}>
-                {isCurrentPlan ? PLAN.name : "No plan"}
+                {isInactive ? "Not subscribed" : "DirectHire Employer"}
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 6, background: statusBg, color: statusColor }}>
                 {statusLabel}
               </span>
             </div>
 
-            {isCurrentPlan && (
+            {priceDisplay ? (
               <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 30, color: "#ffffff", marginBottom: 4 }}>
-                {PLAN.price}
-                <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>{PLAN.period}</span>
+                {priceDisplay}
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>{intervalDisplay}</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
+                Pricing is temporarily unavailable — contact support to subscribe.
               </div>
             )}
 
@@ -330,7 +393,10 @@ function EmployerSubscriptionContent() {
 
             {isTrial && sub?.trialEndsAt && (
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 14 }}>
-                Trial ends {fmtDate(sub.trialEndsAt)}
+                {trialDays != null && trialDays > 0
+                  ? `Trial — ${trialDays} day${trialDays === 1 ? "" : "s"} left (ends ${fmtDate(sub.trialEndsAt)})`
+                  : `Trial ended ${fmtDate(sub.trialEndsAt)}`}
+                {" · "}subscribe any time to keep access without interruption.
               </div>
             )}
 
@@ -345,7 +411,7 @@ function EmployerSubscriptionContent() {
                 >
                   {actionBusy === "checkout"
                     ? <><Spinner />Redirecting to Stripe…</>
-                    : `Subscribe — ${PLAN.price} ${PLAN.period.trim()} →`}
+                    : priceDisplay ? `Subscribe — ${priceDisplay} ${intervalDisplay.trim()} →` : "Subscribe →"}
                 </button>
               )}
 
@@ -358,7 +424,7 @@ function EmployerSubscriptionContent() {
                   >
                     {actionBusy === "portal"
                       ? <><Spinner />Opening portal…</>
-                      : "Manage billing →"}
+                      : isPastDue ? "Fix payment method →" : "Manage billing →"}
                   </button>
                   {isActive && (
                     <button
@@ -399,6 +465,15 @@ function EmployerSubscriptionContent() {
             </div>
           </div>
 
+          {/* No-subscription / trial: benefits live directly under the hero so
+              the "why subscribe" case is answered without hunting elsewhere */}
+          {showPlanCard && (
+            <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ffffff", marginBottom: 14 }}>What&apos;s included</div>
+              <BenefitsList benefits={benefits} />
+            </div>
+          )}
+
           {/* Contact card */}
           <div style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 10, padding: "20px 24px", textAlign: "center" as const }}>
             <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 6 }}>Questions about billing?</p>
@@ -411,47 +486,35 @@ function EmployerSubscriptionContent() {
         {/* ── Right column ─────────────────────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* The one real plan */}
-          <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#94a3b8", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
-            Plan
-          </div>
-          <div style={{
-            background: "rgba(255,255,255,0.05)",
-            border: isCurrentPlan ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10, padding: 24,
-            boxShadow: "0 1px 2px rgba(11,17,32,0.04)",
-            position: "relative",
-          }}>
-            {isCurrentPlan && (
+          {/* Active/past-due: plan details + full benefits list here instead,
+              since the left hero is busy with renewal/cancel actions */}
+          {!showPlanCard && (
+            <>
+              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 13, color: "#94a3b8", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 4 }}>
+                Plan details
+              </div>
               <div style={{
-                position: "absolute", top: -11, left: 24,
-                background: "#7C3AED",
-                color: "#ffffff", fontSize: 10, fontWeight: 700,
-                padding: "4px 12px", borderRadius: 6, letterSpacing: "0.06em",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(139,92,246,0.4)",
+                borderRadius: 10, padding: 24,
               }}>
-                CURRENT PLAN
-              </div>
-            )}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 18, color: "#ffffff" }}>
-                {PLAN.name}
-              </div>
-              <div style={{ textAlign: "right" as const }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 20, color: "#A78BFA" }}>
-                  {PLAN.price}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 18, color: "#ffffff" }}>
+                    DirectHire Employer
+                  </div>
+                  {priceDisplay && (
+                    <div style={{ textAlign: "right" as const }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 20, color: "#A78BFA" }}>
+                        {priceDisplay}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{intervalDisplay}</div>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>{PLAN.period}</div>
+                <BenefitsList benefits={benefits} />
               </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
-              {PLAN.features.map(f => (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cbd5e1" }}>
-                  <span style={{ color: "#4ade80", fontWeight: 700, flexShrink: 0 }}>✓</span>
-                  {f}
-                </div>
-              ))}
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Invoice history */}
           <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden" }}>

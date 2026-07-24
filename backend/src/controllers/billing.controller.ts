@@ -96,6 +96,24 @@ export async function getSubscriptionStatus(
       },
     });
 
+    // Real price, read live from Stripe — never hardcode a number/currency
+    // in the frontend for this. Non-fatal: a Stripe hiccup here must not
+    // break the whole status page, so `planPrice` degrades to null and the
+    // page falls back to plain copy with no fabricated figure.
+    let planPrice: { amountCents: number; currency: string; interval: string } | null = null;
+    if (process.env.STRIPE_EMPLOYER_PRICE_ID) {
+      try {
+        const price = await stripe.prices.retrieve(process.env.STRIPE_EMPLOYER_PRICE_ID);
+        planPrice = {
+          amountCents: price.unit_amount ?? 0,
+          currency:    price.currency,
+          interval:    price.recurring?.interval ?? "month",
+        };
+      } catch (e) {
+        console.error("[getSubscriptionStatus] Failed to retrieve Stripe price:", e);
+      }
+    }
+
     return ok(res, {
       status:           ep.subscriptionStatus ?? "INACTIVE",
       plan:             ep.subscriptionPlan ?? null,
@@ -103,6 +121,7 @@ export async function getSubscriptionStatus(
       trialEndsAt:      ep.trialEndsAt ?? null,
       hasCustomer:      !!ep.stripeCustomerId,
       cancelAtPeriodEnd: ep.subscriptionStatus === "CANCELED",
+      planPrice,
       payments,
     });
   } catch (e) { next(e); }
