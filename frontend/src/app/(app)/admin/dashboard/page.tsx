@@ -18,17 +18,6 @@ interface Stats {
   monthly:      { month: string; count: number }[];
 }
 
-interface PendingUser {
-  userId: string;
-  email:  string;
-  role:   string;
-  name:   string;
-  completionPct: number;
-  submittedAt:   string | null;
-  riskScore?:    number;
-  country?:      string;
-}
-
 interface AuditEntry {
   id:          string;
   adminEmail:  string;
@@ -38,55 +27,65 @@ interface AuditEntry {
   createdAt:   string;
 }
 
-type ActionStatus = "idle" | "loading" | "done" | "error";
-
 /* ─── Sub-components ─────────────────────────────────────────────────────────── */
 
-function KpiCard({
-  label, value, sub, icon, accent,
-}: { label: string; value: string | number; sub?: string; icon: string; accent: string }) {
+// Compact metrics strip — background/informational counts only, not actionable.
+function MiniStat({ label, value, accent }: { label: string; value: string | number; accent: string }) {
   return (
-    <div className="bg-card border border-red-600/15 rounded-2xl p-5 sm:p-6 md:p-7 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs sm:text-xs font-semibold text-muted uppercase tracking-wider">{label}</span>
-        <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg flex items-center justify-center text-base sm:text-lg" style={{ background: accent }}>
-          {icon}
-        </div>
-      </div>
-      <div className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-text leading-none">
+    <div style={{
+      background: C.card, border: `1px solid ${C.border}`,
+      borderRadius: 12, padding: "12px 16px",
+      display: "flex", flexDirection: "column", gap: 4, minWidth: 0,
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {label}
+      </span>
+      <span style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 800, fontSize: 20, color: accent }}>
         {typeof value === "number" ? value.toLocaleString() : value}
-      </div>
-      {sub && <div className="text-xs sm:text-sm text-accent">{sub}</div>}
+      </span>
     </div>
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    SUBMITTED:      { label: "Submitted",      color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
-    PENDING_REVIEW: { label: "Pending Review", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
-    APPROVED:       { label: "Approved",       color: "#34d399", bg: "rgba(52,211,153,0.12)" },
-    REJECTED:       { label: "Rejected",       color: "#f87171", bg: "rgba(248,113,113,0.12)" },
-    NEEDS_CHANGES:  { label: "Needs Changes",  color: "#fb923c", bg: "rgba(251,146,60,0.12)" },
-  };
-  const cfg = map[status] ?? { label: status, color: C.muted, bg: "rgba(255,255,255,0.06)" };
+// "Needs attention" action card — one per actionable queue. Always rendered
+// (even at zero) so the queue's existence/health is visible at a glance;
+// zero state reads as a clear/resolved signal rather than disappearing.
+function AttentionCard({
+  href, label, count, hint, tone,
+}: { href: string; label: string; count: number; hint: string; tone: "danger" | "warning" | "info" }) {
+  const toneColor = tone === "danger" ? "#f87171" : tone === "warning" ? "#fbbf24" : C.accent;
+  const clear = count === 0;
   return (
-    <span style={{
-      padding: "3px 10px", borderRadius: 999, fontSize: 11,
-      fontWeight: 700, color: cfg.color, background: cfg.bg,
-      letterSpacing: "0.04em",
-    }}>{cfg.label}</span>
-  );
-}
-
-function RiskBadge({ score }: { score: number }) {
-  const level = score >= 70 ? "HIGH" : score >= 40 ? "MED" : "LOW";
-  const color  = level === "HIGH" ? "#f43f5e" : level === "MED" ? "#f59e0b" : "#10b981";
-  return (
-    <span style={{
-      padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800,
-      color, background: `${color}18`, letterSpacing: "0.05em",
-    }}>{level} {score}</span>
+    <Link href={href} style={{
+      background: C.card, border: `1px solid ${clear ? C.border : `${toneColor}55`}`,
+      borderRadius: 16, padding: "20px 22px",
+      display: "flex", flexDirection: "column", gap: 10,
+      textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = clear ? C.borderHover : toneColor; e.currentTarget.style.background = C.cardHover; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = clear ? C.border : `${toneColor}55`; e.currentTarget.style.background = C.card; }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {label}
+        </span>
+        {!clear && (
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: toneColor, boxShadow: `0 0 6px ${toneColor}` }} />
+        )}
+      </div>
+      <div style={{
+        fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums",
+        fontWeight: 800, fontSize: 32, color: clear ? C.text : toneColor, lineHeight: 1,
+      }}>
+        {count.toLocaleString()}
+      </div>
+      <div style={{ fontSize: 12, color: C.muted }}>
+        {clear ? "All clear" : hint}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: toneColor, marginTop: 2 }}>
+        {clear ? "View queue →" : "Review now →"}
+      </div>
+    </Link>
   );
 }
 
@@ -94,12 +93,10 @@ function RiskBadge({ score }: { score: number }) {
 
 export default function AdminDashboardPage() {
   const [stats,     setStats]     = useState<Stats | null>(null);
-  const [pending,   setPending]   = useState<PendingUser[]>([]);
   const [audit,     setAudit]     = useState<AuditEntry[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast,     setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
-  const [actMap,    setActMap]    = useState<Record<string, ActionStatus>>({});
 
   // ── Pricing config state ──────────────────────────────────────────────────
   const [pricingEnabled,   setPricingEnabled]   = useState(true);
@@ -128,9 +125,8 @@ export default function AdminDashboardPage() {
     setLoadError(null);
     Promise.all([
       adminApi.getStats(),
-      adminApi.getPendingUsers(),
       adminApi.getAuditLog({ limit: "10" }),
-    ]).then(([sRes, pRes, aRes]) => {
+    ]).then(([sRes, aRes]) => {
       if (!sRes.success) {
         console.error("[Admin] Stats API failed:", sRes.error, sRes);
         setLoadError(sRes.error ?? "Failed to load admin stats");
@@ -138,7 +134,6 @@ export default function AdminDashboardPage() {
         return;
       }
       setStats(sRes.data as Stats);
-      if (pRes.success) setPending((pRes.data as { users?: PendingUser[] }).users ?? pRes.data as PendingUser[]);
       if (aRes.success) {
         const raw = aRes.data as { entries?: AuditEntry[] } | AuditEntry[];
         setAudit(Array.isArray(raw) ? raw : (raw.entries ?? []));
@@ -169,28 +164,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-  async function handleAction(userId: string, action: "approve" | "reject" | "suspend") {
-    setActMap(m => ({ ...m, [userId + action]: "loading" }));
-    try {
-      let res;
-      if (action === "approve") res = await adminApi.approveUser(userId);
-      else if (action === "reject") res = await adminApi.rejectUser(userId, "Rejected by admin");
-      else res = await adminApi.suspendUserAccount(userId, "Suspended by admin");
-
-      if (res.success) {
-        setPending(p => p.filter(u => u.userId !== userId));
-        showToast(`User ${action}d successfully`, true);
-        setActMap(m => ({ ...m, [userId + action]: "done" }));
-      } else {
-        showToast(res.error ?? "Action failed", false);
-        setActMap(m => ({ ...m, [userId + action]: "error" }));
-      }
-    } catch {
-      showToast("Network error", false);
-      setActMap(m => ({ ...m, [userId + action]: "error" }));
-    }
-  }
-
   if (loading) return <LoadingPage color="amber" />;
   if (loadError) return (
     <div style={{ padding: "60px 40px", maxWidth: 480, margin: "0 auto" }}>
@@ -202,26 +175,8 @@ export default function AdminDashboardPage() {
   const pendingCount = stats.verification.pending;
   const maxMonthly   = Math.max(...stats.monthly.map(m => m.count), 1);
 
-  const fraudAlerts = (stats.recentSubmissions as (typeof stats.recentSubmissions[0] & { riskScore?: number })[])
-    .filter(s => (s as { riskScore?: number }).riskScore != null && (s as { riskScore?: number }).riskScore! >= 70);
-
   return (
     <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-12 max-w-6xl mx-auto font-body">
-
-      {/* ── Alert banner ─────────────────────────────────────────────────────── */}
-      {pendingCount > 0 && (
-        <div className="mb-6 md:mb-7 px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-red-600/8 border border-red-600/35 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-            <span className="text-lg sm:text-2xl flex-shrink-0">🚨</span>
-            <span className="text-sm sm:text-base text-secondary font-semibold">
-              <strong className="text-accent">{pendingCount} applications</strong> awaiting your review
-            </span>
-          </div>
-          <Link href="/admin/users/pending" className="px-4 py-2 rounded-lg bg-accent text-white text-xs sm:text-sm font-bold no-underline hover:opacity-90 transition-opacity flex-shrink-0">
-            Review Now →
-          </Link>
-        </div>
-      )}
 
       {/* ── Page header ──────────────────────────────────────────────────────── */}
       <div className="mb-6 md:mb-7 flex items-start gap-3 sm:gap-4">
@@ -229,210 +184,136 @@ export default function AdminDashboardPage() {
           background: `linear-gradient(135deg, ${C.accent}, #b91c1c)`,
         }}>⚡</div>
         <div className="min-w-0">
-          <h1 className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-text m-0">
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 28, color: C.text, margin: 0 }}>
             Admin Control Center
           </h1>
-          <p className="text-xs sm:text-sm text-muted m-0 mt-1">Platform oversight · real-time monitoring</p>
+          <p style={{ fontSize: 13, color: C.muted, margin: "4px 0 0" }}>Platform oversight · real-time monitoring</p>
         </div>
       </div>
 
-      {/* ── KPI grid (8 cards, 2×2 on mobile, 4×2 on desktop) ─────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 md:mb-7">
-        <KpiCard label="Total Workers"    value={stats.users.workers}             icon="👷" accent="rgba(59,130,246,0.15)"  sub={`+${stats.users.newToday} today`} />
-        <KpiCard label="Total Employers"  value={stats.users.employers}           icon="🏢" accent="rgba(99,102,241,0.15)"  />
-        <KpiCard label="Pending Review"   value={stats.verification.pending}      icon="🔍" accent="rgba(220,38,38,0.18)"   />
-        <KpiCard label="Emails Today"     value={stats.emailsToday}               icon="📧" accent="rgba(167,139,250,0.15)" />
-        <KpiCard label="Approved"         value={stats.verification.approved}     icon="✅" accent="rgba(16,185,129,0.15)"  />
-        <KpiCard label="Rejected"         value={stats.verification.rejected}     icon="❌" accent="rgba(244,63,94,0.15)"   />
-        <KpiCard label="Needs Changes"    value={stats.verification.needsChanges} icon="✏️" accent="rgba(245,158,11,0.15)"  />
-        <KpiCard label="Total Uploads"    value={stats.uploads}                   icon="📁" accent="rgba(6,182,212,0.15)"   />
+      {/* ── Metrics strip (single row, compact, informational only) ──────────── */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6 md:mb-7">
+        <MiniStat label="Workers"    value={stats.users.workers}   accent={C.blue} />
+        <MiniStat label="Employers"  value={stats.users.employers} accent="#a78bfa" />
+        <MiniStat label="Approved"   value={stats.verification.approved} accent="#4ade80" />
+        <MiniStat label="Rejected"   value={stats.verification.rejected} accent="#f87171" />
+        <MiniStat label="Emails Today" value={stats.emailsToday}   accent={C.teal} />
+        <MiniStat label="Uploads"    value={stats.uploads}         accent="#22d3ee" />
       </div>
 
-      {/* ── Two-column: pending approvals + fraud alerts ───────────────────────── */}
+      {/* ── Needs attention — one card per actionable queue, correctly linked ── */}
+      <div className="mb-6 md:mb-7">
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: "0 0 12px" }}>
+          Needs Attention
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <AttentionCard
+            href="/admin/users/pending"
+            label="Pending Approvals"
+            count={pendingCount}
+            hint={`${pendingCount} account${pendingCount === 1 ? "" : "s"} awaiting review`}
+            tone="warning"
+          />
+          <AttentionCard
+            href="/admin/approvals?status=NEEDS_CHANGES"
+            label="Needs Changes"
+            count={stats.verification.needsChanges}
+            hint="Submissions sent back to applicants"
+            tone="info"
+          />
+        </div>
+      </div>
+
+      {/* ── Recent activity + system/fraud teasers ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 mb-6 md:mb-7">
 
-        {/* Pending Approvals table */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
+        {/* Recent Activity (condensed audit log) */}
+        <div className="lg:col-span-2" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           <div style={{
-            padding: "16px 20px",
-            borderBottom: `1px solid ${C.border}`,
+            padding: "16px 20px", borderBottom: `1px solid ${C.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>
-              Pending Approvals
+              Recent Activity
             </h2>
-            <Link href="/admin/approvals" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>
-              View all →
+            <Link href="/admin/audit-log" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>
+              Full log →
             </Link>
           </div>
 
-          {pending.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: C.muted, fontSize: 13 }}>
-              ✓ No pending approvals
+          {audit.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: C.muted, fontSize: 13 }}>
+              No audit entries yet
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <div style={{
-                display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
-                padding: "10px 20px",
-                background: "rgba(255,255,255,0.02)",
-                borderBottom: `1px solid ${C.border}`,
-                minWidth: 480,
-              }}>
-                {["User", "Role", "Risk", "Actions"].map(h => (
-                  <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
-                ))}
-              </div>
-
-              <div>{pending.slice(0, 8).map(u => {
-                const isLoading = (a: string) => actMap[u.userId + a] === "loading";
-                return (
-                  <div key={u.userId} style={{
-                    display: "grid", gridTemplateColumns: "1fr 90px 80px 180px",
-                    padding: "13px 20px", alignItems: "center",
-                    borderBottom: `1px solid ${C.border}`,
-                    transition: "background 0.15s", minWidth: 480,
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, fontWeight: 700, color: "#fff",
-                        background: u.role === "WORKER" ? C.blue : C.teal,
-                      }}>{(u.name || u.email)[0].toUpperCase()}</div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {u.name || u.email}
-                        </div>
-                        <div style={{ fontSize: 11, color: C.muted }}>{u.completionPct}% complete</div>
-                      </div>
-                    </div>
-
-                    <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{u.role}</span>
-
-                    {u.riskScore != null
-                      ? <RiskBadge score={u.riskScore} />
-                      : <span style={{ fontSize: 11, color: C.muted }}>—</span>
-                    }
-
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        disabled={isLoading("approve")}
-                        onClick={() => handleAction(u.userId, "approve")}
-                        style={{
-                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
-                          border: "none", cursor: "pointer",
-                          background: isLoading("approve") ? "rgba(16,185,129,0.3)" : "rgba(16,185,129,0.18)",
-                          color: "#34d399",
-                        }}>✓ Approve</button>
-                      <button
-                        disabled={isLoading("reject")}
-                        onClick={() => handleAction(u.userId, "reject")}
-                        style={{
-                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
-                          border: "none", cursor: "pointer",
-                          background: isLoading("reject") ? "rgba(220,38,38,0.3)" : "rgba(220,38,38,0.12)",
-                          color: "#f87171",
-                        }}>✕ Reject</button>
-                      <button
-                        disabled={isLoading("suspend")}
-                        onClick={() => handleAction(u.userId, "suspend")}
-                        style={{
-                          padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
-                          border: "none", cursor: "pointer",
-                          background: isLoading("suspend") ? "rgba(245,158,11,0.3)" : "rgba(245,158,11,0.10)",
-                          color: "#fbbf24",
-                        }}>⊘ Suspend</button>
-                      <Link href={`/admin/users/${u.userId}`} style={{
-                        padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
-                        background: "rgba(59,130,246,0.12)", color: C.blue,
-                        textDecoration: "none",
-                      }}>View</Link>
-                    </div>
-                  </div>
-                );
-              })}</div>
-            </div>
-          )}
-        </div>
-
-        {/* Fraud Alerts panel */}
-        <div style={{
-          background: C.card,
-          border: "1px solid rgba(220,38,38,0.4)",
-          borderRadius: 14, overflow: "hidden",
-          animation: "pulseBorderRed 2.5s ease-in-out infinite",
-        }}>
-          <style>{`
-            @keyframes pulseBorderRed {
-              0%, 100% { border-color: rgba(220,38,38,0.4); box-shadow: 0 0 0 0 rgba(220,38,38,0); }
-              50%       { border-color: rgba(220,38,38,0.7); box-shadow: 0 0 0 4px rgba(220,38,38,0.08); }
-            }
-          `}</style>
-          <div style={{
-            padding: "16px 18px",
-            borderBottom: "1px solid rgba(220,38,38,0.25)",
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: 15 }}>🛡</span>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: C.secondary, margin: 0 }}>
-              Fraud Alerts
-            </h2>
-            {fraudAlerts.length > 0 && (
-              <span style={{
-                marginLeft: "auto", padding: "2px 8px", borderRadius: 999,
-                fontSize: 10, fontWeight: 800, background: C.accent, color: "#fff",
-              }}>{fraudAlerts.length}</span>
-            )}
-          </div>
-
-          {fraudAlerts.length === 0 ? (
-            <div style={{ padding: 32, textAlign: "center" }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 13, color: C.muted }}>No high-risk flags detected</div>
-            </div>
-          ) : (
-            <div style={{ overflowY: "auto", maxHeight: 340 }}>
-              {fraudAlerts.map((s, i) => (
-                <div key={i} style={{
-                  padding: "12px 18px", borderBottom: "1px solid rgba(220,38,38,0.12)",
-                  display: "flex", alignItems: "center", gap: 10,
+            <div>
+              {audit.slice(0, 6).map(e => (
+                <div key={e.id} style={{
+                  padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                  borderBottom: `1px solid ${C.border}`, fontSize: 13,
                 }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: C.accent,
-                    boxShadow: `0 0 6px ${C.accent}`,
-                    flexShrink: 0,
-                    animation: "pulseDot 1.5s ease-in-out infinite",
-                  }} />
-                  <style>{`@keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.email}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.muted }}>{s.role}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.action}</div>
+                    <div style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.adminEmail}</div>
                   </div>
-                  <RiskBadge score={(s as { riskScore?: number }).riskScore ?? 0} />
+                  <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>
+                    {new Date(e.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
                 </div>
               ))}
             </div>
           )}
+        </div>
 
-          <div style={{ padding: "12px 18px", borderTop: "1px solid rgba(220,38,38,0.15)" }}>
-            <Link href="/admin/fraud" style={{
-              display: "block", textAlign: "center", padding: "8px 16px",
-              borderRadius: 7, fontSize: 12, fontWeight: 700,
-              background: "rgba(220,38,38,0.12)", color: C.accent,
-              textDecoration: "none",
-            }}>Open Fraud Console →</Link>
-          </div>
+        {/* System health + fraud console teasers (stacked, no live counts —
+            neither this page nor getStats() currently fetches the data that
+            would back a real number here; see report) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Link href="/admin/system" style={{
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+            padding: "18px 20px", textDecoration: "none", flex: 1,
+            display: "flex", flexDirection: "column", gap: 8,
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderHover; e.currentTarget.style.background = C.cardHover; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
+          >
+            <span style={{ fontSize: 20 }}>🩺</span>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: C.text }}>
+              System Health
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+              Scheduled-job monitoring &amp; run history.
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.accent, marginTop: "auto" }}>
+              Open system console →
+            </div>
+          </Link>
+
+          <Link href="/admin/fraud" style={{
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+            padding: "18px 20px", textDecoration: "none", flex: 1,
+            display: "flex", flexDirection: "column", gap: 8,
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderHover; e.currentTarget.style.background = C.cardHover; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
+          >
+            <span style={{ fontSize: 20 }}>🛡</span>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: C.text }}>
+              Fraud Console
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+              Risk-sorted account monitoring.
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.accent, marginTop: "auto" }}>
+              Open fraud console →
+            </div>
+          </Link>
         </div>
       </div>
 
-      {/* ── AI Performance panels + Registration chart ─────────────────────────── */}
+      {/* ── Analytics: AI performance + registrations ──────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-6 md:mb-7">
 
         {/* AI Performance mini cards */}
@@ -491,65 +372,6 @@ export default function AdminDashboardPage() {
             <div style={{ textAlign: "center", color: C.muted, paddingTop: 40, fontSize: 13 }}>No data yet</div>
           )}
         </div>
-      </div>
-
-      {/* ── Audit Log table ───────────────────────────────────────────────────── */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 14, overflow: "hidden", marginBottom: 28,
-      }}>
-        <div style={{
-          padding: "16px 20px", borderBottom: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>
-            Recent Audit Log
-          </h2>
-          <Link href="/admin/audit-log" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>
-            Full log →
-          </Link>
-        </div>
-
-        {audit.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: C.muted, fontSize: 13 }}>
-            No audit entries yet
-          </div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <div style={{
-              display: "grid", gridTemplateColumns: "160px 1fr 140px 120px",
-              padding: "9px 20px", background: "rgba(255,255,255,0.02)",
-              borderBottom: `1px solid ${C.border}`, minWidth: 520,
-            }}>
-              {["Admin", "Action", "Target", "Time"].map(h => (
-                <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
-              ))}
-            </div>
-            {audit.map(e => (
-              <div key={e.id} style={{
-                display: "grid", gridTemplateColumns: "160px 1fr 140px 120px",
-                padding: "12px 20px", alignItems: "center",
-                borderBottom: `1px solid ${C.border}`,
-                fontSize: 13, color: C.text,
-                transition: "background 0.15s", minWidth: 520,
-              }}
-                onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-                onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}
-              >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.muted }}>
-                  {e.adminEmail}
-                </span>
-                <span style={{ fontWeight: 600, color: C.text }}>{e.action}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.muted, fontSize: 12 }}>
-                  {e.targetType ? `${e.targetType} ${e.targetId?.slice(0, 8)}…` : "—"}
-                </span>
-                <span style={{ color: C.muted, fontSize: 12 }}>
-                  {new Date(e.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Application Fee Config ───────────────────────────────────────────── */}
@@ -681,34 +503,46 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* ── Quick nav cards ───────────────────────────────────────────────────── */}
-      <div className="admin-quick-nav grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        {[
-          { href: "/admin/approvals",  icon: "✅", label: "Approval Queue",  sub: `${pendingCount} pending`,  accent: "rgba(245,158,11,0.14)" },
-          { href: "/admin/fraud",      icon: "🛡",  label: "Fraud Console",  sub: "Risk monitoring",           accent: "rgba(220,38,38,0.14)" },
-          { href: "/admin/users",      icon: "👥", label: "User Management", sub: "All accounts",              accent: "rgba(59,130,246,0.14)" },
-          { href: "/admin/audit-log",  icon: "📋", label: "Audit Log",       sub: "Full activity trail",       accent: "rgba(167,139,250,0.14)" },
-        ].map(({ href, icon, label, sub, accent }) => (
-          <Link key={href} href={href} style={{
-            background: C.card, border: `1px solid ${C.border}`,
-            borderRadius: 14, padding: "18px 20px",
-            display: "flex", alignItems: "center", gap: 14,
-            textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(220,38,38,0.35)"; e.currentTarget.style.background = "rgba(220,38,38,0.04)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
-          >
-            <div style={{
-              width: 42, height: 42, borderRadius: 7,
-              background: accent, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: 20, flexShrink: 0,
-            }}>{icon}</div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>{label}</div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sub}</div>
-            </div>
-          </Link>
-        ))}
+      {/* ── More admin tools (destinations not already reachable above) ──────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <Link href="/admin/users" style={{
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, padding: "18px 20px",
+          display: "flex", alignItems: "center", gap: 14,
+          textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderHover; e.currentTarget.style.background = C.cardHover; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
+        >
+          <div style={{
+            width: 42, height: 42, borderRadius: 7,
+            background: "rgba(59,130,246,0.14)", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 20, flexShrink: 0,
+          }}>👥</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>User Management</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>All accounts</div>
+          </div>
+        </Link>
+        <Link href="/admin/approvals" style={{
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, padding: "18px 20px",
+          display: "flex", alignItems: "center", gap: 14,
+          textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderHover; e.currentTarget.style.background = C.cardHover; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
+        >
+          <div style={{
+            width: 42, height: 42, borderRadius: 7,
+            background: "rgba(167,139,250,0.14)", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 20, flexShrink: 0,
+          }}>📥</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: C.text }}>Approval Queue</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Browse all submissions</div>
+          </div>
+        </Link>
       </div>
 
       {/* ── Toast ─────────────────────────────────────────────────────────────── */}

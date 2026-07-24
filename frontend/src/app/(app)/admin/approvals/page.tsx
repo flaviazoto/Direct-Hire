@@ -376,12 +376,13 @@ function SlideOverPanel({
 function AdminApprovalsContent() {
   const searchParams = useSearchParams();
   const queryUserId  = searchParams.get("userId") ?? "";
+  const queryStatus  = searchParams.get("status") ?? "";
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [total, setTotal]             = useState(0);
   const [loading, setLoading]         = useState(true);
   const [page, setPage]               = useState(1);
-  const [statusFilter, setStatusFilter] = useState("SUBMITTED");
+  const [statusFilter, setStatusFilter] = useState(queryStatus || "SUBMITTED");
   const [roleFilter, setRoleFilter]   = useState("");
   const [search, setSearch]           = useState("");
   const [selectedUserId, setSelected] = useState<string | null>(null);

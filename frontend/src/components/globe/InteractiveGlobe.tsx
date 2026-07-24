@@ -23,14 +23,6 @@ type Country = typeof COUNTRIES[number];
 
 // ── Connection arc pairs ───────────────────────────────────────────────────────
 
-const ARCS_ALL = [
-  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 24.0,  lng:  54.0 } },
-  { from: { lat: 24.0,  lng:  54.0 }, to: { lat:  1.3,  lng: 103.8 } },
-  { from: { lat: 51.5,  lng:  -0.1 }, to: { lat: 37.1,  lng: -95.7 } },
-  { from: { lat: 37.1,  lng: -95.7 }, to: { lat: 56.1,  lng: -106.3} },
-  { from: { lat: 51.2,  lng:  10.4 }, to: { lat: 41.9,  lng:  12.5 } },
-];
-
 // ── HTML pill markers ──────────────────────────────────────────────────────────
 
 const HTML_MARKERS = [
@@ -112,7 +104,6 @@ export default function InteractiveGlobe() {
   const lastDragTime  = useRef<number>(0);
   const dotRefs       = useRef<{ mesh: THREE.Mesh; localPos: THREE.Vector3; country: Country }[]>([]);
   const ringRefs      = useRef<{ mesh: THREE.Mesh; offset: number }[]>([]);
-  const arcLinesRef   = useRef<THREE.Line[]>([]);
 
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, country: null });
 
@@ -121,7 +112,6 @@ export default function InteractiveGlobe() {
     if (!el) return;
 
     const isMobile = window.innerWidth < 768;
-    const ARCS     = isMobile ? ARCS_ALL.slice(0, 3) : ARCS_ALL;
 
     // ── Renderer ───────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -273,45 +263,8 @@ export default function InteractiveGlobe() {
     ));
 
     // ── Grid lines ─────────────────────────────────────────────────────────────
-    const gridMat    = new THREE.LineBasicMaterial({ color: 0xaac8ed, transparent: true, opacity: 0.035 });
-    const equatorMat = new THREE.LineBasicMaterial({ color: 0xc8dcf5, transparent: true, opacity: 0.055 });
-
-    function addLine(pts: THREE.Vector3[], mat: THREE.LineBasicMaterial) {
-      globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
-    }
-
-    [-60, -30, 0, 30, 60].forEach(lat => {
-      const pts: THREE.Vector3[] = [];
-      for (let lon = 0; lon <= 360; lon += 3) pts.push(latLngToVec3(lat, lon, GLOBE_RADIUS + 0.3));
-      addLine(pts, lat === 0 ? equatorMat : gridMat);
-    });
-
-    for (let lon = 0; lon < 360; lon += 30) {
-      const pts: THREE.Vector3[] = [];
-      for (let lat = -90; lat <= 90; lat += 3) pts.push(latLngToVec3(lat, lon, GLOBE_RADIUS + 0.3));
-      addLine(pts, gridMat);
-    }
-
     // ── Wireframe overlay ──────────────────────────────────────────────────────
-    globeGroup.add(new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS * 1.001, 36, 18),
-      new THREE.MeshBasicMaterial({ color: 0xb7d2ef, wireframe: true, transparent: true, opacity: 0.012 }),
-    ));
-
     // ── Connection arcs ────────────────────────────────────────────────────────
-    const arcLines: THREE.Line[] = [];
-    ARCS.forEach(arc => {
-      const start = latLngToVec3(arc.from.lat, arc.from.lng, GLOBE_RADIUS);
-      const end   = latLngToVec3(arc.to.lat,   arc.to.lng,   GLOBE_RADIUS);
-      const mid   = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(GLOBE_RADIUS * 1.4);
-      const geo   = new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(start, mid, end).getPoints(60));
-      const mat   = new THREE.LineBasicMaterial({ color: 0x0090FF, transparent: true, opacity: 0.35 });
-      const line  = new THREE.Line(geo, mat);
-      globeGroup.add(line);
-      arcLines.push(line);
-    });
-    arcLinesRef.current = arcLines;
-
     // ── Country dot + ring markers ─────────────────────────────────────────────
     const dotData:  typeof dotRefs.current  = [];
     const ringData: typeof ringRefs.current = [];
@@ -579,11 +532,6 @@ export default function InteractiveGlobe() {
         const opacity = Math.max(0, 1 - t) * 0.75;
         ring.scale.set(scale, scale, 1);
         (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
-      });
-
-      arcLinesRef.current.forEach((line, i) => {
-        (line.material as THREE.LineBasicMaterial).opacity =
-          0.15 + 0.3 * Math.abs(Math.sin(Date.now() * 0.001 + i * 1.2));
       });
 
       renderer.render(scene, camera);
