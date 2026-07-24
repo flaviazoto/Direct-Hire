@@ -84,8 +84,8 @@ function CancelModal({
   onClose:   () => void;
 }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(11,17,32,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
-      <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 36, maxWidth: 460, width: "100%", boxShadow: "0 24px 64px rgba(11,17,32,0.2)" }}>
+    <div className="glass-scrim" style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
+      <div className="glass-modal" style={{ padding: 36, maxWidth: 460, width: "100%" }}>
         <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(220,38,38,0.1)", border: "2px solid rgba(220,38,38,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>

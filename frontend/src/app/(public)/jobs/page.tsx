@@ -534,10 +534,11 @@ function ApplyModal({
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      className="glass-scrim"
+      style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget && !submitting) onCancel(); }}
     >
-      <div className="glass-card" style={{ padding: 28, maxWidth: 480, width: "100%" }}>
+      <div className="glass-modal" style={{ padding: 28, maxWidth: 480, width: "100%" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
           Apply for {job.title}
         </div>
