@@ -9,6 +9,7 @@ import * as configCtrl   from "../controllers/admin-config.controller";
 import * as revenueCtrl  from "../controllers/admin-revenue.controller";
 import * as externalJobsCtrl from "../controllers/admin-external-jobs.controller";
 import * as systemHealthCtrl from "../controllers/admin-system-health.controller";
+import * as growthCtrl   from "../controllers/admin-growth.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is — same cross-role-import pattern already used in
 // employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
@@ -89,6 +90,16 @@ adminRouter.get("/email-stats", requireAdmin, ctrl.getEmailStats);
 
 // ── System health (scheduled-job monitor) ────────────────────────────────────
 adminRouter.get("/system-health", requireAdmin, systemHealthCtrl.getSystemHealth);
+
+// ── Growth / Marketing agents (task log + approval workflow) ────────────────
+// Static routes before /:id param
+adminRouter.get( "/growth/content",              requireAdmin, growthCtrl.getGrowthContentDrafts);
+adminRouter.get( "/growth/eligible-jobs",         requireAdmin, growthCtrl.getEligibleJobs);
+adminRouter.post("/growth/tasks/run",            requireAdmin, growthCtrl.runGrowthTask);
+adminRouter.get( "/growth/tasks",                requireAdmin, growthCtrl.getGrowthTasks);
+adminRouter.get( "/growth/tasks/:id",            requireAdmin, growthCtrl.getGrowthTaskDetail);
+adminRouter.post("/growth/tasks/:id/approve",    requireAdmin, growthCtrl.approveGrowthTask);
+adminRouter.post("/growth/tasks/:id/reject",     requireAdmin, growthCtrl.rejectGrowthTask);
 
 // ── Notifications ──────────────────────────────────────────────────────────────
 adminRouter.get( "/notifications",              requireAdmin, notifCtrl.getNotifications);

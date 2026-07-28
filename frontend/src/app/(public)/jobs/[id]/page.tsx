@@ -99,16 +99,6 @@ function buildJobPostingJsonLd(job: PublicJobDetail, appUrl: string) {
         addressCountry: job.country,
       },
     },
-    baseSalary: {
-      "@type": "MonetaryAmount",
-      currency: job.salaryCurrency,
-      value: {
-        "@type": "QuantitativeValue",
-        minValue: Number(job.salaryMin),
-        maxValue: Number(job.salaryMax),
-        unitText: "MONTH",
-      },
-    },
     qualifications: job.requirements,
     experienceRequirements: `${job.experienceRequired}+ years`,
     industry: job.category,
@@ -117,6 +107,20 @@ function buildJobPostingJsonLd(job: PublicJobDetail, appUrl: string) {
     url: `${appUrl}/jobs/${job.id}`,
   };
 
+  const minValue = Number(job.salaryMin);
+  const maxValue = Number(job.salaryMax);
+  if (job.salaryMin != null && job.salaryMax != null && Number.isFinite(minValue) && Number.isFinite(maxValue)) {
+    jsonLd.baseSalary = {
+      "@type": "MonetaryAmount",
+      currency: job.salaryCurrency,
+      value: {
+        "@type": "QuantitativeValue",
+        minValue,
+        maxValue,
+        unitText: "MONTH",
+      },
+    };
+  }
   if (job.applicationDeadline) {
     jsonLd.validThrough = new Date(job.applicationDeadline).toISOString();
   }

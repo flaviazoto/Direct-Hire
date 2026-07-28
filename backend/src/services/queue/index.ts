@@ -14,7 +14,9 @@ export type JobName =
   | "email.adminNewSubmission"
   | "scoring.calculateWorkerScore"
   | "scoring.calculateMatchScores"
-  | "fraud.analyzeUser";
+  | "fraud.analyzeUser"
+  | "seo.generateJobMetadata"
+  | "growth.runAgentTask";
 
 export interface JobPayload {
   "email.welcome":               { userId: string; to: string; firstName: string; role: "WORKER" | "EMPLOYER" };
@@ -28,13 +30,19 @@ export interface JobPayload {
   "scoring.calculateWorkerScore":{ workerId: string };
   "scoring.calculateMatchScores":{ jobPostId: string };
   "fraud.analyzeUser":           { userId: string };
+  "seo.generateJobMetadata":     { jobPostId: string };
+  "growth.runAgentTask":         { taskId: string };
 }
 
-// ── Inline processor (dev mode) ───────────────────────────────
-async function processInline<N extends JobName>(
+// ── Job processor (single source of truth) ────────────────────
+// The actual handler dispatch for every JobName — called from processInline
+// (dev/JOBS_INLINE_MODE) below AND from the real BullMQ Worker in
+// scripts/jobs-worker.ts, so there is exactly one place that maps a job name
+// to its handler regardless of which mode is running it.
+export async function processJob<N extends JobName>(
   name: N,
   data: JobPayload[N]
-) {
+): Promise<void> {
   const emailSvc = await import("../email");
   switch (name) {
     case "email.welcome": {
@@ -82,9 +90,27 @@ async function processInline<N extends JobName>(
       await notifyMatchingWorkersForApprovedJob(d.jobPostId);
       break;
     }
+    case "seo.generateJobMetadata": {
+      const d = data as JobPayload["seo.generateJobMetadata"];
+      await generateJobSeoMetadata(d.jobPostId);
+      break;
+    }
+    case "growth.runAgentTask": {
+      const d = data as JobPayload["growth.runAgentTask"];
+      await runGrowthAgentTask(d.taskId);
+      break;
+    }
     default:
-      console.log(`[Queue] Job ${name} — no inline processor, skipping.`);
+      console.log(`[Queue] Job ${name} — no processor registered, skipping.`);
   }
+}
+
+// ── Inline processor (dev mode) ───────────────────────────────
+async function processInline<N extends JobName>(
+  name: N,
+  data: JobPayload[N]
+) {
+  await processJob(name, data);
 }
 
 // ── scoring.calculateMatchScores processor ─────────────────────
@@ -184,6 +210,125 @@ export async function notifyMatchingWorkersForApprovedJob(jobPostId: string): Pr
   ).catch(() => {});
 
   console.log(`[scoring.calculateMatchScores] Notified ${topMatches.length} worker(s) for job ${jobPostId}`);
+}
+
+// ── seo.generateJobMetadata processor ───────────────────────────
+// Triggered by admin-jobs.controller.ts's approveJob via enqueue(), same
+// fire-and-forget spot as notifyMatchingWorkersForApprovedJob above — the
+// AI Content Agent. Generates an SEO meta title/description/intro via the
+// Anthropic API and stores them on the JobPost row (see the seoMetaTitle /
+// seoMetaDescription / seoIntro / seoGeneratedAt fields).
+//
+// Idempotency: DB-level only (seoGeneratedAt already set => skip), per the
+// prior audit's finding that this codebase has no Redis lock mechanism
+// anywhere (ioredis is an installed-but-unused dependency) — deliberately
+// not introducing one here for a single per-job-post generation.
+//
+// Failure handling: unlike every other case in processJob() (which let
+// errors propagate to whichever caller invoked them — enqueue()'s inline-
+// mode try/catch, or BullMQ's own per-job failure handling in
+// scripts/jobs-worker.ts), API/parse failures here are caught locally and
+// swallowed rather than rethrown. That's intentional, not an inconsistency:
+// letting this throw would make BullMQ auto-retry (3x, exponential backoff)
+// against a paid third-party API for what might be a persistently bad
+// prompt/response, which is wasteful. Instead, seoGeneratedAt is simply left
+// null on failure, which IS the retry mechanism here — the row stays
+// eligible for a future reprocessing pass (manual or cron) to pick up,
+// mirroring the enqueue()-call-site convention of "log with .catch(console.
+// error), never let a side-effect job's failure become a crash" — just
+// applied inside the job body instead of at the call site, since this is
+// the first job whose data outcome depends on that distinction.
+async function generateJobSeoMetadata(jobPostId: string): Promise<void> {
+  const prisma = (await import("../../lib/prisma")).default;
+
+  const job = await prisma.jobPost.findUnique({
+    where:  { id: jobPostId },
+    select: {
+      id: true, title: true, description: true, country: true, category: true,
+      contractType: true, salaryMin: true, salaryMax: true, salaryCurrency: true,
+      seoGeneratedAt: true,
+    },
+  });
+  if (!job) {
+    console.warn(`[seo.generateJobMetadata] JobPost ${jobPostId} not found — skipping`);
+    return;
+  }
+  if (job.seoGeneratedAt) {
+    console.log(`[seo.generateJobMetadata] JobPost ${jobPostId} already generated, skipping`);
+    return;
+  }
+
+  const prompt = `Write SEO metadata for this job posting. Return ONLY valid JSON — no markdown code fences, no preamble, no explanation — with exactly these keys: "metaTitle" (a string, 60 characters or fewer), "metaDescription" (a string, 155 characters or fewer), and "intro" (a string, 2-3 sentences, SEO-oriented introductory paragraph for the job's public listing page).
+
+Job title: ${job.title}
+Category: ${job.category}
+Contract type: ${job.contractType}
+Location: ${job.country}
+Salary: ${job.salaryMin}-${job.salaryMax} ${job.salaryCurrency}
+Description: ${job.description}`;
+
+  let parsed: { metaTitle: string; metaDescription: string; intro: string };
+  try {
+    const { getAnthropicClient, ANTHROPIC_MODEL, ANTHROPIC_MAX_TOKENS } = await import("../ai/anthropic-client");
+    const anthropic = getAnthropicClient();
+
+    const response = await anthropic.messages.create({
+      model: ANTHROPIC_MODEL,
+      max_tokens: ANTHROPIC_MAX_TOKENS,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const block = response.content[0];
+    if (block.type !== "text") throw new Error(`Unexpected response block type: ${block.type}`);
+
+    // Safety net only — the prompt already asks for no fences, but models
+    // don't always comply.
+    const cleaned = block.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+    const json = JSON.parse(cleaned) as Record<string, unknown>;
+
+    if (typeof json.metaTitle !== "string" || typeof json.metaDescription !== "string" || typeof json.intro !== "string") {
+      throw new Error(`Response missing required string key(s): ${JSON.stringify(json)}`);
+    }
+    parsed = { metaTitle: json.metaTitle, metaDescription: json.metaDescription, intro: json.intro };
+  } catch (err) {
+    console.error(`[seo.generateJobMetadata] Failed to generate/parse SEO metadata for JobPost ${jobPostId}:`, err);
+    return;
+  }
+
+  await prisma.jobPost.update({
+    where: { id: jobPostId },
+    data: {
+      seoMetaTitle:       parsed.metaTitle,
+      seoMetaDescription: parsed.metaDescription,
+      seoIntro:           parsed.intro,
+      seoGeneratedAt:     new Date(),
+    },
+  });
+
+  console.log(`[seo.generateJobMetadata] Generated SEO metadata for JobPost ${jobPostId}`);
+}
+
+// ── growth.runAgentTask processor ───────────────────────────────
+// Queue wiring only — the actual per-agentName dispatch lives in
+// runGrowthAgent() (services/growth/agent-runner.ts), which is a stub
+// until real agents are registered in its AGENT_HANDLERS map. This function
+// just loads the task, marks it IN_PROGRESS, and hands it off.
+async function runGrowthAgentTask(taskId: string): Promise<void> {
+  const prisma = (await import("../../lib/prisma")).default;
+  const { runGrowthAgent } = await import("../growth/agent-runner");
+
+  const task = await prisma.growthAgentTask.findUnique({ where: { id: taskId } });
+  if (!task) {
+    console.warn(`[growth.runAgentTask] GrowthAgentTask ${taskId} not found — skipping`);
+    return;
+  }
+
+  const updated = await prisma.growthAgentTask.update({
+    where: { id: taskId },
+    data:  { status: "IN_PROGRESS" },
+  });
+
+  await runGrowthAgent(updated);
 }
 
 // ── notifyApplicantsOfJobClosure ────────────────────────────────

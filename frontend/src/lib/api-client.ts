@@ -307,6 +307,17 @@ export const adminApi = {
   updateExternalJob: (id: string, body: Record<string, unknown>) => patch(`/admin/external-jobs/${id}`, body),
   archiveExternalJob: (id: string) => post(`/admin/external-jobs/${id}/archive`),
   deleteExternalJob: (id: string) => del(`/admin/external-jobs/${id}`),
+  // ── Growth / Marketing agents ───────────────────────────────────────────────
+  runGrowthTask: (body: { agentName: string; taskType: string; inputData?: Record<string, unknown> }) =>
+    post("/admin/growth/tasks/run", body),
+  getEligibleJobs: () => get("/admin/growth/eligible-jobs"),
+  getGrowthTasks: (params?: Record<string, string>) =>
+    get(`/admin/growth/tasks${params ? "?" + new URLSearchParams(params) : ""}`),
+  getGrowthTaskDetail: (id: string) => get(`/admin/growth/tasks/${id}`),
+  approveGrowthTask: (id: string) => post(`/admin/growth/tasks/${id}/approve`),
+  rejectGrowthTask: (id: string, reason: string) => post(`/admin/growth/tasks/${id}/reject`, { reason }),
+  getGrowthContentDrafts: (params?: Record<string, string>) =>
+    get(`/admin/growth/content${params ? "?" + new URLSearchParams(params) : ""}`),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*

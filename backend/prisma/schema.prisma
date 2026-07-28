@@ -15,7 +15,6 @@ datasource db {
 // ENUMS
 // ─────────────────────────────────────────────
 
-
 enum Role {
   WORKER
   EMPLOYER
@@ -216,80 +215,80 @@ enum ContractType {
 // ─────────────────────────────────────────────
 
 model User {
-  id                String     @id @default(cuid())
-  email             String     @unique
-  passwordHash      String
-  role              Role
-  isEmailVerified                Boolean       @default(false)
-  status                         UserStatus    @default(PENDING_VERIFICATION)
-  accountStatus                  AccountStatus @default(PENDING_EMAIL_VERIFICATION) @map("account_status")
-  emailVerificationCodeHash      String?       @map("email_verification_code_hash")
-  emailVerificationExpiresAt     DateTime?     @map("email_verification_expires_at")
-  emailVerificationAttempts      Int           @default(0) @map("email_verification_attempts")
-  emailVerificationSentAt        DateTime?     @map("email_verification_sent_at")
-  lastLoginAt                    DateTime?
-  verificationSubmittedAt        DateTime?     @map("verification_submitted_at")
-  approvedAt                     DateTime?     @map("approved_at")
-  rejectedAt                     DateTime?     @map("rejected_at")
-  rejectionReason                String?       @map("rejection_reason")
-  suspendedAt                    DateTime?     @map("suspended_at")
-  reviewedById                   String?       @map("reviewed_by")
-  postingRightsRevoked           Boolean       @default(false) @map("posting_rights_revoked")
-  postingRightsRevokedAt         DateTime?     @map("posting_rights_revoked_at")
-  postingRightsRevokedBy         String?       @map("posting_rights_revoked_by")
-  isLocked                       Boolean       @default(false) @map("is_locked")
-  lockedByEmployerId             String?       @map("locked_by_employer_id")
-  lockedUntil                    DateTime?     @map("locked_until")
-  lockCount                      Int           @default(0) @map("lock_count")
-  createdAt                      DateTime      @default(now())
-  updatedAt                      DateTime      @updatedAt
+  id                         String        @id @default(cuid())
+  email                      String        @unique
+  passwordHash               String
+  role                       Role
+  isEmailVerified            Boolean       @default(false)
+  status                     UserStatus    @default(PENDING_VERIFICATION)
+  accountStatus              AccountStatus @default(PENDING_EMAIL_VERIFICATION) @map("account_status")
+  emailVerificationCodeHash  String?       @map("email_verification_code_hash")
+  emailVerificationExpiresAt DateTime?     @map("email_verification_expires_at")
+  emailVerificationAttempts  Int           @default(0) @map("email_verification_attempts")
+  emailVerificationSentAt    DateTime?     @map("email_verification_sent_at")
+  lastLoginAt                DateTime?
+  verificationSubmittedAt    DateTime?     @map("verification_submitted_at")
+  approvedAt                 DateTime?     @map("approved_at")
+  rejectedAt                 DateTime?     @map("rejected_at")
+  rejectionReason            String?       @map("rejection_reason")
+  suspendedAt                DateTime?     @map("suspended_at")
+  reviewedById               String?       @map("reviewed_by")
+  postingRightsRevoked       Boolean       @default(false) @map("posting_rights_revoked")
+  postingRightsRevokedAt     DateTime?     @map("posting_rights_revoked_at")
+  postingRightsRevokedBy     String?       @map("posting_rights_revoked_by")
+  isLocked                   Boolean       @default(false) @map("is_locked")
+  lockedByEmployerId         String?       @map("locked_by_employer_id")
+  lockedUntil                DateTime?     @map("locked_until")
+  lockCount                  Int           @default(0) @map("lock_count")
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
 
-  googleId                       String?       @unique
-  linkedinId                     String?       @unique
-  avatarUrl                      String?
-  onboardingComplete             Boolean       @default(false)
+  googleId           String? @unique
+  linkedinId         String? @unique
+  avatarUrl          String?
+  onboardingComplete Boolean @default(false)
 
   // GDPR explicit consent — captured at registration (standard email/password
   // signup only; see auth.controller.ts register()). NULL for every account
   // that predates this column, and for OAuth signups, which don't currently
   // pass through this checkbox — both are known, flagged gaps, not bugs to
   // silently paper over.
-  consentAcceptedAt              DateTime?
-  consentPolicyVersion           String?
+  consentAcceptedAt    DateTime?
+  consentPolicyVersion String?
 
   // Non-transactional email suppression (unsubscribe). NULL = subscribed.
   // unsubscribeToken is random (not signed/JWT), generated lazily — see
   // lib/unsubscribe.ts — and looked up directly, same pattern as
   // PasswordResetToken/EmailVerificationToken but as a plain non-expiring
   // column since it's 1:1 with the user.
-  emailUnsubscribedAt            DateTime?
-  unsubscribeToken               String?       @unique
+  emailUnsubscribedAt DateTime?
+  unsubscribeToken    String?   @unique
 
   // Relations
-  workerProfile     WorkerProfile?
-  employerProfile   EmployerProfile?
-  onboardingProgress OnboardingProgress?
-  uploads           Upload[]
-  reviewedUploads   Upload[] @relation("UploadReviewedBy")
-  emailLogs         EmailLog[]
-  verificationRecord VerificationRecord?
-  sessions          Session[]
-  emailVerifyTokens EmailVerificationToken[]
-  passwordResetTokens PasswordResetToken[]
-  auditLogs         AuditLog[]
-  reviewedBy        VerificationRecord[] @relation("ReviewedBy")
-  notifications     Notification[]
-  verificationCodes VerificationCode[]
-  adminAuditLogs    AdminAuditLog[]    @relation("AdminAuditLogs")
-  userAuditLogs     AdminAuditLog[]    @relation("UserAuditLogs")
-  jobPosts             JobPost[]          @relation("EmployerJobs")
-  externalJobsCreated  ExternalJob[]      @relation("ExternalJobsCreatedBy")
-  workerApplications   Application[]      @relation("WorkerApplications")
-  employerApplications Application[]      @relation("EmployerApplications")
-  workerLocksAsWorker   WorkerLock[]      @relation("WorkerLocks")
-  workerLocksAsEmployer WorkerLock[]      @relation("EmployerLocks")
-  sentMessages          Message[]         @relation("SentMessages")
-  receivedMessages      Message[]         @relation("ReceivedMessages")
+  workerProfile         WorkerProfile?
+  employerProfile       EmployerProfile?
+  onboardingProgress    OnboardingProgress?
+  uploads               Upload[]
+  reviewedUploads       Upload[]                 @relation("UploadReviewedBy")
+  emailLogs             EmailLog[]
+  verificationRecord    VerificationRecord?
+  sessions              Session[]
+  emailVerifyTokens     EmailVerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
+  auditLogs             AuditLog[]
+  reviewedBy            VerificationRecord[]     @relation("ReviewedBy")
+  notifications         Notification[]
+  verificationCodes     VerificationCode[]
+  adminAuditLogs        AdminAuditLog[]          @relation("AdminAuditLogs")
+  userAuditLogs         AdminAuditLog[]          @relation("UserAuditLogs")
+  jobPosts              JobPost[]                @relation("EmployerJobs")
+  externalJobsCreated   ExternalJob[]            @relation("ExternalJobsCreatedBy")
+  workerApplications    Application[]            @relation("WorkerApplications")
+  employerApplications  Application[]            @relation("EmployerApplications")
+  workerLocksAsWorker   WorkerLock[]             @relation("WorkerLocks")
+  workerLocksAsEmployer WorkerLock[]             @relation("EmployerLocks")
+  sentMessages          Message[]                @relation("SentMessages")
+  receivedMessages      Message[]                @relation("ReceivedMessages")
   payments              Payment[]
   invoices              Invoice[]
 
@@ -317,26 +316,26 @@ model Session {
 }
 
 model EmailVerificationToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
 }
@@ -346,44 +345,44 @@ model PasswordResetToken {
 // ─────────────────────────────────────────────
 
 model WorkerProfile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  firstName         String?
-  lastName          String?
-  dateOfBirth       DateTime?
-  nationality       String?
-  countryOfResidence String?
-  city              String?
-  address           String?
-  passportNumber    String?  // stored encrypted, text only
-  phone             String?  // stored encrypted, text only — same pattern as passportNumber
-  maritalStatus     String?
-  fatherName        String?
-  motherName        String?
-  hasSpouse         Boolean  @default(false)
-  spouseName        String?
-  numberOfChildren  Int      @default(0)
-  profession        String?
-  yearsExperience   String?
-  expectedSalary    String?
-  availabilityDate  DateTime?
-  additionalNotes   String?
-  profileScore      Int?     // AI-computed 0–100
-  trustScore        Int?     // AI-computed 0–100
-  riskScore         Int?     // AI-computed 0–100
-  isSearchable      Boolean  @default(false)
-  passportStatus    DocumentReviewStatus @default(PENDING)
-  documentsVerified Boolean              @default(false)
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  firstName           String?
+  lastName            String?
+  dateOfBirth         DateTime?
+  nationality         String?
+  countryOfResidence  String?
+  city                String?
+  address             String?
+  passportNumber      String? // stored encrypted, text only
+  phone               String? // stored encrypted, text only — same pattern as passportNumber
+  maritalStatus       String?
+  fatherName          String?
+  motherName          String?
+  hasSpouse           Boolean              @default(false)
+  spouseName          String?
+  numberOfChildren    Int                  @default(0)
+  profession          String?
+  yearsExperience     String?
+  expectedSalary      String?
+  availabilityDate    DateTime?
+  additionalNotes     String?
+  profileScore        Int? // AI-computed 0–100
+  trustScore          Int? // AI-computed 0–100
+  riskScore           Int? // AI-computed 0–100
+  isSearchable        Boolean              @default(false)
+  passportStatus      DocumentReviewStatus @default(PENDING)
+  documentsVerified   Boolean              @default(false)
   documentsReviewedAt DateTime?
   documentsReviewedBy String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skills            WorkerSkill[]
-  languages         WorkerLanguage[]
-  targetCountries   WorkerTargetCountry[]
-  savedJobs         SavedJob[]
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills          WorkerSkill[]
+  languages       WorkerLanguage[]
+  targetCountries WorkerTargetCountry[]
+  savedJobs       SavedJob[]
 
   @@index([userId])
 }
@@ -398,21 +397,21 @@ model WorkerSkill {
 }
 
 model WorkerLanguage {
-  id              String        @id @default(cuid())
-  workerProfileId String
-  language        String
+  id               String        @id @default(cuid())
+  workerProfileId  String
+  language         String
   proficiencyLevel String
-  workerProfile   WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
+  workerProfile    WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([workerProfileId, language])
 }
 
 model WorkerTargetCountry {
-  id              String        @id @default(cuid())
-  workerProfileId String
-  country         String
+  id                 String        @id @default(cuid())
+  workerProfileId    String
+  country            String
   visaTypePreference String?
-  workerProfile   WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
+  workerProfile      WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([workerProfileId, country])
 }
@@ -422,35 +421,35 @@ model WorkerTargetCountry {
 // ─────────────────────────────────────────────
 
 model EmployerProfile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  companyName       String?
-  contactPersonName String?
-  nipt              String?
-  qkr               String?
-  administratorId   String?  // encrypted
-  phone             String?  // stored encrypted, text only — same pattern as WorkerProfile.phone
-  industry          String?
-  companySize       String?
-  website           String?
-  country           String?
-  city              String?
-  address           String?
-  businessDescription String?
+  id                           String    @id @default(cuid())
+  userId                       String    @unique
+  companyName                  String?
+  contactPersonName            String?
+  nipt                         String?
+  qkr                          String?
+  administratorId              String? // encrypted
+  phone                        String? // stored encrypted, text only — same pattern as WorkerProfile.phone
+  industry                     String?
+  companySize                  String?
+  website                      String?
+  country                      String?
+  city                         String?
+  address                      String?
+  businessDescription          String?
   subscriptionPlan             String?
   subscriptionStatus           String?
   trialEndsAt                  DateTime?
   stripeCustomerId             String?   @unique
   stripeSubscriptionId         String?
   subscriptionCurrentPeriodEnd DateTime?
-  logoUrl           String?
-  isVerified        Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  logoUrl                      String?
+  isVerified                   Boolean   @default(false)
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hiringCountries   EmployerHiringCountry[]
-  requiredSkills    EmployerRequiredSkill[]
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hiringCountries EmployerHiringCountry[]
+  requiredSkills  EmployerRequiredSkill[]
 
   @@index([userId])
 }
@@ -492,7 +491,7 @@ model OnboardingProgress {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([onboardingStatus])
@@ -503,7 +502,7 @@ model OnboardingProgress {
 // ─────────────────────────────────────────────
 
 model Upload {
-  id           String     @id @default(cuid())
+  id           String               @id @default(cuid())
   userId       String
   reviewedById String?
   fileType     FileType
@@ -512,16 +511,16 @@ model Upload {
   filePath     String
   mimeType     String
   sizeBytes    Int
-  status       FileStatus @default(UPLOADING)
+  status       FileStatus           @default(UPLOADING)
   reviewStatus DocumentReviewStatus @default(PENDING)
   reviewNotes  String?
-  isPrivate    Boolean    @default(false)
-  uploadedAt   DateTime   @default(now())
+  isPrivate    Boolean              @default(false)
+  uploadedAt   DateTime             @default(now())
   reviewedAt   DateTime?
   deletedAt    DateTime?
 
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewedBy   User?      @relation("UploadReviewedBy", fields: [reviewedById], references: [id])
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("UploadReviewedBy", fields: [reviewedById], references: [id])
 
   @@index([userId])
   @@index([fileType])
@@ -545,8 +544,8 @@ model VerificationRecord {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewedBy       User?              @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
 
   @@index([reviewStatus])
 }
@@ -556,56 +555,65 @@ model VerificationRecord {
 // ─────────────────────────────────────────────
 
 model JobPost {
-  id                   String        @id @default(cuid())
-  employerId           String        @map("employer_id")
-  employer             User          @relation("EmployerJobs", fields: [employerId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  employerId String @map("employer_id")
+  employer   User   @relation("EmployerJobs", fields: [employerId], references: [id], onDelete: Cascade)
 
-  title                String
-  companyName          String        @map("company_name")
-  description          String        @db.Text
-  requirements         String        @db.Text
-  benefits             String?       @db.Text
+  title        String
+  companyName  String  @map("company_name")
+  description  String  @db.Text
+  requirements String  @db.Text
+  benefits     String? @db.Text
 
-  country              String
-  city                 String
-  remoteAllowed        Boolean       @default(false) @map("remote_allowed")
+  country       String
+  city          String
+  remoteAllowed Boolean @default(false) @map("remote_allowed")
 
-  salaryMin            Decimal       @db.Decimal(10, 2) @map("salary_min")
-  salaryMax            Decimal       @db.Decimal(10, 2) @map("salary_max")
-  salaryCurrency       String        @default("USD") @map("salary_currency")
+  salaryMin      Decimal @map("salary_min") @db.Decimal(10, 2)
+  salaryMax      Decimal @map("salary_max") @db.Decimal(10, 2)
+  salaryCurrency String  @default("USD") @map("salary_currency")
 
-  contractType         ContractType  @map("contract_type")
-  experienceRequired   Int           @map("experience_required")
-  category             String
-  requiredSkills       String[]      @map("required_skills")
-  languagesRequired    String[]      @default([]) @map("languages_required")
+  contractType       ContractType @map("contract_type")
+  experienceRequired Int          @map("experience_required")
+  category           String
+  requiredSkills     String[]     @map("required_skills")
+  languagesRequired  String[]     @default([]) @map("languages_required")
 
-  visaSupport          Boolean       @default(false) @map("visa_support")
-  accommodation        Boolean       @default(false)
+  visaSupport   Boolean @default(false) @map("visa_support")
+  accommodation Boolean @default(false)
 
-  applicationDeadline  DateTime?     @map("application_deadline")
-  positionsAvailable   Int           @default(1) @map("positions_available")
+  applicationDeadline DateTime? @map("application_deadline")
+  positionsAvailable  Int       @default(1) @map("positions_available")
 
-  status                  JobPostStatus @default(DRAFT)
-  moderationNotes         String?       @map("moderation_notes")
-  approvedBy              String?       @map("approved_by")
-  approvedAt              DateTime?     @map("approved_at")
-  rejectedAt              DateTime?     @map("rejected_at")
-  archivedAt              DateTime?     @map("archived_at")
-  changesRequestedAt      DateTime?     @map("changes_requested_at")
-  changesRequestedBy      String?       @map("changes_requested_by")
-  resubmittedAt           DateTime?     @map("resubmitted_at")
-  moderationHistory       Json?         @map("moderation_history")
-  employerPostingRights   Boolean       @default(true) @map("employer_posting_rights")
+  status                JobPostStatus @default(DRAFT)
+  moderationNotes       String?       @map("moderation_notes")
+  approvedBy            String?       @map("approved_by")
+  approvedAt            DateTime?     @map("approved_at")
+  rejectedAt            DateTime?     @map("rejected_at")
+  archivedAt            DateTime?     @map("archived_at")
+  changesRequestedAt    DateTime?     @map("changes_requested_at")
+  changesRequestedBy    String?       @map("changes_requested_by")
+  resubmittedAt         DateTime?     @map("resubmitted_at")
+  moderationHistory     Json?         @map("moderation_history")
+  employerPostingRights Boolean       @default(true) @map("employer_posting_rights")
 
-  viewCount            Int           @default(0) @map("view_count")
-  applicationCount     Int           @default(0) @map("application_count")
+  viewCount        Int @default(0) @map("view_count")
+  applicationCount Int @default(0) @map("application_count")
 
-  createdAt            DateTime      @default(now()) @map("created_at")
-  updatedAt            DateTime      @updatedAt @map("updated_at")
+  // AI Content Agent — generated once per job post, at approval time (see
+  // enqueue("seo.generateJobMetadata", ...) in admin-jobs.controller.ts's
+  // approveJob). seoGeneratedAt doubles as the idempotency flag: the
+  // processor skips regenerating if it's already set.
+  seoMetaTitle       String?   @map("seo_meta_title") @db.VarChar(70)
+  seoMetaDescription String?   @map("seo_meta_description") @db.VarChar(200)
+  seoIntro           String?   @map("seo_intro") @db.Text
+  seoGeneratedAt     DateTime? @map("seo_generated_at")
 
-  applications         Application[]
-  savedBy              SavedJob[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  applications Application[]
+  savedBy      SavedJob[]
 
   @@index([employerId])
   @@index([status])
@@ -628,34 +636,34 @@ model JobPost {
 // half-populated employer relation.
 
 model ExternalJob {
-  id               String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  title            String
-  description      String        @db.Text
+  title       String
+  description String @db.Text
 
-  country          String
-  city             String?
+  country String
+  city    String?
 
-  salaryMin        Decimal?      @db.Decimal(10, 2) @map("salary_min")
-  salaryMax        Decimal?      @db.Decimal(10, 2) @map("salary_max")
-  salaryCurrency   String?       @map("salary_currency")
+  salaryMin      Decimal? @map("salary_min") @db.Decimal(10, 2)
+  salaryMax      Decimal? @map("salary_max") @db.Decimal(10, 2)
+  salaryCurrency String?  @map("salary_currency")
 
-  contractType     ContractType? @map("contract_type")
+  contractType ContractType? @map("contract_type")
 
-  externalUrl      String        @map("external_url")
-  sourceName       String        @map("source_name")
+  externalUrl String @map("external_url")
+  sourceName  String @map("source_name")
 
   // Plain string, not an enum — same convention as Payment.status: simple
   // admin-curated content doesn't need DB-level exhaustiveness, and it keeps
   // this table decoupled from an ALTER TYPE migration if a status like
   // "EXPIRED" gets added later.
-  status           String        @default("ACTIVE") // ACTIVE | ARCHIVED
+  status String @default("ACTIVE") // ACTIVE | ARCHIVED
 
-  createdById      String?       @map("created_by_id")
-  createdBy        User?         @relation("ExternalJobsCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("ExternalJobsCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([status])
   @@index([country])
@@ -668,55 +676,55 @@ model ExternalJob {
 // ─────────────────────────────────────────────
 
 model Application {
-  id                       String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  workerId                 String            @map("worker_id")
-  worker                   User              @relation("WorkerApplications", fields: [workerId], references: [id], onDelete: Cascade)
+  workerId String @map("worker_id")
+  worker   User   @relation("WorkerApplications", fields: [workerId], references: [id], onDelete: Cascade)
 
-  jobId                    String            @map("job_id")
-  job                      JobPost           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String  @map("job_id")
+  job   JobPost @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  employerId               String            @map("employer_id")
-  employer                 User              @relation("EmployerApplications", fields: [employerId], references: [id])
+  employerId String @map("employer_id")
+  employer   User   @relation("EmployerApplications", fields: [employerId], references: [id])
 
-  status                   ApplicationStatus @default(APPLIED)
+  status ApplicationStatus @default(APPLIED)
 
-  coverLetter              String?           @db.Text @map("cover_letter")
-  workerNote               String?           @db.Text @map("worker_note")
+  coverLetter String? @map("cover_letter") @db.Text
+  workerNote  String? @map("worker_note") @db.Text
 
-  interviewContactUnlocked Boolean           @default(false) @map("interview_contact_unlocked")
-  companyContactVisibleAt  DateTime?         @map("company_contact_visible_at")
+  interviewContactUnlocked Boolean   @default(false) @map("interview_contact_unlocked")
+  companyContactVisibleAt  DateTime? @map("company_contact_visible_at")
 
-  viewedAt                 DateTime?         @map("viewed_at")
-  shortlistedAt            DateTime?         @map("shortlisted_at")
-  interviewedAt            DateTime?         @map("interviewed_at")
-  acceptedAt               DateTime?         @map("accepted_at")
-  rejectedAt               DateTime?         @map("rejected_at")
+  viewedAt      DateTime? @map("viewed_at")
+  shortlistedAt DateTime? @map("shortlisted_at")
+  interviewedAt DateTime? @map("interviewed_at")
+  acceptedAt    DateTime? @map("accepted_at")
+  rejectedAt    DateTime? @map("rejected_at")
 
-  rejectionReason          String?           @map("rejection_reason")
-  interviewInstructions    String?           @map("interview_instructions")
+  rejectionReason       String? @map("rejection_reason")
+  interviewInstructions String? @map("interview_instructions")
 
   // Worker's response to an interview invitation — set via
   // POST /applications/:id/interview-response, independent of `status`
   // (status stays INTERVIEWED until the employer accepts/rejects separately).
-  interviewResponse        String?           @map("interview_response")          // "ACCEPTED" | "DECLINED"
-  interviewResponseMessage String?           @db.Text @map("interview_response_message")
-  interviewRespondedAt     DateTime?         @map("interview_responded_at")
+  interviewResponse        String?   @map("interview_response") // "ACCEPTED" | "DECLINED"
+  interviewResponseMessage String?   @map("interview_response_message") @db.Text
+  interviewRespondedAt     DateTime? @map("interview_responded_at")
 
-  matchScore               Decimal?          @db.Decimal(5, 2) @map("match_score")
+  matchScore Decimal? @map("match_score") @db.Decimal(5, 2)
 
-  offeredSalary            Decimal?          @db.Decimal(10, 2) @map("offered_salary")
-  offeredCurrency          String?           @map("offered_currency")
-  startDate                DateTime?         @map("start_date")
-  contractType             String?           @map("contract_type")
-  hireConfirmedAt          DateTime?         @map("hire_confirmed_at")
+  offeredSalary   Decimal?  @map("offered_salary") @db.Decimal(10, 2)
+  offeredCurrency String?   @map("offered_currency")
+  startDate       DateTime? @map("start_date")
+  contractType    String?   @map("contract_type")
+  hireConfirmedAt DateTime? @map("hire_confirmed_at")
 
-  applicationFeeCents      Int?              @map("application_fee_cents")
-  applicationFeePaid       Boolean           @default(false) @map("application_fee_paid")
-  stripePaymentIntentId    String?           @map("stripe_payment_intent_id")
+  applicationFeeCents   Int?    @map("application_fee_cents")
+  applicationFeePaid    Boolean @default(false) @map("application_fee_paid")
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
 
-  createdAt                DateTime          @default(now()) @map("created_at")
-  updatedAt                DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([workerId, jobId])
   @@index([workerId])
@@ -728,13 +736,13 @@ model Application {
 }
 
 model SavedJob {
-  id              String        @id @default(cuid())
+  id              String   @id @default(cuid())
   workerProfileId String
   jobPostId       String
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime @default(now())
 
-  workerProfile   WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
-  jobPost         JobPost       @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  workerProfile WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
+  jobPost       JobPost       @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
 
   @@unique([workerProfileId, jobPostId])
   @@index([workerProfileId])
@@ -746,31 +754,31 @@ model SavedJob {
 // ─────────────────────────────────────────────
 
 model WorkerLock {
-  id                  String     @id @default(cuid())
-  workerId            String     @map("worker_id")
-  worker              User       @relation("WorkerLocks", fields: [workerId], references: [id], onDelete: Cascade)
-  employerId          String     @map("employer_id")
-  employer            User       @relation("EmployerLocks", fields: [employerId], references: [id], onDelete: Cascade)
-  lockStatus          LockStatus @default(ACTIVE) @map("lock_status")
-  dailyFee            Decimal    @db.Decimal(10, 2) @map("daily_fee")
-  currency            String     @default("USD")
-  lockStartDate       DateTime   @map("lock_start_date")
-  lockExpiryDate      DateTime   @map("lock_expiry_date")
-  lockDays            Int        @map("lock_days")
-  totalBilled         Decimal    @default(0) @db.Decimal(10, 2) @map("total_billed")
-  totalDaysBilled     Int        @default(0) @map("total_days_billed")
-  releaseReason       String?    @map("release_reason")
-  adminOverrideBy     String?    @map("admin_override_by")
-  adminOverrideAt     DateTime?  @map("admin_override_at")
-  adminOverrideNote   String?    @map("admin_override_note")
-  expiryWarningSent       Boolean   @default(false) @map("expiry_warning_sent")
-  stripePaymentIntentId   String?   @map("stripe_payment_intent_id")
-  stripeRefundId          String?   @map("stripe_refund_id")
-  totalRefundedCents      Int       @default(0) @map("total_refunded_cents")
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
+  id                    String     @id @default(cuid())
+  workerId              String     @map("worker_id")
+  worker                User       @relation("WorkerLocks", fields: [workerId], references: [id], onDelete: Cascade)
+  employerId            String     @map("employer_id")
+  employer              User       @relation("EmployerLocks", fields: [employerId], references: [id], onDelete: Cascade)
+  lockStatus            LockStatus @default(ACTIVE) @map("lock_status")
+  dailyFee              Decimal    @map("daily_fee") @db.Decimal(10, 2)
+  currency              String     @default("USD")
+  lockStartDate         DateTime   @map("lock_start_date")
+  lockExpiryDate        DateTime   @map("lock_expiry_date")
+  lockDays              Int        @map("lock_days")
+  totalBilled           Decimal    @default(0) @map("total_billed") @db.Decimal(10, 2)
+  totalDaysBilled       Int        @default(0) @map("total_days_billed")
+  releaseReason         String?    @map("release_reason")
+  adminOverrideBy       String?    @map("admin_override_by")
+  adminOverrideAt       DateTime?  @map("admin_override_at")
+  adminOverrideNote     String?    @map("admin_override_note")
+  expiryWarningSent     Boolean    @default(false) @map("expiry_warning_sent")
+  stripePaymentIntentId String?    @map("stripe_payment_intent_id")
+  stripeRefundId        String?    @map("stripe_refund_id")
+  totalRefundedCents    Int        @default(0) @map("total_refunded_cents")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
 
-  billingCharges      LockBillingCharge[]
+  billingCharges LockBillingCharge[]
 
   @@index([workerId, lockStatus])
   @@index([employerId])
@@ -779,14 +787,14 @@ model WorkerLock {
 }
 
 model LockBillingCharge {
-  id           String       @id @default(cuid())
-  lockId       String       @map("lock_id")
-  lock         WorkerLock   @relation(fields: [lockId], references: [id], onDelete: Cascade)
-  employerId   String       @map("employer_id")
-  workerId     String       @map("worker_id")
-  amount       Decimal      @db.Decimal(10, 2)
-  currency     String       @default("USD")
-  chargeDate   DateTime     @map("charge_date")
+  id                    String       @id @default(cuid())
+  lockId                String       @map("lock_id")
+  lock                  WorkerLock   @relation(fields: [lockId], references: [id], onDelete: Cascade)
+  employerId            String       @map("employer_id")
+  workerId              String       @map("worker_id")
+  amount                Decimal      @db.Decimal(10, 2)
+  currency              String       @default("USD")
+  chargeDate            DateTime     @map("charge_date")
   chargeStatus          ChargeStatus @default(PENDING) @map("charge_status")
   invoiceId             String?      @map("invoice_id")
   stripePaymentIntentId String?      @map("stripe_payment_intent_id")
@@ -806,20 +814,20 @@ model LockBillingCharge {
 // ─────────────────────────────────────────────
 
 model EmailLog {
-  id           String      @id @default(cuid())
-  userId       String?
-  emailType    EmailType
-  toAddress    String
-  subject      String
-  templateId   String?
-  variables    Json        @default("{}")
-  status       EmailStatus @default(QUEUED)
+  id            String      @id @default(cuid())
+  userId        String?
+  emailType     EmailType
+  toAddress     String
+  subject       String
+  templateId    String?
+  variables     Json        @default("{}")
+  status        EmailStatus @default(QUEUED)
   providerMsgId String?
-  errorMessage String?
-  sentAt       DateTime?
-  createdAt    DateTime    @default(now())
+  errorMessage  String?
+  sentAt        DateTime?
+  createdAt     DateTime    @default(now())
 
-  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
@@ -841,7 +849,7 @@ model Notification {
   metadata  Json?
   createdAt DateTime         @default(now())
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
@@ -851,7 +859,7 @@ model Notification {
 model Message {
   id          String   @id @default(cuid())
   senderId    String
-  sender      User     @relation("SentMessages",    fields: [senderId],    references: [id])
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
   recipientId String
   recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
   body        String   @db.Text
@@ -868,19 +876,19 @@ model Message {
 // ─────────────────────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  actorId    String?
-  action     String
-  entity     String
-  entityId   String?
-  oldValue   Json?
-  newValue   Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String?
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])
@@ -902,7 +910,7 @@ model VerificationCode {
   attempts  Int                  @default(0)
   createdAt DateTime             @default(now()) @map("created_at")
 
-  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@map("verification_codes")
@@ -935,7 +943,7 @@ model AdminAuditLog {
 
 model AiDecisionLog {
   id           String   @id @default(cuid())
-  moduleType   String   // matching | fraud | pricing | email
+  moduleType   String // matching | fraud | pricing | email
   entityType   String
   entityId     String
   inputData    Json
@@ -955,15 +963,15 @@ model AiDecisionLog {
 // ─────────────────────────────────────────────
 
 model JobRunLog {
-  id                String   @id @default(cuid())
-  jobName           String   @map("job_name")
-  status            String   // 'success' | 'partial' | 'failed'
-  recordsProcessed  Int      @default(0) @map("records_processed")
-  recordsFailed     Int      @default(0) @map("records_failed")
-  errorMessage      String?  @map("error_message")
-  startedAt         DateTime @map("started_at")
-  completedAt       DateTime @map("completed_at")
-  durationMs        Int      @map("duration_ms")
+  id               String   @id @default(cuid())
+  jobName          String   @map("job_name")
+  status           String // 'success' | 'partial' | 'failed'
+  recordsProcessed Int      @default(0) @map("records_processed")
+  recordsFailed    Int      @default(0) @map("records_failed")
+  errorMessage     String?  @map("error_message")
+  startedAt        DateTime @map("started_at")
+  completedAt      DateTime @map("completed_at")
+  durationMs       Int      @map("duration_ms")
 
   @@index([jobName])
   @@index([startedAt])
@@ -979,7 +987,7 @@ model Payment {
   userId          String
   stripePaymentId String?
   stripeInvoiceId String?  @unique
-  amount          Int      // in smallest currency unit (e.g. cents/qindarka)
+  amount          Int // in smallest currency unit (e.g. cents/qindarka)
   currency        String   @default("USD")
   status          String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED
   type            String   @default("SUBSCRIPTION") // SUBSCRIPTION | WORKER_LOCK | APPLICATION_FEE
@@ -987,8 +995,8 @@ model Payment {
   metadata        Json?
   createdAt       DateTime @default(now())
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoice         Invoice?
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice Invoice?
 
   @@index([userId])
   @@index([stripeInvoiceId])
@@ -1010,19 +1018,19 @@ model Payment {
 // refund" would duplicate information the sign already carries losslessly.
 model Invoice {
   id            String   @id @default(cuid())
-  invoiceNumber String   @unique   // "DH-2026-00001" — see InvoiceCounter below
+  invoiceNumber String   @unique // "DH-2026-00001" — see InvoiceCounter below
   paymentId     String   @unique
   userId        String
-  type          String              // mirrors Payment.type verbatim
-  amountCents   Int                 // signed — negative = refund/credit note
+  type          String // mirrors Payment.type verbatim
+  amountCents   Int // signed — negative = refund/credit note
   currency      String
   description   String
-  filePath      String              // storage path (invoices/<userId>/<invoiceNumber>.pdf) — NOT a URL
+  filePath      String // storage path (invoices/<userId>/<invoiceNumber>.pdf) — NOT a URL
   issuedAt      DateTime @default(now())
   createdAt     DateTime @default(now())
 
-  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -1051,4 +1059,67 @@ model PlatformConfig {
   updatedBy   String?  @map("updated_by")
 
   @@map("platform_config")
+}
+
+// ─────────────────────────────────────────────
+// GROWTH / MARKETING AGENT SYSTEM
+// ─────────────────────────────────────────────
+// Infrastructure only — GrowthAgentTask is the task/approval log for
+// whatever agents get built on top of this (see
+// services/growth/agent-runner.ts's AGENT_HANDLERS registry, empty for
+// now), GrowthContentDraft is where agent-generated content lands pending
+// admin review/publish. No agent logic, no relations to other models yet —
+// deliberately standalone so this can be scaffolded without touching
+// anything existing.
+
+enum GrowthTaskStatus {
+  PENDING
+  IN_PROGRESS
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  COMPLETED
+  FAILED
+}
+
+model GrowthAgentTask {
+  id              String           @id @default(cuid())
+  agentName       String           @map("agent_name")
+  taskType        String           @map("task_type")
+  status          GrowthTaskStatus @default(PENDING)
+  inputData       Json?            @map("input_data")
+  outputData      Json?            @map("output_data")
+  summary         String?          @db.Text
+  errorMessage    String?          @map("error_message") @db.Text
+  approvedBy      String?          @map("approved_by")
+  approvedAt      DateTime?        @map("approved_at")
+  rejectedAt      DateTime?        @map("rejected_at")
+  rejectionReason String?          @map("rejection_reason") @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@index([agentName])
+  @@index([status])
+  @@index([createdAt])
+  @@map("growth_agent_tasks")
+}
+
+model GrowthContentDraft {
+  id              String           @id @default(cuid())
+  contentType     String           @map("content_type")
+  title           String
+  slug            String           @unique
+  body            String           @db.Text
+  metaTitle       String?          @map("meta_title") @db.VarChar(70)
+  metaDescription String?          @map("meta_description") @db.VarChar(200)
+  targetKeyword   String?          @map("target_keyword")
+  sourceTaskId    String?          @map("source_task_id")
+  status          GrowthTaskStatus @default(PENDING)
+  publishedAt     DateTime?        @map("published_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@index([contentType])
+  @@index([status])
+  @@map("growth_content_drafts")
 }

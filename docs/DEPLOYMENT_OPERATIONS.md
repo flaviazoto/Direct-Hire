@@ -29,7 +29,7 @@ api.directhire.cc   (Railway — Express/Node, single process, auto-deploys from
 ```
 
 - **Frontend deploy**: Vercel, `main` branch, standard `next build`. Vercel's build-time linting is stricter than a local `tsc` check (see §4, Build discipline) — a `tsc`-clean commit can still fail on Vercel.
-- **Backend deploy**: Railway, `main` branch, `backend/` as the deploy root. One Express process; no separate worker dyno is currently provisioned (relevant to the BullMQ note in §4).
+- **Backend deploy**: Railway, `main` branch, `backend/` as the deploy root. One Express process; no separate worker dyno is currently provisioned — the repo is prepared for one (`backend/railway.worker.json`), but creating the actual second Railway service is a manual dashboard step nobody has done yet (see §4, "Jobs worker service").
 - **Database**: Supabase-managed Postgres. Migrations are **not** part of the auto-deploy pipeline — every migration in this project's history has been run manually and deliberately via `prisma migrate deploy` (see §4).
 - **Domain/proxy design**: the frontend's `next.config.js` proxies `/api/:path*` to `NEXT_PUBLIC_API_URL` unconditionally. This single rewrite is why the platform's one-cookie auth design works at all in production — see `docs/ARCHITECTURE.md` §7 for why only one `Set-Cookie` header is ever sent.
 
@@ -183,6 +183,19 @@ One-off data migrations (as opposed to schema migrations) follow a consistent, d
 | `verification-code-cleanup` | Every 6 hours | Deletes expired one-time verification codes |
 
 **Inline-scheduler characteristics**: with `JOBS_INLINE_MODE=true` (the documented default) and no `REDIS_URL`, all five jobs run via in-process `setTimeout` chains — no Redis dependency at all. Each job computes the delay until its next scheduled fire time and reschedules itself after running, so a process restart does **not** desynchronize the schedule going forward. What it does **not** have is persistence or catch-up: if the Railway process happens to be down at the exact moment a job would have fired, that run is simply skipped — there is no backfill mechanism. Every job is also reachable on demand via `GET /api/cron?job=<name>` behind an `X-Cron-Secret` header, which is the way to manually catch up a missed run. Every run — scheduled or manual — writes a row to `JobRunLog` (`jobName`, `status`, `recordsProcessed`/`recordsFailed`, timing), giving a queryable history independent of Railway's own logs.
+
+### Jobs worker service (`backend/scripts/jobs-worker.ts`)
+
+This is the consumer for the `"directhire"` ad-hoc BullMQ queue — the one `enqueue()` (`services/queue/index.ts`) pushes to for `email.*`, `scoring.calculateMatchScores`, `seo.generateJobMetadata`, and `growth.runAgentTask` whenever `JOBS_INLINE_MODE=false`. It is a **second, separate Railway service**, not part of the main Express process, and as of this writing it has not been created yet — the repo is prepared for it, but standing up the actual service in Railway's dashboard is a manual step still outstanding.
+
+Setup, when ready to create it:
+
+- **Deploy root**: `backend/` — same as the main API service.
+- **Config file**: `backend/railway.worker.json` defines this service's build (`npm install && npm run build`) and start (`npm run worker`) commands. **This is deliberately not named `railway.json`** — the main API service already lives at the same `backend/` deploy root, and Railway auto-detects a plain `railway.json`/`railway.toml` found at a service's root directory. Giving the worker's config file a distinct name means it is inert until a service is explicitly pointed at it, so it can never be silently picked up by (and override) the main service's existing dashboard-configured settings. When creating the new service, set **Settings → Config-as-code → Config File Path** to `railway.worker.json` for that service specifically — do not rename it to `railway.json` or the collision risk above becomes real.
+- **`REDIS_URL`**: **must be set to the exact same value as the main API service's `REDIS_URL`** — copy the value over, do not provision a second Redis addon for this service. The worker only does anything useful if it's consuming the same Redis-backed queue the main API is publishing to; a second, independent Redis instance would leave the worker listening to a permanently empty queue with no error or warning.
+- **`tsx` availability**: `tsx` was moved from `devDependencies` to `dependencies` in `backend/package.json` specifically so `npm run worker` (which shells out to `tsx scripts/jobs-worker.ts`) still works if Railway's install step ever runs with `--omit=dev`/`npm ci --production` for this service. No other package in this script's import chain (traced through `services/queue`, `services/email`, `services/growth/**`, `services/ai/anthropic-client.ts`, `lib/prisma.ts`) is dev-only.
+
+**Currently a no-op once created, and that's expected**: the production default is `JOBS_INLINE_MODE=true`, under which the main API process runs every enqueued job synchronously in-request and never pushes anything onto the `"directhire"` Redis queue at all. Until/unless `JOBS_INLINE_MODE` is flipped to `false` on the main API service, this worker service would sit connected to Redis with nothing to consume — harmless, but also doing nothing. It only starts mattering the moment inline mode is turned off.
 
 ### Backup procedure
 

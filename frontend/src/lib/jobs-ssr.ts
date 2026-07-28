@@ -40,6 +40,48 @@ export interface PublicJobDetail {
 export interface PublicJobListItem {
   id: string;
   createdAt: string;
+  applicationDeadline: string | null;
+}
+
+// List-shaped job (matches backend's JOB_LIST_SELECT in
+// public-jobs.controller.ts) — narrower than PublicJobDetail: no
+// description/requirements/benefits, since the list endpoint never selects
+// those. Used by the server-rendered /jobs listing page.
+export interface PublicJobListRow {
+  id: string;
+  title: string;
+  companyName: string;
+  country: string;
+  city: string;
+  remoteAllowed: boolean;
+  salaryMin: string | number | null;
+  salaryMax: string | number | null;
+  salaryCurrency: string;
+  contractType: string;
+  experienceRequired: number;
+  category: string;
+  requiredSkills: string[];
+  languagesRequired: string[];
+  visaSupport: boolean;
+  accommodation: boolean;
+  applicationDeadline: string | null;
+  positionsAvailable: number;
+  viewCount: number;
+  applicationCount: number;
+  createdAt: string;
+  // External jobs (admin-pasted links) share this same list response,
+  // tagged source: "external" — see backend/src/lib/external-jobs.ts.
+  source: "jobpost" | "external";
+  sourceName?: string;
+  externalUrl?: string;
+}
+
+export interface PublicJobsListResult {
+  jobs: PublicJobListRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 // Used by the [id] page and generateMetadata — Next's fetch cache dedupes
@@ -56,6 +98,106 @@ export async function getPublicJobServer(id: string): Promise<PublicJobDetail | 
     return json.success && json.data ? json.data : null;
   } catch {
     return null;
+  }
+}
+
+// Next.js page-component searchParams shape (App Router hands this to
+// page.tsx automatically — values are a single string, an array for
+// repeated keys, or undefined if absent).
+export type PublicJobsSearchParams = Record<string, string | string[] | undefined>;
+
+function firstParam(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// Same query param names buildWhere() in backend/src/controllers/
+// public-jobs.controller.ts expects, and the same names the client's
+// filtersToParams() has always sent — this just moves that translation
+// server-side so both the SSR fetch and any client-side "load more" fetch
+// agree on the wire format.
+export function jobsSearchParamsToQuery(sp: PublicJobsSearchParams): Record<string, string> {
+  const q: Record<string, string> = {};
+  const search       = firstParam(sp.search);
+  const country      = firstParam(sp.country);
+  const category     = firstParam(sp.category);
+  const contractType = firstParam(sp.contract_type);
+  const salaryMin    = firstParam(sp.salary_min);
+  const salaryMax    = firstParam(sp.salary_max);
+  const visaSupport  = firstParam(sp.visa_support);
+  const remote       = firstParam(sp.remote);
+  const skills       = firstParam(sp.skills);
+  const sort         = firstParam(sp.sort);
+
+  if (search)       q.search        = search;
+  if (country)      q.country       = country;
+  if (category)     q.category      = category;
+  if (contractType) q.contract_type = contractType;
+  if (salaryMin)     q.salary_min    = salaryMin;
+  if (salaryMax)     q.salary_max    = salaryMax;
+  if (visaSupport === "true") q.visa_support = "true";
+  if (remote === "true")      q.remote       = "true";
+  if (skills)        q.skills = skills;
+  q.sort = sort ?? "newest";
+  return q;
+}
+
+// Server-rendered /jobs listing page — same /api/public/jobs endpoint the
+// browser client (publicJobsApi.getJobs) and the sitemap
+// (getAllPublicJobIdsServer, below) already use. includeExternal is only
+// passed for page 1, mirroring the client's existing behavior (see
+// public-jobs.controller.ts's getPublicJobs comment on why external jobs
+// are opt-in and page-1-only).
+export async function getPublicJobsListServer(
+  searchParams: PublicJobsSearchParams,
+  page = 1,
+  limit = 20,
+): Promise<PublicJobsListResult> {
+  const query = jobsSearchParamsToQuery(searchParams);
+  query.page = String(page);
+  query.limit = String(limit);
+  if (page === 1) query.includeExternal = "true";
+
+  const empty: PublicJobsListResult = { jobs: [], total: 0, page, limit, totalPages: 0 };
+  try {
+    const res = await fetch(`${API_BASE}/api/public/jobs?${new URLSearchParams(query)}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return empty;
+    const json = await res.json() as {
+      success: boolean; data?: PublicJobListRow[]; total?: number; totalPages?: number;
+    };
+    if (!json.success || !json.data) return empty;
+    return {
+      jobs: json.data,
+      total: json.total ?? 0,
+      page,
+      limit,
+      totalPages: json.totalPages ?? 0,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+export async function getPublicJobCategoriesServer(): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/public/jobs/categories`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const json = await res.json() as { success: boolean; data?: string[] };
+    return json.success && json.data ? json.data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getPublicJobCountriesServer(): Promise<{ country: string; count: number }[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/public/jobs/countries`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const json = await res.json() as { success: boolean; data?: { country: string; count: number }[] };
+    return json.success && json.data ? json.data : [];
+  } catch {
+    return [];
   }
 }
 

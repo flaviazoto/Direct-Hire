@@ -249,6 +249,12 @@ export async function approveJob(req: Request, res: Response, next: NextFunction
     // waits on scoring dozens of worker profiles.
     enqueue("scoring.calculateMatchScores", { jobPostId: updated.id }).catch(console.error);
 
+    // AI Content Agent — generates SEO meta title/description/intro for the
+    // public job listing. Approval-time only (not at creation), since a
+    // DRAFT/PENDING_MODERATION job may still be edited or rejected before
+    // ever going public. Same fire-and-forget style as the scoring job above.
+    enqueue("seo.generateJobMetadata", { jobPostId: updated.id }).catch(console.error);
+
     return ok(res, { id: updated.id, status: updated.status });
   } catch (e) { next(e); }
 }

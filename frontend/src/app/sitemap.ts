@@ -26,12 +26,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const jobs = await getAllPublicJobIdsServer();
-  const jobEntries: MetadataRoute.Sitemap = jobs.map(job => ({
-    url: `${APP_URL}/jobs/${job.id}`,
-    lastModified: job.createdAt,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
+  const now = Date.now();
+  const jobEntries: MetadataRoute.Sitemap = jobs
+    .filter(job => !job.applicationDeadline || new Date(job.applicationDeadline).getTime() >= now)
+    .map(job => ({
+      url: `${APP_URL}/jobs/${job.id}`,
+      lastModified: job.createdAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
 
   return [...staticEntries, ...jobEntries];
 }

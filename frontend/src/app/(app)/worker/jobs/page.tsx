@@ -27,6 +27,7 @@
 //   already applied to in an earlier session, and hit a 409 on click.
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
@@ -348,7 +349,10 @@ function DesktopFilterSidebar({
   activeCount: number;
 }) {
   return (
-    <div className="glass-card" style={{ padding: "20px 18px", position: "sticky", top: 20 }}>
+    <div className="glass-card" style={{
+      padding: "20px 18px", position: "sticky", top: 20,
+      maxHeight: "calc(100vh - 40px)", overflowY: "auto",
+    }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Filters</span>
         {activeCount > 0 && (
@@ -470,7 +474,7 @@ function CountryStrip({ countries, selected, onSelect }: {
   return (
     <>
       {/* Mobile: single-row horizontal scroll — no vertical space cost */}
-      <div className="sm:hidden" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+      <div className="flex sm:hidden" style={{ gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
         {countries.map(entry => <Chip key={entry.country} entry={entry} />)}
       </div>
       {/* Desktop: wrapping grid, room to breathe */}
@@ -1066,8 +1070,14 @@ function WorkerJobsContent() {
   const [isSearchable, setIsSearchable] = useState(true);
   const [workerVerified, setWorkerVerified] = useState(true); // optimistic until profile loads, avoids a CTA flash
   const [toast, setToast] = useState<ToastData>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // mobile drawer only — desktop sidebar has no open/close state
   const [applyModal, setApplyModal] = useState<ApplyModalState | null>(null);
+  // Portal target readiness (SSR-safe) — same pattern DashboardHeader.tsx
+  // uses for its mobile nav drawer: a portal to document.body escapes any
+  // ancestor's stacking context (transform/filter/backdrop-filter), which a
+  // plain position:fixed child does NOT reliably do.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const showToast = useCallback((msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
@@ -1265,16 +1275,20 @@ function WorkerJobsContent() {
         />
       )}
 
-      {/* Mobile filter sheet */}
-      <MobileFilterSheet
-        open={filtersOpen}
-        filters={filters}
-        options={options}
-        onFilter={setFilter}
-        onClear={clearAllFilters}
-        onClose={() => setFiltersOpen(false)}
-        activeCount={activeFilterCount}
-      />
+      {/* Mobile filter sheet — portaled to document.body so it can never be
+          trapped inside an ancestor's stacking context; see `mounted` note above. */}
+      {mounted && createPortal(
+        <MobileFilterSheet
+          open={filtersOpen}
+          filters={filters}
+          options={options}
+          onFilter={setFilter}
+          onClear={clearAllFilters}
+          onClose={() => setFiltersOpen(false)}
+          activeCount={activeFilterCount}
+        />,
+        document.body,
+      )}
 
       {/* ── Page Header ── */}
       <div className="px-4 sm:px-6 md:px-10 py-5 md:py-9" style={{
@@ -1371,13 +1385,17 @@ function WorkerJobsContent() {
             Search
           </button>
 
-          <button onClick={() => setFiltersOpen(true)} style={{
+          {/* Desktop (lg+) shows the persistent sidebar instead — this trigger
+              is mobile-only. Uses className (not inline style) for the
+              show/hide so the lg: breakpoint can actually win; an inline
+              `display` would out-specificity any responsive class. */}
+          <button onClick={() => setFiltersOpen(true)} className="flex lg:hidden" style={{
             height: 40, padding: "0 14px", borderRadius: 10,
             background: activeFilterCount > 0 ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.05)",
             border: activeFilterCount > 0 ? "1px solid rgba(20,184,166,0.35)" : "1px solid rgba(255,255,255,0.1)",
             color: activeFilterCount > 0 ? "#2dd4bf" : "#94a3b8",
             fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            display: "flex", alignItems: "center", gap: 6,
+            alignItems: "center", gap: 6,
           }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
@@ -1409,14 +1427,15 @@ function WorkerJobsContent() {
           <CountryStrip countries={countries} selected={filters.country} onSelect={c => setFilter("country", c)} />
         </div>
 
-        {/* ── Main Layout: desktop sidebar + list, mobile list only (sheet handles filters) ── */}
-        <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+        {/* ── Main Layout: lg+ = persistent two-column grid (sidebar + results);
+            below lg = single column, filters live in the mobile sheet instead ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
 
-          <div className="hidden md:block" style={{ width: 240, flexShrink: 0 }}>
+          <div className="hidden lg:block">
             <DesktopFilterSidebar filters={filters} options={options} onFilter={setFilter} onClear={clearAllFilters} activeCount={activeFilterCount} />
           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>
                 {loading ? "Loading…" : (

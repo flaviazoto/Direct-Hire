@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "worker": "tsx scripts/jobs-worker.ts",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
@@ -26,6 +27,7 @@
     "schema": "prisma/schema.prisma"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.100.1",
     "bcryptjs": "^2.4.3",
@@ -45,6 +47,7 @@
     "resend": "^3.5.0",
     "stripe": "^22.1.0",
     "svix": "^1.90.0",
+    "tsx": "^4.7.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -60,7 +63,6 @@
     "@types/pg": "^8.20.0",
     "pg": "^8.22.0",
     "prisma": "^5.22.0",
-    "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   }
 }
