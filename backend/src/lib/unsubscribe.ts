@@ -5,7 +5,7 @@
 //
 // Classification (per EmailType — see prisma/schema.prisma):
 //   NON-TRANSACTIONAL (suppressible — user can opt out):
-//     ONBOARDING_REMINDER, JOB_MATCH
+//     ONBOARDING_REMINDER, JOB_MATCH, EMPLOYER_OUTREACH
 //   TRANSACTIONAL (always sent, never suppressed):
 //     WELCOME, EMAIL_VERIFICATION, PASSWORD_RESET, ONBOARDING_SUBMITTED,
 //     ACCOUNT_APPROVED, ACCOUNT_REJECTED, ACCOUNT_NEEDS_CHANGES,
@@ -18,6 +18,13 @@
 // status change the user is owed) — added as its own EmailType instead of
 // reusing GENERAL specifically so it could be classified suppressible here
 // without dragging every other GENERAL call site along with it.
+//
+// EMPLOYER_OUTREACH (added ahead of the Employer Acquisition Agent — see
+// docs/ARCHITECTURE.md §11) is the same reasoning as JOB_MATCH: growth-agent
+// re-engagement/outreach to employers is marketing-class, not a status
+// change anyone is owed, so it needs to be suppressible — kept as its own
+// type for the same reason JOB_MATCH is, rather than reusing GENERAL. Not
+// wired to any send call site yet; this pass only adds the classification.
 //
 // GENERAL is a catch-all reused across job-moderation outcomes, worker-lock
 // lifecycle, posting-rights changes, contact-form receipts, and direct
@@ -39,6 +46,7 @@ import type { EmailType } from "../types";
 const NON_TRANSACTIONAL_EMAIL_TYPES: ReadonlySet<EmailType> = new Set<EmailType>([
   "ONBOARDING_REMINDER",
   "JOB_MATCH",
+  "EMPLOYER_OUTREACH",
 ]);
 
 export function isSuppressible(emailType: EmailType): boolean {

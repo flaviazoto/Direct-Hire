@@ -9,6 +9,7 @@ import type { GrowthAgentTask, GrowthTaskStatus, Prisma } from "@prisma/client";
 import { runTechnicalSeoAudit } from "./agents/technical-seo-agent";
 import { runContentAgent } from "./agents/content-agent";
 import { runAnalyticsAgent } from "./agents/analytics-agent";
+import { runEmployerReengagementAgent } from "./agents/employer-reengagement-agent";
 
 // taskStatus lets a handler override what the task ends up as on success —
 // defaults to COMPLETED (read-only audits like technical-seo-agent don't
@@ -19,9 +20,10 @@ export type AgentHandler = (task: GrowthAgentTask) => Promise<AgentHandlerResult
 
 // Keyed by GrowthAgentTask.agentName. Populate as real agents are built.
 export const AGENT_HANDLERS: Record<string, AgentHandler> = {
-  "technical-seo-agent": runTechnicalSeoAudit,
-  "content-agent":       runContentAgent,
-  "analytics-agent":     runAnalyticsAgent,
+  "technical-seo-agent":          runTechnicalSeoAudit,
+  "content-agent":                runContentAgent,
+  "analytics-agent":              runAnalyticsAgent,
+  "employer-reengagement-agent":  runEmployerReengagementAgent,
 };
 
 export async function runGrowthAgent(task: GrowthAgentTask): Promise<void> {

@@ -188,6 +188,31 @@ export async function getEligibleJobs(req: Request, res: Response, next: NextFun
   } catch (e) { next(e); }
 }
 
+// ── GET /admin/growth/eligible-employers ───────────────────────────────────────
+// Feeds the "Draft Employer Re-engagement Email" picker on the admin growth
+// page — up to 20 lapsed (subscriptionStatus INACTIVE) employers, ordered
+// newest-inactive-first. Ordered by updatedAt, not createdAt: the webhook
+// that sets subscriptionStatus to INACTIVE (webhook.controller.ts, Stripe's
+// customer.subscription.deleted) does a plain prisma.employerProfile.
+// updateMany(), which still bumps @updatedAt regardless of which fields
+// changed — so updatedAt reflects when the row was last written, which in
+// practice is the INACTIVE transition for a lapsed employer that hasn't
+// been touched since. createdAt would only reflect original registration,
+// unrelated to when they went inactive.
+
+export async function getEligibleEmployers(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rows = await prisma.employerProfile.findMany({
+      where:   { subscriptionStatus: "INACTIVE" },
+      select:  { id: true, companyName: true, industry: true, country: true, subscriptionStatus: true },
+      orderBy: { updatedAt: "desc" },
+      take:    20,
+    });
+
+    return ok(res, rows);
+  } catch (e) { next(e); }
+}
+
 // ── GET /admin/growth/content ──────────────────────────────────────────────────
 
 export async function getGrowthContentDrafts(req: Request, res: Response, next: NextFunction) {

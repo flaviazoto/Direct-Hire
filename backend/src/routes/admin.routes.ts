@@ -95,6 +95,7 @@ adminRouter.get("/system-health", requireAdmin, systemHealthCtrl.getSystemHealth
 // Static routes before /:id param
 adminRouter.get( "/growth/content",              requireAdmin, growthCtrl.getGrowthContentDrafts);
 adminRouter.get( "/growth/eligible-jobs",         requireAdmin, growthCtrl.getEligibleJobs);
+adminRouter.get( "/growth/eligible-employers",    requireAdmin, growthCtrl.getEligibleEmployers);
 adminRouter.post("/growth/tasks/run",            requireAdmin, growthCtrl.runGrowthTask);
 adminRouter.get( "/growth/tasks",                requireAdmin, growthCtrl.getGrowthTasks);
 adminRouter.get( "/growth/tasks/:id",            requireAdmin, growthCtrl.getGrowthTaskDetail);

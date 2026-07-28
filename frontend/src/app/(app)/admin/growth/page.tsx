@@ -49,6 +49,14 @@ interface EligibleJob {
   country:  string;
 }
 
+interface EligibleEmployer {
+  id:                 string;
+  companyName:        string | null;
+  industry:           string | null;
+  country:            string | null;
+  subscriptionStatus: string | null;
+}
+
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
 function truncate(text: string, max = 100): string {
@@ -150,6 +158,12 @@ export default function AdminGrowthPage() {
   const [eligibleLoading, setEligibleLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  const [showReengagement, setShowReengagement] = useState(false);
+  const [eligibleEmployers, setEligibleEmployers] = useState<EligibleEmployer[]>([]);
+  const [eligibleEmployersLoading, setEligibleEmployersLoading] = useState(false);
+  const [selectedEmployerId, setSelectedEmployerId] = useState("");
+  const [draftingReengagement, setDraftingReengagement] = useState(false);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -302,6 +316,44 @@ export default function AdminGrowthPage() {
     }
   }
 
+  function openReengagement() {
+    setShowReengagement(true);
+    setSelectedEmployerId("");
+    setEligibleEmployersLoading(true);
+    adminApi.getEligibleEmployers()
+      .then(res => {
+        if (res.success) setEligibleEmployers((res.data as EligibleEmployer[]) ?? []);
+        else showToast(res.error ?? "Could not load eligible employers", false);
+      })
+      .catch(() => showToast("Network error - could not load eligible employers", false))
+      .finally(() => setEligibleEmployersLoading(false));
+  }
+
+  async function draftReengagement() {
+    if (!selectedEmployerId) return;
+    setDraftingReengagement(true);
+    try {
+      const res = await adminApi.runGrowthTask({
+        agentName: "employer-reengagement-agent",
+        taskType:  "employer-reengagement",
+        inputData: { employerProfileId: selectedEmployerId },
+      });
+      if (res.success) {
+        showToast("Re-engagement email draft started");
+        setShowReengagement(false);
+        setPage(1);
+        loadTasks();
+        loadCounts();
+      } else {
+        showToast(res.error ?? "Could not start draft", false);
+      }
+    } catch {
+      showToast("Network error - could not start draft", false);
+    } finally {
+      setDraftingReengagement(false);
+    }
+  }
+
   async function handleReject(id: string) {
     if (rejectReason.trim().length === 0) return;
     setActingId(id);
@@ -398,6 +450,18 @@ export default function AdminGrowthPage() {
           >
             {runningSnapshot ? "Starting…" : "Run Weekly Analytics Snapshot"}
           </button>
+          <button
+            onClick={() => (showReengagement ? setShowReengagement(false) : openReengagement())}
+            style={{
+              padding: "10px 20px", borderRadius: 10,
+              background: showReengagement ? "rgba(255,255,255,0.06)" : C.accent,
+              border: showReengagement ? `1px solid ${C.border}` : "none",
+              color: showReengagement ? C.text : "#fff", fontSize: 14, fontWeight: 700,
+              whiteSpace: "nowrap" as const, cursor: "pointer",
+            }}
+          >
+            {showReengagement ? "Cancel" : "Draft Employer Re-engagement Email"}
+          </button>
         </div>
       </div>
 
@@ -437,6 +501,48 @@ export default function AdminGrowthPage() {
                 }}
               >
                 {generating ? "Generating…" : "Generate"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Employer re-engagement picker panel ───────────────────────────────── */}
+      {showReengagement && (
+        <div style={{
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+          padding: 20, marginBottom: 20, display: "flex", flexDirection: "column", gap: 12,
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+            Draft a re-engagement email for a lapsed employer
+          </div>
+          {eligibleEmployersLoading ? (
+            <div style={{ fontSize: 13, color: C.muted }}>Loading eligible employers…</div>
+          ) : eligibleEmployers.length === 0 ? (
+            <div style={{ fontSize: 13, color: C.muted }}>No inactive employers available to draft outreach for.</div>
+          ) : (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" as const, alignItems: "center" }}>
+              <select
+                value={selectedEmployerId}
+                onChange={e => setSelectedEmployerId(e.target.value)}
+                style={{ ...selectStyle, minWidth: 320, color: selectedEmployerId ? C.text : C.muted }}
+              >
+                <option value="">Select an employer…</option>
+                {eligibleEmployers.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.companyName ?? "Unnamed company"} — {emp.industry ?? "unknown industry"}, {emp.country ?? "unknown country"}</option>
+                ))}
+              </select>
+              <button
+                onClick={draftReengagement}
+                disabled={!selectedEmployerId || draftingReengagement}
+                style={{
+                  padding: "8px 18px", borderRadius: 8, border: "none",
+                  background: !selectedEmployerId || draftingReengagement ? "rgba(224,176,32,0.3)" : C.accent,
+                  color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: !selectedEmployerId || draftingReengagement ? "default" : "pointer",
+                }}
+              >
+                {draftingReengagement ? "Drafting…" : "Draft Email"}
               </button>
             </div>
           )}

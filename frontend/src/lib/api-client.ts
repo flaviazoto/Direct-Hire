@@ -311,6 +311,7 @@ export const adminApi = {
   runGrowthTask: (body: { agentName: string; taskType: string; inputData?: Record<string, unknown> }) =>
     post("/admin/growth/tasks/run", body),
   getEligibleJobs: () => get("/admin/growth/eligible-jobs"),
+  getEligibleEmployers: () => get("/admin/growth/eligible-employers"),
   getGrowthTasks: (params?: Record<string, string>) =>
     get(`/admin/growth/tasks${params ? "?" + new URLSearchParams(params) : ""}`),
   getGrowthTaskDetail: (id: string) => get(`/admin/growth/tasks/${id}`),

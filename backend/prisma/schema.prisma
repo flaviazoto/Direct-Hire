@@ -87,11 +87,15 @@ enum EmailType {
   APPLICATION_REJECTED
   INVOICE_RECEIPT
   SYSTEM_HEALTH_ALERT
-  // Suppressible (marketing-class) — see lib/unsubscribe.ts. Kept as its own
-  // type rather than folded into GENERAL specifically so it CAN be
+  // Suppressible (marketing-class) — see lib/unsubscribe.ts. Kept as their own
+  // types rather than folded into GENERAL specifically so they CAN be
   // suppressed without also suppressing the many transactional emails that
   // reuse GENERAL (job moderation, lock lifecycle, posting rights, messages).
   JOB_MATCH
+  // Growth-agent employer outreach/re-engagement (added ahead of the agent
+  // itself — see docs/ARCHITECTURE.md §11 and the Employer Acquisition Agent
+  // audit). Not wired to any send call site yet.
+  EMPLOYER_OUTREACH
   GENERAL
 }
 
