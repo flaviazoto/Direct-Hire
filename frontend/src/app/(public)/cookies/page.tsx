@@ -143,9 +143,8 @@ export default function CookiesPage() {
 
               <Section id="section-2" title="2. Essential cookies">
                 <P>Essential cookies are required for the platform to function. They cannot be disabled because removing them would break core features including login, session management, and security.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Authentication:</strong> JWT access tokens are stored as HttpOnly, Secure, SameSite=Strict cookies. These expire with your session or after a configured idle timeout.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>CSRF protection:</strong> a CSRF token cookie is set to prevent cross-site request forgery on form submissions.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Session state:</strong> a short-lived session identifier used to keep you logged in across page navigations without requiring re-authentication.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Authentication:</strong> we set one essential cookie, a refresh token, as HttpOnly and Secure, scoped only to our token-refresh endpoint — it cannot be read by JavaScript and is not sent with general page requests. Your short-lived access token is returned to your browser when you log in and is kept in your browser&apos;s local storage rather than a cookie; it is sent with each request via an authorization header, not automatically attached by the browser.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Cross-site request handling:</strong> because the access token travels via an authorization header rather than an ambient cookie, it is not automatically attached to requests originating from another site, which reduces cross-site request forgery exposure on our platform. We do not currently set a dedicated CSRF token cookie.</P>
               </Section>
 
               <Section id="section-3" title="3. Analytics cookies">

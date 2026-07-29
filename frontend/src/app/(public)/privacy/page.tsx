@@ -171,13 +171,13 @@ export default function PrivacyPage() {
               <Section id="section-5" title="5. Data Sharing">
                 <P>We share your data only in the following circumstances:</P>
                 <P><strong style={{ color: "#cbd5e1" }}>With employers:</strong> workers&apos; profile information, match scores, and uploaded materials are visible to verified employers who have an active subscription and are searching for candidates matching your profile. Your contact details are only shared when you apply to a job or are shortlisted.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery, and payment processing. All providers are contractually bound to process your data only as instructed.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery, and payment processing. We also use a third-party AI service to help generate marketing and search-visibility content (such as article drafts about job categories and locations) from already-public job posting data; this service does not process your personal profile data. All providers are contractually bound to process data only as instructed.</P>
                 <P><strong style={{ color: "#cbd5e1" }}>Legal requirements:</strong> we may disclose data to comply with applicable law or lawful requests from authorities.</P>
                 <P>We do not sell your data. We do not share data with advertisers.</P>
               </Section>
 
               <Section id="section-6" title="6. Sensitive Data">
-                <P>Passport numbers, administrator IDs, and similar identity data are encrypted using AES-256-GCM before being stored in our database. The encryption key is stored separately from the data. Only the minimum required staff can request decryption for verification purposes, and all access is logged in our audit system.</P>
+                <P>Passport numbers, administrator IDs, and similar identity data are encrypted using AES-256-GCM before being stored in our database. The encryption key is held as a server-side environment variable, access to which is restricted to our backend infrastructure. Decryption of this data is limited to the minimum staff access required for identity verification purposes.</P>
               </Section>
 
               <Section id="section-7" title="7. Data Retention">
@@ -190,7 +190,7 @@ export default function PrivacyPage() {
               </Section>
 
               <Section id="section-9" title="9. Cookies">
-                <P>We use only strictly necessary cookies for authentication (JWT tokens stored as HttpOnly cookies) and session management. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
+                <P>We use only one strictly necessary cookie, an HttpOnly refresh token scoped to our token-refresh endpoint. Your access token itself is kept in your browser&apos;s local storage rather than a cookie. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
               </Section>
 
               <Section id="section-10" title="10. Changes to This Policy">
