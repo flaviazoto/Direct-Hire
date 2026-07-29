@@ -102,29 +102,26 @@ const EMPLOYER_FEATURES = [
 
 const PRICING_PLANS = [
   {
-    name: "Starter", price: "$0", period: "", cta: "Get started free", featured: false,
-    desc: "For workers exploring global opportunities.",
-    features: ["Basic AI matching", "5 applications/month", "Profile score", "Mobile access"],
+    name: "For Workers", price: "Free", period: "", cta: "Get started free", featured: false,
+    href: "/register?role=worker",
+    desc: "Create a profile and get AI-matched to open roles.",
+    features: ["AI-powered job matching", "Fraud-verified employers", "Application tracking", "Pay only when you apply — $1 to $25 per application, based on role and demand"],
   },
   {
-    name: "Professional", price: "$29", period: "/mo", cta: "Start free trial", featured: true,
-    desc: "For serious talent ready to go global.",
-    features: ["Unlimited applications", "Priority AI matching", "Full profile score", "Interview scheduler", "Visa guidance", "Direct employer contact"],
-  },
-  {
-    name: "Enterprise", price: "Custom", period: "", cta: "Talk to sales", featured: false,
-    desc: "For employers and agencies hiring at scale.",
-    features: ["Unlimited job posts", "Bulk AI matching", "Fraud detection suite", "Dedicated account manager", "Custom API access", "SLA guarantee"],
+    name: "For Employers", price: "5,000 ALL", period: "/month", cta: "Start free trial", featured: false,
+    href: "/register?role=employer",
+    desc: "Post jobs and access AI-ranked candidates.",
+    features: ["Unlimited job posts", "AI-ranked candidates", "Fraud detection suite", "Worker Lock — $1/day per reserved candidate (up to 5 concurrent, 14-day max)", "14-day free trial, no credit card required"],
   },
 ];
 
 const TRUST_ITEMS = ["Built with GDPR principles", "AI-Verified Profiles"];
 
 const PRICING_FAQ = [
-  { q: "Is there a free trial?",               a: "Yes — all paid plans include a 14-day free trial. No credit card required." },
+  { q: "Is there a free trial?",               a: "Employers get a 14-day free trial, no credit card required. Worker accounts are free — no trial needed." },
   { q: "Can workers use DirectHire for free?", a: "Yes. Registering and receiving AI matches is completely free for workers. A small fee applies only when applying to specific roles." },
-  { q: "What currency do you charge in?",      a: "All plans are billed in EUR. Local currency billing coming soon." },
-  { q: "Can I cancel anytime?",                a: "Yes. Cancel from your billing dashboard at any time with no penalties or lock-in periods." },
+  { q: "What currency do you charge in?",      a: "Employer subscriptions are billed in Albanian Lek (ALL). Application fees and Worker Lock reservations are charged in USD." },
+  { q: "Can I cancel anytime?",                a: "Yes — cancel anytime from your billing dashboard. Your subscription stays active through the end of the period you've already paid for, with no early-termination penalty." },
 ];
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -609,7 +606,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.5rem", alignItems: "start" }} className="pricing-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "1.5rem", alignItems: "start", maxWidth: 720, margin: "0 auto" }} className="pricing-grid">
             {PRICING_PLANS.map((plan, i) => (
               <div key={i} className="dh-reveal" style={{ position: "relative" as const }}>
                 {plan.featured && (
@@ -654,7 +651,7 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <Link href="/register" style={{
+                  <Link href={plan.href} style={{
                     display: "block", textAlign: "center" as const, textDecoration: "none",
                     padding: "13px 0", borderRadius: 10, fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700,
                     ...(plan.featured ? {
