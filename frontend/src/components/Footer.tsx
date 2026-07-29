@@ -153,20 +153,6 @@ export function Footer() {
                 </a>
               ))}
             </div>
-
-            {/* SOC 2 badge */}
-            <span style={{
-              display: "inline-block",
-              background: "rgba(99,102,241,0.1)",
-              color: "#818cf8",
-              fontSize: 11, fontWeight: 600,
-              fontFamily: "var(--font-body)",
-              padding: "4px 12px",
-              borderRadius: 999,
-              letterSpacing: "0.03em",
-            }}>
-              SOC 2 Compliant
-            </span>
           </div>
 
           {/* Link columns */}

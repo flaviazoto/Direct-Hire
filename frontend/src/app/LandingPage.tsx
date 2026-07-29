@@ -58,20 +58,20 @@ function GlobePlaceholder() {
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const GLOBE_DOTS = [
-  { top: "22%", left: "48%", label: "DE 94K"  },
-  { top: "18%", left: "22%", label: "US 210K" },
-  { top: "24%", left: "55%", label: "GB 112K" },
-  { top: "35%", left: "62%", label: "AE 58K"  },
-  { top: "65%", left: "80%", label: "AU 63K"  },
-  { top: "45%", left: "30%", label: null       },
-  { top: "55%", left: "50%", label: null       },
-  { top: "30%", left: "70%", label: null       },
-  { top: "70%", left: "40%", label: null       },
-  { top: "15%", left: "60%", label: null       },
+  { top: "22%", left: "48%", label: null },
+  { top: "18%", left: "22%", label: null },
+  { top: "24%", left: "55%", label: null },
+  { top: "35%", left: "62%", label: null },
+  { top: "65%", left: "80%", label: null },
+  { top: "45%", left: "30%", label: null },
+  { top: "55%", left: "50%", label: null },
+  { top: "30%", left: "70%", label: null },
+  { top: "70%", left: "40%", label: null },
+  { top: "15%", left: "60%", label: null },
 ];
 
 const AI_FEATURES = [
-  { icon: "🧠", title: "AI Match Engine",     desc: "Skill similarity, experience depth, and salary alignment scored in real-time across 847K+ jobs." },
+  { icon: "🧠", title: "AI Match Engine",     desc: "Skill similarity, experience depth, and salary alignment scored in real-time against live job postings." },
   { icon: "🛡️", title: "Fraud Detection",     desc: "Pattern anomaly detection, duplicate profile flagging, and risk scoring on every submission." },
   { icon: "💰", title: "Dynamic Pricing",      desc: "Region demand signals and conversion probability drive optimized pricing for maximum hire rate." },
   { icon: "🔔", title: "Smart Notifications", desc: "Behavioral reminders and drop-off recovery sequences keep candidates engaged through the funnel." },
@@ -81,7 +81,7 @@ const AI_FEATURES = [
 
 const HOW_STEPS = [
   { n: "01", title: "Register & Verify",  desc: "Upload your profile, video introduction, and ID. Our AI scores your profile instantly — no waiting." },
-  { n: "02", title: "AI Match Engine",    desc: "Our algorithm ranks you against 847K+ jobs across 190 countries in real-time, 24/7." },
+  { n: "02", title: "AI Match Engine",    desc: "Our algorithm ranks you against open roles across our growing network of countries in real-time, 24/7." },
   { n: "03", title: "Get Hired",          desc: "Receive offers, schedule interviews, and track your applications in a premium dashboard." },
 ];
 
@@ -97,7 +97,6 @@ const EMPLOYER_FEATURES = [
   { title: "AI Candidate Ranking",    desc: "Top 20 matches ranked automatically the moment you post a job." },
   { title: "Fraud-Verified Profiles", desc: "Every worker profile is AI-scored for authenticity and risk." },
   { title: "Dynamic Pricing",         desc: "Application fees optimized by region, demand, and conversion probability." },
-  { title: "Escrow System",           desc: "Secure payment holding until hire is confirmed by both parties." },
   { title: "Instant Shortlisting",    desc: "Accept, reject, or shortlist candidates in one click." },
 ];
 
@@ -119,13 +118,7 @@ const PRICING_PLANS = [
   },
 ];
 
-const TESTIMONIALS = [
-  { quote: "DirectHire matched me to a German engineering role in 48 hours. The AI score showed exactly why I was a fit.", name: "Arjun K.",  role: "Backend Engineer",    country: "🇮🇳 India → 🇩🇪 Germany"  },
-  { quote: "We hired 3 verified engineers in one week. The fraud detection alone saved us from 2 fake applications.",       name: "Sarah M.", role: "CTO, TechCorp UK",    country: "🇬🇧 United Kingdom"        },
-  { quote: "The reservation system made my acceptance seamless. I knew the offer was legitimate before I even replied.",    name: "Amara D.", role: "Project Manager",      country: "🇬🇭 Ghana → 🇦🇪 UAE"     },
-];
-
-const TRUST_ITEMS = ["Trusted by 12,000+ Employers", "ISO 27001 Certified", "GDPR Compliant", "190+ Countries", "AI-Verified Profiles"];
+const TRUST_ITEMS = ["Built with GDPR principles", "AI-Verified Profiles"];
 
 const PRICING_FAQ = [
   { q: "Is there a free trial?",               a: "Yes — all paid plans include a 14-day free trial. No credit card required." },
@@ -222,32 +215,8 @@ export default function LandingPage() {
 
             {/* Subheadline */}
             <p className="dh-reveal hero-sub text-white/60 leading-relaxed max-w-sm md:max-w-md mb-6 md:mb-8">
-              DirectHire&apos;s AI matches verified global workers with top employers across 190+ countries — intelligently, securely, at scale.
+              DirectHire&apos;s AI matches verified workers with employers across a growing network of countries — including Albania, Croatia, Germany, and Italy — intelligently, securely, and built to scale.
             </p>
-
-            {/* Social proof row — ABOVE buttons */}
-            <div className="dh-reveal" style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 32 }}>
-              <div style={{ display: "flex" }}>
-                {["AK", "SR", "MJ", "EC", "PO"].map((init, i) => (
-                  <div key={i} style={{
-                    width: 40, height: 40, borderRadius: "50%",
-                    background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
-                    border: "2px solid #0B1121",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "#fff",
-                    marginLeft: i === 0 ? 0 : -10,
-                    zIndex: 5 - i,
-                    position: "relative" as const,
-                    flexShrink: 0,
-                  }}>
-                    {init}
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
-                Join 2.4M+ workers
-              </span>
-            </div>
 
             {/* CTA buttons */}
             <div className="dh-reveal hero-cta-row" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, marginBottom: 52 }}>
@@ -301,24 +270,9 @@ export default function LandingPage() {
 
             {/* Stats row */}
             <div className="dh-reveal" style={{ paddingTop: "2rem", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <span style={{ fontFamily: "var(--font-body)", display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "rgba(255,255,255,0.2)", marginBottom: 12, width: "100%" }}>
-                Platform stats
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
+                Now active across Albania, Croatia, Germany, and Italy — expanding as we grow.
               </span>
-              <div className="hero-stats-row" style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                {[
-                  { n: "2.4M+", l: "Workers"   },
-                  { n: "190+",  l: "Countries" },
-                  { n: "847K",  l: "Jobs"       },
-                ].map((s, i) => (
-                  <div key={s.l} style={{ display: "flex", alignItems: "center" }}>
-                    {i > 0 && <div className="hero-stat-divider" style={{ width: 1, height: 48, background: "rgba(255,255,255,0.1)", margin: "0 28px", flexShrink: 0 }} />}
-                    <div>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{s.n}</div>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{s.l}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -335,63 +289,6 @@ export default function LandingPage() {
               <InteractiveGlobe />
             </div>
 
-            {/* Floating card 1 — top-left: Germany */}
-            <div className="globe-float-card" style={{
-              ...FLOAT_CARD,
-              position: "absolute", top: "15%", left: -10,
-              animation: "float 4s ease-in-out infinite",
-              zIndex: 2,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "#818cf8",
-                  flexShrink: 0,
-                }}>DE</div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>Germany</div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>94K open roles</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating card 2 — bottom-right: UK */}
-            <div className="globe-float-card" style={{
-              ...FLOAT_CARD,
-              position: "absolute", bottom: "20%", right: -10,
-              animation: "float 4s ease-in-out infinite",
-              animationDelay: "2s",
-              zIndex: 2,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 22 }}>🇬🇧</span>
-                <div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>UK · 145K jobs</div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 999, padding: "2px 8px" }}>
-                    <span style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, color: "#34D399" }}>↑ 12%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating card 3 — top-right: match score */}
-            <div className="globe-float-card" style={{
-              ...FLOAT_CARD,
-              position: "absolute", top: "22%", right: 0,
-              padding: "10px 14px",
-              animation: "float 4s ease-in-out infinite",
-              animationDelay: "1s",
-              zIndex: 2,
-            }}>
-              <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 700, color: "#818cf8", marginBottom: 6 }}>
-                Match score: 92%
-              </div>
-              <div style={{ width: "100%", height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
-                <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, var(--glass-indigo), var(--glass-purple))", borderRadius: 2 }} />
-              </div>
-            </div>
           </div>
         </div>
 
@@ -412,48 +309,11 @@ export default function LandingPage() {
           @media (max-width: 640px) {
             .hero-cta-row { flex-direction: column !important; }
             .hero-cta-row > a { width: 100% !important; justify-content: center !important; }
-            .hero-stats-row { align-items: stretch !important; justify-content: space-between !important; gap: 12px !important; }
-            .hero-stats-row > div { flex: 1 1 0 !important; min-width: 0 !important; }
-            .hero-stat-divider { display: none !important; }
           }
         `}</style>
       </section>
 
       {/* ── TRUST BAR ────────────────────────────────────────────────────────── */}
-      <div style={{
-        background: "rgba(255,255,255,0.018)",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        padding: "1.5rem 0",
-      }}>
-        <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" as const }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: "var(--font-body)", whiteSpace: "nowrap" as const, letterSpacing: "0.1em", textTransform: "uppercase" as const, flexShrink: 0, marginRight: "0.5rem" }}>
-            Trusted by global employers
-          </span>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" as const, flex: 1 }}>
-            {["Accenture", "Deloitte", "Marriott", "Siemens", "G4S", "Manpower"].map(name => (
-              <div key={name} style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 8,
-                padding: "10px 22px",
-                fontFamily: "var(--font-display)",
-                fontSize: 13, fontWeight: 600,
-                color: "rgba(255,255,255,0.35)",
-                whiteSpace: "nowrap" as const,
-                transition: "all 0.2s",
-                cursor: "default",
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.color = "rgba(255,255,255,0.65)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.color = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)"; }}
-              >
-                {name}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
       <section className="lp-section" style={{ background: "#0B1121", overflowX: "hidden" }}>
         <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -613,25 +473,6 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Mini stats 2×2 */}
-            <div className="dh-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: "2rem" }}>
-              {[
-                { n: "48K+", l: "Workers placed" },
-                { n: "4.9★", l: "Avg rating"     },
-                { n: "94",   l: "Countries"       },
-                { n: "24h",  l: "Match time"      },
-              ].map(s => (
-                <div key={s.l} style={{
-                  background: "rgba(255,255,255,0.025)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 12, padding: 16, textAlign: "center" as const,
-                }}>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{s.n}</div>
-                  <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginTop: 6 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-
             <Link href="/for-workers" className="dh-reveal" style={{
               fontFamily: "var(--font-body)", fontSize: 15, fontWeight: 600, color: "#818cf8",
               textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
@@ -647,9 +488,9 @@ export default function LandingPage() {
           {/* RIGHT: worker profile card */}
           <div className="dh-reveal" style={{ ...CARD, padding: "2rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
-              <div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "#fff", flexShrink: 0 }}>AK</div>
+              <div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "#fff", flexShrink: 0 }}>RM</div>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "#fff" }}>Arjun Kumar</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "#fff" }}>Rohan Mehta</div>
                 <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Senior Backend Engineer</div>
                 <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>📍 India → 🇩🇪 Germany</div>
               </div>
@@ -695,7 +536,7 @@ export default function LandingPage() {
             {[
               { name: "Elena Rossi",  title: "Full-Stack Dev", score: 96, top: true  },
               { name: "Marcus Chen",  title: "Data Engineer",  score: 91, top: false },
-              { name: "Amara Diallo", title: "DevOps Eng",     score: 88, top: false },
+              { name: "Sofia Almeida", title: "DevOps Eng",     score: 88, top: false },
             ].map((c, i) => (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: 12,
@@ -737,22 +578,6 @@ export default function LandingPage() {
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <Check />
                   <span style={{ fontFamily: "var(--font-body)", fontSize: 15, color: "rgba(255,255,255,0.75)" }}>{f.title}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Results highlight band */}
-            <div className="dh-reveal" style={{
-              background: "rgba(99,102,241,0.06)",
-              border: "1px solid rgba(99,102,241,0.12)",
-              borderRadius: 12, padding: "18px 22px",
-              display: "flex", alignItems: "center", flexWrap: "wrap" as const, gap: "1.5rem",
-              marginTop: "1.5rem", marginBottom: "2rem",
-            }}>
-              {["78% lock-to-hire rate", "< 24h candidate list", "2,800+ companies"].map((item, i) => (
-                <div key={item} style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                  {i > 0 && <span style={{ color: "rgba(99,102,241,0.4)", fontSize: 16 }}>•</span>}
-                  <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>{item}</span>
                 </div>
               ))}
             </div>
@@ -885,62 +710,15 @@ export default function LandingPage() {
       {/* ── TESTIMONIALS ─────────────────────────────────────────────────────── */}
       <section className="lp-section" style={{ background: "rgba(255,255,255,0.012)", overflowX: "hidden" }}>
         <div className="lp-container" style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "4rem" }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "#fff", margin: 0 }}>
-              Trusted by thousands worldwide
+          <div className="dh-reveal" style={{ textAlign: "center" as const }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "#fff", margin: "0 0 1.25rem" }}>
+              What working with DirectHire looks like
             </h2>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.5rem" }} className="testimonials-grid">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="dh-reveal testimonial-card" style={{
-                ...CARD, padding: "2rem", position: "relative" as const, overflow: "hidden",
-                transition: "border-color 0.2s, box-shadow 0.2s",
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(99,102,241,0.3)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 28px rgba(99,102,241,0.1)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
-              >
-                <span style={{ display: "block", fontSize: 13, color: "#FBBF24", letterSpacing: 3, marginBottom: 16 }}>★★★★★</span>
-                <div aria-hidden style={{ position: "absolute", top: 8, left: 16, fontFamily: "var(--font-display)", fontSize: 80, fontWeight: 900, color: "#6366f1", opacity: 0.08, lineHeight: 1, userSelect: "none" as const, pointerEvents: "none" }}>
-                  &ldquo;
-                </div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.75, fontStyle: "italic", margin: "0 0 1.5rem", position: "relative" as const, zIndex: 1 }}>
-                  {t.quote}
-                </p>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "#818cf8", flexShrink: 0 }}>
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 700, color: "#fff" }}>{t.name}</div>
-                    <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{t.role} · {t.country}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.75, maxWidth: 640, margin: "0 auto" }}>
+              AI-matched candidates, fraud-verified profiles, and a reservation system that keeps the process transparent from first contact to hire.
+            </p>
           </div>
         </div>
-
-        <style>{`
-          @media (max-width: 768px) {
-            .testimonials-grid {
-              display: flex !important;
-              overflow-x: auto !important;
-              scroll-snap-type: x mandatory !important;
-              -webkit-overflow-scrolling: touch;
-              padding-bottom: 1rem !important;
-              gap: 1rem !important;
-            }
-            .testimonial-card {
-              scroll-snap-align: start !important;
-              min-width: 280px !important;
-              flex-shrink: 0 !important;
-            }
-          }
-          @media (max-width: 900px) and (min-width: 769px) {
-            .testimonials-grid { grid-template-columns: 1fr !important; }
-          }
-        `}</style>
       </section>
 
       {/* ── CTA BANNER ───────────────────────────────────────────────────────── */}
@@ -957,37 +735,12 @@ export default function LandingPage() {
             backgroundSize: "60px 60px",
           }} />
 
-          {/* Floating card A — left */}
-          <div className="cta-float-card" style={{
-            position: "absolute", left: -10, top: "20%",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 12, padding: "12px 18px",
-            backdropFilter: "blur(10px)",
-            animation: "float 4s ease-in-out infinite",
-          }}>
-            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#fff", fontWeight: 600 }}>✓ Hired in 48h</span>
-          </div>
-
-          {/* Floating card B — right */}
-          <div className="cta-float-card" style={{
-            position: "absolute", right: -10, top: "35%",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 12, padding: "12px 18px",
-            backdropFilter: "blur(10px)",
-            animation: "float 4s ease-in-out infinite",
-            animationDelay: "2s",
-          }}>
-            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#fff", fontWeight: 600 }}>⭐ 4.9 / 5 rating</span>
-          </div>
-
           <div style={{ position: "relative" as const, zIndex: 1 }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 900, color: "#fff", margin: "0 0 1rem", letterSpacing: "-1.5px" }}>
               Ready to hire globally?
             </h2>
             <p style={{ fontFamily: "var(--font-body)", fontSize: 17, color: "rgba(255,255,255,0.75)", margin: "0 0 2.5rem" }}>
-              Join 12,000+ employers and 2.4M workers building the future of global work.
+              Be part of the future of global hiring.
             </p>
             <div className="cta-banner-buttons" style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" as const }}>
               <Link href="/register" style={{
@@ -1025,7 +778,7 @@ export default function LandingPage() {
             Integrated with tools you already use
           </div>
           <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" as const }}>
-            {["Stripe", "Slack", "Zapier", "LinkedIn", "Google", "DocuSign"].map(name => (
+            {["Stripe", "LinkedIn", "Google"].map(name => (
               <div key={name} style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.08)",
