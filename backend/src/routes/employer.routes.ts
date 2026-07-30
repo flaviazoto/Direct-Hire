@@ -49,7 +49,10 @@ employerRouter.post("/workers/:workerId/release-lock",  requireVerifiedEmployer,
 employerRouter.get( "/workers/:workerId/lock-status",   requireVerifiedEmployer,                      lockCtrl.getLockStatus);
 
 // ── Platform rate (no param — must come before /:workerId routes) ────────────
-employerRouter.get("/lock-rate", requireVerifiedEmployer, lockCtrl.getLockRate);
+// requireEmployer only (not requireVerifiedEmployer): this returns generic
+// platform config, not per-user data, and the employer onboarding flow
+// (page.tsx's Step 4) needs to read it before the account is verified.
+employerRouter.get("/lock-rate", requireEmployer, lockCtrl.getLockRate);
 
 // ── Worker search + billing ───────────────────────────────────────────────────
 // /workers (no param) = search/browse; must come before /workers/:workerId

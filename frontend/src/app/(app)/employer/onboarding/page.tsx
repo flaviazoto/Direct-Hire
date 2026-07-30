@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useOnboardingStore } from "@/lib/stores/onboarding.store";
+import { employerApi } from "@/lib/api-client";
 
 const TOTAL_STEPS = 6;
 const STEP_LABELS = ["Account", "Company ID", "Details", "Hiring Needs", "Plan", "Review"];
@@ -30,35 +31,12 @@ const SKILLS = [
 const WORKER_COUNTS = ["1–3 workers","4–10 workers","11–25 workers","26–50 workers","50+ workers"];
 const URGENCY_OPTIONS = ["Immediately","Within 1 month","1–3 months","3–6 months","Ongoing / no rush"];
 
-const PLANS = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "€149",
-    period: "/month",
-    features: ["5 active job posts","Up to 10 AI matches/job","Basic analytics","Email support"],
-    color: "#64748B",
-    highlight: false,
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    price: "€349",
-    period: "/month",
-    features: ["20 active job posts","Unlimited AI matches","Worker Lock™ (3 concurrent)","Priority support","Advanced analytics"],
-    color: "#1848CC",
-    highlight: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    features: ["Unlimited job posts","Dedicated account manager","Worker Lock™ (unlimited)","API access","White-glove onboarding"],
-    color: "#0E7490",
-    highlight: false,
-  },
-];
+// There is exactly one real employer product (EMPLOYER_MONTHLY) — no
+// selectable tiers. Price and Worker Lock terms are read live from
+// employerApi.getSubscriptionStatus()/getLockRate() below rather than
+// hardcoded, same pattern as employer/subscription/page.tsx, so this can
+// never silently drift from the real configured values.
+const SUBSCRIPTION_PLAN_ID = "EMPLOYER_MONTHLY";
 
 export default function EmployerOnboardingPage() {
   const router = useRouter();
@@ -69,9 +47,26 @@ export default function EmployerOnboardingPage() {
   const [hiringCountries, setHiringCountries] = useState<string[]>([]);
   const [requiredSkills, setRequiredSkills]   = useState<string[]>([]);
   const [urgency, setUrgency]                 = useState("");
-  const [selectedPlan, setSelectedPlan]       = useState("growth");
   const [logoUploading, setLogoUploading]     = useState(false);
   const [docUploading, setDocUploading]       = useState(false);
+
+  // Real, live subscription terms — no fictional tiers to choose between.
+  // Same source/pattern as employer/subscription/page.tsx.
+  const [lockRate, setLockRate]   = useState<{ dailyRateCents: number; maxDays: number; maxConcurrent: number; rateDisplay: string } | null>(null);
+  const [planPrice, setPlanPrice] = useState<{ amountCents: number; currency: string; interval: string } | null>(null);
+
+  useEffect(() => {
+    employerApi.getLockRate().then(r => {
+      if (r.success) setLockRate(r.data as typeof lockRate);
+    });
+    employerApi.getSubscriptionStatus().then(r => {
+      if (r.success) setPlanPrice((r.data as { planPrice: typeof planPrice }).planPrice);
+    });
+  }, []);
+
+  const priceDisplay = planPrice
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: planPrice.currency.toUpperCase(), maximumFractionDigits: 2 }).format(planPrice.amountCents / 100)
+    : null;
 
   const { register, getValues, watch } = useForm({ mode: "onChange" });
   const descValue = watch("businessDescription") ?? "";
@@ -103,8 +98,6 @@ export default function EmployerOnboardingPage() {
         if (s3.hiringCountries)  setHiringCountries(s3.hiringCountries as string[]);
         if (s3.requiredSkills)   setRequiredSkills(s3.requiredSkills as string[]);
         if (s3.urgency)          setUrgency(s3.urgency as string);
-        if (s3.subscriptionPlan || storeRef.current.stepData[4]?.subscriptionPlan)
-          setSelectedPlan((storeRef.current.stepData[4]?.subscriptionPlan as string) ?? "growth");
       });
     }
   }, []);
@@ -184,7 +177,7 @@ export default function EmployerOnboardingPage() {
         additionalNotes: vals.additionalNotes,
       };
     } else if (uiStep === 4) {
-      payload = { subscriptionPlan: selectedPlan };
+      payload = { subscriptionPlan: SUBSCRIPTION_PLAN_ID };
     }
 
     if (uiStep >= 1 && uiStep <= 4) {
@@ -292,7 +285,7 @@ export default function EmployerOnboardingPage() {
             </div>
             <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16 }}>
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 12 }}>What you get</p>
-              {["AI-ranked global candidates","Worker Lock™ exclusive hiring","Automated matching & scoring","24h verification"].map(f => (
+              {["AI-ranked global candidates","Worker Lock™ exclusive hiring","Automated matching & scoring"].map(f => (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <span style={{ color: "#2DD4BF", fontWeight: 700, fontSize: 13 }}>✓</span>
                   <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{f}</span>
@@ -492,76 +485,64 @@ export default function EmployerOnboardingPage() {
           </div>
         );
 
-      // ── Step 4: Plan ─────────────────────────────────────────────
-      case 4:
+      // ── Step 4: Subscription ──────────────────────────────────────
+      case 4: {
+        const lockLine = lockRate
+          ? `Worker Lock™ — reserve up to ${lockRate.maxConcurrent} worker${lockRate.maxConcurrent === 1 ? "" : "s"} at a time, for up to ${lockRate.maxDays} days each (${lockRate.rateDisplay}/day)`
+          : "Worker Lock™ — reserve workers exclusively for a limited time (a daily fee applies separately)";
+        const planColor = "#0E7490";
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Choose your plan</h2>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>14-day free trial on all plans. Cancel anytime.</p>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Your subscription</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>There&apos;s one DirectHire Employer plan — here&apos;s what you&apos;re signing up for.</p>
             </div>
-            {PLANS.map(plan => (
-              <button key={plan.id} type="button"
-                onClick={() => setSelectedPlan(plan.id)}
-                style={{
-                  width: "100%", textAlign: "left", borderRadius: 16, padding: 20,
-                  cursor: "pointer", transition: "all 0.2s", position: "relative",
-                  background: selectedPlan === plan.id ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)",
-                  borderWidth: selectedPlan === plan.id ? 2 : 1,
-                  borderStyle: "solid",
-                  borderColor: selectedPlan === plan.id ? plan.color : "rgba(255,255,255,0.08)",
-                  boxShadow: selectedPlan === plan.id ? `0 4px 20px ${plan.color}20` : "none",
-                }}>
-                {plan.highlight && (
-                  <div style={{
-                    position: "absolute", top: -12, left: 16,
-                    padding: "2px 12px", borderRadius: 99,
-                    fontSize: 11, fontWeight: 700, color: "white",
-                    background: plan.color,
-                  }}>
-                    MOST POPULAR
-                  </div>
-                )}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <span style={{ fontWeight: 800, fontSize: 17, color: "rgba(255,255,255,0.9)" }}>{plan.name}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontWeight: 800, fontSize: 20, color: selectedPlan === plan.id ? plan.color : "rgba(255,255,255,0.85)" }}>
-                      {plan.price}
-                    </span>
-                    {plan.period && <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{plan.period}</span>}
-                    {selectedPlan === plan.id && (
-                      <div style={{
-                        width: 22, height: 22, borderRadius: "50%",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "white", fontSize: 11, fontWeight: 700,
-                        background: plan.color,
-                      }}>✓</div>
-                    )}
-                  </div>
+            <div style={{
+              width: "100%", borderRadius: 16, padding: 20,
+              background: "rgba(255,255,255,0.05)",
+              border: `2px solid ${planColor}`,
+              boxShadow: `0 4px 20px ${planColor}20`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <span style={{ fontWeight: 800, fontSize: 17, color: "rgba(255,255,255,0.9)" }}>DirectHire Employer</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {priceDisplay ? (
+                    <>
+                      <span style={{ fontWeight: 800, fontSize: 20, color: planColor }}>{priceDisplay}</span>
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>/{planPrice?.interval}</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Pricing available after signup</span>
+                  )}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {plan.features.map(f => (
-                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
-                      <span style={{ fontWeight: 700, color: plan.color }}>✓</span> {f}
-                    </div>
-                  ))}
-                </div>
-              </button>
-            ))}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {[
+                  "Unlimited job posts",
+                  "AI-ranked candidates for every job",
+                  "Fraud detection on every profile",
+                  lockLine,
+                ].map(f => (
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+                    <span style={{ fontWeight: 700, color: planColor }}>✓</span> {f}
+                  </div>
+                ))}
+              </div>
+            </div>
             <div style={{ background: "rgba(14,116,144,0.08)", border: "1px solid rgba(14,116,144,0.2)", borderRadius: 12, padding: "12px 14px" }}>
               <p style={{ fontSize: 12, color: "#2DD4BF" }}>
-                💳 <strong>14-day free trial</strong> — no charge until trial ends. You can upgrade or cancel any time.
+                💳 <strong>14-day free trial</strong> — no charge until trial ends. You can cancel any time.
               </p>
             </div>
           </div>
         );
+      }
 
       // ── Step 5: Review ───────────────────────────────────────────
       case 5: {
         const d1 = store.stepData[1] ?? {};
         const d2 = store.stepData[2] ?? {};
         const d3 = store.stepData[3] ?? {};
-        const plan = PLANS.find(p => p.id === selectedPlan);
         const sections = [
           {
             label: "Company Identity", step: 1,
@@ -592,10 +573,10 @@ export default function EmployerOnboardingPage() {
             ],
           },
           {
-            label: "Plan", step: 4,
+            label: "Subscription", step: 4,
             rows: [
-              { k: "Plan",  v: plan?.name ?? "—" },
-              { k: "Price", v: plan ? `${plan.price}${plan.period}` : "—" },
+              { k: "Plan",  v: "DirectHire Employer" },
+              { k: "Price", v: priceDisplay ? `${priceDisplay}/${planPrice?.interval}` : "—" },
               { k: "Trial", v: "14 days free" },
             ],
           },

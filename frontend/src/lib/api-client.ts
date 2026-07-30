@@ -330,6 +330,11 @@ export const publicJobsApi = {
   getCountries:  () => get("/public/jobs/countries"),
 };
 
+// Public pricing-display config — no auth required, hits /api/public/config/*
+export const publicConfigApi = {
+  getPricing: () => get("/public/config/pricing"),
+};
+
 export const workerApi = {
   getJobs: (params?: Record<string, string>) =>
     get(`/jobs${params ? "?" + new URLSearchParams(params) : ""}`),

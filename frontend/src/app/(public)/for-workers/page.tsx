@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Footer } from "@/components/Footer";
+import { publicJobsApi } from "@/lib/api-client";
 
 const FAQ = [
   { q: "Is it free to register as a worker?", a: "Yes. Creating your profile and getting matched to jobs is completely free. You only pay a small application fee when you apply to a specific position, which varies by region and salary." },
@@ -14,7 +15,7 @@ const FAQ = [
 
 const BENEFITS = [
   { icon: "⚡", title: "AI job matching — not searching", desc: "Stop scrolling through irrelevant listings. Our AI scores your profile against every live job post and surfaces ranked matches that actually fit you." },
-  { icon: "🌍", title: "94 countries, one profile", desc: "Build your profile once. Get matched to opportunities in the UK, Germany, UAE, Canada, and 90+ other countries simultaneously." },
+  { icon: "🌍", title: "One profile, every operating country", desc: "Build your profile once. Get matched to opportunities across Albania, Croatia, Germany, and Italy — expanding as we grow." },
   { icon: "📊", title: "Transparent match scores", desc: "See exactly why you were matched to each job — skill fit, experience rating, location compatibility, and salary alignment all broken down clearly." },
   { icon: "🛡", title: "Verified & trusted employers", desc: "Every employer on the platform goes through company verification, NIPT validation, and admin review before they can contact workers." },
   { icon: "🔔", title: "Real-time status updates", desc: "Track every application in real time. Get notified instantly when an employer shortlists you, requests an interview, or makes an offer." },
@@ -29,15 +30,15 @@ const HOW_STEPS = [
   { num: "5", title: "Apply and track", desc: "Apply with one click. Track your application pipeline — Pending → Shortlisted → Interview Requested → Hired. Get email and dashboard notifications at every stage.", color: "#34D399" },
 ];
 
-const COUNTRIES = [
-  { flag: "🇬🇧", name: "United Kingdom", jobs: "2,400+" },
-  { flag: "🇩🇪", name: "Germany",        jobs: "1,800+" },
-  { flag: "🇦🇪", name: "UAE",            jobs: "1,200+" },
-  { flag: "🇮🇹", name: "Italy",          jobs: "980+"   },
-  { flag: "🇫🇷", name: "France",         jobs: "870+"   },
-  { flag: "🇨🇦", name: "Canada",         jobs: "760+"   },
-  { flag: "🇶🇦", name: "Qatar",          jobs: "640+"   },
-  { flag: "🇳🇱", name: "Netherlands",    jobs: "520+"   },
+// Only countries DirectHire actually operates in today. Job counts are
+// fetched live from GET /api/public/jobs/countries (real APPROVED JobPost
+// rows) rather than hardcoded, so this can never drift into a fabricated
+// number the way the old 8-country list did.
+const REAL_COUNTRIES = [
+  { flag: "🇩🇪", name: "Germany" },
+  { flag: "🇮🇹", name: "Italy"   },
+  { flag: "🇦🇱", name: "Albania" },
+  { flag: "🇭🇷", name: "Croatia" },
 ];
 
 const SCORE_BARS = [
@@ -48,6 +49,16 @@ const SCORE_BARS = [
 
 export default function ForWorkersPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [jobCounts, setJobCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    publicJobsApi.getCountries().then(r => {
+      const data = (r as { success: boolean; data?: { country: string; count: number }[] }).data;
+      if ((r as { success: boolean }).success && data) {
+        setJobCounts(Object.fromEntries(data.map(d => [d.country, d.count])));
+      }
+    });
+  }, []);
 
   return (
     <main style={{ background: "var(--glass-base)", minHeight: "100vh", color: "#ffffff", overflowX: "hidden" }}>
@@ -86,10 +97,8 @@ export default function ForWorkersPage() {
 
               <div className="pub-stats" style={{ display: "flex", gap: 32, marginTop: 40, flexWrap: "wrap" as const }}>
                 {[
-                  { v: "48,200+", l: "Registered workers" },
-                  { v: "94",      l: "Countries hiring"   },
-                  { v: "1,400+",  l: "Placements last month" },
-                  { v: "Free",    l: "To create profile"  },
+                  { v: "4",    l: "Countries hiring"   },
+                  { v: "Free", l: "To create profile"  },
                 ].map(s => (
                   <div key={s.l}>
                     <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 28, color: "#4F46E5" }}>{s.v}</div>
@@ -142,7 +151,7 @@ export default function ForWorkersPage() {
                   </div>
                   <div>
                     <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "#F0F4FF", marginBottom: 4 }}>Great match</div>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-body)", lineHeight: 1.5 }}>Your profile ranks in the top 12% of active workers</div>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-body)", lineHeight: 1.5 }}>Strong compatibility with your target roles</div>
                   </div>
                 </div>
 
@@ -254,11 +263,11 @@ export default function ForWorkersPage() {
       <section className="section" style={{ background: "var(--glass-base)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 12 }}>Popular destinations</h2>
-            <p className="text-body" style={{ color: "#94a3b8" }}>Active job openings across 94 countries right now</p>
+            <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 12 }}>Current destinations</h2>
+            <p className="text-body" style={{ color: "#94a3b8" }}>Active job openings in our operating countries right now</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }} className="countries-grid">
-            {COUNTRIES.map(c => (
+            {REAL_COUNTRIES.map(c => (
               <Link key={c.name} href={`/jobs?country=${encodeURIComponent(c.name)}`}
                 className="country-card"
                 style={{
@@ -290,7 +299,7 @@ export default function ForWorkersPage() {
                 <span style={{ fontSize: 28 }}>{c.flag}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#ffffff", fontFamily: "var(--font-body)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
-                  <div style={{ fontSize: 13, color: "#94a3b8", fontFamily: "var(--font-body)" }}>{c.jobs} open roles</div>
+                  <div style={{ fontSize: 13, color: "#94a3b8", fontFamily: "var(--font-body)" }}>{jobCounts[c.name] ?? "—"} open roles</div>
                 </div>
                 <span className="country-arrow" style={{ fontSize: 16, color: "rgba(99,102,241,0.6)", opacity: 0, transition: "opacity 0.2s", flexShrink: 0 }}>→</span>
               </Link>
@@ -338,7 +347,7 @@ export default function ForWorkersPage() {
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 400, borderRadius: "50%", background: "rgba(99,102,241,0.06)", filter: "blur(80px)", pointerEvents: "none" }} />
         <div className="container" style={{ position: "relative" }}>
 
-          {/* Testimonial quote */}
+          {/* What working with DirectHire looks like */}
           <blockquote style={{
             borderLeft: "3px solid #4F46E5",
             paddingLeft: 16,
@@ -346,16 +355,13 @@ export default function ForWorkersPage() {
             maxWidth: 520,
             textAlign: "left" as const,
           }}>
-            <p style={{ fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.6)", fontFamily: "var(--font-body)", lineHeight: 1.6, margin: 0 }}>
-              &quot;DirectHire matched me to a German engineering role in 48 hours.&quot;
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", fontFamily: "var(--font-body)", lineHeight: 1.6, margin: 0 }}>
+              AI-matched roles, fraud-verified employers, and transparent application tracking from first match to hire.
             </p>
-            <footer style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontFamily: "var(--font-body)", marginTop: 8 }}>
-              — Arjun K., Backend Engineer
-            </footer>
           </blockquote>
 
           <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 16 }}>Start your international career today</h2>
-          <p className="text-body-lg" style={{ maxWidth: 480, margin: "0 auto 36px" }}>Free to register. Profile takes about 10 minutes. Our AI matches you to jobs in 94 countries.</p>
+          <p className="text-body-lg" style={{ maxWidth: 480, margin: "0 auto 36px" }}>Free to register. Profile takes about 10 minutes. Our AI matches you to jobs across our operating countries.</p>
           <Link href="/register" className="btn-primary">Create Free Profile →</Link>
         </div>
       </section>

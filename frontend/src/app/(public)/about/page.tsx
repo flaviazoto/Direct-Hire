@@ -11,17 +11,10 @@ const VALUES = [
 ];
 
 const PILLARS = [
-  { title: "AI-first matching", color: "#4F46E5", body: "Five-dimension scoring that gets smarter with every hire." },
+  { title: "AI-first matching", color: "#4F46E5", body: "Five-dimension AI scoring: skills, experience, location, salary compatibility, and trust." },
   { title: "Fraud protection",  color: "#818cf8", body: "Pattern detection and risk scoring on every profile." },
-  { title: "Worker dignity",    color: "#FBBF24", body: "Workers never pay to apply. Employers pay for quality." },
-  { title: "Admin oversight",   color: "#34D399", body: "Every user, job, and transaction reviewed by humans." },
-];
-
-const STATS = [
-  { n: "2.4M+",   l: "Workers registered"  },
-  { n: "94",      l: "Countries"            },
-  { n: "12,000+", l: "Employers"            },
-  { n: "78%",     l: "Lock-to-hire rate"    },
+  { title: "Worker access",     color: "#FBBF24", body: "Creating a profile and receiving AI matches is always free for workers. A small fee applies only when you apply to a specific role." },
+  { title: "Admin oversight",   color: "#34D399", body: "Every worker and employer profile is reviewed before going live, with human oversight on flagged activity." },
 ];
 
 export default function AboutPage() {
@@ -42,18 +35,6 @@ export default function AboutPage() {
           background: "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)",
           pointerEvents: "none",
         }} />
-
-        {/* Decorative large numbers */}
-        <div style={{
-          position: "absolute", left: "4%", top: "50%", transform: "translateY(-50%)",
-          fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(120px,14vw,200px)",
-          color: "#fff", opacity: 0.03, lineHeight: 1, pointerEvents: "none", userSelect: "none",
-        }}>10</div>
-        <div style={{
-          position: "absolute", right: "4%", top: "50%", transform: "translateY(-50%)",
-          fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(120px,14vw,200px)",
-          color: "#fff", opacity: 0.03, lineHeight: 1, pointerEvents: "none", userSelect: "none",
-        }}>+</div>
 
         <div className="container" style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
           <p style={{
@@ -192,27 +173,12 @@ export default function AboutPage() {
 
       {/* ── STATS ────────────────────────────────────────────────────────────── */}
       <section style={{ background: "rgba(255,255,255,0.012)", padding: "4rem 0", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="container">
-          <div className="stats-row" style={{ display: "flex", justifyContent: "center", gap: 0 }}>
-            {STATS.map((s, i) => (
-              <div key={s.l} style={{
-                flex: 1, textAlign: "center", padding: "0 2rem",
-                borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
-              }}>
-                <div style={{
-                  fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 40,
-                  background: "linear-gradient(135deg, var(--glass-indigo), var(--glass-purple))",
-                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                  lineHeight: 1, marginBottom: 10,
-                }}>{s.n}</div>
-                <div style={{
-                  fontSize: 13, color: "rgba(255,255,255,0.4)",
-                  textTransform: "uppercase" as const, letterSpacing: "0.08em",
-                  fontFamily: "var(--font-body)",
-                }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
+        <div className="container" style={{ textAlign: "center" as const }}>
+          <span style={{
+            fontFamily: "var(--font-body)", fontSize: 15, color: "rgba(255,255,255,0.5)", fontWeight: 500,
+          }}>
+            Now active across Albania, Croatia, Germany, and Italy — expanding as we grow.
+          </span>
         </div>
       </section>
 
@@ -241,13 +207,6 @@ export default function AboutPage() {
       </section>
 
       <Footer />
-
-      <style>{`
-        @media (max-width: 768px) {
-          .stats-row { flex-wrap: wrap !important; gap: 2rem !important; }
-          .stats-row > div { border-right: none !important; flex: 0 0 calc(50% - 1rem) !important; }
-        }
-      `}</style>
     </main>
   );
 }
