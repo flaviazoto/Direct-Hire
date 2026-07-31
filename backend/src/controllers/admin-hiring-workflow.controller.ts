@@ -50,7 +50,12 @@ export async function getReviewQueue(req: Request, res: Response, next: NextFunc
     const [rows, total] = await Promise.all([
       prisma.application.findMany({
         where, skip, take: limit,
-        orderBy: { updatedAt: "asc" }, // oldest-waiting first
+        // Sorts by createdAt, not updatedAt: the 2026-07-31 backfill
+        // (backend/scripts/backfill-workflow-status.ts) moved 18 pre-migration
+        // applications into this status in one batch, which would otherwise
+        // all share the same updatedAt and cluster together out of true order
+        // instead of reflecting their real age (spanning June-July 2026).
+        orderBy: { createdAt: "asc" }, // oldest application first
         include: APPLICATION_SUMMARY_INCLUDE,
       }),
       prisma.application.count({ where }),
@@ -470,5 +475,43 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
     }).catch(console.error);
 
     return ok(res, updated, "Hire confirmed");
+  } catch (e) { next(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 3 addition — interview + hire queue listing (no Phase 2 endpoint
+// listed applications at this stage; scheduleInterview/confirmHire only ever
+// acted on a single applicationId passed in from elsewhere). workflowStatus
+// stays at CLEARED_FOR_EMPLOYER for the rest of the process — there's no
+// separate "interview scheduled" or "hired" workflowStatus value — so this
+// queue spans everything from just-cleared through hired, distinguished by
+// `status` (VIEWED/SHORTLISTED = not yet interviewed, INTERVIEWED = interview
+// set, ACCEPTED = hired) rather than by workflowStatus. Includes documents/
+// adminReview/adminFeeCharge alongside the row so the detail panel + activity
+// timeline can render entirely from data already in this list response, with
+// no second per-row fetch.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── GET /admin/hiring/interview-hire-queue ────────────────────────────────────
+
+export async function getInterviewHireQueue(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
+
+    const where = { workflowStatus: "CLEARED_FOR_EMPLOYER" as const };
+    const [rows, total] = await Promise.all([
+      prisma.application.findMany({
+        where, skip, take: limit,
+        orderBy: { updatedAt: "desc" }, // most recently progressed first
+        include: {
+          ...APPLICATION_SUMMARY_INCLUDE,
+          documents:     { orderBy: { createdAt: "asc" } },
+          adminFeeCharge: true,
+        },
+      }),
+      prisma.application.count({ where }),
+    ]);
+
+    return paginated(res, rows, total, page, limit);
   } catch (e) { next(e); }
 }

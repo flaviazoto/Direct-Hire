@@ -18,13 +18,46 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
-import { ok, err } from "../lib/response";
+import { ok, err, paginated, getPagination } from "../lib/response";
 import stripe from "../services/stripe";
 import { insertAdminAuditLog } from "../lib/audit";
 import {
   sendAdminFeeDueEmail,
   sendClearedForEmployerEmail,
 } from "../services/email";
+
+// ── GET /admin/hiring/fee-queue ────────────────────────────────────────────────
+// Phase 3 addition — no Phase 2 endpoint listed applications at this stage.
+// Applications sitting at ADMIN_FEE_DUE (fee not yet resolved/attempted, or a
+// prior attempt failed) or ADMIN_FEE_PAID (paid, about to be cleared — this
+// state is transient in practice since confirmFeeCharge sets workflowStatus
+// to CLEARED_FOR_EMPLOYER in the same write, but included defensively in case
+// that ever changes). adminFeeCharge is nullable: an application can sit at
+// ADMIN_FEE_DUE with no charge row at all if createFeeCharge was never called
+// yet — this is the normal "not yet started" state, not a data bug.
+export async function getFeeQueue(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
+
+    const where = { workflowStatus: { in: ["ADMIN_FEE_DUE", "ADMIN_FEE_PAID"] as ("ADMIN_FEE_DUE" | "ADMIN_FEE_PAID")[] } };
+    const [rows, total] = await Promise.all([
+      prisma.application.findMany({
+        where, skip, take: limit,
+        orderBy: { createdAt: "asc" },
+        include: {
+          worker: {
+            select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } },
+          },
+          job:           { select: { id: true, title: true, companyName: true, country: true } },
+          adminFeeCharge: true,
+        },
+      }),
+      prisma.application.count({ where }),
+    ]);
+
+    return paginated(res, rows, total, page, limit);
+  } catch (e) { next(e); }
+}
 
 // ── Fee schedule CRUD ─────────────────────────────────────────────────────────
 

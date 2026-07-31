@@ -114,6 +114,7 @@ adminRouter.post("/notifications/:id/read",     requireAdmin, notifCtrl.markNoti
 // ── Admin-mediated hiring workflow (Phase 2) ────────────────────────────────────
 // Static routes before /:applicationId param
 adminRouter.get(  "/hiring/review-queue",                              requireAdmin, hiringCtrl.getReviewQueue);
+adminRouter.get(  "/hiring/interview-hire-queue",                      requireAdmin, hiringCtrl.getInterviewHireQueue);
 adminRouter.post( "/hiring/applications/:applicationId/review/approve", requireAdmin, hiringCtrl.approveApplicationReview);
 adminRouter.patch("/hiring/applications/:applicationId/review/notes",   requireAdmin, hiringCtrl.updateApplicationReviewNotes);
 adminRouter.get(  "/hiring/document-queue",                             requireAdmin, hiringCtrl.getDocumentQueue);
@@ -123,6 +124,7 @@ adminRouter.post( "/hiring/applications/:applicationId/interview",      requireA
 adminRouter.post( "/hiring/applications/:applicationId/hire",           requireAdmin, hiringCtrl.confirmHire);
 
 // ── Admin fee schedule + charge (Phase 2 sub-step 3) ────────────────────────────
+adminRouter.get(  "/hiring/fee-queue",           requireAdmin, feeCtrl.getFeeQueue);
 adminRouter.get(  "/fee-schedules",              requireAdmin, feeCtrl.getFeeSchedules);
 adminRouter.post( "/fee-schedules",               requireAdmin, feeCtrl.createFeeSchedule);
 adminRouter.patch("/fee-schedules/:id",           requireAdmin, feeCtrl.updateFeeSchedule);
