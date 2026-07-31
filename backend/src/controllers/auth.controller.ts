@@ -515,6 +515,21 @@ export async function deleteAccount(req: Request, res: Response, next: NextFunct
       await prisma.application.deleteMany({ where: { employerId: userId } });
     }
 
+    // Phase 2 sub-step 1: two more restrict-by-default FKs from the Phase 1
+    // admin-mediated-hiring-workflow schema, same "no cascade" reasoning as
+    // the Application.employerId case above. Every other new FK from that
+    // migration already resolves itself automatically on user deletion:
+    // WorkerGroup.employerId/WorkerGroupMember.workerId/
+    // EmployerDocumentRequest.employerId all cascade, and every nullable
+    // "reviewed/updated/prepared by admin" FK already defaults to SET NULL —
+    // confirmed directly against the applied migration SQL, not assumed.
+    if (role === "WORKER") {
+      await prisma.adminFeeCharge.deleteMany({ where: { workerId: userId } });
+    }
+    if (role === "EMPLOYER") {
+      await prisma.bulkQuoteRequest.deleteMany({ where: { employerId: userId } });
+    }
+
     // Invalidate all sessions explicitly
     await prisma.session.deleteMany({ where: { userId } });
 
