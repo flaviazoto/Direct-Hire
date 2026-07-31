@@ -14,7 +14,6 @@
 // islands can attach behavior without owning the markup.
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   getPublicJobsListServer,
   getPublicJobCategoriesServer,
@@ -26,14 +25,19 @@ import {
   JobsFilterClient,
   JobsInteractionProvider,
   JobCardInteractive,
+  JobTitleLink,
   LoadMoreJobs,
   SortBar,
-  CONTRACT_LABEL,
-  timeAgo,
-  fmtSalary,
-  fmtExternalSalary,
   type Job,
 } from "./JobsFilterClient";
+// Plain helpers, deliberately NOT imported from JobsFilterClient.tsx even
+// though they're defined for reuse there too — that file is "use client",
+// and Next's RSC loader wraps every export of a "use client" module
+// (including plain non-component functions/data) into a client reference
+// when a Server Component imports it. Calling such a wrapped function
+// directly (not as JSX) is what crashed this page in production; see
+// job-format.ts's file header for the full explanation.
+import { CONTRACT_LABEL, timeAgo, fmtSalary, fmtExternalSalary } from "./job-format";
 
 export const revalidate = 3600; // 1 hour
 
@@ -100,17 +104,13 @@ function JobCardContent({ job }: { job: PublicJobListRow }) {
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
         <div style={{ minWidth: 0 }}>
-          {/* The one crawlable link into the SSR detail page — stopPropagation
-              keeps a click on the title from also triggering the card's
-              open-slide-over handler (attached by the JobCardInteractive
-              wrapper around this content). */}
-          <Link
-            href={`/jobs/${job.id}`}
-            onClick={e => e.stopPropagation()}
-            style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4, display: "block", textDecoration: "none" }}
-          >
+          {/* Client component (JobsFilterClient.tsx) — a Server Component
+              can't pass an onClick prop across the boundary into next/link's
+              Link, so the click-guard lives there instead. See its comment
+              for why stopPropagation is load-bearing. */}
+          <JobTitleLink href={`/jobs/${job.id}`}>
             {job.title}
-          </Link>
+          </JobTitleLink>
           <div style={{ fontSize: 12, color: "#71717a" }}>
             {job.companyName} · {[job.city, job.country].filter(Boolean).join(", ")}
           </div>

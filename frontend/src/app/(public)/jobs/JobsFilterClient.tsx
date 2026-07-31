@@ -23,6 +23,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { publicJobsApi, workerApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
+import { CONTRACT_LABEL, timeAgo, fmtSalary, fmtExternalSalary } from "./job-format";
 import type { PublicJobListRow } from "@/lib/jobs-ssr";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -73,11 +74,6 @@ const CONTRACT_OPTIONS = [
   { value: "FREELANCE",  label: "Freelance"  },
 ];
 
-export const CONTRACT_LABEL: Record<string, string> = {
-  FULL_TIME: "Full-time", PART_TIME: "Part-time", CONTRACT: "Contract",
-  TEMPORARY: "Temporary", INTERNSHIP: "Internship", FREELANCE: "Freelance",
-};
-
 const EXP_LABEL: Record<number, string> = {
   0: "0–1 yrs", 1: "1–2 yrs", 2: "2–5 yrs", 5: "5–10 yrs", 10: "10+ yrs",
 };
@@ -121,38 +117,8 @@ function hasActiveFilters(f: Filters): boolean {
     f.salaryMin || f.salaryMax || f.visaSupport || f.remote || f.skills.length);
 }
 
-export function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const d = Math.floor(ms / 86400000);
-  if (d === 0) return "Today";
-  if (d === 1) return "Yesterday";
-  if (d < 30)  return `${d} days ago`;
-  if (d < 365) return `${Math.floor(d / 30)} mo ago`;
-  return `${Math.floor(d / 365)}y ago`;
-}
-
 function daysLeft(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
-}
-
-export function fmtSalary(job: { salaryMin?: number | string | null; salaryMax?: number | string | null; salaryCurrency: string }): string | null {
-  const min = typeof job.salaryMin === "string" ? parseFloat(job.salaryMin) : job.salaryMin;
-  const max = typeof job.salaryMax === "string" ? parseFloat(job.salaryMax) : job.salaryMax;
-  if (!min || !max) return null;
-  return `${job.salaryCurrency} ${min.toLocaleString()} – ${max.toLocaleString()} / mo`;
-}
-
-// External jobs may have only one of salaryMin/salaryMax (whatever the
-// source board disclosed) — fmtSalary above requires both, so this is a
-// separate, more permissive formatter rather than loosening fmtSalary's
-// contract for every real job everywhere.
-export function fmtExternalSalary(job: { salaryMin?: number | string | null; salaryMax?: number | string | null; salaryCurrency?: string }): string | null {
-  const min = typeof job.salaryMin === "string" ? parseFloat(job.salaryMin) : job.salaryMin;
-  const max = typeof job.salaryMax === "string" ? parseFloat(job.salaryMax) : job.salaryMax;
-  if (!min && !max) return null;
-  const cur = job.salaryCurrency ?? "";
-  if (min && max) return `${cur} ${min.toLocaleString()} – ${max.toLocaleString()}`.trim();
-  return `${cur} ${(min ?? max)!.toLocaleString()}`.trim();
 }
 
 // ── Tiny inline components ─────────────────────────────────────────────────────
@@ -1067,6 +1033,26 @@ export function JobsInteractionProvider({ children }: { children: React.ReactNod
 }
 
 // ── Per-card interactivity wrapper ──────────────────────────────────────────────
+// The one crawlable link into the SSR detail page. Lives here (not inlined
+// in page.tsx's Server Component JobCardContent) because it needs its own
+// onClick to stopPropagation — a plain function prop can't cross the
+// Server->Client boundary into next/link's Link, so the click-guard has to
+// be attached from inside a Client Component. stopPropagation itself is
+// load-bearing: JobCardInteractive below puts a whole-card onClick (opens
+// the slide-over) on its wrapping div, and without this, clicking the title
+// would both navigate via the Link AND trigger that card-open handler.
+export function JobTitleLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      onClick={e => e.stopPropagation()}
+      style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.3, marginBottom: 4, display: "block", textDecoration: "none" }}
+    >
+      {children}
+    </Link>
+  );
+}
+
 // Wraps server-rendered card content (children): adds the whole-card click
 // (opens the slide-over), hover state, and the Apply button/CTA — all of
 // which need client state (auth, applying/applied) that a Server Component
