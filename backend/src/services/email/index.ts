@@ -473,6 +473,79 @@ export async function sendApplicationRejectedWorkerEmail(
     templateId: "application_rejected_worker", variables: { jobTitle, companyName } });
 }
 
+// ── Admin-mediated hiring workflow (Phase 2, sub-step 6) ───────
+// None of these have a dedicated EmailType — GENERAL is reused for the same
+// reason sendPostingRightsRevokedEmail/sendWorkerLockedWorkerEmail do (no new
+// enum member, no migration). The interview-scheduled pair reuses
+// APPLICATION_INTERVIEW_REQUESTED for both worker and employer sides, mirroring
+// how sendHireConfirmationEmployerEmail already reuses APPLICATION_ACCEPTED
+// for its (employer-facing) side of that same event.
+
+export async function sendApplicationApprovedQueuedEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { applicationApprovedQueuedTemplate } = await import("./templates");
+  const { subject, html, text } = applicationApprovedQueuedTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "application_approved_queued", variables: { firstName, jobTitle, companyName } });
+}
+
+export async function sendApplicationDocumentRequestedEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string, documentType: string,
+) {
+  const { applicationDocumentRequestedTemplate } = await import("./templates");
+  const { subject, html, text } = applicationDocumentRequestedTemplate({ firstName, jobTitle, companyName, documentType });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "application_document_requested", variables: { firstName, jobTitle, companyName, documentType } });
+}
+
+export async function sendAdminFeeDueEmail(
+  userId: string, to: string, firstName: string, amountUsd: string,
+) {
+  const { adminFeeDueTemplate } = await import("./templates");
+  const { subject, html, text } = adminFeeDueTemplate({ firstName, amountUsd });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "admin_fee_due", variables: { firstName, amountUsd } });
+}
+
+export async function sendClearedForEmployerEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { clearedForEmployerTemplate } = await import("./templates");
+  const { subject, html, text } = clearedForEmployerTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "cleared_for_employer", variables: { firstName, jobTitle, companyName } });
+}
+
+export async function sendInterviewScheduledWorkerEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+  date: string, typeLabel: string, notes?: string,
+) {
+  const { interviewScheduledWorkerTemplate } = await import("./templates");
+  const { subject, html, text } = interviewScheduledWorkerTemplate({ firstName, jobTitle, companyName, date, typeLabel, notes });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
+    templateId: "interview_scheduled_worker", variables: { firstName, jobTitle, companyName, date, typeLabel } });
+}
+
+export async function sendInterviewScheduledEmployerEmail(
+  userId: string, to: string, employerName: string, workerName: string, jobTitle: string,
+  date: string, typeLabel: string,
+) {
+  const { interviewScheduledEmployerTemplate } = await import("./templates");
+  const { subject, html, text } = interviewScheduledEmployerTemplate({ employerName, workerName, jobTitle, date, typeLabel });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
+    templateId: "interview_scheduled_employer", variables: { employerName, workerName, jobTitle, date, typeLabel } });
+}
+
+export async function sendBulkQuoteReadyEmail(
+  userId: string, to: string, contactName: string, quoteAmountUsd: string, quoteNotes?: string,
+) {
+  const { bulkQuoteReadyTemplate } = await import("./templates");
+  const { subject, html, text } = bulkQuoteReadyTemplate({ contactName, quoteAmountUsd, quoteNotes });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "bulk_quote_ready", variables: { contactName, quoteAmountUsd } });
+}
+
 // ── Posting rights emails ─────────────────────────────────────
 
 export async function sendPostingRightsRevokedEmail(userId: string, to: string) {

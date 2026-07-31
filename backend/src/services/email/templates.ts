@@ -1363,3 +1363,166 @@ export function healthCheckRecoveryTemplate(vars: {
     text: `Check: ${vars.checkName}\nStatus: Recovered\nTime (UTC): ${vars.timestamp}`,
   };
 }
+
+// ── Admin-mediated hiring workflow (Phase 2, sub-step 6) ────────────────────
+
+export function applicationApprovedQueuedTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("✓ REVIEW PASSED", "#16A34A")}
+    <br/><br/>
+    ${h1(`Good news, ${vars.firstName}!`)}
+    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has passed our team's initial review and is now queued for processing.`)}
+    ${p("We may reach out if any documents are needed to move things forward. No action is required from you right now.")}
+    ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
+  `);
+  return {
+    subject: `Your application for ${vars.jobTitle} passed review`,
+    html,
+    text: `Good news, ${vars.firstName}! Your application for "${vars.jobTitle}" at ${vars.companyName} has passed our team's initial review and is now queued for processing.`,
+  };
+}
+
+export function applicationDocumentRequestedTemplate(vars: {
+  firstName:    string;
+  jobTitle:     string;
+  companyName:  string;
+  documentType: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("DOCUMENT NEEDED", "#D97706")}
+    <br/><br/>
+    ${h1(`Action needed, ${vars.firstName}`)}
+    ${p(`To keep moving forward with your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong>, our team needs the following document from you:`)}
+    ${summaryTable(summaryRow("Document requested", vars.documentType))}
+    ${btn(`${APP_URL}/worker/applications`, "Upload document", "#D97706")}
+  `);
+  return {
+    subject: `Document needed for your application to ${vars.companyName}`,
+    html,
+    text: `Action needed, ${vars.firstName}: to keep moving forward with your application for "${vars.jobTitle}" at ${vars.companyName}, our team needs: ${vars.documentType}.`,
+  };
+}
+
+export function adminFeeDueTemplate(vars: {
+  firstName: string;
+  amountUsd: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("PAYMENT DUE", "#D97706")}
+    <br/><br/>
+    ${h1(`One more step, ${vars.firstName}`)}
+    ${p(`Your application has cleared document review. A processing fee of <strong>$${vars.amountUsd}</strong> is due to continue.`)}
+    ${btn(`${APP_URL}/worker/applications`, "Pay now", "#D97706")}
+  `);
+  return {
+    subject: `Processing fee due — $${vars.amountUsd}`,
+    html,
+    text: `One more step, ${vars.firstName}: your application has cleared document review. A processing fee of $${vars.amountUsd} is due to continue.`,
+  };
+}
+
+export function clearedForEmployerTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("✓ CLEARED", "#16A34A")}
+    <br/><br/>
+    ${h1(`You're all set, ${vars.firstName}!`)}
+    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has cleared our review process and is now visible to the employer.`)}
+    ${p("They may reach out to schedule an interview soon.")}
+    ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
+  `);
+  return {
+    subject: `You're cleared — ${vars.companyName} can now see your application`,
+    html,
+    text: `You're all set, ${vars.firstName}! Your application for "${vars.jobTitle}" at ${vars.companyName} has cleared our review process and is now visible to the employer.`,
+  };
+}
+
+export function interviewScheduledWorkerTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+  date:        string;
+  typeLabel:   string;
+  notes?:      string;
+}): TemplateResult {
+  const notesBlock = vars.notes
+    ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
+        <tr><td>
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Notes</p>
+          <p style="margin:0;font-size:14px;color:#1E293B;line-height:1.6;">${vars.notes}</p>
+        </td></tr>
+      </table>`
+    : "";
+  const html = layout(`
+    ${badge("📅 INTERVIEW SCHEDULED", "#1848CC")}
+    <br/><br/>
+    ${h1(`Interview scheduled, ${vars.firstName}!`)}
+    ${p(`Your interview with <strong>${vars.companyName}</strong> for <strong>"${vars.jobTitle}"</strong> has been scheduled.`)}
+    ${summaryTable(
+      summaryRow("Date/time", vars.date) +
+      summaryRow("Format",    vars.typeLabel),
+    )}
+    ${notesBlock}
+    ${btn(`${APP_URL}/worker/applications`, "View details", "#1848CC")}
+  `);
+  return {
+    subject: `Interview scheduled — ${vars.jobTitle} at ${vars.companyName}`,
+    html,
+    text: `Interview scheduled, ${vars.firstName}! Your interview with ${vars.companyName} for "${vars.jobTitle}" is set for ${vars.date} (${vars.typeLabel}).${vars.notes ? `\n\nNotes: ${vars.notes}` : ""}`,
+  };
+}
+
+export function interviewScheduledEmployerTemplate(vars: {
+  employerName: string;
+  workerName:   string;
+  jobTitle:     string;
+  date:         string;
+  typeLabel:    string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("📅 INTERVIEW SCHEDULED", "#1848CC")}
+    <br/><br/>
+    ${h1(`Interview scheduled with ${vars.workerName}`)}
+    ${p(`An interview for your <strong>"${vars.jobTitle}"</strong> role has been scheduled.`)}
+    ${summaryTable(
+      summaryRow("Candidate", vars.workerName) +
+      summaryRow("Date/time", vars.date) +
+      summaryRow("Format",    vars.typeLabel),
+    )}
+    ${btn(`${APP_URL}/employer/dashboard`, "View details", "#1848CC")}
+  `);
+  return {
+    subject: `Interview scheduled — ${vars.workerName} for ${vars.jobTitle}`,
+    html,
+    text: `Interview scheduled with ${vars.workerName} for your "${vars.jobTitle}" role: ${vars.date} (${vars.typeLabel}).`,
+  };
+}
+
+export function bulkQuoteReadyTemplate(vars: {
+  contactName:    string;
+  quoteAmountUsd: string;
+  quoteNotes?:    string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("QUOTE READY", "#16A34A")}
+    <br/><br/>
+    ${h1(`Your bulk hiring quote is ready, ${vars.contactName}`)}
+    ${p(`Our team has prepared a quote for your bulk hiring request.`)}
+    ${summaryTable(summaryRow("Quote amount", `$${vars.quoteAmountUsd}`))}
+    ${vars.quoteNotes ? p(vars.quoteNotes) : ""}
+    ${btn(`${APP_URL}/employer/dashboard`, "View quote", "#16A34A")}
+  `);
+  return {
+    subject: `Your bulk hiring quote is ready — $${vars.quoteAmountUsd}`,
+    html,
+    text: `Your bulk hiring quote is ready, ${vars.contactName}. Quote amount: $${vars.quoteAmountUsd}.${vars.quoteNotes ? `\n\n${vars.quoteNotes}` : ""}`,
+  };
+}
