@@ -9,7 +9,7 @@ import {
   LayoutGrid, Search, ClipboardList, User, FolderOpen,
   CreditCard, Briefcase, Users, Settings, Clock, FileText,
   TrendingUp, CheckCircle, FileSearch, ShieldAlert, Mail, Tag, Lock, ExternalLink,
-  CalendarClock, MessageSquare, Activity,
+  CalendarClock, MessageSquare, Activity, ClipboardCheck, UserCheck,
 } from 'lucide-react'
 import { employerApi, adminApi, workerApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
@@ -110,6 +110,13 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
       { href: '/admin/jobs/pending',   label: 'Pending Review', Icon: Clock        },
       { href: '/admin/jobs',           label: 'All Job Posts',  Icon: Briefcase    },
       { href: '/admin/external-jobs',  label: 'External Jobs',  Icon: ExternalLink },
+    ],
+  },
+  {
+    section: 'Hiring Workflow',
+    links: [
+      { href: '/admin/hiring/review',    label: 'Application Review', Icon: ClipboardCheck },
+      { href: '/admin/hiring/interview', label: 'Interview & Hire',   Icon: UserCheck       },
     ],
   },
   {

@@ -319,6 +319,27 @@ export const adminApi = {
   rejectGrowthTask: (id: string, reason: string) => post(`/admin/growth/tasks/${id}/reject`, { reason }),
   getGrowthContentDrafts: (params?: Record<string, string>) =>
     get(`/admin/growth/content${params ? "?" + new URLSearchParams(params) : ""}`),
+  // ── Admin-mediated hiring workflow (Phase 2 backend, Phase 3 frontend) ───────
+  getHiringReviewQueue: (params?: Record<string, string>) =>
+    get(`/admin/hiring/review-queue${params ? "?" + new URLSearchParams(params) : ""}`),
+  approveApplicationReview: (applicationId: string, body?: { noteToWorker?: string }) =>
+    post(`/admin/hiring/applications/${applicationId}/review/approve`, body),
+  updateApplicationReviewNotes: (applicationId: string, body: { decisionNotes?: string; noteToWorker?: string }) =>
+    patch(`/admin/hiring/applications/${applicationId}/review/notes`, body),
+  getDocumentQueue: (params?: Record<string, string>) =>
+    get(`/admin/hiring/document-queue${params ? "?" + new URLSearchParams(params) : ""}`),
+  requestApplicationDocument: (applicationId: string, documentType: string) =>
+    post(`/admin/hiring/applications/${applicationId}/documents`, { documentType }),
+  approveApplicationDocument: (documentId: string) =>
+    patch(`/admin/hiring/documents/${documentId}/approve`),
+  getFeeQueue: (params?: Record<string, string>) =>
+    get(`/admin/hiring/fee-queue${params ? "?" + new URLSearchParams(params) : ""}`),
+  getInterviewHireQueue: (params?: Record<string, string>) =>
+    get(`/admin/hiring/interview-hire-queue${params ? "?" + new URLSearchParams(params) : ""}`),
+  scheduleInterview: (applicationId: string, body: { date: string; type: "video" | "phone" | "in-person"; notes?: string }) =>
+    post(`/admin/hiring/applications/${applicationId}/interview`, body),
+  confirmHire: (applicationId: string, body: { offeredSalary?: string; offeredCurrency?: string; startDate?: string; contractType?: string }) =>
+    post(`/admin/hiring/applications/${applicationId}/hire`, body),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*
