@@ -8,21 +8,28 @@ import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import {
   sendApplicationShortlistedEmail,
-  sendApplicationInterviewedEmail,
-  sendApplicationAcceptedWorkerEmail,
-  sendHireConfirmationEmployerEmail,
   sendApplicationRejectedWorkerEmail,
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
 
 // ── Status transition matrix ──────────────────────────────────────────────────
 // VIEWED is set automatically on fetch — not allowed via this endpoint.
-
+//
+// Phase 2 sub-step 4: SHORTLISTED->INTERVIEWED and INTERVIEWED->ACCEPTED were
+// removed from this employer-facing endpoint — scheduling interviews and
+// confirming hires are now admin-only actions (see
+// admin-hiring-workflow.controller.ts's scheduleInterview/confirmHire).
+// VIEWED->SHORTLISTED and *->REJECTED remain employer-controlled and
+// unchanged, per explicit instruction. No other code path in this codebase
+// ever sets Application.status to INTERVIEWED or ACCEPTED (confirmed via
+// Phase 1's audit — this matrix + MUTABLE_STATUSES below were the only
+// place), so removing these two target values here is a complete,
+// non-partial fix — nothing else could still reach them.
 const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   APPLIED:      [],                          // not via endpoint — auto-viewed on fetch
   VIEWED:       ["SHORTLISTED", "REJECTED"],
-  SHORTLISTED:  ["INTERVIEWED", "REJECTED"],
-  INTERVIEWED:  ["ACCEPTED",    "REJECTED"],
+  SHORTLISTED:  ["REJECTED"],                // ->INTERVIEWED removed, now admin-only
+  INTERVIEWED:  ["REJECTED"],                // ->ACCEPTED removed, now admin-only
   ACCEPTED:     [],
   REJECTED:     [],
   WITHDRAWN:    [],
@@ -51,18 +58,17 @@ const WORKER_SELECT = {
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
-const MUTABLE_STATUSES = ["SHORTLISTED", "INTERVIEWED", "ACCEPTED", "REJECTED"] as const;
+// INTERVIEWED/ACCEPTED removed as settable targets — see ALLOWED_TRANSITIONS
+// comment above. z.enum(MUTABLE_STATUSES) rejecting those values with a
+// clear 422 is exactly the "graceful failure, not a crash" behavior the
+// not-yet-updated frontend needs until Phase 4 removes its Interview/Hire
+// buttons.
+const MUTABLE_STATUSES = ["SHORTLISTED", "REJECTED"] as const;
 type MutableStatus = typeof MUTABLE_STATUSES[number];
 
 const StatusUpdateSchema = z.object({
-  status:                 z.enum(MUTABLE_STATUSES),
-  reason:                 z.string().max(2000).optional(),
-  interview_instructions: z.string().max(5000).optional(),
-  // hire confirmation fields (only used when status = ACCEPTED)
-  offeredSalary:          z.string().optional(),
-  offeredCurrency:        z.string().max(3).optional(),
-  startDate:              z.string().optional(),
-  contractType:           z.string().max(50).optional(),
+  status: z.enum(MUTABLE_STATUSES),
+  reason: z.string().max(2000).optional(),
 });
 
 // ── GET /employer/applications ────────────────────────────────────────────────
@@ -304,15 +310,7 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
 
     const parsed = StatusUpdateSchema.safeParse(req.body);
     if (!parsed.success) return err(res, parsed.error.errors[0].message, 422);
-    const {
-      status: newStatus,
-      reason,
-      interview_instructions,
-      offeredSalary,
-      offeredCurrency,
-      startDate,
-      contractType,
-    } = parsed.data;
+    const { status: newStatus, reason } = parsed.data;
 
     // Fetch application with worker + job data needed for notifications
     const app = await prisma.application.findUnique({
@@ -350,25 +348,10 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
     // Validate transition
     const allowed = ALLOWED_TRANSITIONS[app.status] ?? [];
 
-    // ── Lock guard for ACCEPTED ───────────────────────────────────────────────
-    // If accepting, check the worker is not reserved by a different employer.
-    if (newStatus === "ACCEPTED") {
-      const workerUser = await prisma.user.findUnique({
-        where:  { id: app.worker.id },
-        select: { isLocked: true, lockedByEmployerId: true },
-      });
-      if (
-        workerUser?.isLocked &&
-        workerUser.lockedByEmployerId !== employerId
-      ) {
-        return err(
-          res,
-          "This worker is currently reserved by another employer.",
-          409,
-          { code: "WORKER_LOCKED" },
-        );
-      }
-    }
+    // Lock guard previously here for the ACCEPTED transition was removed along
+    // with ACCEPTED itself as a settable target on this endpoint — the
+    // equivalent check now lives in admin-hiring-workflow.controller.ts's
+    // confirmHire, the only remaining path that can set status = ACCEPTED.
     if (!(allowed as string[]).includes(newStatus)) {
       return err(
         res,
@@ -378,10 +361,6 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
     }
 
     const now = new Date();
-    const workerName = [
-      app.worker.workerProfile?.firstName,
-      app.worker.workerProfile?.lastName,
-    ].filter(Boolean).join(" ") || "the candidate";
 
     // ── Build update payload per new status ──────────────────────────────────
     type UpdateData = Parameters<typeof prisma.application.update>[0]["data"];
@@ -390,25 +369,21 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
 
     if (newStatus === "SHORTLISTED") {
       updateData.shortlistedAt = now;
-    }
-
-    if (newStatus === "INTERVIEWED") {
-      updateData.interviewedAt             = now;
-      updateData.interviewContactUnlocked  = true;
-      updateData.companyContactVisibleAt   = now;
-      updateData.interviewInstructions     = interview_instructions ?? null;
-    }
-
-    if (newStatus === "ACCEPTED") {
-      // Cast to bypass stale Prisma client types — new columns exist in DB but client
-      // hasn't been regenerated yet (run `prisma generate` after stopping the server).
-      const hireData = updateData as Record<string, unknown>;
-      hireData.acceptedAt      = now;
-      hireData.hireConfirmedAt = now;
-      hireData.offeredSalary   = offeredSalary ? parseFloat(offeredSalary) : null;
-      hireData.offeredCurrency = offeredCurrency ?? "USD";
-      hireData.startDate       = startDate ? new Date(startDate) : null;
-      hireData.contractType    = contractType ?? null;
+      // Phase 2 sub-step 4 design decision (flagged in the phase report, not
+      // silently assumed): Phase 1 framed workflowStatus as populated "once
+      // an application enters this post-hire process", but Phase 2's own
+      // verification trace runs the whole admin workflow (review -> docs ->
+      // fee -> cleared) BEFORE interview scheduling and hire confirmation —
+      // i.e. pre-hire, not post-hire. SHORTLISTED is the natural, existing,
+      // still-employer-controlled trigger point that precedes both: the
+      // employer signals hiring intent here, then admin vets/collects
+      // fee/docs, then admin schedules the interview and confirms the hire.
+      // Guarded by `app.status === "VIEWED"` (the only status this transition
+      // can come from) purely for clarity, not because it's reachable any
+      // other way — VIEWED->SHORTLISTED is the only path into this branch.
+      if (app.status === "VIEWED") {
+        updateData.workflowStatus = "PENDING_ADMIN_REVIEW";
+      }
     }
 
     if (newStatus === "REJECTED") {
@@ -457,87 +432,10 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
       );
     }
 
-    if (newStatus === "INTERVIEWED") {
-      sideEffects.push(
-        sendApplicationInterviewedEmail(
-          app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName, id,
-          interview_instructions ?? undefined,
-        ).catch((e: unknown) => console.error("[interviewed email]", e)),
-        prisma.notification.create({
-          data: {
-            userId:   app.worker.id,
-            type:     "APPLICATION_UPDATE",
-            title:    `Interview invitation — ${app.job.title} at ${app.job.companyName}`,
-            body:     `Congratulations! You've been selected for an interview for "${app.job.title}" at ${app.job.companyName}.`,
-            link:     `/worker/applications/${id}`,
-            metadata: { applicationId: id, status: "INTERVIEWED" },
-          },
-        }).catch((e: unknown) => console.error("[interviewed notif]", e)),
-      );
-    }
-
-    if (newStatus === "ACCEPTED") {
-      // Release active lock held by this employer on this worker (hired = no longer needs a lock)
-      sideEffects.push(
-        prisma.workerLock.findFirst({
-          where: { workerId: app.worker.id, employerId, lockStatus: "ACTIVE" },
-        }).then(activeLock => {
-          if (!activeLock) return;
-          return prisma.$transaction([
-            prisma.workerLock.update({
-              where: { id: activeLock.id },
-              data:  { lockStatus: "RELEASED", releaseReason: "HIRED" },
-            }),
-            prisma.user.update({
-              where: { id: app.worker.id },
-              data:  { isLocked: false, lockedByEmployerId: null, lockedUntil: null },
-            }),
-          ]);
-        }).catch((e: unknown) => console.error("[hire lock release]", e)),
-      );
-
-      const employerDisplayName =
-        app.employer.employerProfile?.companyName ??
-        app.employer.employerProfile?.contactPersonName ??
-        app.employer.email;
-
-      sideEffects.push(
-        sendApplicationAcceptedWorkerEmail(
-          app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
-        ).catch((e: unknown) => console.error("[accepted worker email]", e)),
-        sendHireConfirmationEmployerEmail({
-          employerUserId:  app.employer.id,
-          employerEmail:   app.employer.email,
-          employerName:    employerDisplayName,
-          workerName,
-          jobTitle:        app.job.title,
-          startDate,
-          contractType,
-          offeredSalary,
-          offeredCurrency: offeredCurrency ?? "USD",
-        }).catch((e: unknown) => console.error("[hire confirmation email]", e)),
-        prisma.notification.create({
-          data: {
-            userId:   app.worker.id,
-            type:     "APPLICATION_UPDATE",
-            title:    `Application accepted — ${app.job.title}`,
-            body:     `Congratulations! ${app.job.companyName} has accepted your application for "${app.job.title}".`,
-            link:     `/worker/applications/${id}`,
-            metadata: { applicationId: id, status: "ACCEPTED" },
-          },
-        }).catch((e: unknown) => console.error("[accepted worker notif]", e)),
-        prisma.notification.create({
-          data: {
-            userId:   employerId,
-            type:     "APPLICATION_UPDATE",
-            title:    `You accepted ${workerName}'s application`,
-            body:     `You've accepted ${workerName}'s application for "${app.job.title}". Their contact details are in your dashboard.`,
-            link:     `/employer/applications/${id}`,
-            metadata: { applicationId: id, status: "ACCEPTED" },
-          },
-        }).catch((e: unknown) => console.error("[accepted employer notif]", e)),
-      );
-    }
+    // INTERVIEWED and ACCEPTED side effects (interview email, hire lock
+    // release, hire confirmation emails) removed along with those transitions
+    // — see admin-hiring-workflow.controller.ts's scheduleInterview/
+    // confirmHire, which now own this logic exactly as it was here.
 
     if (newStatus === "REJECTED") {
       sideEffects.push(
