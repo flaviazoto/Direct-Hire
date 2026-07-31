@@ -10,6 +10,9 @@ import * as revenueCtrl  from "../controllers/admin-revenue.controller";
 import * as externalJobsCtrl from "../controllers/admin-external-jobs.controller";
 import * as systemHealthCtrl from "../controllers/admin-system-health.controller";
 import * as growthCtrl   from "../controllers/admin-growth.controller";
+import * as hiringCtrl   from "../controllers/admin-hiring-workflow.controller";
+import * as feeCtrl      from "../controllers/admin-fee.controller";
+import * as adminGroupsCtrl from "../controllers/admin-worker-groups.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is — same cross-role-import pattern already used in
 // employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
@@ -107,3 +110,26 @@ adminRouter.get( "/notifications",              requireAdmin, notifCtrl.getNotif
 adminRouter.get( "/notifications/unread-count", requireAdmin, notifCtrl.getUnreadCount);
 adminRouter.post("/notifications/read-all",     requireAdmin, notifCtrl.markAllNotificationsRead);
 adminRouter.post("/notifications/:id/read",     requireAdmin, notifCtrl.markNotificationRead);
+
+// ── Admin-mediated hiring workflow (Phase 2) ────────────────────────────────────
+// Static routes before /:applicationId param
+adminRouter.get(  "/hiring/review-queue",                              requireAdmin, hiringCtrl.getReviewQueue);
+adminRouter.post( "/hiring/applications/:applicationId/review/approve", requireAdmin, hiringCtrl.approveApplicationReview);
+adminRouter.patch("/hiring/applications/:applicationId/review/notes",   requireAdmin, hiringCtrl.updateApplicationReviewNotes);
+adminRouter.get(  "/hiring/document-queue",                             requireAdmin, hiringCtrl.getDocumentQueue);
+adminRouter.post( "/hiring/applications/:applicationId/documents",      requireAdmin, hiringCtrl.requestApplicationDocument);
+adminRouter.patch("/hiring/documents/:documentId/approve",              requireAdmin, hiringCtrl.approveApplicationDocument);
+adminRouter.post( "/hiring/applications/:applicationId/interview",      requireAdmin, hiringCtrl.scheduleInterview);
+adminRouter.post( "/hiring/applications/:applicationId/hire",           requireAdmin, hiringCtrl.confirmHire);
+
+// ── Admin fee schedule + charge (Phase 2 sub-step 3) ────────────────────────────
+adminRouter.get(  "/fee-schedules",              requireAdmin, feeCtrl.getFeeSchedules);
+adminRouter.post( "/fee-schedules",               requireAdmin, feeCtrl.createFeeSchedule);
+adminRouter.patch("/fee-schedules/:id",           requireAdmin, feeCtrl.updateFeeSchedule);
+adminRouter.post( "/hiring/applications/:applicationId/fee/create",  requireAdmin, feeCtrl.createFeeCharge);
+adminRouter.post( "/hiring/applications/:applicationId/fee/confirm", requireAdmin, feeCtrl.confirmFeeCharge);
+
+// ── Worker groups / bulk quotes — admin side (Phase 2 sub-step 5) ───────────────
+adminRouter.get( "/bulk-quotes",              requireAdmin, adminGroupsCtrl.getPendingBulkQuotes);
+adminRouter.post("/bulk-quotes/:id/quote",    requireAdmin, adminGroupsCtrl.submitBulkQuote);
+adminRouter.post("/bulk-quotes/:id/send",     requireAdmin, adminGroupsCtrl.sendBulkQuote);

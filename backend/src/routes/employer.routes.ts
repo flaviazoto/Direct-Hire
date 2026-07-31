@@ -5,6 +5,7 @@ import * as jobsCtrl  from "../controllers/employer-jobs.controller";
 import * as appCtrl   from "../controllers/employer-applications.controller";
 import * as lockCtrl  from "../controllers/worker-lock.controller";
 import * as billing   from "../controllers/billing.controller";
+import * as groupsCtrl from "../controllers/worker-groups.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is rather than duplicated — same cross-role-import pattern
 // already used above for worker-lock.controller.ts.
@@ -88,3 +89,12 @@ employerRouter.post("/notifications/:id/read",     requireVerifiedEmployer, noti
 // as the worker side — Message.recipientId/senderId already generic) ─────────
 employerRouter.get( "/messages",          requireVerifiedEmployer, notifCtrl.getMessages);
 employerRouter.post("/messages/:id/read", requireVerifiedEmployer, notifCtrl.markMessageRead);
+
+// ── Worker groups / bulk quotes (Phase 2 sub-step 5) ─────────────────────────
+// Not subscription-gated: the prompt didn't specify a monetization gate here,
+// and requireSubscription is reserved elsewhere in this router for actions
+// that directly spend paid capability (posting jobs, locking workers).
+employerRouter.get(   "/worker-groups/me",                    requireVerifiedEmployer, groupsCtrl.getMyGroup);
+employerRouter.post(  "/worker-groups/members",                requireVerifiedEmployer, groupsCtrl.addGroupMember);
+employerRouter.delete("/worker-groups/members/:workerId",      requireVerifiedEmployer, groupsCtrl.removeGroupMember);
+employerRouter.post(  "/worker-groups/request-quote",          requireVerifiedEmployer, groupsCtrl.requestBulkQuote);
