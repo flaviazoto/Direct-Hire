@@ -25,6 +25,7 @@ import { uploadRawBuffer, getSignedUrlForPath } from "../services/storage";
 const APPLICATION_LIST_SELECT = {
   id:                       true,
   status:                   true,
+  workflowStatus:           true,
   createdAt:                true,
   updatedAt:                true,
   coverLetter:              true,
