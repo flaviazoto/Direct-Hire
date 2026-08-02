@@ -80,6 +80,73 @@ function buildTimeline(row: AppRow): TimelineEntry[] {
   return entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
+// ── 4. Message history (Phase 5, Step 4) ──────────────────────────────────────
+// Chosen entry point: this panel, not admin user-management — an admin
+// reviewing a placement here already has both the worker and employer in
+// context, which is exactly what Step 2's endpoint needs (a pair, not a
+// platform-wide browse with no starting point). Lazy-loaded on demand rather
+// than fetched for every row while just browsing the queue.
+
+interface AdminMessage {
+  id: string; body: string; createdAt: string;
+  senderId: string; senderName: string; senderRole: string;
+  recipientId: string; recipientName: string;
+}
+
+function MessageHistorySection({ workerId, employerId }: { workerId: string; employerId: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    const res = await adminApi.getMessagesForUser(workerId, employerId);
+    setLoading(false);
+    setLoaded(true);
+    if (!res.success) { setError(res.error ?? "Could not load messages"); return; }
+    setMessages((res.data as unknown as AdminMessage[]) ?? []);
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>4. Message history</div>
+        {!loaded && (
+          <button
+            onClick={load}
+            disabled={loading}
+            style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${C.border}`, background: "transparent", color: C.accent, fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer" }}
+          >
+            {loading ? "Loading…" : "View message history"}
+          </button>
+        )}
+      </div>
+
+      {loaded && (
+        error ? (
+          <div style={{ fontSize: 12, color: C.danger }}>{error}</div>
+        ) : messages.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.muted }}>No messages between this worker and employer.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto" }}>
+            {messages.map(m => (
+              <div key={m.id} style={{ padding: "10px 12px", background: rowBg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.secondary }}>{m.senderName}</span>
+                  <span style={{ fontSize: 10, color: C.muted }}>{new Date(m.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.body}</div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 /* ─── Main page ──────────────────────────────────────────────────────────── */
 
 export default function AdminInterviewHirePage() {
@@ -370,7 +437,7 @@ export default function AdminInterviewHirePage() {
                 </div>
 
                 {/* ── 3. Activity timeline ────────────────────────────────── */}
-                <div>
+                <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>
                     3. Activity timeline
                   </div>
@@ -384,6 +451,9 @@ export default function AdminInterviewHirePage() {
                     ))}
                   </div>
                 </div>
+
+                {/* ── 4. Message history (Phase 5, Step 4) ───────────────────── */}
+                <MessageHistorySection key={selected.id} workerId={selected.worker.id} employerId={selected.employer.id} />
               </>
             )}
           </div>

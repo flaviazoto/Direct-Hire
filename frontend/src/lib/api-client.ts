@@ -340,6 +340,9 @@ export const adminApi = {
     post(`/admin/hiring/applications/${applicationId}/interview`, body),
   confirmHire: (applicationId: string, body: { offeredSalary?: string; offeredCurrency?: string; startDate?: string; contractType?: string }) =>
     post(`/admin/hiring/applications/${applicationId}/hire`, body),
+  // ── Message visibility (Phase 5, Step 2/4) ────────────────────────────────
+  getMessagesForUser: (userId: string, otherUserId?: string) =>
+    get(`/admin/messages?userId=${userId}${otherUserId ? `&otherUserId=${otherUserId}` : ""}`),
 };
 
 // Public job search — no auth required, hits /api/public/jobs/*

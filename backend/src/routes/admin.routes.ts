@@ -13,6 +13,7 @@ import * as growthCtrl   from "../controllers/admin-growth.controller";
 import * as hiringCtrl   from "../controllers/admin-hiring-workflow.controller";
 import * as feeCtrl      from "../controllers/admin-fee.controller";
 import * as adminGroupsCtrl from "../controllers/admin-worker-groups.controller";
+import * as adminMessagesCtrl from "../controllers/admin-messages.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is — same cross-role-import pattern already used in
 // employer.routes.ts for worker-lock.controller.ts / worker-notifications.controller.ts.
@@ -135,3 +136,6 @@ adminRouter.post( "/hiring/applications/:applicationId/fee/confirm", requireAdmi
 adminRouter.get( "/bulk-quotes",              requireAdmin, adminGroupsCtrl.getPendingBulkQuotes);
 adminRouter.post("/bulk-quotes/:id/quote",    requireAdmin, adminGroupsCtrl.submitBulkQuote);
 adminRouter.post("/bulk-quotes/:id/send",     requireAdmin, adminGroupsCtrl.sendBulkQuote);
+
+// ── Message visibility — read-only (Phase 5, Step 2) ─────────────────────────
+adminRouter.get("/messages", requireAdmin, adminMessagesCtrl.getMessagesForUser);
