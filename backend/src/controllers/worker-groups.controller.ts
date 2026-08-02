@@ -14,7 +14,7 @@ const MEMBER_INCLUDE = {
   worker: {
     select: {
       id: true, email: true,
-      workerProfile: { select: { firstName: true, lastName: true, headline: true } },
+      workerProfile: { select: { firstName: true, lastName: true, profession: true } },
     },
   },
 } as const;
