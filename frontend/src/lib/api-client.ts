@@ -409,6 +409,13 @@ export const workerApi = {
     fd.append("file", file);
     return upload(`/applications/${applicationId}/documents/${documentId}/submit`, fd, onProgress);
   },
+  // ── Employer custom document requests (Phase 4, Step 3) ──────────────────────
+  getMyEmployerDocumentRequests: () => get("/employer-document-requests"),
+  submitEmployerDocumentRequest: (requestId: string, file: File, onProgress?: (pct: number) => void) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return upload(`/employer-document-requests/${requestId}/submit`, fd, onProgress);
+  },
 };
 
 export const employerApi = {

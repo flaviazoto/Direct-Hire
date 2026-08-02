@@ -37,6 +37,8 @@ workerRouter.post("/applications/:id/interview-response", requireVerifiedWorker,
 workerRouter.get( "/document-requests",                    requireVerifiedWorker, appCtrl.getMyDocumentRequests);
 workerRouter.get( "/applications/:id/documents",           requireVerifiedWorker, appCtrl.getApplicationDocuments);
 workerRouter.post("/applications/:id/documents/:documentId/submit", requireVerifiedWorker, upload.single("file"), appCtrl.submitApplicationDocument);
+workerRouter.get( "/employer-document-requests",                    requireVerifiedWorker, appCtrl.getMyEmployerDocumentRequests);
+workerRouter.post("/employer-document-requests/:requestId/submit",  requireVerifiedWorker, upload.single("file"), appCtrl.submitEmployerDocumentRequest);
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
 
 // ── Invoices (any authenticated role — ownership-checked in the handler) ──────

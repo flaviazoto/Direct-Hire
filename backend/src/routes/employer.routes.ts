@@ -6,6 +6,7 @@ import * as appCtrl   from "../controllers/employer-applications.controller";
 import * as lockCtrl  from "../controllers/worker-lock.controller";
 import * as billing   from "../controllers/billing.controller";
 import * as groupsCtrl from "../controllers/worker-groups.controller";
+import * as docReqCtrl from "../controllers/employer-document-requests.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is rather than duplicated — same cross-role-import pattern
 // already used above for worker-lock.controller.ts.
@@ -98,3 +99,8 @@ employerRouter.get(   "/worker-groups/me",                    requireVerifiedEmp
 employerRouter.post(  "/worker-groups/members",                requireVerifiedEmployer, groupsCtrl.addGroupMember);
 employerRouter.delete("/worker-groups/members/:workerId",      requireVerifiedEmployer, groupsCtrl.removeGroupMember);
 employerRouter.post(  "/worker-groups/request-quote",          requireVerifiedEmployer, groupsCtrl.requestBulkQuote);
+
+// ── Custom document requests (Phase 4, Step 3) ────────────────────────────────
+employerRouter.get(  "/document-requests",           requireVerifiedEmployer, docReqCtrl.listDocumentRequests);
+employerRouter.post( "/document-requests",           requireVerifiedEmployer, docReqCtrl.createDocumentRequest);
+employerRouter.patch("/document-requests/:id/approve", requireVerifiedEmployer, docReqCtrl.approveDocumentRequest);

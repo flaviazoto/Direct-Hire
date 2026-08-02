@@ -873,3 +873,97 @@ export async function submitApplicationDocument(req: Request, res: Response, nex
     return ok(res, responseDoc, "Document submitted");
   } catch (e) { next(e); }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 4, Step 3 — worker side of EmployerDocumentRequest (employer-
+// initiated, employer-reviewed; separate from ApplicationDocument above,
+// which is admin-initiated/admin-reviewed). Same upload mechanics reused —
+// filePath/uploadRawBuffer/getSignedUrlForPath, DOC_ALLOWED_MIME/DOC_MAX_SIZE.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── GET /worker/employer-document-requests ────────────────────────────────────
+
+export async function getMyEmployerDocumentRequests(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+
+    const applications = await prisma.application.findMany({
+      where:   { workerId, documentRequests: { some: {} } },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        job: { select: { title: true, companyName: true } },
+        documentRequests: { orderBy: { createdAt: "asc" } },
+      },
+    });
+
+    const withFreshUrls = await Promise.all(applications.map(async (app) => ({
+      ...app,
+      documentRequests: await Promise.all(app.documentRequests.map(async (r) => {
+        if (!r.filePath) return r;
+        try { return { ...r, fileUrl: await getSignedUrlForPath(r.filePath) }; }
+        catch { return r; }
+      })),
+    })));
+
+    return ok(res, withFreshUrls.map(app => ({
+      ...app,
+      documentRequests: app.documentRequests.map(({ filePath: _filePath, ...rest }) => rest),
+    })));
+  } catch (e) { next(e); }
+}
+
+// ── POST /worker/employer-document-requests/:requestId/submit ────────────────
+
+export async function submitEmployerDocumentRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+    const { requestId } = req.params;
+    const file = req.file;
+
+    if (!file) return err(res, "No file provided", 400);
+    if (!DOC_ALLOWED_MIME.includes(file.mimetype)) {
+      return err(res, `Invalid file type. Allowed: ${DOC_ALLOWED_MIME.join(", ")}`, 422);
+    }
+    if (file.size > DOC_MAX_SIZE) {
+      return err(res, `File too large. Max ${Math.round(DOC_MAX_SIZE / 1024 / 1024)} MB`, 422);
+    }
+
+    const request = await prisma.employerDocumentRequest.findUnique({
+      where:  { id: requestId },
+      include: { application: { select: { id: true, workerId: true, employerId: true } } },
+    });
+    if (!request || !request.application) return err(res, "Document request not found", 404);
+    if (request.application.workerId !== workerId) return err(res, "Forbidden", 403);
+    if (request.status !== "REQUESTED") {
+      return err(res, `This document is already ${request.status.toLowerCase()} — nothing to submit.`, 400);
+    }
+
+    const ext = DOC_MIME_TO_EXT[file.mimetype] ?? "bin";
+    const filePath = `${workerId}/employer-document-requests/${requestId}.${ext}`;
+    const fileUrl = await uploadRawBuffer(filePath, file.buffer, file.mimetype, true);
+
+    const now = new Date();
+    const updated = await prisma.employerDocumentRequest.update({
+      where: { id: requestId },
+      data:  { fileUrl, filePath, status: "SUBMITTED", submittedAt: now, notifiedEmployerAt: now },
+    });
+
+    // notifiedEmployerAt (Phase 1 field, unused until now) tracks this
+    // notification, not the original request-created one — the employer is
+    // who needs to know their request was fulfilled.
+    prisma.notification.create({
+      data: {
+        userId: request.application.employerId,
+        type:   "DOCUMENT_PENDING",
+        title:  "Worker submitted a requested document",
+        body:   `${request.label} was submitted and is ready for your review.`,
+        link:   `/employer/workers/${workerId}`,
+        metadata: { applicationId: request.application.id, requestId },
+      },
+    }).catch((e: unknown) => console.error("[submitEmployerDocumentRequest employer notif]", e));
+
+    const { filePath: _filePath, ...responseDoc } = updated;
+    return ok(res, responseDoc, "Document submitted");
+  } catch (e) { next(e); }
+}
