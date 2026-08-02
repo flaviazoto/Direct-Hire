@@ -9,12 +9,13 @@ const TOC_ITEMS = [
   { id: "section-3",  label: "3. How We Use Your Data"             },
   { id: "section-4",  label: "4. Legal Basis (GDPR)"               },
   { id: "section-5",  label: "5. Data Sharing"                     },
-  { id: "section-6",  label: "6. Sensitive Data"                   },
-  { id: "section-7",  label: "7. Data Retention"                   },
-  { id: "section-8",  label: "8. Your Rights (GDPR)"               },
-  { id: "section-9",  label: "9. Cookies"                          },
-  { id: "section-10", label: "10. Changes to This Policy"          },
-  { id: "section-11", label: "11. Contact"                         },
+  { id: "section-6",  label: "6. Messages Between Users"           },
+  { id: "section-7",  label: "7. Sensitive Data"                   },
+  { id: "section-8",  label: "8. Data Retention"                   },
+  { id: "section-9",  label: "9. Your Rights (GDPR)"               },
+  { id: "section-10", label: "10. Cookies"                         },
+  { id: "section-11", label: "11. Changes to This Policy"          },
+  { id: "section-12", label: "12. Contact"                         },
 ];
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -176,28 +177,32 @@ export default function PrivacyPage() {
                 <P>We do not sell your data. We do not share data with advertisers.</P>
               </Section>
 
-              <Section id="section-6" title="6. Sensitive Data">
+              <Section id="section-6" title="6. Messages Between Users">
+                <P>Direct messages sent between workers and employers on the platform may be reviewed by DirectHire administrators for safety, fraud prevention, compliance, and dispute-resolution purposes — for example, when investigating a reported issue or verifying the circumstances of a placement. Message access is not routine or automated; it is limited to the minimum staff access required for these purposes.</P>
+              </Section>
+
+              <Section id="section-7" title="7. Sensitive Data">
                 <P>Passport numbers, administrator IDs, and similar identity data are encrypted using AES-256-GCM before being stored in our database. The encryption key is held as a server-side environment variable, access to which is restricted to our backend infrastructure. Decryption of this data is limited to the minimum staff access required for identity verification purposes.</P>
               </Section>
 
-              <Section id="section-7" title="7. Data Retention">
+              <Section id="section-8" title="8. Data Retention">
                 <P>Active account data is retained for the duration of your account. If you delete your account, personal data is permanently deleted within 30 days, except where we are legally required to retain it (e.g., financial records for 7 years).</P>
               </Section>
 
-              <Section id="section-8" title="8. Your Rights (GDPR)">
+              <Section id="section-9" title="9. Your Rights (GDPR)">
                 <P>You have the right to: <strong style={{ color: "#cbd5e1" }}>access</strong> your personal data; <strong style={{ color: "#cbd5e1" }}>correct</strong> inaccurate data; <strong style={{ color: "#cbd5e1" }}>delete</strong> your account and associated data; <strong style={{ color: "#cbd5e1" }}>export</strong> your data in a portable format; <strong style={{ color: "#cbd5e1" }}>restrict</strong> or object to certain processing; <strong style={{ color: "#cbd5e1" }}>withdraw consent</strong> at any time.</P>
                 <P>To exercise these rights, email privacy@directhire.io. We will respond within 30 days.</P>
               </Section>
 
-              <Section id="section-9" title="9. Cookies">
+              <Section id="section-10" title="10. Cookies">
                 <P>We use only one strictly necessary cookie, an HttpOnly refresh token scoped to our token-refresh endpoint. Your access token itself is kept in your browser&apos;s local storage rather than a cookie. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
               </Section>
 
-              <Section id="section-10" title="10. Changes to This Policy">
+              <Section id="section-11" title="11. Changes to This Policy">
                 <P>We may update this policy periodically. We will notify you of material changes by email and by displaying a notice in the platform. The date at the top of this page reflects the most recent update.</P>
               </Section>
 
-              <Section id="section-11" title="11. Contact">
+              <Section id="section-12" title="12. Contact">
                 <P>Data Protection Officer: privacy@directhire.io<br />DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania</P>
                 <P>If you are unsatisfied with our response, you have the right to lodge a complaint with the relevant supervisory authority in your country.</P>
               </Section>

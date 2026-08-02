@@ -88,11 +88,16 @@ export default function EmployerMessagesPage() {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: 0 }}>Messages</h1>
         <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
           {loading ? "Loading…" : unreadCount > 0 ? `${unreadCount} unread` : messages.length === 0 ? "No messages yet" : "All caught up"}
         </p>
+      </div>
+
+      {/* Compliance disclosure — Phase 5 Step 3A */}
+      <div style={{ fontSize: 12, color: "#64748b", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 14px", marginBottom: 24 }}>
+        Messages may be reviewed by DirectHire for safety and compliance purposes.
       </div>
 
       {/* Body */}
