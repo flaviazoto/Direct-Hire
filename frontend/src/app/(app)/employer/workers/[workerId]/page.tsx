@@ -1345,6 +1345,13 @@ function WorkerProfileContent() {
             </div>
           ) : (
             <>
+              {/* Compliance disclosure — Phase 5 follow-up: same wording as
+                  /worker/messages and /employer/messages, placed here since
+                  this modal is where the employer actually composes/sends. */}
+              <div style={{ fontSize: 12, color: "#94a3b8", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>
+                Messages may be reviewed by DirectHire for safety and compliance purposes.
+              </div>
+
               <label style={labelStyle}>Your message</label>
               <textarea
                 value={msgText}
