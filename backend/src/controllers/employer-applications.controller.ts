@@ -369,21 +369,11 @@ export async function updateApplicationStatus(req: Request, res: Response, next:
 
     if (newStatus === "SHORTLISTED") {
       updateData.shortlistedAt = now;
-      // Phase 2 sub-step 4 design decision (flagged in the phase report, not
-      // silently assumed): Phase 1 framed workflowStatus as populated "once
-      // an application enters this post-hire process", but Phase 2's own
-      // verification trace runs the whole admin workflow (review -> docs ->
-      // fee -> cleared) BEFORE interview scheduling and hire confirmation —
-      // i.e. pre-hire, not post-hire. SHORTLISTED is the natural, existing,
-      // still-employer-controlled trigger point that precedes both: the
-      // employer signals hiring intent here, then admin vets/collects
-      // fee/docs, then admin schedules the interview and confirms the hire.
-      // Guarded by `app.status === "VIEWED"` (the only status this transition
-      // can come from) purely for clarity, not because it's reachable any
-      // other way — VIEWED->SHORTLISTED is the only path into this branch.
-      if (app.status === "VIEWED") {
-        updateData.workflowStatus = "PENDING_ADMIN_REVIEW";
-      }
+      // Phase 2 correction: workflowStatus is now set at application creation
+      // time (worker-applications.controller.ts's createApplicationRecord),
+      // not here. The employer's hiring-pipeline status (this field) and the
+      // admin workflow run in parallel, independent of each other — shortlisting
+      // has no effect on workflowStatus.
     }
 
     if (newStatus === "REJECTED") {

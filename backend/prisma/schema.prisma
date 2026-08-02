@@ -296,6 +296,18 @@ model User {
   payments              Payment[]
   invoices              Invoice[]
 
+  // ── Admin-mediated hiring workflow (Phase 1) ──────────────────────────────
+  applicationAdminReviews        ApplicationAdminReview[]    @relation("ApplicationAdminReviews")
+  applicationDocumentReviews     ApplicationDocument[]       @relation("ApplicationDocumentReviews")
+  adminFeeScheduleUpdates        AdminFeeSchedule[]          @relation("AdminFeeScheduleUpdates")
+  adminFeeChargesAsWorker        AdminFeeCharge[]            @relation("AdminFeeChargesAsWorker")
+  employerDocumentRequestsAsEmployer EmployerDocumentRequest[] @relation("EmployerDocumentRequestsAsEmployer")
+  employerDocumentRequestReviews EmployerDocumentRequest[]   @relation("EmployerDocumentRequestReviews")
+  workerGroup                    WorkerGroup?                @relation("WorkerGroupOwner")
+  workerGroupMemberships         WorkerGroupMember[]         @relation("WorkerGroupMemberships")
+  bulkQuoteRequestsAsEmployer    BulkQuoteRequest[]          @relation("BulkQuoteRequestsAsEmployer")
+  bulkQuoteRequestsPrepared      BulkQuoteRequest[]          @relation("BulkQuoteRequestsPrepared")
+
   @@index([email])
   @@index([role])
   @@index([status])
@@ -727,6 +739,21 @@ model Application {
   applicationFeePaid    Boolean @default(false) @map("application_fee_paid")
   stripePaymentIntentId String? @map("stripe_payment_intent_id")
 
+  // ── Admin-mediated hiring workflow (Phase 1, corrected in Phase 2) ────────
+  // Parallel to `status` above, deliberately not an extension of it — see
+  // ApplicationAdminReview/ApplicationDocument/AdminFeeCharge below. Populated
+  // at application creation (worker-applications.controller.ts's
+  // createApplicationRecord), immediately after any application fee is
+  // confirmed paid — independent of `status`/the employer-controlled hiring
+  // pipeline above. Nullable only because it didn't exist before this
+  // migration; every application created from this point on gets a value.
+  workflowStatus AdminWorkflowStatus? @map("workflow_status")
+
+  adminReview      ApplicationAdminReview?
+  documents        ApplicationDocument[]
+  adminFeeCharge   AdminFeeCharge?
+  documentRequests EmployerDocumentRequest[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -736,6 +763,7 @@ model Application {
   @@index([employerId])
   @@index([status])
   @@index([createdAt])
+  @@index([workflowStatus])
   @@map("applications")
 }
 
@@ -1126,4 +1154,286 @@ model GrowthContentDraft {
   @@index([contentType])
   @@index([status])
   @@map("growth_content_drafts")
+}
+
+// ─────────────────────────────────────────────
+// ADMIN-MEDIATED HIRING WORKFLOW (Phase 1 — schema only)
+// ─────────────────────────────────────────────
+// Parallel to Application.status (the existing hiring-pipeline enum), not an
+// extension of it — see Application.workflowStatus above. This whole section
+// covers what happens AFTER an application reaches ACCEPTED: admin review,
+// legal document collection, an admin-configured per-country/visa-type fee,
+// and employer-side document requests + bulk hiring (worker groups / bulk
+// quotes). No REJECTED value exists anywhere in this section by design —
+// admin can only move forward or leave a record at its current state; the
+// existing hiring-pipeline REJECTED/WITHDRAWN remain exclusively on
+// Application.status and are untouched by any of this.
+
+enum AdminWorkflowStatus {
+  PENDING_ADMIN_REVIEW
+  APPROVED_QUEUED
+  DOCUMENTS_PENDING
+  DOCUMENTS_APPROVED
+  ADMIN_FEE_DUE
+  ADMIN_FEE_PAID
+  CLEARED_FOR_EMPLOYER
+}
+
+enum AdminReviewDecision {
+  PENDING
+  APPROVED
+}
+
+// Shared by ApplicationDocument and EmployerDocumentRequest — both are
+// "request a document, worker/employer submits it, admin approves" flows
+// with the identical 3-state shape, deliberately NOT the existing
+// DocumentReviewStatus (Upload/WorkerProfile.passportStatus) since that
+// includes REJECTED and this whole section has no reject path.
+enum DocumentRequestStatus {
+  REQUESTED
+  SUBMITTED
+  APPROVED
+}
+
+enum BulkQuoteStatus {
+  REQUESTED
+  QUOTE_PREPARED
+  SENT
+}
+
+model ApplicationAdminReview {
+  id            String      @id @default(cuid())
+  applicationId String      @unique @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  reviewedById String? @map("reviewed_by_id")
+  reviewedBy   User?   @relation("ApplicationAdminReviews", fields: [reviewedById], references: [id])
+
+  decision      AdminReviewDecision @default(PENDING)
+  decisionNotes String?             @map("decision_notes") @db.Text // internal only, never shown to worker
+  noteToWorker  String?             @map("note_to_worker") @db.Text // shown to worker while decision stays PENDING
+  decidedAt     DateTime?           @map("decided_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([reviewedById])
+  @@index([decision])
+  @@map("application_admin_reviews")
+}
+
+// Per-application legal documents (e.g. passport scan, visa form, medical
+// clearance) — distinct from the existing Upload model, which is onboarding
+// identity/profile documents (photo, intro video, medical certificate at
+// registration time). These two never overlap: Upload is "prove who you are"
+// at onboarding, ApplicationDocument is "paperwork this specific job/hire
+// needs" post-acceptance. Field naming (reviewedById/reviewedAt/reviewNotes)
+// mirrors Upload's convention (schema.prisma Upload model) for consistency.
+model ApplicationDocument {
+  id            String      @id @default(cuid())
+  applicationId String      @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  documentType String  @map("document_type") // e.g. "passport_scan", "visa_form", "medical_clearance"
+  fileUrl      String? @map("file_url")
+
+  status DocumentRequestStatus @default(REQUESTED)
+
+  reviewedById String? @map("reviewed_by_id")
+  reviewedBy   User?   @relation("ApplicationDocumentReviews", fields: [reviewedById], references: [id])
+  reviewNotes  String? @map("review_notes") @db.Text
+
+  submittedAt DateTime? @map("submitted_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+
+  // Not in the original field list — added because nothing else on this
+  // model records when the document was REQUESTED (submittedAt only covers
+  // the worker-uploads-it step). Every other model in this schema has a
+  // createdAt; flagging this one as a judgment call rather than a silent
+  // addition. No updatedAt — submittedAt/reviewedAt already cover the two
+  // state transitions this model has.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([reviewedById])
+  @@map("application_documents")
+}
+
+// Admin-configurable fee lookup — no default/fallback row by design, every
+// (countryCode, visaType) combination must be explicitly configured before
+// AdminFeeCharge can resolve an amount for it (Phase 2 concern: what happens
+// when a charge is attempted for an unconfigured combination is application
+// logic, not a schema-level default).
+model AdminFeeSchedule {
+  id          String  @id @default(cuid())
+  countryCode String  @map("country_code")
+  visaType    String  @map("visa_type")
+  amountUsd   Decimal @map("amount_usd") @db.Decimal(10, 2)
+  isActive    Boolean @default(true) @map("is_active")
+
+  updatedById String? @map("updated_by_id")
+  updatedBy   User?   @relation("AdminFeeScheduleUpdates", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([countryCode, visaType])
+  @@map("admin_fee_schedules")
+}
+
+// One row per application's admin fee. amountUsd is resolved from
+// AdminFeeSchedule and copied here AT CHARGE TIME so a later schedule edit
+// never retroactively changes a historical charge. Stripe field naming
+// (stripePaymentIntentId/stripeRefundId/totalRefundedCents) and the
+// confirm-then-verify flow (create PaymentIntent -> return clientSecret ->
+// separate confirm endpoint retrieves + verifies status === "succeeded" +
+// checks metadata + idempotency-checks stripePaymentIntentId before writing)
+// both mirror WorkerLock exactly (worker-lock.controller.ts lockWorker/
+// confirmLock) — see Step A audit. status mirrors the existing Payment
+// model's convention: plain string, PENDING | SUCCEEDED | FAILED | REFUNDED,
+// no PROCESSING step, "SUCCEEDED" not "PAID".
+model AdminFeeCharge {
+  id            String      @id @default(cuid())
+  applicationId String      @unique @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  workerId String @map("worker_id")
+  worker   User   @relation("AdminFeeChargesAsWorker", fields: [workerId], references: [id])
+
+  countryCode String  @map("country_code")
+  visaType    String  @map("visa_type")
+  amountUsd   Decimal @map("amount_usd") @db.Decimal(10, 2)
+  currency    String  @default("usd")
+
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
+  stripeRefundId        String? @map("stripe_refund_id")
+  totalRefundedCents    Int     @default(0) @map("total_refunded_cents")
+
+  status String @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED — matches Payment.status's convention exactly
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+  failedAt  DateTime? @map("failed_at")
+
+  @@index([workerId])
+  @@index([status])
+  @@map("admin_fee_charges")
+}
+
+// Employer-side document requests — can be scoped to one application or
+// stand alone (applicationId nullable). Same DocumentRequestStatus 3-state
+// shape and reviewedById/reviewNotes/reviewedAt naming as ApplicationDocument
+// above, since this is functionally the same "request -> submit -> approve"
+// pattern, just requested BY an employer rather than by admin on the
+// worker's behalf.
+model EmployerDocumentRequest {
+  id String @id @default(cuid())
+
+  employerId String @map("employer_id")
+  employer   User   @relation("EmployerDocumentRequestsAsEmployer", fields: [employerId], references: [id], onDelete: Cascade)
+
+  applicationId String?      @map("application_id")
+  application   Application? @relation(fields: [applicationId], references: [id])
+
+  label       String
+  description String? @db.Text
+  isRequired  Boolean @default(true) @map("is_required")
+
+  status  DocumentRequestStatus @default(REQUESTED)
+  fileUrl String?               @map("file_url")
+
+  reviewedById String? @map("reviewed_by_id")
+  reviewedBy   User?   @relation("EmployerDocumentRequestReviews", fields: [reviewedById], references: [id])
+  reviewNotes  String? @map("review_notes") @db.Text
+
+  submittedAt        DateTime? @map("submitted_at")
+  reviewedAt          DateTime? @map("reviewed_at")
+  notifiedEmployerAt DateTime? @map("notified_employer_at") // when the request-email was sent
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([employerId])
+  @@index([applicationId])
+  @@index([status])
+  @@map("employer_document_requests")
+}
+
+// One group per employer (employerId is unique below), not multiple named
+// groups. Chosen because: (1) neither this prompt nor the original Phase 1
+// spec's field list for WorkerGroup includes a `name` column, and multiple
+// groups without a distinguishing name would be unusable; (2) nothing else
+// in this schema has a "multiple named collections per owner" pattern to
+// follow (SavedJob, the closest precedent, is a flat per-worker list with no
+// grouping concept at all) — a single implicit group per employer is the
+// simpler design that fits the given fields exactly. If Phase 2 needs
+// multiple named groups later, that's an additive `name` column + dropping
+// the unique constraint, not a breaking change from this shape.
+model WorkerGroup {
+  id String @id @default(cuid())
+
+  employerId String @unique @map("employer_id")
+  employer   User   @relation("WorkerGroupOwner", fields: [employerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members           WorkerGroupMember[]
+  bulkQuoteRequests BulkQuoteRequest[]
+
+  @@map("worker_groups")
+}
+
+// No schema-level restriction on which workers can be added (available vs.
+// locked-by-this-employer is Phase 2 query-time/business logic) — only the
+// structural unique-pair constraint to prevent duplicate adds.
+model WorkerGroupMember {
+  id String @id @default(cuid())
+
+  workerGroupId String      @map("worker_group_id")
+  workerGroup   WorkerGroup @relation(fields: [workerGroupId], references: [id], onDelete: Cascade)
+
+  workerId String @map("worker_id")
+  worker   User   @relation("WorkerGroupMemberships", fields: [workerId], references: [id], onDelete: Cascade)
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  @@unique([workerGroupId, workerId])
+  @@index([workerId])
+  @@map("worker_group_members")
+}
+
+// NOTE (application-level rule, not a DB constraint — per instructions):
+// creation should only be allowed when the associated WorkerGroup has 10+
+// members at request time. Enforce in Phase 2's service/controller layer;
+// workerCountAtRequest below is a snapshot for historical record-keeping,
+// not the enforcement mechanism itself.
+model BulkQuoteRequest {
+  id String @id @default(cuid())
+
+  workerGroupId String      @map("worker_group_id")
+  workerGroup   WorkerGroup @relation(fields: [workerGroupId], references: [id], onDelete: Cascade)
+
+  employerId String @map("employer_id")
+  employer   User   @relation("BulkQuoteRequestsAsEmployer", fields: [employerId], references: [id])
+
+  workerCountAtRequest Int @map("worker_count_at_request")
+
+  status BulkQuoteStatus @default(REQUESTED)
+
+  quoteAmountUsd Decimal? @map("quote_amount_usd") @db.Decimal(10, 2)
+  quoteNotes     String?  @map("quote_notes") @db.Text
+
+  preparedById String? @map("prepared_by_id")
+  preparedBy   User?   @relation("BulkQuoteRequestsPrepared", fields: [preparedById], references: [id])
+
+  requestedAt     DateTime  @default(now()) @map("requested_at")
+  quotePreparedAt DateTime? @map("quote_prepared_at")
+  quoteSentAt     DateTime? @map("quote_sent_at")
+
+  @@index([workerGroupId])
+  @@index([employerId])
+  @@index([status])
+  @@map("bulk_quote_requests")
 }

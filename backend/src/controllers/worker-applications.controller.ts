@@ -166,6 +166,12 @@ async function createApplicationRecord(opts: {
   const { workerId, jobId, employerId, coverLetter, workerNote, matchScore,
           feeCents, stripePaymentIntentId, worker, job } = opts;
 
+  // Phase 2 correction: every application enters the admin-mediated workflow
+  // immediately on creation, independent of the employer-controlled hiring-
+  // pipeline status above. This function is only ever reached post-payment —
+  // either there's no fee (feeCents === 0, nothing to collect) or the caller
+  // (confirmApplication) already verified the Stripe PaymentIntent succeeded
+  // — so there's no unpaid/abandoned path into this create call.
   const application = await prisma.application.create({
     data: {
       workerId,
@@ -178,6 +184,7 @@ async function createApplicationRecord(opts: {
       applicationFeeCents:   feeCents > 0 ? feeCents : null,
       applicationFeePaid:    feeCents > 0,
       stripePaymentIntentId: stripePaymentIntentId ?? null,
+      workflowStatus:        "PENDING_ADMIN_REVIEW",
     },
   });
 
