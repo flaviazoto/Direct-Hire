@@ -1,5 +1,6 @@
 // backend/src/routes/worker.routes.ts
 import { Router } from "express";
+import multer from "multer";
 import * as ctrl         from "../controllers/worker.controller";
 import * as appCtrl      from "../controllers/worker-applications.controller";
 import * as lockCtrl     from "../controllers/worker-lock-status.controller";
@@ -9,6 +10,10 @@ import { getInvoiceUrl } from "../controllers/invoices.controller";
 import { requireWorker, requireVerifiedWorker, requireAnyAuth } from "../middleware/auth.middleware";
 
 export const workerRouter = Router();
+
+// Same multer config as uploads.routes.ts (memory storage, controller
+// enforces the actual per-document-type size ceiling).
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 // ── Job browsing & saving (requireWorker — VERIFIED not required to browse) ───
 workerRouter.get( "/jobs",                requireWorker,         ctrl.getJobs);
@@ -29,6 +34,9 @@ workerRouter.get( "/applications/:id",           requireVerifiedWorker, appCtrl.
 workerRouter.post("/applications/:id/withdraw",  requireVerifiedWorker, appCtrl.withdrawApplication);
 workerRouter.get( "/applications/:id/contact",   requireVerifiedWorker, appCtrl.getContactDetails);
 workerRouter.post("/applications/:id/interview-response", requireVerifiedWorker, appCtrl.respondToInterview);
+workerRouter.get( "/document-requests",                    requireVerifiedWorker, appCtrl.getMyDocumentRequests);
+workerRouter.get( "/applications/:id/documents",           requireVerifiedWorker, appCtrl.getApplicationDocuments);
+workerRouter.post("/applications/:id/documents/:documentId/submit", requireVerifiedWorker, upload.single("file"), appCtrl.submitApplicationDocument);
 workerRouter.get( "/payments",                   requireVerifiedWorker, getWorkerPayments);
 
 // ── Invoices (any authenticated role — ownership-checked in the handler) ──────

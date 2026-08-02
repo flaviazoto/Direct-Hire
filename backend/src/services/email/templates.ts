@@ -1398,7 +1398,7 @@ export function applicationDocumentRequestedTemplate(vars: {
     ${h1(`Action needed, ${vars.firstName}`)}
     ${p(`To keep moving forward with your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong>, our team needs the following document from you:`)}
     ${summaryTable(summaryRow("Document requested", vars.documentType))}
-    ${btn(`${APP_URL}/worker/applications`, "Upload document", "#D97706")}
+    ${btn(`${APP_URL}/worker/document-requests`, "Upload document", "#D97706")}
   `);
   return {
     subject: `Document needed for your application to ${vars.companyName}`,

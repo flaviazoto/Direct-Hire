@@ -1236,6 +1236,12 @@ model ApplicationDocument {
 
   documentType String  @map("document_type") // e.g. "passport_scan", "visa_form", "medical_clearance"
   fileUrl      String? @map("file_url")
+  // Phase 4 addition: these are always private, sensitive files (passport
+  // scans, medical certs) — filePath is what lets a fresh signed URL be
+  // generated on every read (services/storage's getSignedUrlForPath), same
+  // convention as Upload.filePath/isPrivate. fileUrl alone (the original
+  // Phase 1 field) can't be re-signed once its original signed URL expires.
+  filePath String? @map("file_path")
 
   status DocumentRequestStatus @default(REQUESTED)
 
@@ -1340,8 +1346,9 @@ model EmployerDocumentRequest {
   description String? @db.Text
   isRequired  Boolean @default(true) @map("is_required")
 
-  status  DocumentRequestStatus @default(REQUESTED)
-  fileUrl String?               @map("file_url")
+  status   DocumentRequestStatus @default(REQUESTED)
+  fileUrl  String?               @map("file_url")
+  filePath String?               @map("file_path") // Phase 4 addition — see ApplicationDocument.filePath's comment
 
   reviewedById String? @map("reviewed_by_id")
   reviewedBy   User?   @relation("EmployerDocumentRequestReviews", fields: [reviewedById], references: [id])

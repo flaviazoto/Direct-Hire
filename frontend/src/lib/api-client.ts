@@ -122,7 +122,7 @@ function del<T>(path: string) {
   return request<T>(path, { method: "DELETE" });
 }
 
-function upload<T>(path: string, formData: FormData, onProgress?: (pct: number) => void) {
+export function upload<T>(path: string, formData: FormData, onProgress?: (pct: number) => void) {
   return new Promise<{ success: boolean; data?: T; error?: string }>((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_PREFIX}${path}`);
@@ -401,6 +401,14 @@ export const workerApi = {
   getPayments: (params?: Record<string, string>) =>
     get(`/payments${params ? "?" + new URLSearchParams(params) : ""}`),
   getInvoiceUrl: (invoiceId: string) => get(`/invoices/${invoiceId}/url`),
+  // ── Admin-mediated hiring workflow document requests (Phase 4, Step 1) ───────
+  getMyDocumentRequests: () => get("/document-requests"),
+  getApplicationDocuments: (applicationId: string) => get(`/applications/${applicationId}/documents`),
+  submitApplicationDocument: (applicationId: string, documentId: string, file: File, onProgress?: (pct: number) => void) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return upload(`/applications/${applicationId}/documents/${documentId}/submit`, fd, onProgress);
+  },
 };
 
 export const employerApi = {

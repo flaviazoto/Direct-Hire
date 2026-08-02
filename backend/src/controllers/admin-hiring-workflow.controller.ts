@@ -14,6 +14,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { insertAdminAuditLog } from "../lib/audit";
+import { getSignedUrlForPath } from "../services/storage";
 import {
   sendApplicationApprovedQueuedEmail,
   sendApplicationDocumentRequestedEmail,
@@ -167,7 +168,7 @@ export async function getDocumentQueue(req: Request, res: Response, next: NextFu
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
 
     const where = { workflowStatus: "APPROVED_QUEUED" as const };
-    const [rows, total] = await Promise.all([
+    const [rawRows, total] = await Promise.all([
       prisma.application.findMany({
         where, skip, take: limit,
         orderBy: { updatedAt: "asc" },
@@ -175,6 +176,18 @@ export async function getDocumentQueue(req: Request, res: Response, next: NextFu
       }),
       prisma.application.count({ where }),
     ]);
+
+    // Fresh signed URL per document on every read (filePath present) rather
+    // than the possibly-expired fileUrl captured at submit time — same
+    // convention as worker-applications.controller.ts's getApplicationDocuments.
+    const rows = await Promise.all(rawRows.map(async (row) => ({
+      ...row,
+      documents: await Promise.all(row.documents.map(async (d) => {
+        if (!d.filePath) return d;
+        try { return { ...d, fileUrl: await getSignedUrlForPath(d.filePath) }; }
+        catch { return d; }
+      })),
+    })));
 
     return paginated(res, rows, total, page, limit);
   } catch (e) { next(e); }
@@ -219,6 +232,20 @@ export async function requestApplicationDocument(req: Request, res: Response, ne
     sendApplicationDocumentRequestedEmail(
       app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName, documentType,
     ).catch((e: unknown) => console.error("[document-requested email]", e));
+
+    // Phase 4 addition — this previously only fired the email above, with no
+    // in-app notification at all, and nowhere in-app for it to link to before
+    // Phase 4 built the worker-facing upload page.
+    prisma.notification.create({
+      data: {
+        userId: app.worker.id,
+        type:   "DOCUMENT_PENDING",
+        title:  "Document requested",
+        body:   `${app.job.companyName} needs a document from you: ${documentType}.`,
+        link:   "/worker/document-requests",
+        metadata: { applicationId, documentId: doc.id },
+      },
+    }).catch((e: unknown) => console.error("[document-requested notif]", e));
 
     return ok(res, doc, "Document requested", 201);
   } catch (e) { next(e); }

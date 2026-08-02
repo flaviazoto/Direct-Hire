@@ -18,6 +18,7 @@ import { calculateMatchScore } from "../services/matching";
 import { calculateApplicationFeeAsync } from "../services/pricing";
 import stripe from "../services/stripe";
 import { generateInvoice } from "../services/invoices";
+import { uploadRawBuffer, getSignedUrlForPath } from "../services/storage";
 
 // ── Shared select for list + detail ──────────────────────────────────────────
 
@@ -722,5 +723,153 @@ export async function getContactDetails(req: Request, res: Response, next: NextF
       company_name:           app.job.companyName,
       interview_instructions: app.interviewInstructions,
     });
+  } catch (e) { next(e); }
+}
+
+// ── GET /worker/applications/:id/documents ────────────────────────────────────
+// Phase 4, Step 1 — the blocking gap Phase 3 found: ApplicationDocument had
+// admin request/approve but no worker-facing view or submit path at all, so
+// no application could progress past APPROVED_QUEUED in practice.
+
+// Reuses FileType.OTHER's bounds from services/storage (pdf/jpeg/png, 20MB) —
+// these are arbitrary admin-requested documents (passport scans, medical
+// certs, visa forms), not one of the profile-level Upload fileTypes, so
+// there's no single existing type to inherit from; OTHER is the closest.
+const DOC_ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
+const DOC_MAX_SIZE = 20 * 1024 * 1024;
+const DOC_MIME_TO_EXT: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg":       "jpg",
+  "image/png":        "png",
+};
+
+// ── GET /worker/document-requests ─────────────────────────────────────────────
+// Standalone aggregate view across every one of this worker's applications —
+// built instead of adding an entry point on worker/applications/page.tsx
+// (one of Phase 1's exhaustiveness-surface files, off-limits this phase per
+// the Phase 4 prompt's cross-cutting section), matching Step 1's own
+// fallback ("your call if a dedicated sub-page reads better"). Mirrors the
+// existing standalone /worker/documents (profile-level Upload) page's role
+// in the nav — this is the application-level equivalent.
+
+export async function getMyDocumentRequests(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+
+    const applications = await prisma.application.findMany({
+      where:   { workerId, documents: { some: {} } },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        job: { select: { title: true, companyName: true } },
+        documents: { orderBy: { createdAt: "asc" } },
+      },
+    });
+
+    const withFreshUrls = await Promise.all(applications.map(async (app) => ({
+      ...app,
+      documents: await Promise.all(app.documents.map(async (d) => {
+        if (!d.filePath) return d;
+        try { return { ...d, fileUrl: await getSignedUrlForPath(d.filePath) }; }
+        catch { return d; }
+      })),
+    })));
+
+    return ok(res, withFreshUrls.map(app => ({
+      ...app,
+      documents: app.documents.map(({ filePath: _filePath, ...rest }) => rest),
+    })));
+  } catch (e) { next(e); }
+}
+
+export async function getApplicationDocuments(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+    const { id } = req.params;
+
+    const app = await prisma.application.findUnique({ where: { id }, select: { id: true, workerId: true } });
+    if (!app) return err(res, "Application not found", 404);
+    if (app.workerId !== workerId) return err(res, "Forbidden", 403);
+
+    const documents = await prisma.applicationDocument.findMany({
+      where:   { applicationId: id },
+      orderBy: { createdAt: "asc" },
+      select:  { id: true, documentType: true, fileUrl: true, filePath: true, status: true, submittedAt: true, reviewedAt: true, createdAt: true },
+    });
+
+    // Fresh signed URL on every read (filePath present) rather than trusting
+    // the possibly-expired fileUrl captured at submit time — same convention
+    // Upload.filePath/isPrivate already uses elsewhere in this codebase.
+    const withFreshUrls = await Promise.all(documents.map(async (d) => {
+      if (!d.filePath) return d;
+      try {
+        const url = await getSignedUrlForPath(d.filePath);
+        return { ...d, fileUrl: url };
+      } catch {
+        return d; // fall back to the stored (possibly stale) fileUrl
+      }
+    }));
+
+    return ok(res, withFreshUrls.map(({ filePath: _filePath, ...rest }) => rest));
+  } catch (e) { next(e); }
+}
+
+// ── POST /worker/applications/:id/documents/:documentId/submit ───────────────
+
+export async function submitApplicationDocument(req: Request, res: Response, next: NextFunction) {
+  try {
+    const workerId = req.user!.sub;
+    const { id, documentId } = req.params;
+    const file = req.file;
+
+    if (!file) return err(res, "No file provided", 400);
+    if (!DOC_ALLOWED_MIME.includes(file.mimetype)) {
+      return err(res, `Invalid file type. Allowed: ${DOC_ALLOWED_MIME.join(", ")}`, 422);
+    }
+    if (file.size > DOC_MAX_SIZE) {
+      return err(res, `File too large. Max ${Math.round(DOC_MAX_SIZE / 1024 / 1024)} MB`, 422);
+    }
+
+    const app = await prisma.application.findUnique({ where: { id }, select: { id: true, workerId: true } });
+    if (!app) return err(res, "Application not found", 404);
+    if (app.workerId !== workerId) return err(res, "Forbidden", 403);
+
+    const doc = await prisma.applicationDocument.findUnique({ where: { id: documentId } });
+    if (!doc || doc.applicationId !== id) return err(res, "Document request not found", 404);
+    if (doc.status !== "REQUESTED") {
+      return err(res, `This document is already ${doc.status.toLowerCase()} — nothing to submit.`, 400);
+    }
+
+    const ext = DOC_MIME_TO_EXT[file.mimetype] ?? "bin";
+    const filePath = `${workerId}/application-documents/${documentId}.${ext}`;
+    const fileUrl = await uploadRawBuffer(filePath, file.buffer, file.mimetype, true);
+
+    const now = new Date();
+    const updated = await prisma.applicationDocument.update({
+      where: { id: documentId },
+      data:  { fileUrl, filePath, status: "SUBMITTED", submittedAt: now },
+    });
+
+    // In-app admin notification only — no email. Same reasoning as the
+    // existing "verified worker re-uploaded a document" notice in
+    // uploads.controller.ts: this is a queue-freshness nudge for admins who
+    // are already checking the document-verification tab regularly, not an
+    // event any individual admin is specifically owed an email for.
+    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    if (admins.length > 0) {
+      prisma.notification.createMany({
+        data: admins.map(a => ({
+          userId: a.id,
+          type:   "DOCUMENT_PENDING",
+          title:  "Worker submitted a requested document",
+          body:   `${doc.documentType} was submitted and is ready for review.`,
+          link:   "/admin/hiring/review",
+          metadata: { applicationId: id, documentId },
+        })),
+      }).catch((e: unknown) => console.error("[submitApplicationDocument admin notif]", e));
+    }
+
+    const { filePath: _filePath, ...responseDoc } = updated;
+    return ok(res, responseDoc, "Document submitted");
   } catch (e) { next(e); }
 }
