@@ -332,6 +332,8 @@ export const adminApi = {
     post(`/admin/hiring/applications/${applicationId}/documents`, { documentType }),
   approveApplicationDocument: (documentId: string) =>
     patch(`/admin/hiring/documents/${documentId}/approve`),
+  skipDocumentVerification: (applicationId: string) =>
+    post(`/admin/hiring/applications/${applicationId}/documents/skip`),
   getFeeQueue: (params?: Record<string, string>) =>
     get(`/admin/hiring/fee-queue${params ? "?" + new URLSearchParams(params) : ""}`),
   getInterviewHireQueue: (params?: Record<string, string>) =>

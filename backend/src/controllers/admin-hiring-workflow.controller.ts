@@ -296,6 +296,54 @@ export async function approveApplicationDocument(req: Request, res: Response, ne
   } catch (e) { next(e); }
 }
 
+// ── POST /admin/hiring/applications/:applicationId/documents/skip ────────────
+// Urgent fix: an application needing zero extra legal documents had no way
+// to reach DOCUMENTS_APPROVED — approveApplicationDocument's "approve all"
+// check only ever fires as a side effect of approving an actual document
+// row, so an application with none was permanently stuck. This is the
+// missing direct path: admin explicitly marks "no documents needed," same
+// end state (DOCUMENTS_APPROVED) as if documents had been requested and all
+// approved. Guarded the same way — only allowed when there's genuinely
+// nothing outstanding (no rows, or every row already APPROVED) — so this
+// can't be used to bypass a document that's still REQUESTED/SUBMITTED.
+
+export async function skipDocumentVerification(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = req.user!.sub;
+    const { applicationId } = req.params;
+
+    const app = await prisma.application.findUnique({
+      where:  { id: applicationId },
+      select: { id: true, workflowStatus: true },
+    });
+    if (!app) return err(res, "Application not found", 404);
+    if (app.workflowStatus !== "APPROVED_QUEUED" && app.workflowStatus !== "DOCUMENTS_PENDING") {
+      return err(res, `Cannot skip document verification — application is at workflow stage ${app.workflowStatus ?? "none"}.`, 400);
+    }
+
+    const outstanding = await prisma.applicationDocument.count({
+      where: { applicationId, status: { not: "APPROVED" } },
+    });
+    if (outstanding > 0) {
+      return err(res, `This application has ${outstanding} document(s) still awaiting approval — approve or resolve those first.`, 400);
+    }
+
+    const updated = await prisma.application.update({
+      where: { id: applicationId },
+      data:  { workflowStatus: "DOCUMENTS_APPROVED" },
+    });
+
+    insertAdminAuditLog({
+      actorId: adminId, targetId: applicationId,
+      action: "APPLICATION_STATUS_CHANGED",
+      notes: "No documents needed -> DOCUMENTS_APPROVED",
+      metadata: { applicationId },
+    }).catch(console.error);
+
+    return ok(res, updated, "No documents needed — moved to fee stage");
+  } catch (e) { next(e); }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Sub-step 4 — admin interview scheduling + hire confirmation
 // (replaces the employer-side INTERVIEWED/ACCEPTED transitions removed from

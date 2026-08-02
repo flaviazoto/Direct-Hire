@@ -121,6 +121,7 @@ adminRouter.patch("/hiring/applications/:applicationId/review/notes",   requireA
 adminRouter.get(  "/hiring/document-queue",                             requireAdmin, hiringCtrl.getDocumentQueue);
 adminRouter.post( "/hiring/applications/:applicationId/documents",      requireAdmin, hiringCtrl.requestApplicationDocument);
 adminRouter.patch("/hiring/documents/:documentId/approve",              requireAdmin, hiringCtrl.approveApplicationDocument);
+adminRouter.post( "/hiring/applications/:applicationId/documents/skip", requireAdmin, hiringCtrl.skipDocumentVerification);
 adminRouter.post( "/hiring/applications/:applicationId/interview",      requireAdmin, hiringCtrl.scheduleInterview);
 adminRouter.post( "/hiring/applications/:applicationId/hire",           requireAdmin, hiringCtrl.confirmHire);
 

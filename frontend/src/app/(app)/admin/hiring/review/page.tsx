@@ -185,6 +185,7 @@ export default function AdminHiringReviewPage() {
   const [newDocType, setNewDocType] = useState("");
   const [requestingDoc, setRequestingDoc] = useState(false);
   const [approvingDocId, setApprovingDocId] = useState<string | null>(null);
+  const [skippingDocs, setSkippingDocs] = useState(false);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -274,6 +275,19 @@ export default function AdminHiringReviewPage() {
       load("documents");
     } else {
       showToast(res.error ?? "Could not approve document", false);
+    }
+  }
+
+  async function handleSkipDocs() {
+    if (!selected) return;
+    setSkippingDocs(true);
+    const res = await adminApi.skipDocumentVerification(selected.id);
+    setSkippingDocs(false);
+    if (res.success) {
+      showToast("No documents needed — moved to fee stage");
+      load("documents");
+    } else {
+      showToast(res.error ?? "Could not skip document verification", false);
     }
   }
 
@@ -427,7 +441,26 @@ export default function AdminHiringReviewPage() {
                     </div>
                     {(selected.documents ?? []).length === 0 ? (
                       <div style={{ fontSize: 13, color: C.muted, marginBottom: 16 }}>No documents requested yet.</div>
-                    ) : (
+                    ) : (selected.documents ?? []).every(d => d.status === "APPROVED") ? (
+                      <div style={{ fontSize: 13, color: C.success, marginBottom: 16 }}>All requested documents are approved.</div>
+                    ) : null}
+
+                    {(selected.documents ?? []).length === 0 || (selected.documents ?? []).every(d => d.status === "APPROVED") ? (
+                      <button
+                        onClick={handleSkipDocs}
+                        disabled={skippingDocs}
+                        style={{
+                          padding: "10px 18px", borderRadius: 10, border: "none",
+                          background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700,
+                          cursor: skippingDocs ? "default" : "pointer", opacity: skippingDocs ? 0.6 : 1,
+                          marginBottom: 20,
+                        }}
+                      >
+                        {skippingDocs ? "Working…" : "✓ No documents needed — proceed to fee"}
+                      </button>
+                    ) : null}
+
+                    {(selected.documents ?? []).length > 0 && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                         {(selected.documents ?? []).map(doc => (
                           <div key={doc.id} style={{
