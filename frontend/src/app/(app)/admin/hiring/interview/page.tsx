@@ -1,10 +1,18 @@
 "use client";
 // src/app/(app)/admin/hiring/interview/page.tsx
-// Phase 3 — Screen 2: interview scheduling + hire confirmation panel.
-// Queue = GET /admin/hiring/interview-hire-queue (Phase 3 addition — Phase 2
-// never listed this stage; workflowStatus stays CLEARED_FOR_EMPLOYER through
-// interview-scheduled and hired, so the queue spans all of it, distinguished
-// by Application.status rather than workflowStatus).
+// Part B redesign — admin-mediated SCREENING interview. Replaces the old
+// "schedule a call between worker and employer" section entirely. New model:
+// the employer requests a screening interview (employer-interview.controller.ts),
+// admin conducts the actual call off-platform, records free-text notes + a
+// lightweight recommendation here, ticks "relayed to employer" once the
+// outcome has been sent manually (email/WhatsApp — never through the
+// platform), then either confirms the hire (unchanged flow) or marks the
+// candidate as not selected.
+//
+// Queue = GET /admin/hiring/interview-hire-queue (workflowStatus stays
+// CLEARED_FOR_EMPLOYER through interview-request, screening, and hired/
+// not-selected, so the queue spans all of it, distinguished by
+// Application.status + the joined `interview` record).
 
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api-client";
@@ -23,14 +31,22 @@ interface EmployerSummary { id: string; email: string; employerProfile: { compan
 interface AdminReview { decidedAt: string | null }
 interface AppDocument { id: string; documentType: string; status: string; reviewedAt: string | null }
 interface FeeCharge { amountUsd: string; status: string; paidAt: string | null }
+type Recommendation = "RECOMMEND" | "DOES_NOT_MEET_REQUIREMENTS" | "NEEDS_FOLLOW_UP";
+interface InterviewInfo {
+  id: string;
+  requestNotes: string | null;
+  requestedAt: string;
+  conductedAt: string | null;
+  adminNotes: string | null;
+  recommendation: Recommendation | null;
+  relayedToEmployerAt: string | null;
+}
 
 interface AppRow {
   id: string;
   createdAt: string;
   updatedAt: string;
-  status: "APPLIED" | "VIEWED" | "SHORTLISTED" | "INTERVIEWED" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
-  interviewedAt: string | null;
-  interviewInstructions: string | null;
+  status: "APPLIED" | "VIEWED" | "SHORTLISTED" | "INTERVIEWED" | "SCREENING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
   hireConfirmedAt: string | null;
   acceptedAt: string | null;
   offeredSalary: string | null;
@@ -43,6 +59,7 @@ interface AppRow {
   adminReview: AdminReview | null;
   documents: AppDocument[];
   adminFeeCharge: FeeCharge | null;
+  interview: InterviewInfo | null;
 }
 interface PagedResponse<T> { success: boolean; data: T[]; total: number; error?: string }
 
@@ -58,11 +75,18 @@ function fmtDateTime(d: string) {
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
-function stagePill(status: AppRow["status"]) {
-  if (status === "ACCEPTED") return <span style={pill(C.success, "rgba(22,163,74,0.12)", "rgba(22,163,74,0.3)")}>Hired</span>;
-  if (status === "INTERVIEWED") return <span style={pill(C.info, "rgba(37,99,235,0.12)", "rgba(37,99,235,0.3)")}>Interview scheduled</span>;
-  return <span style={pill(C.accent, "rgba(224,176,32,0.12)", "rgba(224,176,32,0.3)")}>Cleared</span>;
+function stagePill(row: AppRow) {
+  if (row.status === "ACCEPTED") return <span style={pill(C.success, "rgba(22,163,74,0.12)", "rgba(22,163,74,0.3)")}>Hired</span>;
+  if (row.status === "REJECTED") return <span style={pill(C.danger, "rgba(220,38,38,0.12)", "rgba(220,38,38,0.3)")}>Not selected</span>;
+  if (row.status === "SCREENING") return <span style={pill(C.info, "rgba(37,99,235,0.12)", "rgba(37,99,235,0.3)")}>Interview in progress</span>;
+  return <span style={pill(C.accent, "rgba(224,176,32,0.12)", "rgba(224,176,32,0.3)")}>Cleared — awaiting request</span>;
 }
+
+const RECOMMENDATION_LABEL: Record<Recommendation, string> = {
+  RECOMMEND: "Recommend",
+  DOES_NOT_MEET_REQUIREMENTS: "Does not meet requirements",
+  NEEDS_FOLLOW_UP: "Needs follow-up",
+};
 
 const CONTRACT_TYPES = ["FULL_TIME", "PART_TIME", "CONTRACT", "TEMPORARY", "INTERNSHIP", "FREELANCE"];
 
@@ -75,7 +99,9 @@ function buildTimeline(row: AppRow): TimelineEntry[] {
     if (doc.status === "APPROVED" && doc.reviewedAt) entries.push({ label: `Document approved: ${doc.documentType}`, date: doc.reviewedAt });
   }
   if (row.adminFeeCharge?.paidAt) entries.push({ label: "Fee paid — cleared for employer", date: row.adminFeeCharge.paidAt });
-  if (row.interviewedAt) entries.push({ label: "Interview scheduled", date: row.interviewedAt });
+  if (row.interview?.requestedAt) entries.push({ label: "Employer requested screening interview", date: row.interview.requestedAt });
+  if (row.interview?.conductedAt) entries.push({ label: "Screening call notes recorded", date: row.interview.conductedAt });
+  if (row.interview?.relayedToEmployerAt) entries.push({ label: "Outcome relayed to employer", date: row.interview.relayedToEmployerAt });
   if (row.hireConfirmedAt) entries.push({ label: "Hire confirmed", date: row.hireConfirmedAt });
   return entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
@@ -112,7 +138,7 @@ function MessageHistorySection({ workerId, employerId }: { workerId: string; emp
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>4. Message history</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>5. Message history</div>
         {!loaded && (
           <button
             onClick={load}
@@ -157,18 +183,21 @@ export default function AdminInterviewHirePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-  // Section 1 — schedule interview
-  const [interviewDate, setInterviewDate] = useState("");
-  const [interviewType, setInterviewType] = useState<"video" | "phone" | "in-person">("video");
-  const [interviewNotes, setInterviewNotes] = useState("");
-  const [scheduling, setScheduling] = useState(false);
+  // Section 1 — call notes & recommendation
+  const [adminNotes, setAdminNotes] = useState("");
+  const [recommendation, setRecommendation] = useState<Recommendation | "">("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
-  // Section 2 — confirm hire
+  // Section 2 — relay to employer
+  const [relaying, setRelaying] = useState(false);
+
+  // Section 3 — outcome: confirm hire or mark not selected
   const [offeredSalary, setOfferedSalary] = useState("");
   const [offeredCurrency, setOfferedCurrency] = useState("USD");
   const [startDate, setStartDate] = useState("");
   const [contractType, setContractType] = useState("FULL_TIME");
   const [confirming, setConfirming] = useState(false);
+  const [markingNotSelected, setMarkingNotSelected] = useState(false);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -196,25 +225,42 @@ export default function AdminInterviewHirePage() {
   const selected = rows.find(r => r.id === selectedId) ?? null;
 
   useEffect(() => {
-    setInterviewNotes("");
+    setAdminNotes(selected?.interview?.adminNotes ?? "");
+    setRecommendation(selected?.interview?.recommendation ?? "");
     setOfferedSalary("");
     setStartDate("");
-  }, [selectedId]);
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleSchedule() {
-    if (!selected || !interviewDate) return;
-    setScheduling(true);
-    const res = await adminApi.scheduleInterview(selected.id, {
-      date: new Date(interviewDate).toISOString(),
-      type: interviewType,
-      notes: interviewNotes.trim() || undefined,
+  async function handleSaveNotes() {
+    if (!selected) return;
+    if (!adminNotes.trim() && !recommendation) {
+      showToast("Add notes or a recommendation before saving", false);
+      return;
+    }
+    setSavingNotes(true);
+    const res = await adminApi.recordInterviewNotes(selected.id, {
+      adminNotes: adminNotes.trim() || undefined,
+      recommendation: recommendation || undefined,
     });
-    setScheduling(false);
+    setSavingNotes(false);
     if (res.success) {
-      showToast("Interview scheduled — both parties notified");
+      showToast("Notes saved");
       load();
     } else {
-      showToast(res.error ?? "Could not schedule interview", false);
+      showToast(res.error ?? "Could not save notes", false);
+    }
+  }
+
+  async function handleMarkRelayed() {
+    if (!selected) return;
+    setRelaying(true);
+    const res = await adminApi.markInterviewRelayed(selected.id);
+    setRelaying(false);
+    if (res.success) {
+      showToast("Marked as relayed to employer");
+      load();
+    } else {
+      showToast(res.error ?? "Could not mark as relayed", false);
     }
   }
 
@@ -236,20 +282,40 @@ export default function AdminInterviewHirePage() {
     }
   }
 
+  async function handleMarkNotSelected() {
+    if (!selected) return;
+    setMarkingNotSelected(true);
+    const res = await adminApi.markApplicationNotSelected(selected.id);
+    setMarkingNotSelected(false);
+    if (res.success) {
+      showToast("Marked as not selected — worker notified");
+      load();
+    } else {
+      showToast(res.error ?? "Could not mark as not selected", false);
+    }
+  }
+
+  const interview = selected?.interview ?? null;
+  const isClosed = selected?.status === "ACCEPTED" || selected?.status === "REJECTED";
+  const canRecordNotes = !!interview && !isClosed;
+  const canRelay = !!interview?.conductedAt && !interview.relayedToEmployerAt && !isClosed;
+  const canDecideOutcome = !!interview?.relayedToEmployerAt && !isClosed;
+
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: C.text, margin: 0 }}>
-          Interview &amp; Hire
+          Screening Interview &amp; Hire
         </h1>
         <p style={{ fontSize: 13, color: C.muted, margin: "4px 0 0" }}>
-          Applications cleared for the employer — schedule interviews and confirm hires.
+          Applications cleared for the employer. Admin conducts the screening call on the employer&apos;s behalf,
+          records notes, relays the outcome off-platform, then confirms the hire or marks the candidate not selected.
         </p>
       </div>
 
-      {/* Employer-side removal note */}
+      {/* Model note */}
       <div style={{
         ...card(), padding: "12px 16px", marginBottom: 20,
         display: "flex", gap: 10, alignItems: "flex-start",
@@ -257,9 +323,9 @@ export default function AdminInterviewHirePage() {
       }}>
         <span style={{ fontSize: 16 }}>ℹ️</span>
         <div style={{ fontSize: 12, color: C.secondary, lineHeight: 1.5 }}>
-          Interview scheduling and hire confirmation are admin-only actions. The employer-facing application page
-          no longer offers these transitions — that removal was confirmed complete and clean (no other code path
-          could still set an application to INTERVIEWED or ACCEPTED).
+          The employer never talks to the worker directly. The employer requests an interview, admin conducts the
+          call and records notes here, then relays the outcome to the employer manually (email/WhatsApp — the
+          platform never sends this). The employer&apos;s decision comes back to admin the same way, off-platform.
         </div>
       </div>
 
@@ -287,7 +353,7 @@ export default function AdminInterviewHirePage() {
               >
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{workerName(row.worker)}</div>
                 <div style={{ fontSize: 12, color: C.secondary, margin: "2px 0" }}>{row.job.title} · {row.job.companyName}</div>
-                <div style={{ marginTop: 6 }}>{stagePill(row.status)}</div>
+                <div style={{ marginTop: 6 }}>{stagePill(row)}</div>
               </div>
             ))}
           </div>
@@ -308,66 +374,101 @@ export default function AdminInterviewHirePage() {
                     <div style={{ fontSize: 12, color: C.muted }}>
                       {selected.employer.employerProfile?.companyName ?? selected.employer.email} · {selected.job.country}
                     </div>
-                    <div style={{ marginTop: 6 }}>{stagePill(selected.status)}</div>
+                    <div style={{ marginTop: 6 }}>{stagePill(selected)}</div>
                   </div>
                 </div>
 
-                {/* ── 1. Schedule interview ──────────────────────────────── */}
+                {/* ── 1. Call notes & recommendation ─────────────────────── */}
                 <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>
-                    1. Schedule interview
+                    1. Screening call notes
                   </div>
 
-                  {selected.interviewedAt && (
-                    <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, padding: "8px 12px", background: rowBg, borderRadius: 8 }}>
-                      Currently scheduled for {fmtDateTime(selected.interviewedAt)}. Submitting below reschedules it.
+                  {!interview ? (
+                    <div style={{ fontSize: 12, color: C.muted, padding: "10px 12px", background: rowBg, borderRadius: 8 }}>
+                      No interview requested yet — waiting on the employer to request a screening interview for this candidate.
                     </div>
-                  )}
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 10, marginBottom: 10 }}>
-                    <input
-                      type="datetime-local"
-                      value={interviewDate}
-                      onChange={e => setInterviewDate(e.target.value)}
-                      style={inputStyle}
-                    />
-                    <select
-                      value={interviewType}
-                      onChange={e => setInterviewType(e.target.value as typeof interviewType)}
-                      style={inputStyle}
-                    >
-                      <option value="video">Video call</option>
-                      <option value="phone">Phone call</option>
-                      <option value="in-person">In-person</option>
-                    </select>
-                  </div>
-                  <textarea
-                    value={interviewNotes}
-                    onChange={e => setInterviewNotes(e.target.value)}
-                    placeholder="Notes shared with both the worker and the employer…"
-                    style={{ ...inputStyle, minHeight: 70, resize: "vertical", marginBottom: 10 }}
-                  />
-                  <button
-                    onClick={handleSchedule}
-                    disabled={scheduling || !interviewDate || selected.status === "ACCEPTED"}
-                    style={{
-                      padding: "9px 18px", borderRadius: 8, border: "none",
-                      background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700,
-                      cursor: scheduling || !interviewDate || selected.status === "ACCEPTED" ? "default" : "pointer",
-                      opacity: !interviewDate || selected.status === "ACCEPTED" ? 0.5 : 1,
-                    }}
-                  >
-                    {scheduling ? "Scheduling…" : selected.interviewedAt ? "Reschedule interview" : "Schedule interview"}
-                  </button>
-                  {selected.status === "ACCEPTED" && (
-                    <span style={{ marginLeft: 10, fontSize: 11, color: C.muted }}>Already hired — interview stage is closed.</span>
+                  ) : (
+                    <>
+                      {interview.requestNotes && (
+                        <div style={{ fontSize: 12, color: C.secondary, marginBottom: 12, padding: "10px 12px", background: rowBg, borderRadius: 8 }}>
+                          <span style={{ fontWeight: 700, color: C.text }}>Employer asked to confirm: </span>{interview.requestNotes}
+                        </div>
+                      )}
+                      <textarea
+                        value={adminNotes}
+                        onChange={e => setAdminNotes(e.target.value)}
+                        placeholder="Free-text notes from the call (admin-internal — never shown to the worker or employer directly)…"
+                        disabled={!canRecordNotes}
+                        style={{ ...inputStyle, minHeight: 90, resize: "vertical", marginBottom: 10 }}
+                      />
+                      <select
+                        value={recommendation}
+                        onChange={e => setRecommendation(e.target.value as Recommendation | "")}
+                        disabled={!canRecordNotes}
+                        style={{ ...inputStyle, marginBottom: 10 }}
+                      >
+                        <option value="">No recommendation set</option>
+                        <option value="RECOMMEND">Recommend</option>
+                        <option value="DOES_NOT_MEET_REQUIREMENTS">Does not meet requirements</option>
+                        <option value="NEEDS_FOLLOW_UP">Needs follow-up</option>
+                      </select>
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={savingNotes || !canRecordNotes}
+                        style={{
+                          padding: "9px 18px", borderRadius: 8, border: "none",
+                          background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700,
+                          cursor: savingNotes || !canRecordNotes ? "default" : "pointer",
+                          opacity: !canRecordNotes ? 0.5 : 1,
+                        }}
+                      >
+                        {savingNotes ? "Saving…" : interview.conductedAt ? "Update notes" : "Save notes"}
+                      </button>
+                      {interview.conductedAt && (
+                        <span style={{ marginLeft: 10, fontSize: 11, color: C.muted }}>Call recorded {fmtDateTime(interview.conductedAt)}.</span>
+                      )}
+                    </>
                   )}
                 </div>
 
-                {/* ── 2. Confirm hire ─────────────────────────────────────── */}
+                {/* ── 2. Relay to employer ─────────────────────────────────── */}
                 <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>
-                    2. Confirm hire
+                    2. Relay outcome to employer
+                  </div>
+                  {interview?.relayedToEmployerAt ? (
+                    <div style={{ padding: "10px 12px", background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.25)", borderRadius: 8, fontSize: 12, color: C.text }}>
+                      Relayed to employer {fmtDateTime(interview.relayedToEmployerAt)} (manually, off-platform).
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+                        Once you&apos;ve sent the outcome to the employer by email or WhatsApp, tick this to unlock the hire/not-selected decision below.
+                      </div>
+                      <button
+                        onClick={handleMarkRelayed}
+                        disabled={relaying || !canRelay}
+                        style={{
+                          padding: "9px 18px", borderRadius: 8, border: `1px solid ${C.border}`,
+                          background: "transparent", color: C.text, fontSize: 13, fontWeight: 700,
+                          cursor: relaying || !canRelay ? "default" : "pointer",
+                          opacity: !canRelay ? 0.5 : 1,
+                        }}
+                      >
+                        {relaying ? "Saving…" : "✓ Mark as relayed to employer"}
+                      </button>
+                      {!interview?.conductedAt && (
+                        <span style={{ marginLeft: 10, fontSize: 11, color: C.muted }}>Record call notes first.</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* ── 3. Outcome: confirm hire or not selected ─────────────── */}
+                <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>
+                    3. Outcome
                   </div>
 
                   {selected.status === "ACCEPTED" ? (
@@ -377,11 +478,15 @@ export default function AdminInterviewHirePage() {
                       {selected.startDate && <> Start date: {fmtDate(selected.startDate)}.</>}
                       {" "}This application is closed — no further action is needed from you or the employer.
                     </div>
+                  ) : selected.status === "REJECTED" ? (
+                    <div style={{ padding: "12px 14px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 10, fontSize: 13, color: C.text }}>
+                      Marked as not selected. The worker has been notified automatically. This application is closed.
+                    </div>
                   ) : (
                     <>
-                      {selected.status !== "INTERVIEWED" && (
+                      {!canDecideOutcome && (
                         <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
-                          Available once an interview has been scheduled.
+                          Available once the outcome has been relayed to the employer.
                         </div>
                       )}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 10, marginBottom: 10 }}>
@@ -389,13 +494,13 @@ export default function AdminInterviewHirePage() {
                           value={offeredSalary}
                           onChange={e => setOfferedSalary(e.target.value)}
                           placeholder="Offered salary"
-                          disabled={selected.status !== "INTERVIEWED"}
+                          disabled={!canDecideOutcome}
                           style={inputStyle}
                         />
                         <select
                           value={offeredCurrency}
                           onChange={e => setOfferedCurrency(e.target.value)}
-                          disabled={selected.status !== "INTERVIEWED"}
+                          disabled={!canDecideOutcome}
                           style={inputStyle}
                         >
                           <option value="USD">USD</option>
@@ -408,38 +513,52 @@ export default function AdminInterviewHirePage() {
                           type="date"
                           value={startDate}
                           onChange={e => setStartDate(e.target.value)}
-                          disabled={selected.status !== "INTERVIEWED"}
+                          disabled={!canDecideOutcome}
                           style={inputStyle}
                         />
                         <select
                           value={contractType}
                           onChange={e => setContractType(e.target.value)}
-                          disabled={selected.status !== "INTERVIEWED"}
+                          disabled={!canDecideOutcome}
                           style={inputStyle}
                         >
                           {CONTRACT_TYPES.map(ct => <option key={ct} value={ct}>{ct.replace("_", " ")}</option>)}
                         </select>
                       </div>
-                      <button
-                        onClick={handleConfirmHire}
-                        disabled={confirming || selected.status !== "INTERVIEWED"}
-                        style={{
-                          padding: "9px 18px", borderRadius: 8, border: "none",
-                          background: C.success, color: "#fff", fontSize: 13, fontWeight: 700,
-                          cursor: confirming || selected.status !== "INTERVIEWED" ? "default" : "pointer",
-                          opacity: selected.status !== "INTERVIEWED" ? 0.5 : 1,
-                        }}
-                      >
-                        {confirming ? "Confirming…" : "✓ Confirm hire"}
-                      </button>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button
+                          onClick={handleConfirmHire}
+                          disabled={confirming || !canDecideOutcome}
+                          style={{
+                            padding: "9px 18px", borderRadius: 8, border: "none",
+                            background: C.success, color: "#fff", fontSize: 13, fontWeight: 700,
+                            cursor: confirming || !canDecideOutcome ? "default" : "pointer",
+                            opacity: !canDecideOutcome ? 0.5 : 1,
+                          }}
+                        >
+                          {confirming ? "Confirming…" : "✓ Confirm hire"}
+                        </button>
+                        <button
+                          onClick={handleMarkNotSelected}
+                          disabled={markingNotSelected || !canDecideOutcome}
+                          style={{
+                            padding: "9px 18px", borderRadius: 8, border: `1px solid rgba(220,38,38,0.3)`,
+                            background: "rgba(220,38,38,0.1)", color: C.danger, fontSize: 13, fontWeight: 700,
+                            cursor: markingNotSelected || !canDecideOutcome ? "default" : "pointer",
+                            opacity: !canDecideOutcome ? 0.5 : 1,
+                          }}
+                        >
+                          {markingNotSelected ? "Saving…" : "✕ Not selected"}
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
 
-                {/* ── 3. Activity timeline ────────────────────────────────── */}
+                {/* ── 4. Activity timeline ────────────────────────────────── */}
                 <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>
-                    3. Activity timeline
+                    4. Activity timeline
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {buildTimeline(selected).map((e, i) => (
@@ -452,7 +571,7 @@ export default function AdminInterviewHirePage() {
                   </div>
                 </div>
 
-                {/* ── 4. Message history (Phase 5, Step 4) ───────────────────── */}
+                {/* ── 5. Message history (Phase 5, Step 4) ───────────────────── */}
                 <MessageHistorySection key={selected.id} workerId={selected.worker.id} employerId={selected.employer.id} />
               </>
             )}

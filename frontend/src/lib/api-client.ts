@@ -340,8 +340,13 @@ export const adminApi = {
     post(`/admin/hiring/applications/${applicationId}/fee/create`, { visaType }),
   getInterviewHireQueue: (params?: Record<string, string>) =>
     get(`/admin/hiring/interview-hire-queue${params ? "?" + new URLSearchParams(params) : ""}`),
-  scheduleInterview: (applicationId: string, body: { date: string; type: "video" | "phone" | "in-person"; notes?: string }) =>
-    post(`/admin/hiring/applications/${applicationId}/interview`, body),
+  // ── Screening interview (Part B redesign) ───────────────────────────────
+  recordInterviewNotes: (applicationId: string, body: { adminNotes?: string; recommendation?: "RECOMMEND" | "DOES_NOT_MEET_REQUIREMENTS" | "NEEDS_FOLLOW_UP" }) =>
+    patch(`/admin/hiring/applications/${applicationId}/interview`, body),
+  markInterviewRelayed: (applicationId: string) =>
+    post(`/admin/hiring/applications/${applicationId}/interview/relay`, {}),
+  markApplicationNotSelected: (applicationId: string) =>
+    post(`/admin/hiring/applications/${applicationId}/not-selected`, {}),
   confirmHire: (applicationId: string, body: { offeredSalary?: string; offeredCurrency?: string; startDate?: string; contractType?: string }) =>
     post(`/admin/hiring/applications/${applicationId}/hire`, body),
   // ── Message visibility (Phase 5, Step 2/4) ────────────────────────────────
@@ -506,6 +511,12 @@ export const employerApi = {
   createEmployerDocumentRequest: (body: { applicationId: string; label: string; description?: string; isRequired?: boolean }) =>
     post("/employer/document-requests", body),
   approveEmployerDocumentRequest: (id: string) => patch(`/employer/document-requests/${id}/approve`),
+  // ── Screening interview requests (Part B redesign) ────────────────────────
+  getMyInterviews: () => get("/employer/interviews"),
+  requestInterview: (applicationId: string, notes?: string) =>
+    post(`/employer/applications/${applicationId}/interview-request`, { notes }),
+  requestBulkInterviews: (notes?: string) =>
+    post("/employer/worker-groups/interview-requests", { notes }),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */

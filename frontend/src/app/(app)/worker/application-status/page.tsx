@@ -41,13 +41,17 @@ interface DocGroup { id: string; documents: { status: string }[] }
 
 const PIPELINE_STATUS_LABEL: Record<string, string> = {
   APPLIED: "Applied", VIEWED: "Viewed", SHORTLISTED: "Shortlisted",
-  INTERVIEWED: "Interview", ACCEPTED: "Hired", REJECTED: "Not selected", WITHDRAWN: "Withdrawn",
+  INTERVIEWED: "Interview", SCREENING: "Interview in progress",
+  ACCEPTED: "Hired", REJECTED: "Not selected", WITHDRAWN: "Withdrawn",
 };
 
 // Ordered chain — indices 0-6 come from workflowStatus, 7-8 continue via the
 // existing Application.status field once CLEARED_FOR_EMPLOYER is reached
 // (workflowStatus itself never advances past CLEARED_FOR_EMPLOYER — see
-// Phase 3's design notes).
+// Phase 3's design notes). Step 7 uses Application.status === "SCREENING"
+// (Part B) rather than the legacy INTERVIEWED value — see
+// admin-hiring-workflow.controller.ts's header comment for why a new status
+// was introduced instead of reusing INTERVIEWED.
 const STEPS: { key: string; label: string }[] = [
   { key: "PENDING_ADMIN_REVIEW", label: "Admin reviewing" },
   { key: "APPROVED_QUEUED",      label: "Approved, queued" },
@@ -56,14 +60,14 @@ const STEPS: { key: string; label: string }[] = [
   { key: "ADMIN_FEE_DUE",        label: "Fee due" },
   { key: "ADMIN_FEE_PAID",       label: "Fee paid" },
   { key: "CLEARED_FOR_EMPLOYER", label: "Cleared" },
-  { key: "INTERVIEWED",          label: "Interview" },
+  { key: "SCREENING",            label: "Interview in progress" },
   { key: "ACCEPTED",             label: "Hired" },
 ];
 
 function currentStepIndex(app: AppRow): number {
   if (app.workflowStatus === "CLEARED_FOR_EMPLOYER") {
     if (app.status === "ACCEPTED") return 8;
-    if (app.status === "INTERVIEWED") return 7;
+    if (app.status === "SCREENING") return 7;
   }
   const idx = STEPS.findIndex(s => s.key === app.workflowStatus);
   return idx === -1 ? 0 : idx;

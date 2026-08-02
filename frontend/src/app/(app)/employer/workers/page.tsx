@@ -324,6 +324,7 @@ function EmptyState({ availableOnly }: { availableOnly: boolean }) {
 
 function GroupPanel({
   members, pendingRequest, latestSentQuote, requesting, onRemove, onRequestQuote,
+  interviewNotes, onInterviewNotesChange, requestingInterviews, onRequestInterviews,
 }: {
   members: GroupMember[];
   pendingRequest: BulkQuoteRequest | null;
@@ -331,6 +332,10 @@ function GroupPanel({
   requesting: boolean;
   onRemove: (workerId: string) => void;
   onRequestQuote: () => void;
+  interviewNotes: string;
+  onInterviewNotesChange: (v: string) => void;
+  requestingInterviews: boolean;
+  onRequestInterviews: () => void;
 }) {
   const count = members.length;
   const pct = Math.min(100, Math.round((count / MIN_GROUP_SIZE) * 100));
@@ -383,6 +388,35 @@ function GroupPanel({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Request interview for group — Part B, Step B1 bulk path */}
+      {count > 0 && (
+        <div style={{ marginBottom: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#e4e4e7", marginBottom: 6 }}>Request interview for group</div>
+          <div style={{ fontSize: 11, color: "#71717a", marginBottom: 8 }}>
+            Requests a screening interview for every group member with a cleared application. Admin conducts each call.
+          </div>
+          <textarea
+            value={interviewNotes}
+            onChange={e => onInterviewNotesChange(e.target.value)}
+            placeholder="Anything specific to confirm (optional)…"
+            rows={2}
+            style={{ width: "100%", padding: "7px 10px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 8 }}
+          />
+          <button
+            onClick={onRequestInterviews}
+            disabled={requestingInterviews}
+            style={{
+              width: "100%", padding: "8px 0", borderRadius: 10, border: "1px solid rgba(0,144,255,0.3)",
+              background: "rgba(0,144,255,0.1)", color: "#2dd4bf",
+              fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+              cursor: requestingInterviews ? "default" : "pointer",
+            }}
+          >
+            {requestingInterviews ? "Requesting…" : "Request interviews"}
+          </button>
         </div>
       )}
 
@@ -455,6 +489,8 @@ function WorkersContent() {
   const [quoteRequests,   setQuoteRequests]   = useState<BulkQuoteRequest[]>([]);
   const [groupBusyId,     setGroupBusyId]     = useState<string | null>(null);
   const [requestingQuote, setRequestingQuote] = useState(false);
+  const [interviewNotes,       setInterviewNotes]       = useState("");
+  const [requestingInterviews, setRequestingInterviews] = useState(false);
 
   const loadGroup = useCallback(async () => {
     const res = await employerApi.getMyWorkerGroup();
@@ -490,6 +526,20 @@ function WorkersContent() {
       loadGroup();
     } else {
       setToast({ msg: res.error ?? "Could not request a quote", type: "err" });
+    }
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  async function handleRequestInterviews() {
+    setRequestingInterviews(true);
+    const res = await employerApi.requestBulkInterviews(interviewNotes.trim() || undefined);
+    setRequestingInterviews(false);
+    if (res.success) {
+      const d = res.data as { requested?: number; total?: number } | undefined;
+      setToast({ msg: d?.requested ? `Requested ${d.requested} interview(s)` : "No group members had a cleared application ready", type: d?.requested ? "ok" : "err" });
+      setInterviewNotes("");
+    } else {
+      setToast({ msg: res.error ?? "Could not request interviews", type: "err" });
     }
     setTimeout(() => setToast(null), 3500);
   }
@@ -713,6 +763,10 @@ function WorkersContent() {
         requesting={requestingQuote}
         onRemove={workerId => handleToggleGroup(workerId, false)}
         onRequestQuote={handleRequestQuote}
+        interviewNotes={interviewNotes}
+        onInterviewNotesChange={setInterviewNotes}
+        requestingInterviews={requestingInterviews}
+        onRequestInterviews={handleRequestInterviews}
       />
       </div>
     </div>

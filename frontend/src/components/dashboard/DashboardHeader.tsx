@@ -61,6 +61,7 @@ const ROLE_LINKS: Record<'worker' | 'employer', NavLink[]> = {
     { href: '/employer/jobs',         label: 'My Jobs',      Icon: Briefcase     },
     { href: '/employer/workers',      label: 'Candidates',   Icon: Users         },
     { href: '/employer/applications', label: 'Applications', Icon: ClipboardList },
+    { href: '/employer/interviews',   label: 'Interviews',   Icon: UserCheck     },
     { href: '/employer/document-requests', label: 'Document Requests', Icon: FileText },
     { href: '/employer/messages',     label: 'Messages',     Icon: Mail          },
     { href: '/employer/profile',      label: 'Account',      Icon: Settings      },
