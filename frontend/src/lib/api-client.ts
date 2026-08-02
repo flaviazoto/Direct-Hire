@@ -446,17 +446,14 @@ export const employerApi = {
     get(`/employer/jobs/${jobId}/applications${params ? "?" + new URLSearchParams(params) : ""}`),
   getApplications: (params?: Record<string, string>) =>
     get(`/employer/applications${params ? "?" + new URLSearchParams(params) : ""}`),
+  // interview_instructions/offeredSalary/offeredCurrency/startDate/contractType
+  // removed (Phase 4, Step 4) — the backend no longer accepts INTERVIEWED/
+  // ACCEPTED as settable targets here at all (Phase 2), so no caller ever
+  // passes anything but `reason` anymore.
   updateApplicationStatus: (
     id: string,
     status: string,
-    extra?: {
-      reason?: string;
-      interview_instructions?: string;
-      offeredSalary?: string;
-      offeredCurrency?: string;
-      startDate?: string;
-      contractType?: string;
-    },
+    extra?: { reason?: string },
   ) => put(`/employer/applications/${id}/status`, { status, ...extra }),
   getProfile: () => get("/user/profile"),
   updateProfile: (body: unknown) => patch("/user/profile", body),

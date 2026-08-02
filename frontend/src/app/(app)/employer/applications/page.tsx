@@ -44,137 +44,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Interview Modal ───────────────────────────────────────────────────────────
-
-function InterviewModal({ app, onClose, onConfirm }: { app: Application; onClose: () => void; onConfirm: (data: { date: string; time: string; type: string; notes: string }) => void }) {
-  const [date,  setDate]  = useState("");
-  const [time,  setTime]  = useState("");
-  const [type,  setType]  = useState("Video Call");
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Applicant";
-  const INP: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 14px", fontSize: 14, color: "#ffffff", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
-
-  const handleConfirm = async () => {
-    if (!date || !time) return;
-    setSubmitting(true);
-    await onConfirm({ date, time, type, notes });
-    setSubmitting(false);
-  };
-
-  return (
-    <div className="glass-scrim" style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-      <div className="glass-modal" style={{ padding: 36, maxWidth: 520, width: "100%", fontFamily: "var(--font-body)" }}>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "#ffffff", margin: "0 0 6px" }}>Schedule Interview</h2>
-        <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 24px" }}>
-          {name} — {app.jobPost?.title ?? "Position"}
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} style={INP} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Time</label>
-              <input type="time" value={time} onChange={e => setTime(e.target.value)} style={INP} />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 10 }}>Interview Type</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              {["Video Call", "Phone", "In-Person"].map(t => (
-                <div key={t} onClick={() => setType(t)} style={{ flex: 1, padding: 14, border: `1px solid ${type === t ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, background: type === t ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.05)", cursor: "pointer", textAlign: "center" as const, fontSize: 13, fontWeight: 500, color: type === t ? "#818cf8" : "#94a3b8", transition: "all 0.2s" }}>
-                  {t === "Video Call" ? "🎥" : t === "Phone" ? "📞" : "🏢"}<br />{t}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Notes (optional)</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Any specific instructions for the candidate..." style={{ ...INP, resize: "vertical" as const }} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} className="btn-glass" style={{ flex: 1, padding: "12px", fontFamily: "var(--font-body)", fontSize: 14 }}>Cancel</button>
-          <button onClick={handleConfirm} disabled={!date || !time || submitting} className="btn-gradient" style={{ flex: 2, padding: "12px", fontFamily: "var(--font-display)", fontSize: 14, opacity: (!date || !time) ? 0.6 : 1 }}>
-            {submitting ? "Sending..." : "Send Interview Invite"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Hire Confirm Modal ────────────────────────────────────────────────────────
-
-function HireConfirmModal({ app, onClose, onConfirm }: { app: Application; onClose: () => void; onConfirm: (data: { salary: string; startDate: string; contractType: string }) => void }) {
-  const [salary,       setSalary]       = useState("");
-  const [startDate,    setStartDate]    = useState("");
-  const [contractType, setContractType] = useState("Full-time");
-  const [submitting,   setSubmitting]   = useState(false);
-
-  const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Applicant";
-  const INP: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "10px 14px", fontSize: 14, color: "#ffffff", outline: "none", fontFamily: "var(--font-body)", colorScheme: "dark" as const };
-
-  const handleConfirm = async () => {
-    setSubmitting(true);
-    await onConfirm({ salary, startDate, contractType });
-    setSubmitting(false);
-  };
-
-  return (
-    <div className="glass-scrim" style={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-      <div className="glass-modal" style={{ padding: 36, maxWidth: 480, width: "100%", fontFamily: "var(--font-body)" }}>
-        <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(13,148,136,0.15)", border: "2px solid rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "#ffffff", margin: "0 0 8px", textAlign: "center" as const }}>Confirm Hire</h2>
-        <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 24px", textAlign: "center" as const }}>
-          You are about to hire <strong style={{ color: "#ffffff" }}>{name}</strong> for <strong style={{ color: "#ffffff" }}>{app.jobPost?.title ?? "this position"}</strong>.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 14 }}>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Salary Offered (monthly)</label>
-            <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="e.g. 5000" style={INP} />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Start Date</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={INP} />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>Contract Type</label>
-            <select value={contractType} onChange={e => setContractType(e.target.value)} style={INP}>
-              <option>Full-time</option>
-              <option>Part-time</option>
-              <option>Contract</option>
-              <option>Freelance</option>
-            </select>
-          </div>
-
-          <div style={{ background: "rgba(13,148,136,0.08)", border: "1px solid rgba(13,148,136,0.2)", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "#5eead4", lineHeight: 1.65 }}>
-            The worker will be notified and their profile will become available to other employers after hiring is confirmed.
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} className="btn-glass" style={{ flex: 1, padding: "12px", fontFamily: "var(--font-body)", fontSize: 14 }}>Cancel</button>
-          <button onClick={handleConfirm} disabled={submitting} style={{ flex: 2, padding: "12px", background: "linear-gradient(135deg, #0d9488, #14b8a6)", border: "none", borderRadius: 12, color: "white", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 20px rgba(13,148,136,0.25)" }}>
-            {submitting ? "Confirming..." : "Confirm Hire ✓"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
 function Toast({ msg, type }: { msg: string; type: "ok" | "err" }) {
@@ -209,9 +78,6 @@ function EmployerApplicationsContent() {
   const [hoverRow,     setHoverRow]     = useState<string | null>(null);
   const [toast,        setToast]        = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
-  const [interviewApp, setInterviewApp] = useState<Application | null>(null);
-  const [hireApp,      setHireApp]      = useState<Application | null>(null);
-
   const showToast = (msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -230,42 +96,6 @@ function EmployerApplicationsContent() {
   }, [page, activeFilter]);
 
   useEffect(() => { load(); }, [load]);
-
-  const handleScheduleInterview = (app: Application) => {
-    if (app.status === "ACCEPTED" || app.status === "REJECTED") return;
-    setInterviewApp(app);
-  };
-
-  const handleHire = (app: Application) => {
-    if (app.status === "ACCEPTED" || app.status === "REJECTED") return;
-    setHireApp(app);
-  };
-
-  const confirmInterview = async (app: Application, data: { date: string; time: string; type: string; notes: string }) => {
-    const res = await employerApi.updateApplicationStatus(app.id, "INTERVIEWED", {
-      interview_instructions: `${data.type} interview on ${data.date} at ${data.time}. ${data.notes}`.trim(),
-    });
-    setInterviewApp(null);
-    if (res.success) { showToast(`Interview invitation sent to ${[app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "applicant"}`, "ok"); load(); }
-    else showToast(res.error ?? "Failed to schedule interview", "err");
-  };
-
-  const confirmHire = async (app: Application, data: { salary: string; startDate: string; contractType: string }) => {
-    const res = await employerApi.updateApplicationStatus(app.id, "ACCEPTED", {
-      offeredSalary:   data.salary,
-      offeredCurrency: "USD",
-      startDate:       data.startDate,
-      contractType:    data.contractType,
-    });
-    setHireApp(null);
-    if (res.success) {
-      const name = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Candidate";
-      showToast(`🎉 ${name} has been hired! A confirmation has been sent.`, "ok");
-      load();
-    } else {
-      showToast(res.error ?? "Failed to confirm hire", "err");
-    }
-  };
 
   const rejectApplication = async (id: string) => {
     const res = await employerApi.updateApplicationStatus(id, "REJECTED");
@@ -384,28 +214,17 @@ function EmployerApplicationsContent() {
                       </span>
                     </td>
 
-                    {/* Actions — CRITICAL FIX */}
+                    {/* Actions */}
                     <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        {/* Interview button */}
-                        <button
-                          className="btn-interview"
-                          onClick={() => handleScheduleInterview(app)}
-                          disabled={isTerminal}
-                          title="Schedule Interview"
-                        >
-                          📅 Interview
-                        </button>
-
-                        {/* Hire button */}
-                        <button
-                          className="btn-hire"
-                          onClick={() => handleHire(app)}
-                          disabled={isTerminal}
-                          title="Hire this candidate"
-                        >
-                          ✓ Hire
-                        </button>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        {/* Interview scheduling and hire confirmation moved to DirectHire's
+                            admin-mediated workflow — no employer-side action here anymore.
+                            The Status column already reflects progress once admin acts. */}
+                        {!isTerminal && app.status !== "INTERVIEWED" && (
+                          <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5, maxWidth: 180 }}>
+                            Interview and hire is handled by DirectHire once your candidate is cleared.
+                          </span>
+                        )}
 
                         {/* Reject button — icon only */}
                         <button
@@ -440,23 +259,6 @@ function EmployerApplicationsContent() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Modals */}
-      {interviewApp && (
-        <InterviewModal
-          app={interviewApp}
-          onClose={() => setInterviewApp(null)}
-          onConfirm={data => confirmInterview(interviewApp, data)}
-        />
-      )}
-
-      {hireApp && (
-        <HireConfirmModal
-          app={hireApp}
-          onClose={() => setHireApp(null)}
-          onConfirm={data => confirmHire(hireApp, data)}
-        />
       )}
     </div>
   );

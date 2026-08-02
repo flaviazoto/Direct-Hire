@@ -241,119 +241,18 @@ function RejectModal({
   );
 }
 
-// ── Interview modal ────────────────────────────────────────────────────────────
-
-function InterviewModal({
-  name, onConfirm, onCancel, loading,
-}: {
-  name: string; onConfirm: (instructions: string) => void; onCancel: () => void; loading: boolean;
-}) {
-  const [instructions, setInstructions] = useState("");
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCancel(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  return (
-    <div className="glass-scrim" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="glass-modal" style={{ padding: 28, maxWidth: 480, width: "100%" }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 6 }}>Invite to interview</div>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 18 }}>
-          Inviting <strong style={{ color: "#cbd5e1" }}>{name}</strong> to an interview.
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
-          Interview instructions (optional)
-        </div>
-        <textarea
-          value={instructions}
-          onChange={e => setInstructions(e.target.value)}
-          placeholder="e.g. Please email us to schedule a video call. Our team is available Mon–Fri 9am–5pm GMT."
-          rows={4}
-          style={{
-            width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 12px",
-            color: "#e4e4e7", fontSize: 13, fontFamily: "inherit", lineHeight: 1.6,
-            resize: "vertical", outline: "none", marginBottom: 12,
-          }}
-        />
-        <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5, marginBottom: 22, background: "rgba(0,144,255,0.04)", border: "1px solid rgba(0,144,255,0.15)", borderRadius: 8, padding: "8px 12px" }}>
-          The candidate will receive your contact details and these instructions.
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#cbd5e1", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
-            Cancel
-          </button>
-          <button
-            onClick={() => onConfirm(instructions.trim())}
-            disabled={loading}
-            style={{ background: loading ? "rgba(0,144,255,0.4)" : "rgba(0,144,255,0.85)", border: "none", borderRadius: 10, padding: "9px 20px", color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
-          >
-            {loading && <Spinner size={13} color="#fff" />}
-            Confirm invitation
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Accept modal ───────────────────────────────────────────────────────────────
-
-function AcceptModal({
-  name, jobTitle, onConfirm, onCancel, loading,
-}: {
-  name: string; jobTitle: string; onConfirm: () => void; onCancel: () => void; loading: boolean;
-}) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCancel(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  return (
-    <div className="glass-scrim" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="glass-modal" style={{ padding: 28, maxWidth: 420, width: "100%" }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 10 }}>
-          Accept {name} for {jobTitle}?
-        </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 24 }}>
-          You&apos;re about to accept this candidate. They&apos;ll be notified and their contact details will be available in your dashboard.
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 18px", color: "#cbd5e1", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 }}>
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            style={{ background: loading ? "rgba(74,222,128,0.4)" : "rgba(74,222,128,0.8)", border: "none", borderRadius: 10, padding: "9px 20px", color: "#000", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}
-          >
-            {loading && <Spinner size={13} color="#000" />}
-            Accept candidate
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Profile drawer ─────────────────────────────────────────────────────────────
 
 function ProfileDrawer({
-  app, jobTitle, requiredSkills, onClose, onStatusUpdate,
+  app, requiredSkills, onClose, onStatusUpdate,
 }: {
   app: Application;
-  jobTitle: string;
   requiredSkills: Set<string>;
   onClose: () => void;
-  onStatusUpdate: (id: string, status: string, extra?: { reason?: string; interview_instructions?: string }) => Promise<void>;
+  onStatusUpdate: (id: string, status: string, extra?: { reason?: string }) => Promise<void>;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [modal, setModal] = useState<"interview" | "accept" | "reject" | null>(null);
+  const [modal, setModal] = useState<"reject" | null>(null);
   const name = workerName(app.worker);
   const aColor = avatarColor(name);
   const profile = app.worker.profile;
@@ -367,7 +266,7 @@ function ProfileDrawer({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose, modal]);
 
-  async function doAction(status: string, extra?: { reason?: string; interview_instructions?: string }) {
+  async function doAction(status: string, extra?: { reason?: string }) {
     setActionLoading(status);
     await onStatusUpdate(app.id, status, extra);
     setActionLoading(null);
@@ -376,10 +275,11 @@ function ProfileDrawer({
   }
 
   const canShortlist  = app.status === "APPLIED" || app.status === "VIEWED";
-  const canInterview  = app.status === "SHORTLISTED";
-  const canAccept     = app.status === "INTERVIEWED";
   const canReject     = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEWED"].includes(app.status);
   const isTerminal    = app.status === "ACCEPTED" || app.status === "REJECTED" || app.status === "WITHDRAWN";
+  // Interview scheduling and hire confirmation moved to DirectHire's admin-
+  // mediated workflow — no employer action for either here anymore.
+  const awaitingAdmin = app.status === "SHORTLISTED" || app.status === "INTERVIEWED";
 
   return (
     <>
@@ -503,48 +403,29 @@ function ProfileDrawer({
 
         {/* Action footer */}
         {!isTerminal && (
-          <div style={{ padding: "16px 24px", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {canShortlist && (
-              <ActionBtn label="Shortlist" variant="amber"
-                loading={actionLoading === "SHORTLISTED"}
-                onClick={() => doAction("SHORTLISTED")} />
-            )}
-            {canInterview && (
-              <ActionBtn label="Invite to interview" variant="teal"
-                loading={actionLoading === "INTERVIEWED"}
-                onClick={() => setModal("interview")} />
-            )}
-            {canAccept && (
-              <ActionBtn label="Accept" variant="teal"
-                loading={actionLoading === "ACCEPTED"}
-                onClick={() => setModal("accept")} />
-            )}
-            {canReject && (
-              <ActionBtn label="Reject" variant="danger"
-                loading={actionLoading === "REJECTED"}
-                onClick={() => setModal("reject")} />
+          <div style={{ padding: "16px 24px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {canShortlist && (
+                <ActionBtn label="Shortlist" variant="amber"
+                  loading={actionLoading === "SHORTLISTED"}
+                  onClick={() => doAction("SHORTLISTED")} />
+              )}
+              {canReject && (
+                <ActionBtn label="Reject" variant="danger"
+                  loading={actionLoading === "REJECTED"}
+                  onClick={() => setModal("reject")} />
+              )}
+            </div>
+            {awaitingAdmin && (
+              <div style={{ fontSize: 12, color: "#71717a", lineHeight: 1.5, marginTop: 10 }}>
+                Interview and hire is handled by DirectHire once this candidate is cleared — check the Status above for progress.
+              </div>
             )}
           </div>
         )}
       </div>
 
       {/* Sub-modals (rendered above drawer) */}
-      {modal === "interview" && (
-        <InterviewModal
-          name={name}
-          loading={actionLoading === "INTERVIEWED"}
-          onConfirm={instructions => doAction("INTERVIEWED", { interview_instructions: instructions })}
-          onCancel={() => setModal(null)}
-        />
-      )}
-      {modal === "accept" && (
-        <AcceptModal
-          name={name} jobTitle={jobTitle}
-          loading={actionLoading === "ACCEPTED"}
-          onConfirm={() => doAction("ACCEPTED")}
-          onCancel={() => setModal(null)}
-        />
-      )}
       {modal === "reject" && (
         <RejectModal
           name={name}
@@ -560,15 +441,14 @@ function ProfileDrawer({
 // ── Candidate card ─────────────────────────────────────────────────────────────
 
 function CandidateCard({
-  app, job, requiredSkills, onViewProfile, onStatusUpdate,
+  app, requiredSkills, onViewProfile, onStatusUpdate,
 }: {
   app: Application;
-  job: JobDetail;
   requiredSkills: Set<string>;
   onViewProfile: (app: Application) => void;
-  onStatusUpdate: (id: string, status: string, extra?: { reason?: string; interview_instructions?: string }) => Promise<void>;
+  onStatusUpdate: (id: string, status: string, extra?: { reason?: string }) => Promise<void>;
 }) {
-  const [modal, setModal] = useState<"interview" | "accept" | "reject" | null>(null);
+  const [modal, setModal] = useState<"reject" | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const name     = workerName(app.worker);
@@ -580,16 +460,15 @@ function CandidateCard({
   const score    = app.match_score != null ? Number(app.match_score) : null;
 
   const canShortlist    = app.status === "APPLIED" || app.status === "VIEWED";
-  const canInterview    = app.status === "SHORTLISTED";
-  const canAccept       = app.status === "INTERVIEWED";
   const canReject       = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEWED"].includes(app.status);
   const isTerminal      = app.status === "ACCEPTED" || app.status === "REJECTED" || app.status === "WITHDRAWN";
   const isLocked        = app.worker.is_locked;
   const lockedByMe      = app.worker.locked_by_me;
-  // Accept is blocked when reserved by a different employer and at SHORTLISTED or INTERVIEWED stage
-  const acceptBlocked   = isLocked && !lockedByMe && (app.status === "SHORTLISTED" || app.status === "INTERVIEWED");
+  // Interview scheduling and hire confirmation moved to DirectHire's admin-
+  // mediated workflow — no employer action for either here anymore.
+  const awaitingAdmin   = app.status === "SHORTLISTED" || app.status === "INTERVIEWED";
 
-  async function doAction(status: string, extra?: { reason?: string; interview_instructions?: string }) {
+  async function doAction(status: string, extra?: { reason?: string }) {
     setActionLoading(status);
     await onStatusUpdate(app.id, status, extra);
     setActionLoading(null);
@@ -598,22 +477,6 @@ function CandidateCard({
 
   return (
     <>
-      {modal === "interview" && (
-        <InterviewModal
-          name={name}
-          loading={actionLoading === "INTERVIEWED"}
-          onConfirm={instructions => doAction("INTERVIEWED", { interview_instructions: instructions })}
-          onCancel={() => setModal(null)}
-        />
-      )}
-      {modal === "accept" && (
-        <AcceptModal
-          name={name} jobTitle={job.title}
-          loading={actionLoading === "ACCEPTED"}
-          onConfirm={() => doAction("ACCEPTED")}
-          onCancel={() => setModal(null)}
-        />
-      )}
       {modal === "reject" && (
         <RejectModal
           name={name}
@@ -730,22 +593,14 @@ function CandidateCard({
                 <ActionBtn label="Shortlist" variant="amber" loading={actionLoading === "SHORTLISTED"}
                   onClick={() => doAction("SHORTLISTED")} />
               )}
-              {canInterview && (
-                <ActionBtn label="Invite to interview" variant="teal" loading={actionLoading === "INTERVIEWED"}
-                  onClick={() => setModal("interview")} />
-              )}
-              {canAccept && !acceptBlocked && (
-                <ActionBtn label="Accept" variant="teal" loading={actionLoading === "ACCEPTED"}
-                  onClick={() => setModal("accept")} />
-              )}
-              {canAccept && acceptBlocked && (
-                <span title="This worker is reserved by another employer. You can accept them once the reservation ends." style={{ display: "inline-flex", alignItems: "center" }}>
-                  <ActionBtn label="Accept" variant="teal" disabled onClick={() => {}} />
-                </span>
-              )}
               {canReject && (
                 <ActionBtn label="Reject" variant="danger" loading={actionLoading === "REJECTED"}
                   onClick={() => setModal("reject")} />
+              )}
+              {awaitingAdmin && (
+                <span style={{ fontSize: 11, color: "#555" }}>
+                  Interview and hire is handled by DirectHire once cleared
+                </span>
               )}
               {isTerminal && (
                 <span style={{ fontSize: 11, color: "#444" }}>—</span>
@@ -840,7 +695,7 @@ function ApplicantsContent() {
   async function handleStatusUpdate(
     id: string,
     status: string,
-    extra?: { reason?: string; interview_instructions?: string },
+    extra?: { reason?: string },
   ) {
     const res = await employerApi.updateApplicationStatus(id, status, extra);
     if (!res.success) {
@@ -853,8 +708,6 @@ function ApplicantsContent() {
 
     // Toast messages
     if (status === "SHORTLISTED")  showToast("Candidate shortlisted", "ok");
-    if (status === "INTERVIEWED")  showToast("Interview invitation sent — contact details shared", "ok");
-    if (status === "ACCEPTED")     showToast("Candidate accepted", "ok");
     if (status === "REJECTED")     showToast("Application rejected", "err");
   }
 
@@ -874,7 +727,6 @@ function ApplicantsContent() {
       {drawer && (
         <ProfileDrawer
           app={drawer}
-          jobTitle={jobTitle}
           requiredSkills={requiredSkills}
           onClose={() => setDrawer(null)}
           onStatusUpdate={async (id, status, extra) => {
@@ -1010,7 +862,6 @@ function ApplicantsContent() {
               <CandidateCard
                 key={app.id}
                 app={app}
-                job={job!}
                 requiredSkills={requiredSkills}
                 onViewProfile={setDrawer}
                 onStatusUpdate={handleStatusUpdate}
