@@ -484,6 +484,17 @@ export const employerApi = {
   getMessages: (params?: Record<string, string>) =>
     get(`/employer/messages${params ? "?" + new URLSearchParams(params) : ""}`),
   markMessageRead: (id: string) => post(`/employer/messages/${id}/read`),
+  // ── Worker groups / bulk quotes (Phase 2 sub-step 5 backend, Phase 4 Step 2 frontend) ──
+  getMyWorkerGroup: () => get("/employer/worker-groups/me"),
+  addWorkerToGroup: (workerId: string) => post("/employer/worker-groups/members", { workerId }),
+  removeWorkerFromGroup: (workerId: string) => del(`/employer/worker-groups/members/${workerId}`),
+  requestBulkQuote: () => post("/employer/worker-groups/request-quote"),
+  // ── Custom document requests (Phase 4, Step 3) ────────────────────────────────
+  getEmployerDocumentRequests: (params?: Record<string, string>) =>
+    get(`/employer/document-requests${params ? "?" + new URLSearchParams(params) : ""}`),
+  createEmployerDocumentRequest: (body: { applicationId: string; label: string; description?: string; isRequired?: boolean }) =>
+    post("/employer/document-requests", body),
+  approveEmployerDocumentRequest: (id: string) => patch(`/employer/document-requests/${id}/approve`),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */

@@ -24,11 +24,17 @@ export async function getMyGroup(req: Request, res: Response, next: NextFunction
     const employerId = req.user!.sub;
     const group = await prisma.workerGroup.findUnique({
       where:  { employerId },
-      include: { members: { include: MEMBER_INCLUDE, orderBy: { addedAt: "desc" } } },
+      include: {
+        members: { include: MEMBER_INCLUDE, orderBy: { addedAt: "desc" } },
+        // Phase 4, Step 2 addition — full history (not just non-SENT), so the
+        // employer can see a delivered quote's amount/notes once admin sends
+        // one. Phase 2 never built an employer-facing view of this at all.
+        bulkQuoteRequests: { orderBy: { requestedAt: "desc" } },
+      },
     });
 
-    if (!group) return ok(res, { group: null, members: [], memberCount: 0 });
-    return ok(res, { group, members: group.members, memberCount: group.members.length });
+    if (!group) return ok(res, { group: null, members: [], memberCount: 0, bulkQuoteRequests: [] });
+    return ok(res, { group, members: group.members, memberCount: group.members.length, bulkQuoteRequests: group.bulkQuoteRequests });
   } catch (e) { next(e); }
 }
 
@@ -39,8 +45,19 @@ export async function addGroupMember(req: Request, res: Response, next: NextFunc
     const employerId = req.user!.sub;
     const { workerId } = AddMemberSchema.parse(req.body);
 
-    const worker = await prisma.user.findUnique({ where: { id: workerId }, select: { id: true, role: true } });
+    const worker = await prisma.user.findUnique({
+      where:  { id: workerId },
+      select: { id: true, role: true, isLocked: true, lockedByEmployerId: true },
+    });
     if (!worker || worker.role !== "WORKER") return err(res, "Worker not found", 404);
+
+    // Phase 4, Step 2 addition — Phase 2 deliberately left this unrestricted
+    // (flagged as an open question, not decided). Now decided: a worker
+    // reserved by a DIFFERENT employer can't be added; available workers and
+    // workers this same employer already has locked can be.
+    if (worker.isLocked && worker.lockedByEmployerId !== employerId) {
+      return err(res, "This worker is currently reserved by another employer.", 403, { code: "WORKER_LOCKED" });
+    }
 
     const group = await prisma.workerGroup.upsert({
       where:  { employerId },

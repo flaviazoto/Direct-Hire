@@ -20,6 +20,8 @@ interface WorkerResult {
   aiMatchScore:       number | undefined;
   account_status:     string;
   is_locked:          boolean;
+  locked_by_me:       boolean;
+  in_group:           boolean;
   has_profile:        boolean;
   documents_verified: boolean;
   skills:             { skill: string }[];
@@ -32,6 +34,24 @@ interface WorkersResponse {
   page:  number;
   limit: number;
 }
+
+// ── Worker group / bulk quote types (Phase 4, Step 2) ────────────────────────
+
+interface GroupMember {
+  workerId: string;
+  worker: { id: string; email: string; workerProfile: { firstName: string | null; lastName: string | null } | null };
+}
+interface BulkQuoteRequest {
+  id: string;
+  status: "REQUESTED" | "QUOTE_PREPARED" | "SENT";
+  workerCountAtRequest: number;
+  quoteAmountUsd: string | null;
+  quoteNotes: string | null;
+  requestedAt: string;
+  quoteSentAt: string | null;
+}
+
+const MIN_GROUP_SIZE = 10;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,11 +86,18 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
 
 // ── Worker card ───────────────────────────────────────────────────────────────
 
-function WorkerCard({ worker }: { worker: WorkerResult }) {
+function WorkerCard({ worker, onToggleGroup, groupBusy }: {
+  worker: WorkerResult;
+  onToggleGroup: (workerId: string, add: boolean) => void;
+  groupBusy: boolean;
+}) {
   const aColor      = avatarColor(worker.name);
   const locked      = worker.is_locked;
   const hasProfile  = worker.has_profile;
   const statusBadge = STATUS_BADGE[worker.account_status] ?? STATUS_BADGE.PENDING_EMAIL_VERIFICATION;
+  // Addable to the employer's group if available, or locked by this same
+  // employer — never if reserved by a different employer.
+  const addableToGroup = !worker.is_locked || worker.locked_by_me;
 
   const card = (
     <div style={{
@@ -196,6 +223,42 @@ function WorkerCard({ worker }: { worker: WorkerResult }) {
             {hasProfile ? "View profile →" : "No profile"}
           </span>
         </div>
+
+        {/* Group toggle — gold accent, admin-adjacent action distinct from the platform-blue "view profile" CTA */}
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {worker.in_group ? (
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onToggleGroup(worker.userId, false); }}
+              disabled={groupBusy}
+              style={{
+                width: "100%", padding: "7px 0", borderRadius: 8,
+                border: "1px solid rgba(224,176,32,0.35)", background: "rgba(224,176,32,0.1)",
+                color: "#E0B020", fontSize: 12, fontWeight: 700,
+                cursor: groupBusy ? "default" : "pointer", fontFamily: "inherit",
+              }}
+            >
+              ✓ In group — remove
+            </button>
+          ) : addableToGroup ? (
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onToggleGroup(worker.userId, true); }}
+              disabled={groupBusy}
+              style={{
+                width: "100%", padding: "7px 0", borderRadius: 8,
+                border: "1px solid rgba(224,176,32,0.25)", background: "transparent",
+                color: "#E0B020", fontSize: 12, fontWeight: 700,
+                cursor: groupBusy ? "default" : "pointer", fontFamily: "inherit",
+                opacity: groupBusy ? 0.5 : 1,
+              }}
+            >
+              + Add to group
+            </button>
+          ) : (
+            <div style={{ textAlign: "center", fontSize: 11, color: "#555", padding: "7px 0" }}>
+              Reserved by another employer
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -253,6 +316,123 @@ function EmptyState({ availableOnly }: { availableOnly: boolean }) {
   );
 }
 
+// ── Group panel (sticky) ──────────────────────────────────────────────────────
+// Phase 4, Step 2 — no mockup file was found in the repo for this screen
+// either (same as Phase 3's two admin screens), so this was built from the
+// prompt's textual description: directory grid left, sticky group panel
+// right with member count/progress/remove/request-quote.
+
+function GroupPanel({
+  members, pendingRequest, latestSentQuote, requesting, onRemove, onRequestQuote,
+}: {
+  members: GroupMember[];
+  pendingRequest: BulkQuoteRequest | null;
+  latestSentQuote: BulkQuoteRequest | null;
+  requesting: boolean;
+  onRemove: (workerId: string) => void;
+  onRequestQuote: () => void;
+}) {
+  const count = members.length;
+  const pct = Math.min(100, Math.round((count / MIN_GROUP_SIZE) * 100));
+  const canRequest = count >= MIN_GROUP_SIZE && !pendingRequest;
+
+  return (
+    <div style={{
+      position: "sticky", top: 16, alignSelf: "start",
+      background: "#161616", border: "1px solid rgba(224,176,32,0.2)",
+      borderRadius: 14, padding: 20,
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Worker group</div>
+      <div style={{ fontSize: 12, color: "#71717a", marginBottom: 14 }}>
+        Add 10+ workers to request a bulk hiring quote.
+      </div>
+
+      {/* Progress */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+          <span style={{ color: "#e4e4e7", fontWeight: 700 }}>{count} / {MIN_GROUP_SIZE}</span>
+          <span style={{ color: "#555" }}>{count >= MIN_GROUP_SIZE ? "Ready" : `${MIN_GROUP_SIZE - count} more needed`}</span>
+        </div>
+        <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: "#E0B020", transition: "width 0.2s" }} />
+        </div>
+      </div>
+
+      {/* Member list */}
+      {count === 0 ? (
+        <div style={{ fontSize: 12, color: "#555", padding: "16px 0", textAlign: "center" }}>
+          No workers added yet.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
+          {members.map(m => {
+            const name = [m.worker.workerProfile?.firstName, m.worker.workerProfile?.lastName].filter(Boolean).join(" ") || m.worker.email;
+            return (
+              <div key={m.workerId} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "6px 10px", background: "rgba(255,255,255,0.02)", borderRadius: 8,
+              }}>
+                <span style={{ fontSize: 12, color: "#e4e4e7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                <button
+                  onClick={() => onRemove(m.workerId)}
+                  style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, padding: "0 4px", fontFamily: "inherit" }}
+                  title="Remove from group"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Delivered quote */}
+      {latestSentQuote && (
+        <div style={{
+          background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.25)",
+          borderRadius: 10, padding: "12px 14px", marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            Quote delivered
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
+            ${latestSentQuote.quoteAmountUsd ?? "—"}
+          </div>
+          {latestSentQuote.quoteNotes && (
+            <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 6, lineHeight: 1.5 }}>{latestSentQuote.quoteNotes}</div>
+          )}
+        </div>
+      )}
+
+      {/* Request button */}
+      {pendingRequest ? (
+        <div style={{ fontSize: 12, color: "#fbbf24", textAlign: "center", padding: "9px 0" }}>
+          {pendingRequest.status === "QUOTE_PREPARED" ? "Quote is being finalized…" : "Request sent — awaiting a quote"}
+        </div>
+      ) : (
+        <button
+          onClick={onRequestQuote}
+          disabled={!canRequest || requesting}
+          style={{
+            width: "100%", padding: "10px 0", borderRadius: 10, border: "none",
+            background: canRequest ? "#E0B020" : "rgba(255,255,255,0.06)",
+            color: canRequest ? "#08142A" : "#555",
+            fontSize: 13, fontWeight: 800, fontFamily: "inherit",
+            cursor: canRequest && !requesting ? "pointer" : "not-allowed",
+          }}
+        >
+          {requesting ? "Requesting…" : "Request bulk quote"}
+        </button>
+      )}
+      {!canRequest && !pendingRequest && (
+        <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginTop: 8 }}>
+          Add {MIN_GROUP_SIZE - count} more worker{MIN_GROUP_SIZE - count !== 1 ? "s" : ""} to unlock this.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main content ──────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 24;
@@ -269,6 +449,53 @@ function WorkersContent() {
   const [country,       setCountry]       = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
   const [toast,         setToast]         = useState<ToastData>(null);
+
+  // Worker group (Phase 4, Step 2)
+  const [groupMembers,    setGroupMembers]    = useState<GroupMember[]>([]);
+  const [quoteRequests,   setQuoteRequests]   = useState<BulkQuoteRequest[]>([]);
+  const [groupBusyId,     setGroupBusyId]     = useState<string | null>(null);
+  const [requestingQuote, setRequestingQuote] = useState(false);
+
+  const loadGroup = useCallback(async () => {
+    const res = await employerApi.getMyWorkerGroup();
+    if (res.success) {
+      const d = res.data as { members?: GroupMember[]; bulkQuoteRequests?: BulkQuoteRequest[] } | undefined;
+      setGroupMembers(d?.members ?? []);
+      setQuoteRequests(d?.bulkQuoteRequests ?? []);
+    }
+  }, []);
+
+  useEffect(() => { loadGroup(); }, [loadGroup]);
+
+  async function handleToggleGroup(workerId: string, add: boolean) {
+    setGroupBusyId(workerId);
+    const res = add ? await employerApi.addWorkerToGroup(workerId) : await employerApi.removeWorkerFromGroup(workerId);
+    setGroupBusyId(null);
+    if (res.success) {
+      setToast({ msg: add ? "Added to group" : "Removed from group", type: "ok" });
+      setWorkers(prev => prev.map(w => w.userId === workerId ? { ...w, in_group: add } : w));
+      loadGroup();
+    } else {
+      setToast({ msg: res.error ?? "Could not update group", type: "err" });
+    }
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  async function handleRequestQuote() {
+    setRequestingQuote(true);
+    const res = await employerApi.requestBulkQuote();
+    setRequestingQuote(false);
+    if (res.success) {
+      setToast({ msg: "Bulk quote requested", type: "ok" });
+      loadGroup();
+    } else {
+      setToast({ msg: res.error ?? "Could not request a quote", type: "err" });
+    }
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  const pendingQuoteRequest = quoteRequests.find(q => q.status !== "SENT") ?? null;
+  const latestSentQuote = quoteRequests.find(q => q.status === "SENT") ?? null;
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -322,6 +549,9 @@ function WorkersContent() {
     <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 1400, margin: "0 auto" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <ToastDisplay toast={toast} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
+      <div style={{ minWidth: 0 }}>
 
       {/* Page header */}
       <div style={{ marginBottom: 24 }}>
@@ -445,7 +675,9 @@ function WorkersContent() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workers.map(w => <WorkerCard key={w.userId} worker={w} />)}
+          {workers.map(w => (
+            <WorkerCard key={w.userId} worker={w} onToggleGroup={handleToggleGroup} groupBusy={groupBusyId === w.userId} />
+          ))}
         </div>
       )}
 
@@ -472,6 +704,17 @@ function WorkersContent() {
           </button>
         </div>
       )}
+      </div>
+
+      <GroupPanel
+        members={groupMembers}
+        pendingRequest={pendingQuoteRequest}
+        latestSentQuote={latestSentQuote}
+        requesting={requestingQuote}
+        onRemove={workerId => handleToggleGroup(workerId, false)}
+        onRequestQuote={handleRequestQuote}
+      />
+      </div>
     </div>
   );
 }

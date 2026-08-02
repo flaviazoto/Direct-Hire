@@ -50,10 +50,11 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
         take: limit,
         orderBy: [{ createdAt: "desc" }],
         select: {
-          id:            true,
-          email:         true,
-          isLocked:      true,
-          accountStatus: true,
+          id:                 true,
+          email:              true,
+          isLocked:           true,
+          lockedByEmployerId: true,
+          accountStatus:      true,
           workerProfile: {
             select: {
               firstName:          true,
@@ -79,6 +80,14 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
     });
     const empSkillSet = new Set(empSkills.map(s => s.skill.toLowerCase()));
 
+    // Phase 4, Step 2 — worker group membership, so the directory can show
+    // "already in group" without a separate per-row lookup.
+    const myGroup = await prisma.workerGroup.findUnique({
+      where:  { employerId: userId },
+      select: { members: { select: { workerId: true } } },
+    });
+    const groupWorkerIds = new Set((myGroup?.members ?? []).map(m => m.workerId));
+
     const enriched = rows.map(u => {
       const p         = u.workerProfile;
       const skills    = p?.skills ?? [];
@@ -99,6 +108,8 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
         trustScore:         p?.trustScore         ?? null,
         account_status:     u.accountStatus,
         is_locked:          u.isLocked,
+        locked_by_me:       u.isLocked && u.lockedByEmployerId === userId,
+        in_group:           groupWorkerIds.has(u.id),
         has_profile:        p !== null,
         documents_verified: (p as any)?.documentsVerified === true,
         skills,
