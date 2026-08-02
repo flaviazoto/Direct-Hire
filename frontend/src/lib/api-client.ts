@@ -336,6 +336,8 @@ export const adminApi = {
     post(`/admin/hiring/applications/${applicationId}/documents/skip`),
   getFeeQueue: (params?: Record<string, string>) =>
     get(`/admin/hiring/fee-queue${params ? "?" + new URLSearchParams(params) : ""}`),
+  createFeeCharge: (applicationId: string, visaType: string) =>
+    post(`/admin/hiring/applications/${applicationId}/fee/create`, { visaType }),
   getInterviewHireQueue: (params?: Record<string, string>) =>
     get(`/admin/hiring/interview-hire-queue${params ? "?" + new URLSearchParams(params) : ""}`),
   scheduleInterview: (applicationId: string, body: { date: string; type: "video" | "phone" | "in-person"; notes?: string }) =>

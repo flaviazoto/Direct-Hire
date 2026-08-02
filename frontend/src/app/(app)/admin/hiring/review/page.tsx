@@ -69,6 +69,7 @@ interface AppRow {
   createdAt: string;
   updatedAt: string;
   status: string;
+  workflowStatus?: string | null;
   worker: WorkerSummary;
   job: JobSummary;
   employer: EmployerSummary;
@@ -186,6 +187,8 @@ export default function AdminHiringReviewPage() {
   const [requestingDoc, setRequestingDoc] = useState(false);
   const [approvingDocId, setApprovingDocId] = useState<string | null>(null);
   const [skippingDocs, setSkippingDocs] = useState(false);
+  const [visaType, setVisaType] = useState("");
+  const [chargingFee, setChargingFee] = useState(false);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -288,6 +291,20 @@ export default function AdminHiringReviewPage() {
       load("documents");
     } else {
       showToast(res.error ?? "Could not skip document verification", false);
+    }
+  }
+
+  async function handleChargeFee() {
+    if (!selected || !visaType.trim()) return;
+    setChargingFee(true);
+    const res = await adminApi.createFeeCharge(selected.id, visaType.trim());
+    setChargingFee(false);
+    if (res.success) {
+      showToast("Fee charge started — application moved to Awaiting Fee");
+      setVisaType("");
+      load("documents");
+    } else {
+      showToast(res.error ?? "Could not start the fee charge", false);
     }
   }
 
@@ -445,7 +462,7 @@ export default function AdminHiringReviewPage() {
                       <div style={{ fontSize: 13, color: C.success, marginBottom: 16 }}>All requested documents are approved.</div>
                     ) : null}
 
-                    {(selected.documents ?? []).length === 0 || (selected.documents ?? []).every(d => d.status === "APPROVED") ? (
+                    {selected.workflowStatus !== "DOCUMENTS_APPROVED" && ((selected.documents ?? []).length === 0 || (selected.documents ?? []).every(d => d.status === "APPROVED")) ? (
                       <button
                         onClick={handleSkipDocs}
                         disabled={skippingDocs}
@@ -459,6 +476,40 @@ export default function AdminHiringReviewPage() {
                         {skippingDocs ? "Working…" : "✓ No documents needed — proceed to fee"}
                       </button>
                     ) : null}
+
+                    {/* Fee-charge trigger — Part A follow-up. Documents (if any)
+                        are all approved and workflowStatus has already advanced;
+                        this is the missing next step, otherwise a dead end. */}
+                    {selected.workflowStatus === "DOCUMENTS_APPROVED" && (
+                      <div style={{ padding: "14px 16px", background: rowBg, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 20 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                          Documents cleared — charge the admin fee
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                          Fee amount is resolved from the fee schedule for {selected.job.country} + the visa type below.
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input
+                            value={visaType}
+                            onChange={e => setVisaType(e.target.value)}
+                            placeholder="Visa type, e.g. H-2A"
+                            style={{ ...inputStyle, flex: 1 }}
+                          />
+                          <button
+                            onClick={handleChargeFee}
+                            disabled={chargingFee || !visaType.trim()}
+                            style={{
+                              padding: "9px 16px", borderRadius: 8, border: "none",
+                              background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700,
+                              cursor: chargingFee || !visaType.trim() ? "default" : "pointer",
+                              opacity: !visaType.trim() ? 0.5 : 1, whiteSpace: "nowrap",
+                            }}
+                          >
+                            {chargingFee ? "Starting…" : "Charge admin fee"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {(selected.documents ?? []).length > 0 && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>

@@ -167,7 +167,18 @@ export async function getDocumentQueue(req: Request, res: Response, next: NextFu
   try {
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
 
-    const where = { workflowStatus: "APPROVED_QUEUED" as const };
+    // Widened from APPROVED_QUEUED-only (found while wiring the fee-charge
+    // trigger below): that filter meant an application vanished from this
+    // tab the moment a single document was requested (-> DOCUMENTS_PENDING)
+    // or fully approved (-> DOCUMENTS_APPROVED) — losing the ability to
+    // approve a worker's submission, or to start the fee charge, since the
+    // application was no longer selectable here at all. This tab needs to
+    // cover the whole document-verification lifecycle, not just its start.
+    const where = {
+      workflowStatus: {
+        in: ["APPROVED_QUEUED", "DOCUMENTS_PENDING", "DOCUMENTS_APPROVED"] as ("APPROVED_QUEUED" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED")[],
+      },
+    };
     const [rawRows, total] = await Promise.all([
       prisma.application.findMany({
         where, skip, take: limit,
