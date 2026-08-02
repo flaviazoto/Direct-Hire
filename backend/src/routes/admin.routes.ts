@@ -122,8 +122,10 @@ adminRouter.get(  "/hiring/document-queue",                             requireA
 adminRouter.post( "/hiring/applications/:applicationId/documents",      requireAdmin, hiringCtrl.requestApplicationDocument);
 adminRouter.patch("/hiring/documents/:documentId/approve",              requireAdmin, hiringCtrl.approveApplicationDocument);
 adminRouter.post( "/hiring/applications/:applicationId/documents/skip", requireAdmin, hiringCtrl.skipDocumentVerification);
-adminRouter.post( "/hiring/applications/:applicationId/interview",      requireAdmin, hiringCtrl.scheduleInterview);
-adminRouter.post( "/hiring/applications/:applicationId/hire",           requireAdmin, hiringCtrl.confirmHire);
+adminRouter.patch("/hiring/applications/:applicationId/interview",         requireAdmin, hiringCtrl.recordInterviewNotes);
+adminRouter.post( "/hiring/applications/:applicationId/interview/relay",   requireAdmin, hiringCtrl.markInterviewRelayed);
+adminRouter.post( "/hiring/applications/:applicationId/not-selected",      requireAdmin, hiringCtrl.markApplicationNotSelected);
+adminRouter.post( "/hiring/applications/:applicationId/hire",              requireAdmin, hiringCtrl.confirmHire);
 
 // ── Admin fee schedule + charge (Phase 2 sub-step 3) ────────────────────────────
 adminRouter.get(  "/hiring/fee-queue",           requireAdmin, feeCtrl.getFeeQueue);

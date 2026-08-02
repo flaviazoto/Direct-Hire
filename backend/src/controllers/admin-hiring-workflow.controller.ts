@@ -1,13 +1,16 @@
 // backend/src/controllers/admin-hiring-workflow.controller.ts
-// Admin-mediated hiring workflow (Phase 2, sub-steps 2 + 4) — all routes
-// require role = ADMIN (see admin.routes.ts). Follows the exact
-// ok/err/paginated response-shape and zod-validation conventions already
-// used in admin-documents.controller.ts / admin.controller.ts.
+// Admin-mediated hiring workflow (Phase 2, sub-steps 2 + 4; Part B redesigned
+// the interview section) — all routes require role = ADMIN (see
+// admin.routes.ts). Follows the exact ok/err/paginated response-shape and
+// zod-validation conventions already used in admin-documents.controller.ts /
+// admin.controller.ts.
 //
-// No REJECTED path anywhere in this file, per Phase 1's design: admin can
-// only move an application's workflowStatus forward or leave it at its
-// current state. A document staying SUBMITTED (not yet APPROVED) is the
-// only "not done yet" state.
+// Sub-steps 2/4's original "no REJECTED path" note no longer holds as of
+// Part B: markApplicationNotSelected below is an explicit, deliberate
+// REJECTED path for the admin-mediated screening-interview outcome — see
+// that function's comment for why REJECTED is the right value to reuse
+// there. Everything else in this file (review/documents/fee stages) still
+// has no reject path, unchanged.
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
@@ -18,10 +21,9 @@ import { getSignedUrlForPath } from "../services/storage";
 import {
   sendApplicationApprovedQueuedEmail,
   sendApplicationDocumentRequestedEmail,
-  sendInterviewScheduledWorkerEmail,
-  sendInterviewScheduledEmployerEmail,
   sendApplicationAcceptedWorkerEmail,
   sendHireConfirmationEmployerEmail,
+  sendApplicationRejectedWorkerEmail,
 } from "../services/email";
 
 // ── Shared include shape for review-queue-style listings ─────────────────────
@@ -356,96 +358,149 @@ export async function skipDocumentVerification(req: Request, res: Response, next
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Sub-step 4 — admin interview scheduling + hire confirmation
-// (replaces the employer-side INTERVIEWED/ACCEPTED transitions removed from
-// employer-applications.controller.ts's updateApplicationStatus)
+// Part B — admin-mediated SCREENING interview (replaces Sub-step 4's
+// "schedule interview" section entirely). New model: the employer never
+// talks to the worker before a hire decision — admin conducts the actual
+// screening call on the employer's behalf, records free-text notes + a
+// lightweight recommendation, and relays the outcome to the employer
+// manually (email/WhatsApp, off-platform). See employer-interview.controller.ts
+// for the request side (Application.status -> SCREENING happens there, when
+// the employer requests the interview — not here).
+//
+// interviewInstructions/interviewedAt (reused in Phase 2 for the old model)
+// are a MISMATCH for this data and are deliberately left untouched by
+// everything below: they were worker-facing scheduling details tied to
+// interviewContactUnlocked (the old model shared the employer's contact
+// details with the worker so the two could arrange the call themselves).
+// The new adminNotes are admin-internal, never worker-facing, and there's no
+// contact-sharing at all in this model — a different field for a different
+// purpose, not a repurposing of the old one. ApplicationInterview.adminNotes/
+// conductedAt is the real, correctly-scoped home for this data.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── POST /admin/hiring/applications/:applicationId/interview ─────────────────
-// Schedules/confirms an interview. Reuses Application.interviewInstructions/
-// interviewedAt as-is (see the file-level note in employer-applications.
-// controller.ts on why no new columns were added for date/type — flagged in
-// the Phase 2 report, not silently added here).
+// ── PATCH /admin/hiring/applications/:applicationId/interview ────────────────
+// Records admin's notes + recommendation after the (off-platform) call.
+// conductedAt is stamped once, on the first save — re-saving to edit notes
+// later doesn't re-stamp it.
 
-const ScheduleInterviewSchema = z.object({
-  date:  z.string().min(1), // ISO date/time string, stored as text inside interviewInstructions
-  type:  z.enum(["video", "phone", "in-person"]),
-  notes: z.string().max(5000).optional(),
+const RecordInterviewNotesSchema = z.object({
+  adminNotes:     z.string().max(5000).optional(),
+  recommendation: z.enum(["RECOMMEND", "DOES_NOT_MEET_REQUIREMENTS", "NEEDS_FOLLOW_UP"]).optional(),
 });
 
-export async function scheduleInterview(req: Request, res: Response, next: NextFunction) {
+export async function recordInterviewNotes(req: Request, res: Response, next: NextFunction) {
   try {
     const adminId = req.user!.sub;
     const { applicationId } = req.params;
-    const { date, type, notes } = ScheduleInterviewSchema.parse(req.body);
+    const { adminNotes, recommendation } = RecordInterviewNotesSchema.parse(req.body);
+
+    if (adminNotes === undefined && recommendation === undefined) {
+      return err(res, "Provide at least one of: adminNotes, recommendation", 422);
+    }
+
+    const interview = await prisma.applicationInterview.findUnique({
+      where: { applicationId },
+      include: { application: { select: { workerId: true } } },
+    });
+    if (!interview) return err(res, "No interview has been requested for this application yet", 404);
+
+    const updated = await prisma.applicationInterview.update({
+      where: { applicationId },
+      data: {
+        ...(adminNotes !== undefined && { adminNotes }),
+        ...(recommendation !== undefined && { recommendation }),
+        ...(interview.conductedAt === null && { conductedAt: new Date() }),
+      },
+    });
+
+    // targetId must be a User id (AdminAuditLog.targetUserId FK) — the worker
+    // being screened, not the applicationId itself.
+    insertAdminAuditLog({
+      actorId: adminId, targetId: interview.application.workerId,
+      action: "APPLICATION_STATUS_CHANGED",
+      notes: "Screening interview notes recorded",
+      metadata: { applicationId, recommendation: recommendation ?? interview.recommendation },
+    }).catch(console.error);
+
+    return ok(res, updated, "Notes saved");
+  } catch (e) { next(e); }
+}
+
+// ── POST /admin/hiring/applications/:applicationId/interview/relay ───────────
+// Admin ticks this after sending the manual email/WhatsApp — the platform
+// never sends this itself, this just records that it happened.
+
+export async function markInterviewRelayed(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = req.user!.sub;
+    const { applicationId } = req.params;
+
+    const interview = await prisma.applicationInterview.findUnique({ where: { applicationId } });
+    if (!interview) return err(res, "No interview has been requested for this application yet", 404);
+    if (!interview.conductedAt) return err(res, "Record the call notes before marking it as relayed.", 400);
+
+    const updated = await prisma.applicationInterview.update({
+      where: { applicationId },
+      data:  { relayedById: adminId, relayedToEmployerAt: new Date() },
+    });
+
+    return ok(res, updated, "Marked as relayed to employer");
+  } catch (e) { next(e); }
+}
+
+// ── POST /admin/hiring/applications/:applicationId/not-selected ──────────────
+// The close-out path alternative to confirmHire (unchanged, below). Reuses
+// the existing REJECTED status — checked, not assumed: REJECTED already
+// means exactly "this application did not result in a hire" everywhere else
+// it's used (the employer's own pre-screening reject at VIEWED/SHORTLISTED),
+// and that meaning holds just as well here — the trigger (admin, on the
+// employer's relayed decision) differs, but the outcome represented by the
+// status value itself doesn't. No ambiguity found worth flagging further.
+
+export async function markApplicationNotSelected(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = req.user!.sub;
+    const { applicationId } = req.params;
 
     const app = await prisma.application.findUnique({
       where:  { id: applicationId },
       include: {
-        worker:   { select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } } },
-        job:      { select: { title: true, companyName: true } },
-        employer: { select: { id: true, email: true, employerProfile: { select: { companyName: true, contactPersonName: true } } } },
+        worker: { select: { id: true, email: true, workerProfile: { select: { firstName: true } } } },
+        job:    { select: { title: true, companyName: true } },
       },
     });
     if (!app) return err(res, "Application not found", 404);
-
-    const now = new Date();
-    const typeLabel = type === "video" ? "Video call" : type === "phone" ? "Phone call" : "In-person";
-    // Combined into one free-text field — see file header note. Keeps `date`
-    // and `type` machine-parseable at the front of the string in case a
-    // later phase needs to extract them, without adding new columns now.
-    const combinedInstructions = `Interview scheduled: ${date} (${typeLabel})${notes ? `\n\n${notes}` : ""}`;
+    if (app.status !== "SCREENING") {
+      return err(res, `Cannot mark as not selected — application status is ${app.status}, not SCREENING.`, 400);
+    }
 
     const updated = await prisma.application.update({
       where: { id: applicationId },
-      data: {
-        status:                  "INTERVIEWED",
-        interviewedAt:           now,
-        interviewContactUnlocked: true,
-        companyContactVisibleAt: now,
-        interviewInstructions:   combinedInstructions,
-      },
+      data:  { status: "REJECTED", rejectedAt: new Date() },
     });
 
-    const workerName = [app.worker.workerProfile?.firstName, app.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "the candidate";
-    const workerFirstName = app.worker.workerProfile?.firstName ?? "there";
-    const employerName = app.employer.employerProfile?.companyName ?? app.employer.employerProfile?.contactPersonName ?? app.employer.email;
+    sendApplicationRejectedWorkerEmail(
+      app.worker.id, app.worker.email, app.job.title, app.job.companyName,
+    ).catch((e: unknown) => console.error("[not selected email]", e));
 
-    Promise.all([
-      sendInterviewScheduledWorkerEmail(
-        app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName, date, typeLabel, notes,
-      ).catch((e: unknown) => console.error("[interview scheduled worker email]", e)),
-      sendInterviewScheduledEmployerEmail(
-        app.employer.id, app.employer.email, employerName, workerName, app.job.title, date, typeLabel,
-      ).catch((e: unknown) => console.error("[interview scheduled employer email]", e)),
-      prisma.notification.create({
-        data: {
-          userId: app.worker.id, type: "APPLICATION_UPDATE",
-          title:  `Interview scheduled — ${app.job.title} at ${app.job.companyName}`,
-          body:   `Your interview for "${app.job.title}" has been scheduled for ${date} (${typeLabel}).`,
-          link:   `/worker/applications/${applicationId}`,
-          metadata: { applicationId, status: "INTERVIEWED" },
-        },
-      }).catch((e: unknown) => console.error("[interview scheduled worker notif]", e)),
-      prisma.notification.create({
-        data: {
-          userId: app.employer.id, type: "APPLICATION_UPDATE",
-          title:  `Interview scheduled with ${workerName}`,
-          body:   `An interview with ${workerName} for "${app.job.title}" has been scheduled for ${date} (${typeLabel}).`,
-          link:   `/employer/applications/${applicationId}`,
-          metadata: { applicationId, status: "INTERVIEWED" },
-        },
-      }).catch((e: unknown) => console.error("[interview scheduled employer notif]", e)),
-    ]).catch(console.error);
+    prisma.notification.create({
+      data: {
+        userId: app.worker.id, type: "APPLICATION_UPDATE",
+        title:  `Update on your application — ${app.job.title}`,
+        body:   `Thank you for your interest in "${app.job.title}" at ${app.job.companyName}. We will not be moving forward at this time.`,
+        link:   `/worker/applications/${applicationId}`,
+        metadata: { applicationId, status: "REJECTED" },
+      },
+    }).catch((e: unknown) => console.error("[not selected notif]", e));
 
     insertAdminAuditLog({
       actorId: adminId, targetId: app.worker.id,
       action: "APPLICATION_STATUS_CHANGED",
-      notes: "APPLIED/SHORTLISTED -> INTERVIEWED (admin-scheduled)",
-      metadata: { applicationId, date, type },
+      notes: "SCREENING -> REJECTED (admin-mediated, not selected)",
+      metadata: { applicationId },
     }).catch(console.error);
 
-    return ok(res, updated, "Interview scheduled");
+    return ok(res, updated, "Application marked as not selected");
   } catch (e) { next(e); }
 }
 
@@ -556,7 +611,7 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
     insertAdminAuditLog({
       actorId: adminId, targetId: app.worker.id,
       action: "APPLICATION_STATUS_CHANGED",
-      notes: "INTERVIEWED -> ACCEPTED (admin-confirmed hire)",
+      notes: "SCREENING -> ACCEPTED (admin-confirmed hire)",
       metadata: { applicationId, offeredSalary, offeredCurrency, startDate, contractType },
     }).catch(console.error);
 
@@ -565,17 +620,16 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Phase 3 addition — interview + hire queue listing (no Phase 2 endpoint
-// listed applications at this stage; scheduleInterview/confirmHire only ever
-// acted on a single applicationId passed in from elsewhere). workflowStatus
-// stays at CLEARED_FOR_EMPLOYER for the rest of the process — there's no
-// separate "interview scheduled" or "hired" workflowStatus value — so this
-// queue spans everything from just-cleared through hired, distinguished by
-// `status` (VIEWED/SHORTLISTED = not yet interviewed, INTERVIEWED = interview
-// set, ACCEPTED = hired) rather than by workflowStatus. Includes documents/
-// adminReview/adminFeeCharge alongside the row so the detail panel + activity
-// timeline can render entirely from data already in this list response, with
-// no second per-row fetch.
+// Phase 3 addition, updated for Part B — interview + hire queue listing.
+// workflowStatus stays at CLEARED_FOR_EMPLOYER for the rest of the process —
+// there's no separate "interview requested" or "hired" workflowStatus value
+// — so this queue spans everything from just-cleared through the final
+// outcome, distinguished by `status` (VIEWED/SHORTLISTED = not yet
+// requested, SCREENING = interview requested/in progress, ACCEPTED = hired,
+// REJECTED = not selected) rather than by workflowStatus. Includes
+// documents/adminReview/adminFeeCharge/interview alongside the row so the
+// detail panel + activity timeline can render entirely from data already in
+// this list response, with no second per-row fetch.
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── GET /admin/hiring/interview-hire-queue ────────────────────────────────────
@@ -593,6 +647,7 @@ export async function getInterviewHireQueue(req: Request, res: Response, next: N
           ...APPLICATION_SUMMARY_INCLUDE,
           documents:     { orderBy: { createdAt: "asc" } },
           adminFeeCharge: true,
+          interview:      true,
         },
       }),
       prisma.application.count({ where }),

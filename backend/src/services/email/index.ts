@@ -517,25 +517,12 @@ export async function sendClearedForEmployerEmail(
     templateId: "cleared_for_employer", variables: { firstName, jobTitle, companyName } });
 }
 
-export async function sendInterviewScheduledWorkerEmail(
-  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
-  date: string, typeLabel: string, notes?: string,
-) {
-  const { interviewScheduledWorkerTemplate } = await import("./templates");
-  const { subject, html, text } = interviewScheduledWorkerTemplate({ firstName, jobTitle, companyName, date, typeLabel, notes });
-  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
-    templateId: "interview_scheduled_worker", variables: { firstName, jobTitle, companyName, date, typeLabel } });
-}
-
-export async function sendInterviewScheduledEmployerEmail(
-  userId: string, to: string, employerName: string, workerName: string, jobTitle: string,
-  date: string, typeLabel: string,
-) {
-  const { interviewScheduledEmployerTemplate } = await import("./templates");
-  const { subject, html, text } = interviewScheduledEmployerTemplate({ employerName, workerName, jobTitle, date, typeLabel });
-  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
-    templateId: "interview_scheduled_employer", variables: { employerName, workerName, jobTitle, date, typeLabel } });
-}
+// sendInterviewScheduledWorkerEmail/sendInterviewScheduledEmployerEmail
+// (the old date/type/notes-shared-with-both-parties model) removed — Part B
+// replaced that flow entirely. sendApplicationInterviewInProgressEmail below
+// is the new worker-facing equivalent; there's no employer-facing interview
+// email anymore since the employer only requests and later receives the
+// outcome off-platform, never a scheduling notice.
 
 export async function sendBulkQuoteReadyEmail(
   userId: string, to: string, contactName: string, quoteAmountUsd: string, quoteNotes?: string,
@@ -787,4 +774,20 @@ export async function sendHealthCheckRecoveryEmail(checkName: string, timestamp:
   const { subject, html, text } = healthCheckRecoveryTemplate({ checkName, timestamp });
   await sendEmail({ to: OWNER_EMAIL, from: FROM_NO_REPLY, emailType: "SYSTEM_HEALTH_ALERT", subject, html, text,
     templateId: "health_check_recovery", variables: { check: checkName, kind: "recovery" } });
+}
+
+// ── Part B — admin-mediated screening interview ─────────────────────────────
+// "Not selected" reuses sendApplicationRejectedWorkerEmail as-is (Phase 2) —
+// its wording ("we will not be moving forward with your application at this
+// time") is already generic enough to fit this outcome without a new
+// template. "You've been hired" already exists too
+// (sendApplicationAcceptedWorkerEmail, fired by confirmHire, unchanged).
+
+export async function sendApplicationInterviewInProgressEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { applicationInterviewInProgressTemplate } = await import("./templates");
+  const { subject, html, text } = applicationInterviewInProgressTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "APPLICATION_INTERVIEW_REQUESTED", subject, html, text,
+    templateId: "application_interview_in_progress", variables: { firstName, jobTitle, companyName } });
 }

@@ -1445,66 +1445,9 @@ export function clearedForEmployerTemplate(vars: {
   };
 }
 
-export function interviewScheduledWorkerTemplate(vars: {
-  firstName:   string;
-  jobTitle:    string;
-  companyName: string;
-  date:        string;
-  typeLabel:   string;
-  notes?:      string;
-}): TemplateResult {
-  const notesBlock = vars.notes
-    ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
-        <tr><td>
-          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Notes</p>
-          <p style="margin:0;font-size:14px;color:#1E293B;line-height:1.6;">${vars.notes}</p>
-        </td></tr>
-      </table>`
-    : "";
-  const html = layout(`
-    ${badge("📅 INTERVIEW SCHEDULED", "#1848CC")}
-    <br/><br/>
-    ${h1(`Interview scheduled, ${vars.firstName}!`)}
-    ${p(`Your interview with <strong>${vars.companyName}</strong> for <strong>"${vars.jobTitle}"</strong> has been scheduled.`)}
-    ${summaryTable(
-      summaryRow("Date/time", vars.date) +
-      summaryRow("Format",    vars.typeLabel),
-    )}
-    ${notesBlock}
-    ${btn(`${APP_URL}/worker/applications`, "View details", "#1848CC")}
-  `);
-  return {
-    subject: `Interview scheduled — ${vars.jobTitle} at ${vars.companyName}`,
-    html,
-    text: `Interview scheduled, ${vars.firstName}! Your interview with ${vars.companyName} for "${vars.jobTitle}" is set for ${vars.date} (${vars.typeLabel}).${vars.notes ? `\n\nNotes: ${vars.notes}` : ""}`,
-  };
-}
-
-export function interviewScheduledEmployerTemplate(vars: {
-  employerName: string;
-  workerName:   string;
-  jobTitle:     string;
-  date:         string;
-  typeLabel:    string;
-}): TemplateResult {
-  const html = layout(`
-    ${badge("📅 INTERVIEW SCHEDULED", "#1848CC")}
-    <br/><br/>
-    ${h1(`Interview scheduled with ${vars.workerName}`)}
-    ${p(`An interview for your <strong>"${vars.jobTitle}"</strong> role has been scheduled.`)}
-    ${summaryTable(
-      summaryRow("Candidate", vars.workerName) +
-      summaryRow("Date/time", vars.date) +
-      summaryRow("Format",    vars.typeLabel),
-    )}
-    ${btn(`${APP_URL}/employer/dashboard`, "View details", "#1848CC")}
-  `);
-  return {
-    subject: `Interview scheduled — ${vars.workerName} for ${vars.jobTitle}`,
-    html,
-    text: `Interview scheduled with ${vars.workerName} for your "${vars.jobTitle}" role: ${vars.date} (${vars.typeLabel}).`,
-  };
-}
+// interviewScheduledWorkerTemplate/interviewScheduledEmployerTemplate (the
+// old date/type/notes-shared-with-both-parties model) removed — Part B
+// replaced that flow entirely with applicationInterviewInProgressTemplate.
 
 export function bulkQuoteReadyTemplate(vars: {
   contactName:    string;
@@ -1524,5 +1467,32 @@ export function bulkQuoteReadyTemplate(vars: {
     subject: `Your bulk hiring quote is ready — $${vars.quoteAmountUsd}`,
     html,
     text: `Your bulk hiring quote is ready, ${vars.contactName}. Quote amount: $${vars.quoteAmountUsd}.${vars.quoteNotes ? `\n\n${vars.quoteNotes}` : ""}`,
+  };
+}
+
+// ── Part B — admin-mediated screening interview ─────────────────────────────
+// Sent when the employer requests the interview (not once the call is
+// actually conducted) — the worker should know something is moving as soon
+// as it starts, matching every other stage-transition email in this
+// workflow, which all fire on the triggering action rather than on a later
+// completion step.
+
+export function applicationInterviewInProgressTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("📋 INTERVIEW IN PROGRESS", "#1848CC")}
+    <br/><br/>
+    ${h1(`You're moving forward, ${vars.firstName}!`)}
+    ${p(`<strong>${vars.companyName}</strong> would like to move ahead with your application for <strong>"${vars.jobTitle}"</strong>. Our team will be in touch to conduct a screening call on their behalf.`)}
+    ${p("No action is needed from you right now — we'll reach out directly to schedule the call.")}
+    ${btn(`${APP_URL}/worker/applications`, "View my applications", "#1848CC")}
+  `);
+  return {
+    subject: `Interview in progress — ${vars.jobTitle} at ${vars.companyName}`,
+    html,
+    text: `You're moving forward, ${vars.firstName}! ${vars.companyName} would like to move ahead with your application for "${vars.jobTitle}". Our team will be in touch to conduct a screening call on their behalf.`,
   };
 }

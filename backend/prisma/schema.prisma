@@ -138,7 +138,14 @@ enum ApplicationStatus {
   APPLIED
   VIEWED
   SHORTLISTED
-  INTERVIEWED
+  INTERVIEWED // legacy — the old employer-scheduled-call model (Phase 2/3). Not
+              // set by any code path going forward; kept only so historical
+              // rows still read correctly. New admin-mediated screening
+              // interviews use SCREENING instead — see Part B's report for why
+              // INTERVIEWED wasn't reused (it's tightly coupled to the old
+              // contact-unlock/accept-decline flow on worker/applications/
+              // page.tsx, a file this change can't touch).
+  SCREENING   // admin-mediated screening interview requested/in progress
   ACCEPTED
   REJECTED
   WITHDRAWN
@@ -307,6 +314,9 @@ model User {
   workerGroupMemberships         WorkerGroupMember[]         @relation("WorkerGroupMemberships")
   bulkQuoteRequestsAsEmployer    BulkQuoteRequest[]          @relation("BulkQuoteRequestsAsEmployer")
   bulkQuoteRequestsPrepared      BulkQuoteRequest[]          @relation("BulkQuoteRequestsPrepared")
+  // Part B — admin-mediated screening interview redesign
+  applicationInterviewsRequested ApplicationInterview[]      @relation("ApplicationInterviewRequestedBy")
+  applicationInterviewsRelayed   ApplicationInterview[]      @relation("ApplicationInterviewRelayedBy")
 
   @@index([email])
   @@index([role])
@@ -753,6 +763,7 @@ model Application {
   documents        ApplicationDocument[]
   adminFeeCharge   AdminFeeCharge?
   documentRequests EmployerDocumentRequest[]
+  interview        ApplicationInterview?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1199,6 +1210,44 @@ enum BulkQuoteStatus {
   REQUESTED
   QUOTE_PREPARED
   SENT
+}
+
+enum InterviewRecommendation {
+  RECOMMEND
+  DOES_NOT_MEET_REQUIREMENTS
+  NEEDS_FOLLOW_UP
+}
+
+// Part B redesign: admin conducts the actual screening call with the worker,
+// on the employer's behalf — the employer and worker never speak directly.
+// Same shape/precedent as ApplicationAdminReview below (a request/decision
+// sub-record, not fields bolted onto Application): requested by the employer,
+// filled in by admin after the (off-platform) call, with an explicit
+// "relayed to employer" marker since the outcome is communicated manually
+// (email/WhatsApp), not by the platform.
+model ApplicationInterview {
+  id            String      @id @default(cuid())
+  applicationId String      @unique @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  requestedById String  @map("requested_by_id")
+  requestedBy   User    @relation("ApplicationInterviewRequestedBy", fields: [requestedById], references: [id])
+  requestNotes  String? @map("request_notes") @db.Text // employer's optional free text — not a structured requirements form
+  requestedAt   DateTime @default(now()) @map("requested_at")
+
+  conductedAt    DateTime?                 @map("conducted_at")
+  adminNotes     String?                   @map("admin_notes") @db.Text // free text, deliberately no structured checklist
+  recommendation InterviewRecommendation?
+
+  relayedById         String?   @map("relayed_by_id")
+  relayedBy           User?     @relation("ApplicationInterviewRelayedBy", fields: [relayedById], references: [id])
+  relayedToEmployerAt DateTime? @map("relayed_to_employer_at") // admin ticks this after sending the manual email/WhatsApp — the platform never sends it itself
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([requestedById])
+  @@map("application_interviews")
 }
 
 model ApplicationAdminReview {

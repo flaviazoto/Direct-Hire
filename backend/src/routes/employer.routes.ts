@@ -7,6 +7,7 @@ import * as lockCtrl  from "../controllers/worker-lock.controller";
 import * as billing   from "../controllers/billing.controller";
 import * as groupsCtrl from "../controllers/worker-groups.controller";
 import * as docReqCtrl from "../controllers/employer-document-requests.controller";
+import * as interviewCtrl from "../controllers/employer-interview.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is rather than duplicated — same cross-role-import pattern
 // already used above for worker-lock.controller.ts.
@@ -104,3 +105,12 @@ employerRouter.post(  "/worker-groups/request-quote",          requireVerifiedEm
 employerRouter.get(  "/document-requests",           requireVerifiedEmployer, docReqCtrl.listDocumentRequests);
 employerRouter.post( "/document-requests",           requireVerifiedEmployer, docReqCtrl.createDocumentRequest);
 employerRouter.patch("/document-requests/:id/approve", requireVerifiedEmployer, docReqCtrl.approveDocumentRequest);
+
+// ── Admin-mediated screening interview (Part B) ───────────────────────────────
+// Employer's only actions: request an interview (single or bulk across their
+// group), and read the resulting record. No worker contact info, no direct
+// worker-employer channel — admin conducts the call and relays the outcome
+// manually, off-platform.
+employerRouter.get(  "/interviews",                                    requireVerifiedEmployer, interviewCtrl.getMyInterviews);
+employerRouter.post( "/applications/:applicationId/interview-request", requireVerifiedEmployer, interviewCtrl.requestInterview);
+employerRouter.post( "/worker-groups/interview-requests",              requireVerifiedEmployer, interviewCtrl.requestBulkInterviews);
