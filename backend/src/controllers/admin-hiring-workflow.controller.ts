@@ -275,7 +275,10 @@ export async function approveApplicationDocument(req: Request, res: Response, ne
     const adminId = req.user!.sub;
     const { documentId } = req.params;
 
-    const doc = await prisma.applicationDocument.findUnique({ where: { id: documentId } });
+    const doc = await prisma.applicationDocument.findUnique({
+      where:  { id: documentId },
+      include: { application: { select: { workerId: true } } },
+    });
     if (!doc) return err(res, "Document not found", 404);
 
     const now = new Date();
@@ -298,8 +301,10 @@ export async function approveApplicationDocument(req: Request, res: Response, ne
       workflowAdvanced = updated.count > 0;
     }
 
+    // targetId must be a User id (AdminAuditLog.targetUserId FK) — the
+    // worker whose document this is, not the applicationId itself.
     insertAdminAuditLog({
-      actorId: adminId, targetId: doc.applicationId,
+      actorId: adminId, targetId: doc.application.workerId,
       action: "APPLICATION_STATUS_CHANGED",
       notes: workflowAdvanced ? "All application documents approved -> DOCUMENTS_APPROVED" : "Document approved",
       metadata: { documentId, applicationId: doc.applicationId, documentType: doc.documentType },
@@ -327,7 +332,7 @@ export async function skipDocumentVerification(req: Request, res: Response, next
 
     const app = await prisma.application.findUnique({
       where:  { id: applicationId },
-      select: { id: true, workflowStatus: true },
+      select: { id: true, workflowStatus: true, workerId: true },
     });
     if (!app) return err(res, "Application not found", 404);
     if (app.workflowStatus !== "APPROVED_QUEUED" && app.workflowStatus !== "DOCUMENTS_PENDING") {
@@ -346,8 +351,10 @@ export async function skipDocumentVerification(req: Request, res: Response, next
       data:  { workflowStatus: "DOCUMENTS_APPROVED" },
     });
 
+    // targetId must be a User id (AdminAuditLog.targetUserId FK) — the
+    // worker, not the applicationId itself.
     insertAdminAuditLog({
-      actorId: adminId, targetId: applicationId,
+      actorId: adminId, targetId: app.workerId,
       action: "APPLICATION_STATUS_CHANGED",
       notes: "No documents needed -> DOCUMENTS_APPROVED",
       metadata: { applicationId },
