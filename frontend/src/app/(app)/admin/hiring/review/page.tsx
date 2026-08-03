@@ -300,9 +300,9 @@ export default function AdminHiringReviewPage() {
     const res = await adminApi.createFeeCharge(selected.id, visaType.trim());
     setChargingFee(false);
     if (res.success) {
-      showToast("Fee charge started — application moved to Awaiting Fee");
+      showToast("Fee charge started");
       setVisaType("");
-      load("documents");
+      load("fee");
     } else {
       showToast(res.error ?? "Could not start the fee charge", false);
     }
@@ -477,36 +477,20 @@ export default function AdminHiringReviewPage() {
                       </button>
                     ) : null}
 
-                    {/* Fee-charge trigger — Part A follow-up. Documents (if any)
-                        are all approved and workflowStatus has already advanced;
-                        this is the missing next step, otherwise a dead end. */}
+                    {/* Documents cleared — the fee is no longer charged from here.
+                        Major resequencing: DOCUMENTS_APPROVED now leads into an
+                        employer-hire + worker-confirm gate (see /admin/hiring/
+                        interview), not directly to the fee. The fee only becomes
+                        chargeable once that gate passes — see the Awaiting Fee tab. */}
                     {selected.workflowStatus === "DOCUMENTS_APPROVED" && (
                       <div style={{ padding: "14px 16px", background: rowBg, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 20 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
-                          Documents cleared — charge the admin fee
+                          Documents cleared
                         </div>
-                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
-                          Fee amount is resolved from the fee schedule for {selected.job.country} + the visa type below.
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <input
-                            value={visaType}
-                            onChange={e => setVisaType(e.target.value)}
-                            placeholder="Visa type, e.g. H-2A"
-                            style={{ ...inputStyle, flex: 1 }}
-                          />
-                          <button
-                            onClick={handleChargeFee}
-                            disabled={chargingFee || !visaType.trim()}
-                            style={{
-                              padding: "9px 16px", borderRadius: 8, border: "none",
-                              background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700,
-                              cursor: chargingFee || !visaType.trim() ? "default" : "pointer",
-                              opacity: !visaType.trim() ? 0.5 : 1, whiteSpace: "nowrap",
-                            }}
-                          >
-                            {chargingFee ? "Starting…" : "Charge admin fee"}
-                          </button>
+                        <div style={{ fontSize: 11, color: C.muted }}>
+                          The employer can now see this candidate to request an interview and/or hire (
+                          <a href="/admin/hiring/interview" style={{ color: C.accent, textDecoration: "none", fontWeight: 700 }}>Interview &amp; Hire</a>
+                          ). Once the employer hires and the worker confirms, the admin fee becomes chargeable on the Awaiting Fee tab.
                         </div>
                       </div>
                     )}
@@ -614,6 +598,42 @@ export default function AdminHiringReviewPage() {
                         No charge has been created for this application yet.
                       </div>
                     )}
+
+                    {/* Charge trigger — moved here from the Documents tab: the fee
+                        is now only chargeable once the employer-hire + worker-
+                        confirm gate has passed (workflowStatus === ADMIN_FEE_DUE),
+                        not right after documents clear. */}
+                    {selected.workflowStatus === "ADMIN_FEE_DUE" && selected.adminFeeCharge?.status !== "SUCCEEDED" && (
+                      <div style={{ padding: "14px 16px", background: rowBg, borderRadius: 10, border: `1px solid ${C.border}`, marginTop: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                          Hire confirmed by both sides — charge the admin fee
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                          Fee amount is resolved from the fee schedule for {selected.job.country} + the visa type below.
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input
+                            value={visaType}
+                            onChange={e => setVisaType(e.target.value)}
+                            placeholder="Visa type, e.g. H-2A"
+                            style={{ ...inputStyle, flex: 1 }}
+                          />
+                          <button
+                            onClick={handleChargeFee}
+                            disabled={chargingFee || !visaType.trim()}
+                            style={{
+                              padding: "9px 16px", borderRadius: 8, border: "none",
+                              background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700,
+                              cursor: chargingFee || !visaType.trim() ? "default" : "pointer",
+                              opacity: !visaType.trim() ? 0.5 : 1, whiteSpace: "nowrap",
+                            }}
+                          >
+                            {chargingFee ? "Starting…" : "Charge admin fee"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.5 }}>
                       Fee schedule management (per-country/visa pricing) isn&apos;t available on this screen —
                       it needs its own admin config page.

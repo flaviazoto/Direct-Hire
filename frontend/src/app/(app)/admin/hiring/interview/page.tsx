@@ -47,6 +47,7 @@ interface AppRow {
   createdAt: string;
   updatedAt: string;
   status: "APPLIED" | "VIEWED" | "SHORTLISTED" | "INTERVIEWED" | "SCREENING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
+  workflowStatus: string | null;
   hireConfirmedAt: string | null;
   acceptedAt: string | null;
   offeredSalary: string | null;
@@ -78,8 +79,9 @@ function fmtDate(d: string) {
 function stagePill(row: AppRow) {
   if (row.status === "ACCEPTED") return <span style={pill(C.success, "rgba(22,163,74,0.12)", "rgba(22,163,74,0.3)")}>Hired</span>;
   if (row.status === "REJECTED") return <span style={pill(C.danger, "rgba(220,38,38,0.12)", "rgba(220,38,38,0.3)")}>Not selected</span>;
+  if (row.workflowStatus === "HIRE_PENDING_WORKER_CONFIRMATION") return <span style={pill(C.warning, "rgba(234,88,12,0.12)", "rgba(234,88,12,0.3)")}>Awaiting worker confirmation</span>;
   if (row.status === "SCREENING") return <span style={pill(C.info, "rgba(37,99,235,0.12)", "rgba(37,99,235,0.3)")}>Interview in progress</span>;
-  return <span style={pill(C.accent, "rgba(224,176,32,0.12)", "rgba(224,176,32,0.3)")}>Cleared — awaiting request</span>;
+  return <span style={pill(C.accent, "rgba(224,176,32,0.12)", "rgba(224,176,32,0.3)")}>Documents approved — awaiting request</span>;
 }
 
 const RECOMMENDATION_LABEL: Record<Recommendation, string> = {
@@ -275,10 +277,10 @@ export default function AdminInterviewHirePage() {
     });
     setConfirming(false);
     if (res.success) {
-      showToast("Hire confirmed — application closed");
+      showToast("Hire requested — waiting on the worker to confirm");
       load();
     } else {
-      showToast(res.error ?? "Could not confirm hire", false);
+      showToast(res.error ?? "Could not request hire", false);
     }
   }
 
@@ -297,9 +299,10 @@ export default function AdminInterviewHirePage() {
 
   const interview = selected?.interview ?? null;
   const isClosed = selected?.status === "ACCEPTED" || selected?.status === "REJECTED";
-  const canRecordNotes = !!interview && !isClosed;
-  const canRelay = !!interview?.conductedAt && !interview.relayedToEmployerAt && !isClosed;
-  const canDecideOutcome = !!interview?.relayedToEmployerAt && !isClosed;
+  const isHirePending = selected?.workflowStatus === "HIRE_PENDING_WORKER_CONFIRMATION";
+  const canRecordNotes = !!interview && !isClosed && !isHirePending;
+  const canRelay = !!interview?.conductedAt && !interview.relayedToEmployerAt && !isClosed && !isHirePending;
+  const canDecideOutcome = !!interview?.relayedToEmployerAt && !isClosed && !isHirePending;
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
@@ -310,8 +313,9 @@ export default function AdminInterviewHirePage() {
           Screening Interview &amp; Hire
         </h1>
         <p style={{ fontSize: 13, color: C.muted, margin: "4px 0 0" }}>
-          Applications cleared for the employer. Admin conducts the screening call on the employer&apos;s behalf,
-          records notes, relays the outcome off-platform, then confirms the hire or marks the candidate not selected.
+          Applications with documents approved. Admin conducts the screening call on the employer&apos;s behalf,
+          records notes, relays the outcome off-platform, then requests the hire (worker must confirm before it&apos;s
+          final) or marks the candidate not selected.
         </p>
       </div>
 
@@ -334,7 +338,7 @@ export default function AdminInterviewHirePage() {
       ) : error ? (
         <ErrorState message={error} retry={load} title="Could not load queue" />
       ) : rows.length === 0 ? (
-        <EmptyState icon="🤝" title="Nothing cleared yet" description="Applications appear here once they're cleared for the employer." />
+        <EmptyState icon="🤝" title="Nothing here yet" description="Applications appear here once their documents are approved." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20, alignItems: "start" }}>
 
@@ -473,14 +477,22 @@ export default function AdminInterviewHirePage() {
 
                   {selected.status === "ACCEPTED" ? (
                     <div style={{ padding: "12px 14px", background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.25)", borderRadius: 10, fontSize: 13, color: C.text }}>
-                      Hire confirmed {selected.hireConfirmedAt && fmtDate(selected.hireConfirmedAt)}.
+                      Hire confirmed by the worker {selected.hireConfirmedAt && fmtDate(selected.hireConfirmedAt)}.
                       {selected.offeredSalary && <> Offer: {selected.offeredSalary} {selected.offeredCurrency}.</>}
                       {selected.startDate && <> Start date: {fmtDate(selected.startDate)}.</>}
-                      {" "}This application is closed — no further action is needed from you or the employer.
+                      {" "}The admin fee is next — see the{" "}
+                      <a href="/admin/hiring/review" style={{ color: C.accent, textDecoration: "none", fontWeight: 700 }}>Awaiting Fee tab</a>.
                     </div>
                   ) : selected.status === "REJECTED" ? (
                     <div style={{ padding: "12px 14px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 10, fontSize: 13, color: C.text }}>
                       Marked as not selected. The worker has been notified automatically. This application is closed.
+                    </div>
+                  ) : isHirePending ? (
+                    <div style={{ padding: "12px 14px", background: "rgba(234,88,12,0.08)", border: "1px solid rgba(234,88,12,0.25)", borderRadius: 10, fontSize: 13, color: C.text }}>
+                      Hire requested — waiting on the worker to confirm in-app.
+                      {selected.offeredSalary && <> Offer: {selected.offeredSalary} {selected.offeredCurrency}.</>}
+                      {selected.startDate && <> Start date: {fmtDate(selected.startDate)}.</>}
+                      {" "}Nothing further to do here until they do.
                     </div>
                   ) : (
                     <>
@@ -536,7 +548,7 @@ export default function AdminInterviewHirePage() {
                             opacity: !canDecideOutcome ? 0.5 : 1,
                           }}
                         >
-                          {confirming ? "Confirming…" : "✓ Confirm hire"}
+                          {confirming ? "Requesting…" : "Request hire"}
                         </button>
                         <button
                           onClick={handleMarkNotSelected}

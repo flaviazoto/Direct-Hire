@@ -24,11 +24,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
-import { LoadingPage, ErrorState, EmptyState } from "@/components/ui";
+import { LoadingPage, ErrorState, EmptyState, ToastDisplay, type ToastData } from "@/components/ui";
 
 type WorkflowStatus =
   | "PENDING_ADMIN_REVIEW" | "APPROVED_QUEUED" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED"
-  | "ADMIN_FEE_DUE" | "ADMIN_FEE_PAID" | "CLEARED_FOR_EMPLOYER" | null;
+  | "HIRE_PENDING_WORKER_CONFIRMATION" | "ADMIN_FEE_DUE" | "ADMIN_FEE_PAID" | "CLEARED_FOR_EMPLOYER" | null;
 
 interface AppRow {
   id: string;
@@ -38,6 +38,13 @@ interface AppRow {
   job: { title: string; companyName: string };
 }
 interface DocGroup { id: string; documents: { status: string }[] }
+interface HireRequestRow {
+  id: string;
+  offeredSalary: string | null;
+  offeredCurrency: string | null;
+  startDate: string | null;
+  contractType: string | null;
+}
 
 const PIPELINE_STATUS_LABEL: Record<string, string> = {
   APPLIED: "Applied", VIEWED: "Viewed", SHORTLISTED: "Shortlisted",
@@ -45,30 +52,30 @@ const PIPELINE_STATUS_LABEL: Record<string, string> = {
   ACCEPTED: "Hired", REJECTED: "Not selected", WITHDRAWN: "Withdrawn",
 };
 
-// Ordered chain — indices 0-6 come from workflowStatus, 7-8 continue via the
-// existing Application.status field once CLEARED_FOR_EMPLOYER is reached
-// (workflowStatus itself never advances past CLEARED_FOR_EMPLOYER — see
-// Phase 3's design notes). Step 7 uses Application.status === "SCREENING"
-// (Part B) rather than the legacy INTERVIEWED value — see
-// admin-hiring-workflow.controller.ts's header comment for why a new status
-// was introduced instead of reusing INTERVIEWED.
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Ordered chain, driven entirely by workflowStatus. Major resequencing:
+// HIRE_PENDING_WORKER_CONFIRMATION sits between DOCUMENTS_APPROVED and
+// ADMIN_FEE_DUE — the employer-hire + worker-confirm gate. CLEARED_FOR_EMPLOYER
+// is now the true final stage (reached only after the hire is confirmed AND
+// the fee is paid), so there's no more separate "hired" step after it.
+// Application.status === "SCREENING" (interview in progress) happens in
+// parallel with DOCUMENTS_APPROVED, shown as a badge rather than its own
+// step — see the Stepper component below.
 const STEPS: { key: string; label: string }[] = [
-  { key: "PENDING_ADMIN_REVIEW", label: "Admin reviewing" },
-  { key: "APPROVED_QUEUED",      label: "Approved, queued" },
-  { key: "DOCUMENTS_PENDING",    label: "Documents pending" },
-  { key: "DOCUMENTS_APPROVED",   label: "Documents verified" },
-  { key: "ADMIN_FEE_DUE",        label: "Fee due" },
-  { key: "ADMIN_FEE_PAID",       label: "Fee paid" },
-  { key: "CLEARED_FOR_EMPLOYER", label: "Cleared" },
-  { key: "SCREENING",            label: "Interview in progress" },
-  { key: "ACCEPTED",             label: "Hired" },
+  { key: "PENDING_ADMIN_REVIEW",              label: "Admin reviewing" },
+  { key: "APPROVED_QUEUED",                   label: "Approved, queued" },
+  { key: "DOCUMENTS_PENDING",                 label: "Documents pending" },
+  { key: "DOCUMENTS_APPROVED",                label: "Documents verified" },
+  { key: "HIRE_PENDING_WORKER_CONFIRMATION",  label: "Confirm your hire" },
+  { key: "ADMIN_FEE_DUE",                     label: "Fee due" },
+  { key: "ADMIN_FEE_PAID",                    label: "Fee paid" },
+  { key: "CLEARED_FOR_EMPLOYER",              label: "Hired & cleared" },
 ];
 
 function currentStepIndex(app: AppRow): number {
-  if (app.workflowStatus === "CLEARED_FOR_EMPLOYER") {
-    if (app.status === "ACCEPTED") return 8;
-    if (app.status === "SCREENING") return 7;
-  }
   const idx = STEPS.findIndex(s => s.key === app.workflowStatus);
   return idx === -1 ? 0 : idx;
 }
@@ -112,6 +119,11 @@ function Stepper({ app, hasPendingDoc }: { app: AppRow; hasPendingDoc: boolean }
                   Upload now →
                 </Link>
               )}
+              {step.key === "DOCUMENTS_APPROVED" && app.status === "SCREENING" && (
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#60a5fa", marginTop: 4, whiteSpace: "nowrap" }}>
+                  Interview in progress
+                </span>
+              )}
             </div>
           );
         })}
@@ -123,15 +135,24 @@ function Stepper({ app, hasPendingDoc }: { app: AppRow; hasPendingDoc: boolean }
 export default function WorkerApplicationStatusPage() {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [pendingDocAppIds, setPendingDocAppIds] = useState<Set<string>>(new Set());
+  const [hireRequests, setHireRequests] = useState<Record<string, HireRequestRow>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastData>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string, type: "ok" | "err") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [appsRes, docsRes] = await Promise.all([
+    const [appsRes, docsRes, hireRes] = await Promise.all([
       workerApi.getApplications({ limit: "100" }),
       workerApi.getMyDocumentRequests(),
+      workerApi.getMyHireRequests(),
     ]);
     if (!appsRes.success) { setError(appsRes.error ?? "Could not load applications."); setLoading(false); return; }
     setApps((appsRes.data as unknown as AppRow[]) ?? []);
@@ -139,15 +160,32 @@ export default function WorkerApplicationStatusPage() {
       const groups = (docsRes.data as unknown as DocGroup[]) ?? [];
       setPendingDocAppIds(new Set(groups.filter(g => g.documents.some(d => d.status === "REQUESTED")).map(g => g.id)));
     }
+    if (hireRes.success) {
+      const rows = (hireRes.data as unknown as HireRequestRow[]) ?? [];
+      setHireRequests(Object.fromEntries(rows.map(r => [r.id, r])));
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  async function handleConfirmHire(applicationId: string) {
+    setConfirmingId(applicationId);
+    const res = await workerApi.confirmHire(applicationId);
+    setConfirmingId(null);
+    if (res.success) {
+      showToast("Hire confirmed — the admin processing fee is next", "ok");
+      load();
+    } else {
+      showToast(res.error ?? "Could not confirm hire", "err");
+    }
+  }
+
   if (loading) return <LoadingPage color="blue" />;
 
   return (
     <div className="min-h-screen px-4 sm:px-6 pt-6 pb-8 md:px-8" style={{ maxWidth: 900, margin: "0 auto" }}>
+      <ToastDisplay toast={toast} />
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc" }}>Application Status</div>
         <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
@@ -192,7 +230,41 @@ export default function WorkerApplicationStatusPage() {
                     {PIPELINE_STATUS_LABEL[app.status] ?? app.status}
                   </span>
                 ) : (
-                  <Stepper app={app} hasPendingDoc={pendingDocAppIds.has(app.id)} />
+                  <>
+                    {app.workflowStatus === "HIRE_PENDING_WORKER_CONFIRMATION" && (
+                      <div style={{
+                        background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)",
+                        borderRadius: 10, padding: "12px 14px", marginBottom: 14,
+                      }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24", marginBottom: 4 }}>
+                          An employer wants to hire you for {app.job.title} — confirm to proceed
+                        </div>
+                        {(() => {
+                          const offer = hireRequests[app.id];
+                          if (!offer) return null;
+                          return (
+                            <div style={{ fontSize: 12, color: "#e4e4e7", marginBottom: 10 }}>
+                              {offer.offeredSalary && <>Offer: {offer.offeredSalary} {offer.offeredCurrency}. </>}
+                              {offer.startDate && <>Start date: {fmtDate(offer.startDate)}. </>}
+                              {offer.contractType && <>Contract: {offer.contractType.replace("_", " ")}.</>}
+                            </div>
+                          );
+                        })()}
+                        <button
+                          onClick={() => handleConfirmHire(app.id)}
+                          disabled={confirmingId === app.id}
+                          style={{
+                            padding: "9px 18px", borderRadius: 8, border: "none",
+                            background: "#fbbf24", color: "#1a1200", fontSize: 13, fontWeight: 800, fontFamily: "inherit",
+                            cursor: confirmingId === app.id ? "default" : "pointer",
+                          }}
+                        >
+                          {confirmingId === app.id ? "Confirming…" : "✓ Confirm hire"}
+                        </button>
+                      </div>
+                    )}
+                    <Stepper app={app} hasPendingDoc={pendingDocAppIds.has(app.id)} />
+                  </>
                 )}
               </div>
             );

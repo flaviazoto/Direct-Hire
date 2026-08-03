@@ -428,6 +428,9 @@ export const workerApi = {
     fd.append("file", file);
     return upload(`/employer-document-requests/${requestId}/submit`, fd, onProgress);
   },
+  // ── Hire confirmation (major resequencing) ────────────────────────────────
+  getMyHireRequests: () => get("/worker/hire-requests"),
+  confirmHire: (applicationId: string) => post(`/worker/hire-requests/${applicationId}/confirm`),
 };
 
 export const employerApi = {
@@ -517,6 +520,9 @@ export const employerApi = {
     post(`/employer/applications/${applicationId}/interview-request`, { notes }),
   requestBulkInterviews: (notes?: string) =>
     post("/employer/worker-groups/interview-requests", { notes }),
+  // ── Hire (major resequencing) ─────────────────────────────────────────────
+  requestHire: (applicationId: string, body: { offeredSalary?: string; offeredCurrency?: string; startDate?: string; contractType?: string }) =>
+    post(`/employer/applications/${applicationId}/hire-request`, body),
 };
 
 /* ─── Shared action helpers ──────────────────────────────────────────────────── */
