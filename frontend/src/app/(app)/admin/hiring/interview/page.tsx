@@ -302,6 +302,14 @@ export default function AdminInterviewHirePage() {
   const interview = selected?.interview ?? null;
   const isClosed = selected?.status === "ACCEPTED" || selected?.status === "REJECTED";
   const isHirePending = selected?.workflowStatus === "HIRE_PENDING_WORKER_CONFIRMATION";
+  // Audit finding: Section 1 used to show "waiting on the employer to
+  // request an interview" purely off `!interview`, regardless of stage —
+  // misleading once an application was hired directly (no interview ever
+  // requested) or rejected without one. Both are legitimate outcomes, not a
+  // stalled state, so they get their own copy instead of the "waiting" line.
+  const hiredWithoutInterview = !interview && !!selected &&
+    (selected.status === "ACCEPTED" || (selected.workflowStatus !== "DOCUMENTS_APPROVED" && selected.status !== "REJECTED"));
+  const rejectedWithoutInterview = !interview && selected?.status === "REJECTED";
   const canRecordNotes = !!interview && !isClosed && !isHirePending;
   const canRelay = !!interview?.conductedAt && !interview.relayedToEmployerAt && !isClosed && !isHirePending;
   const canDecideOutcome = !!interview?.relayedToEmployerAt && !isClosed && !isHirePending;
@@ -390,7 +398,15 @@ export default function AdminInterviewHirePage() {
                     1. Screening call notes
                   </div>
 
-                  {!interview ? (
+                  {hiredWithoutInterview ? (
+                    <div style={{ fontSize: 12, color: C.muted, padding: "10px 12px", background: rowBg, borderRadius: 8 }}>
+                      Hired directly — no interview was requested for this placement.
+                    </div>
+                  ) : rejectedWithoutInterview ? (
+                    <div style={{ fontSize: 12, color: C.muted, padding: "10px 12px", background: rowBg, borderRadius: 8 }}>
+                      Not selected — no interview was requested for this candidate.
+                    </div>
+                  ) : !interview ? (
                     <div style={{ fontSize: 12, color: C.muted, padding: "10px 12px", background: rowBg, borderRadius: 8 }}>
                       No interview requested yet — waiting on the employer to request a screening interview for this candidate.
                     </div>

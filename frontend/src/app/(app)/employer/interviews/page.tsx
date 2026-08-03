@@ -58,10 +58,10 @@ function StageInfo({ app }: { app: AppRow }) {
     return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#f87171", background: "rgba(248,113,113,0.1)" }}>Not selected</span>;
   }
   if (app.workflowStatus === "HIRE_PENDING_WORKER_CONFIRMATION") {
-    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#fbbf24", background: "rgba(251,191,36,0.1)" }}>Awaiting worker confirmation</span>;
+    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#fbbf24", background: "rgba(251,191,36,0.1)" }}>Hire requested — awaiting worker confirmation</span>;
   }
   if (!app.interview) {
-    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#71717a", background: "rgba(113,113,122,0.1)" }}>Documents approved</span>;
+    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#71717a", background: "rgba(113,113,122,0.1)" }}>Documents verified</span>;
   }
   if (app.interview.relayedToEmployerAt) {
     return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, color: "#60a5fa", background: "rgba(96,165,250,0.1)" }}>Outcome shared with you</span>;
@@ -201,6 +201,9 @@ export default function EmployerInterviewsPage() {
 
                     {!app.interview && (
                       <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div style={{ fontSize: 12, color: "#a1a1aa", marginBottom: 10 }}>
+                          Documents verified — you can request an interview or hire this candidate.
+                        </div>
                         <textarea
                           value={notesDraft[app.id] ?? ""}
                           onChange={e => setNotesDraft(prev => ({ ...prev, [app.id]: e.target.value }))}
