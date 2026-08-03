@@ -7,6 +7,7 @@ import * as lockCtrl     from "../controllers/worker-lock-status.controller";
 import * as notifCtrl    from "../controllers/worker-notifications.controller";
 import { getWorkerPayments } from "../controllers/worker-payments.controller";
 import { getInvoiceUrl } from "../controllers/invoices.controller";
+import * as hireCtrl     from "../controllers/worker-hire.controller";
 import { requireWorker, requireVerifiedWorker, requireAnyAuth } from "../middleware/auth.middleware";
 
 export const workerRouter = Router();
@@ -51,6 +52,14 @@ workerRouter.get("/invoices/:invoiceId/url", requireAnyAuth, getInvoiceUrl);
 workerRouter.get("/worker/lock-status",          requireWorker, lockCtrl.getMyLockStatus);
 workerRouter.get("/worker/lock-history",         requireWorker, lockCtrl.getMyLockHistory);
 workerRouter.get("/worker/lock-history/:lockId", requireWorker, lockCtrl.getMyLockDetail);
+
+// ── Hire confirmation (major resequencing) ────────────────────────────────────
+// Standalone endpoints, not an addition to worker-applications.controller.ts
+// (off-limits exhaustiveness-surface file whose APPLICATION_LIST_SELECT
+// doesn't expose the offer fields this needs) — same fallback pattern as
+// /worker/document-requests and /worker/lock-status above.
+workerRouter.get( "/worker/hire-requests",                        requireVerifiedWorker, hireCtrl.getMyHireRequests);
+workerRouter.post("/worker/hire-requests/:applicationId/confirm", requireVerifiedWorker, hireCtrl.confirmHire);
 
 // ── Notifications & messages ──────────────────────────────────────────────────
 // Static routes must precede /:id param routes

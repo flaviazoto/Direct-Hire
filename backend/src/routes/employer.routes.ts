@@ -8,6 +8,7 @@ import * as billing   from "../controllers/billing.controller";
 import * as groupsCtrl from "../controllers/worker-groups.controller";
 import * as docReqCtrl from "../controllers/employer-document-requests.controller";
 import * as interviewCtrl from "../controllers/employer-interview.controller";
+import * as hireCtrl from "../controllers/employer-hire.controller";
 // Notification handlers are role-agnostic (filter purely by req.user.sub), so
 // they're reused as-is rather than duplicated — same cross-role-import pattern
 // already used above for worker-lock.controller.ts.
@@ -114,3 +115,11 @@ employerRouter.patch("/document-requests/:id/approve", requireVerifiedEmployer, 
 employerRouter.get(  "/interviews",                                    requireVerifiedEmployer, interviewCtrl.getMyInterviews);
 employerRouter.post( "/applications/:applicationId/interview-request", requireVerifiedEmployer, interviewCtrl.requestInterview);
 employerRouter.post( "/worker-groups/interview-requests",              requireVerifiedEmployer, interviewCtrl.requestBulkInterviews);
+
+// ── Hire (major resequencing) ─────────────────────────────────────────────────
+// Available independently of the interview flow, once DOCUMENTS_APPROVED.
+// Does not finalize the hire or trigger the admin fee — the worker must
+// confirm first (worker-hire.controller.ts). Not subscription-gated, same
+// reasoning as the interview-request routes above: the fee this eventually
+// triggers is worker-paid, not a spend of the employer's own subscription.
+employerRouter.post( "/applications/:applicationId/hire-request",      requireVerifiedEmployer, hireCtrl.requestHireForApplication);

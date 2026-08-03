@@ -499,6 +499,28 @@ export async function sendApplicationDocumentRequestedEmail(
     templateId: "application_document_requested", variables: { firstName, jobTitle, companyName, documentType } });
 }
 
+// NEW — Step 5 audit finding: documents being approved was a silent step
+// (only the document-REQUESTED email existed). Closes that gap.
+export async function sendApplicationDocumentsApprovedEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { applicationDocumentsApprovedTemplate } = await import("./templates");
+  const { subject, html, text } = applicationDocumentsApprovedTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "application_documents_approved", variables: { firstName, jobTitle, companyName } });
+}
+
+// NEW — major resequencing: fires when an employer (or admin, on the
+// employer's behalf) requests a hire, before the worker has confirmed.
+export async function sendHireRequestedWorkerEmail(
+  userId: string, to: string, firstName: string, jobTitle: string, companyName: string,
+) {
+  const { hireRequestedWorkerTemplate } = await import("./templates");
+  const { subject, html, text } = hireRequestedWorkerTemplate({ firstName, jobTitle, companyName });
+  await sendEmail({ userId, to, from: FROM_HELLO, emailType: "GENERAL", subject, html, text,
+    templateId: "hire_requested_worker", variables: { firstName, jobTitle, companyName } });
+}
+
 export async function sendAdminFeeDueEmail(
   userId: string, to: string, firstName: string, amountUsd: string,
 ) {

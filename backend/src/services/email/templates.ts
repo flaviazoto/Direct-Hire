@@ -1407,6 +1407,53 @@ export function applicationDocumentRequestedTemplate(vars: {
   };
 }
 
+// NEW — Step 5 of the hire-confirmation-gate resequencing: documents being
+// approved was previously a silent step (only applicationDocumentRequestedTemplate
+// existed, for the REQUEST side). Audited every worker-facing stage and this
+// was a genuine gap, not an assumption — added to close it.
+export function applicationDocumentsApprovedTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("✓ DOCUMENTS VERIFIED", "#16A34A")}
+    <br/><br/>
+    ${h1(`Documents verified, ${vars.firstName}!`)}
+    ${p(`Your documents for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> have been reviewed and approved. We're now moving your application forward.`)}
+    ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
+  `);
+  return {
+    subject: `Your documents have been approved — ${vars.jobTitle}`,
+    html,
+    text: `Documents verified, ${vars.firstName}! Your documents for "${vars.jobTitle}" at ${vars.companyName} have been reviewed and approved.`,
+  };
+}
+
+// NEW — major resequencing: fires when an employer (or admin, on the
+// employer's behalf after an interview) requests a hire. This is the point
+// where the worker needs to take a real in-app action (confirm) — the hire
+// isn't final until they do, so this is deliberately not phrased as "you've
+// been hired."
+export function hireRequestedWorkerTemplate(vars: {
+  firstName:   string;
+  jobTitle:    string;
+  companyName: string;
+}): TemplateResult {
+  const html = layout(`
+    ${badge("ACTION NEEDED", "#D97706")}
+    <br/><br/>
+    ${h1(`${vars.companyName} wants to hire you, ${vars.firstName}!`)}
+    ${p(`They'd like to move forward with your application for <strong>"${vars.jobTitle}"</strong>. This isn't final yet — please log in and confirm to proceed.`)}
+    ${btn(`${APP_URL}/worker/application-status`, "Confirm your hire", "#D97706")}
+  `);
+  return {
+    subject: `${vars.companyName} wants to hire you — confirm to proceed`,
+    html,
+    text: `${vars.companyName} wants to hire you, ${vars.firstName}! They'd like to move forward with your application for "${vars.jobTitle}". Please log in and confirm to proceed — it isn't final until you do.`,
+  };
+}
+
 export function adminFeeDueTemplate(vars: {
   firstName: string;
   amountUsd: string;
@@ -1415,13 +1462,13 @@ export function adminFeeDueTemplate(vars: {
     ${badge("PAYMENT DUE", "#D97706")}
     <br/><br/>
     ${h1(`One more step, ${vars.firstName}`)}
-    ${p(`Your application has cleared document review. A processing fee of <strong>$${vars.amountUsd}</strong> is due to continue.`)}
+    ${p(`Your hire has been confirmed. A processing fee of <strong>$${vars.amountUsd}</strong> is due to finalize your placement — this covers visa and documentation processing for your role.`)}
     ${btn(`${APP_URL}/worker/applications`, "Pay now", "#D97706")}
   `);
   return {
     subject: `Processing fee due — $${vars.amountUsd}`,
     html,
-    text: `One more step, ${vars.firstName}: your application has cleared document review. A processing fee of $${vars.amountUsd} is due to continue.`,
+    text: `One more step, ${vars.firstName}: your hire has been confirmed. A processing fee of $${vars.amountUsd} is due to finalize your placement — this covers visa and documentation processing for your role.`,
   };
 }
 
@@ -1434,14 +1481,13 @@ export function clearedForEmployerTemplate(vars: {
     ${badge("✓ CLEARED", "#16A34A")}
     <br/><br/>
     ${h1(`You're all set, ${vars.firstName}!`)}
-    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has cleared our review process and is now visible to the employer.`)}
-    ${p("They may reach out to schedule an interview soon.")}
+    ${p(`Your placement for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> is fully confirmed — your hire is in place and processing is complete.`)}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
   `);
   return {
-    subject: `You're cleared — ${vars.companyName} can now see your application`,
+    subject: `You're all set — your placement at ${vars.companyName} is confirmed`,
     html,
-    text: `You're all set, ${vars.firstName}! Your application for "${vars.jobTitle}" at ${vars.companyName} has cleared our review process and is now visible to the employer.`,
+    text: `You're all set, ${vars.firstName}! Your placement for "${vars.jobTitle}" at ${vars.companyName} is fully confirmed — your hire is in place and processing is complete.`,
   };
 }
 

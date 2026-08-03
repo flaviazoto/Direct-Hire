@@ -21,10 +21,10 @@ import { getSignedUrlForPath } from "../services/storage";
 import {
   sendApplicationApprovedQueuedEmail,
   sendApplicationDocumentRequestedEmail,
-  sendApplicationAcceptedWorkerEmail,
-  sendHireConfirmationEmployerEmail,
+  sendApplicationDocumentsApprovedEmail,
   sendApplicationRejectedWorkerEmail,
 } from "../services/email";
+import { requestHire, EMPLOYER_VISIBLE_WORKFLOW_STATUSES } from "../lib/hire";
 
 // ── Shared include shape for review-queue-style listings ─────────────────────
 
@@ -277,7 +277,15 @@ export async function approveApplicationDocument(req: Request, res: Response, ne
 
     const doc = await prisma.applicationDocument.findUnique({
       where:  { id: documentId },
-      include: { application: { select: { workerId: true } } },
+      include: {
+        application: {
+          select: {
+            workerId: true,
+            worker: { select: { email: true, workerProfile: { select: { firstName: true } } } },
+            job:    { select: { title: true, companyName: true } },
+          },
+        },
+      },
     });
     if (!doc) return err(res, "Document not found", 404);
 
@@ -299,6 +307,14 @@ export async function approveApplicationDocument(req: Request, res: Response, ne
         data:  { workflowStatus: "DOCUMENTS_APPROVED" },
       });
       workflowAdvanced = updated.count > 0;
+    }
+
+    if (workflowAdvanced) {
+      sendApplicationDocumentsApprovedEmail(
+        doc.application.workerId, doc.application.worker.email,
+        doc.application.worker.workerProfile?.firstName ?? "there",
+        doc.application.job.title, doc.application.job.companyName,
+      ).catch((e: unknown) => console.error("[documents approved email]", e));
     }
 
     // targetId must be a User id (AdminAuditLog.targetUserId FK) — the
@@ -332,7 +348,11 @@ export async function skipDocumentVerification(req: Request, res: Response, next
 
     const app = await prisma.application.findUnique({
       where:  { id: applicationId },
-      select: { id: true, workflowStatus: true, workerId: true },
+      select: {
+        id: true, workflowStatus: true, workerId: true,
+        worker: { select: { email: true, workerProfile: { select: { firstName: true } } } },
+        job:    { select: { title: true, companyName: true } },
+      },
     });
     if (!app) return err(res, "Application not found", 404);
     if (app.workflowStatus !== "APPROVED_QUEUED" && app.workflowStatus !== "DOCUMENTS_PENDING") {
@@ -350,6 +370,11 @@ export async function skipDocumentVerification(req: Request, res: Response, next
       where: { id: applicationId },
       data:  { workflowStatus: "DOCUMENTS_APPROVED" },
     });
+
+    sendApplicationDocumentsApprovedEmail(
+      app.workerId, app.worker.email, app.worker.workerProfile?.firstName ?? "there",
+      app.job.title, app.job.companyName,
+    ).catch((e: unknown) => console.error("[documents approved email]", e));
 
     // targetId must be a User id (AdminAuditLog.targetUserId FK) — the
     // worker, not the applicationId itself.
@@ -512,12 +537,17 @@ export async function markApplicationNotSelected(req: Request, res: Response, ne
 }
 
 // ── POST /admin/hiring/applications/:applicationId/hire ──────────────────────
-// Confirms the hire. Mirrors the old employer-driven ACCEPTED branch exactly
-// (lock release, both-party emails/notifications) — see file header note on
-// trust-score: no trust-score-update mechanism exists anywhere in this
-// codebase (confirmed by grep across every controller/service — every
-// trustScore reference is a read, never a write), so none is invoked here.
-// If one is wanted, it needs to be designed and built, not assumed.
+// Interview-mediated hire path: after the employer's decision has been
+// relayed back to admin off-platform (the interview redesign's flow), admin
+// executes it here — capturing the same offer details the employer would
+// enter directly (salary/start date/contract type). Major resequencing: this
+// no longer finalizes the hire by itself. It calls the same requestHire()
+// helper the employer's own direct "Hire" action uses (see
+// employer-hire.controller.ts), which moves the application to
+// HIRE_PENDING_WORKER_CONFIRMATION. The worker must still actively confirm
+// (worker-hire.controller.ts) before status becomes ACCEPTED and the admin
+// fee triggers — one consistent gate for every hire, regardless of which
+// path (direct or interview-mediated) led to it. See lib/hire.ts.
 
 const ConfirmHireSchema = z.object({
   offeredSalary:   z.string().optional(),
@@ -530,113 +560,28 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
   try {
     const adminId = req.user!.sub;
     const { applicationId } = req.params;
-    const { offeredSalary, offeredCurrency, startDate, contractType } = ConfirmHireSchema.parse(req.body);
+    const offer = ConfirmHireSchema.parse(req.body);
 
-    const app = await prisma.application.findUnique({
-      where:  { id: applicationId },
-      include: {
-        worker:   { select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } } },
-        job:      { select: { title: true, companyName: true } },
-        employer: { select: { id: true, email: true, employerProfile: { select: { companyName: true, contactPersonName: true } } } },
-      },
-    });
-    if (!app) return err(res, "Application not found", 404);
+    const result = await requestHire(applicationId, adminId, offer);
+    if ("error" in result) return err(res, result.error, result.status);
 
-    // Lock guard — same check the old employer-side ACCEPTED transition had
-    // (employer-applications.controller.ts, removed in Phase 2 sub-step 4):
-    // don't let a hire be confirmed for this employer if a DIFFERENT employer
-    // currently holds an active reservation on the worker.
-    const workerUser = await prisma.user.findUnique({
-      where:  { id: app.worker.id },
-      select: { isLocked: true, lockedByEmployerId: true },
-    });
-    if (workerUser?.isLocked && workerUser.lockedByEmployerId !== app.employer.id) {
-      return err(res, "This worker is currently reserved by another employer.", 409, { code: "WORKER_LOCKED" });
-    }
-
-    const now = new Date();
-    const updated = await prisma.application.update({
-      where: { id: applicationId },
-      data: {
-        status:          "ACCEPTED",
-        acceptedAt:      now,
-        hireConfirmedAt: now,
-        offeredSalary:   offeredSalary ? parseFloat(offeredSalary) : null,
-        offeredCurrency: offeredCurrency ?? "USD",
-        startDate:       startDate ? new Date(startDate) : null,
-        contractType:    contractType ?? null,
-      },
-    });
-
-    const workerName = [app.worker.workerProfile?.firstName, app.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "the candidate";
-    const workerFirstName = app.worker.workerProfile?.firstName ?? "";
-    const employerDisplayName = app.employer.employerProfile?.companyName ?? app.employer.employerProfile?.contactPersonName ?? app.employer.email;
-
-    const sideEffects: Promise<unknown>[] = [
-      // Release any active lock the employer holds on this worker — hired, no longer needs a lock.
-      // Identical logic to the removed employer-side ACCEPTED branch.
-      prisma.workerLock.findFirst({
-        where: { workerId: app.worker.id, employerId: app.employer.id, lockStatus: "ACTIVE" },
-      }).then(activeLock => {
-        if (!activeLock) return;
-        return prisma.$transaction([
-          prisma.workerLock.update({ where: { id: activeLock.id }, data: { lockStatus: "RELEASED", releaseReason: "HIRED" } }),
-          prisma.user.update({ where: { id: app.worker.id }, data: { isLocked: false, lockedByEmployerId: null, lockedUntil: null } }),
-        ]);
-      }).catch((e: unknown) => console.error("[hire lock release]", e)),
-
-      sendApplicationAcceptedWorkerEmail(
-        app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
-      ).catch((e: unknown) => console.error("[accepted worker email]", e)),
-      sendHireConfirmationEmployerEmail({
-        employerUserId: app.employer.id, employerEmail: app.employer.email, employerName: employerDisplayName,
-        workerName, jobTitle: app.job.title, startDate, contractType, offeredSalary, offeredCurrency: offeredCurrency ?? "USD",
-      }).catch((e: unknown) => console.error("[hire confirmation email]", e)),
-
-      prisma.notification.create({
-        data: {
-          userId: app.worker.id, type: "APPLICATION_UPDATE",
-          title:  `Application accepted — ${app.job.title}`,
-          body:   `Congratulations! ${app.job.companyName} has accepted your application for "${app.job.title}".`,
-          link:   `/worker/applications/${applicationId}`,
-          metadata: { applicationId, status: "ACCEPTED" },
-        },
-      }).catch((e: unknown) => console.error("[accepted worker notif]", e)),
-      prisma.notification.create({
-        data: {
-          userId: app.employer.id, type: "APPLICATION_UPDATE",
-          title:  `${workerName} hired — ${app.job.title}`,
-          body:   `The hire for ${workerName} on "${app.job.title}" has been confirmed. Their contact details are in your dashboard.`,
-          link:   `/employer/applications/${applicationId}`,
-          metadata: { applicationId, status: "ACCEPTED" },
-        },
-      }).catch((e: unknown) => console.error("[accepted employer notif]", e)),
-    ];
-
-    Promise.all(sideEffects).catch(console.error);
-
-    insertAdminAuditLog({
-      actorId: adminId, targetId: app.worker.id,
-      action: "APPLICATION_STATUS_CHANGED",
-      notes: "SCREENING -> ACCEPTED (admin-confirmed hire)",
-      metadata: { applicationId, offeredSalary, offeredCurrency, startDate, contractType },
-    }).catch(console.error);
-
-    return ok(res, updated, "Hire confirmed");
+    return ok(res, result.application, "Hire requested — waiting on the worker to confirm");
   } catch (e) { next(e); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Phase 3 addition, updated for Part B — interview + hire queue listing.
-// workflowStatus stays at CLEARED_FOR_EMPLOYER for the rest of the process —
-// there's no separate "interview requested" or "hired" workflowStatus value
-// — so this queue spans everything from just-cleared through the final
-// outcome, distinguished by `status` (VIEWED/SHORTLISTED = not yet
-// requested, SCREENING = interview requested/in progress, ACCEPTED = hired,
-// REJECTED = not selected) rather than by workflowStatus. Includes
-// documents/adminReview/adminFeeCharge/interview alongside the row so the
-// detail panel + activity timeline can render entirely from data already in
-// this list response, with no second per-row fetch.
+// Phase 3 addition, updated for Part B and again for the hire-confirmation-
+// gate resequencing. Previously spanned everything sitting at
+// CLEARED_FOR_EMPLOYER — but under the new sequence, CLEARED_FOR_EMPLOYER is
+// only reached at the very end (after the hire is confirmed AND the fee is
+// paid), so an application is visible to admin for interview/hire purposes
+// starting at DOCUMENTS_APPROVED, same as the employer's own view
+// (employer-interview.controller.ts). Spans DOCUMENTS_APPROVED through
+// CLEARED_FOR_EMPLOYER, distinguished by `status` (interview stage) and
+// `workflowStatus` (hire/fee stage) together. Includes documents/adminReview/
+// adminFeeCharge/interview alongside the row so the detail panel + activity
+// timeline can render entirely from data already in this list response, with
+// no second per-row fetch.
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── GET /admin/hiring/interview-hire-queue ────────────────────────────────────
@@ -645,7 +590,7 @@ export async function getInterviewHireQueue(req: Request, res: Response, next: N
   try {
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
 
-    const where = { workflowStatus: "CLEARED_FOR_EMPLOYER" as const };
+    const where = { workflowStatus: { in: EMPLOYER_VISIBLE_WORKFLOW_STATUSES } };
     const [rows, total] = await Promise.all([
       prisma.application.findMany({
         where, skip, take: limit,

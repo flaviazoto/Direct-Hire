@@ -12,6 +12,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
 import { sendApplicationInterviewInProgressEmail } from "../services/email";
+import { EMPLOYER_VISIBLE_WORKFLOW_STATUSES } from "../lib/hire";
 
 const APPLICATION_SUMMARY_INCLUDE = {
   worker: {
@@ -58,8 +59,12 @@ async function createInterviewRequest(
   });
   if (!app) return { error: "Application not found" as const };
   if (app.employerId !== employerId) return { error: "Forbidden" as const };
-  if (app.workflowStatus !== "CLEARED_FOR_EMPLOYER") {
-    return { error: `This candidate hasn't been cleared for interview yet (currently ${app.workflowStatus ?? "not yet reviewed"}).` as const };
+  // Major resequencing: the employer can request an interview from
+  // DOCUMENTS_APPROVED onward, not just at the old CLEARED_FOR_EMPLOYER
+  // gate — CLEARED_FOR_EMPLOYER is now the very last stage (see
+  // lib/hire.ts), reached only after a hire is confirmed and the fee paid.
+  if (!EMPLOYER_VISIBLE_WORKFLOW_STATUSES.includes(app.workflowStatus as typeof EMPLOYER_VISIBLE_WORKFLOW_STATUSES[number])) {
+    return { error: `This candidate hasn't cleared document review yet (currently ${app.workflowStatus ?? "not yet reviewed"}).` as const };
   }
   if (app.interview) return { error: "An interview has already been requested for this application." as const };
 
@@ -94,7 +99,7 @@ export async function getMyInterviews(req: Request, res: Response, next: NextFun
       where: {
         employerId,
         OR: [
-          { workflowStatus: "CLEARED_FOR_EMPLOYER", interview: null },
+          { workflowStatus: { in: EMPLOYER_VISIBLE_WORKFLOW_STATUSES } },
           { interview: { isNot: null } },
         ],
       },
@@ -151,7 +156,7 @@ export async function requestBulkInterviews(req: Request, res: Response, next: N
 
     const workerIds = group.members.map(m => m.workerId);
     const candidateApps = await prisma.application.findMany({
-      where: { employerId, workerId: { in: workerIds }, workflowStatus: "CLEARED_FOR_EMPLOYER", interview: null },
+      where: { employerId, workerId: { in: workerIds }, workflowStatus: { in: EMPLOYER_VISIBLE_WORKFLOW_STATUSES }, interview: null },
       select: { id: true },
     });
 

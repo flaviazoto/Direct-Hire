@@ -145,8 +145,17 @@ export async function createFeeCharge(req: Request, res: Response, next: NextFun
       },
     });
     if (!app) return err(res, "Application not found", 404);
-    if (app.workflowStatus !== "DOCUMENTS_APPROVED") {
-      return err(res, `Cannot create a fee charge — application is at workflow stage ${app.workflowStatus ?? "none"}, not DOCUMENTS_APPROVED.`, 400);
+    // Major resequencing: the fee no longer follows DOCUMENTS_APPROVED
+    // directly — it follows the employer-hire + worker-confirm gate (see
+    // lib/hire.ts and worker-hire.controller.ts), which is what actually
+    // advances workflowStatus to ADMIN_FEE_DUE now. This function's own job
+    // is unchanged (create the Stripe PaymentIntent) — only its precondition
+    // moved. getFeeQueue's existing comment already anticipated an
+    // application sitting at ADMIN_FEE_DUE with no charge row yet as the
+    // normal "not yet started" state, so no charge row check is needed here
+    // beyond the workflowStatus gate itself.
+    if (app.workflowStatus !== "ADMIN_FEE_DUE") {
+      return err(res, `Cannot create a fee charge — application is at workflow stage ${app.workflowStatus ?? "none"}, not ADMIN_FEE_DUE. The employer must hire and the worker must confirm first.`, 400);
     }
 
     const countryCode = app.job.country;

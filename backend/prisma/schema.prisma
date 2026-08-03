@@ -1185,6 +1185,16 @@ enum AdminWorkflowStatus {
   APPROVED_QUEUED
   DOCUMENTS_PENDING
   DOCUMENTS_APPROVED
+  // Major resequencing: the admin fee no longer follows DOCUMENTS_APPROVED
+  // directly. It now follows an employer-hire + worker-confirm gate — the
+  // employer (or admin, on the employer's behalf via the interview-relay
+  // path) requests a hire here (captures offeredSalary/offeredCurrency/
+  // startDate/contractType on Application, reusing those existing fields);
+  // once the worker confirms (a real in-app action, not just an email),
+  // workflowStatus moves straight to ADMIN_FEE_DUE in the same atomic write
+  // — mirroring how ADMIN_FEE_PAID -> CLEARED_FOR_EMPLOYER already collapses
+  // into one step in confirmFeeCharge. See backend/src/lib/hire.ts.
+  HIRE_PENDING_WORKER_CONFIRMATION
   ADMIN_FEE_DUE
   ADMIN_FEE_PAID
   CLEARED_FOR_EMPLOYER
