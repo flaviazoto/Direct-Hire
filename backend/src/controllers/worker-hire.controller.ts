@@ -22,6 +22,29 @@ import { ok, err } from "../lib/response";
 import { insertAdminAuditLog } from "../lib/audit";
 import { sendApplicationAcceptedWorkerEmail, sendHireConfirmationEmployerEmail } from "../services/email";
 
+// Audit finding: the WorkerLock-release side effect below used to just
+// console.error on failure — if it fails, the employer keeps being billed
+// for a daily lock on a worker they've already hired, with zero visibility
+// beyond server logs. Fix: also notify every admin in-app, reusing the same
+// "notify all admins" pattern already established in
+// employer-interview.controller.ts's notifyAdminsOfRequest, rather than
+// adding a new AuditAction enum value (which would need its own migration
+// for what should page someone promptly, not just leave a queryable trail).
+async function notifyAdminsOfLockReleaseFailure(workerId: string, employerId: string, applicationId: string, error: unknown) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+  if (admins.length === 0) return;
+  await prisma.notification.createMany({
+    data: admins.map(a => ({
+      userId: a.id,
+      type:   "APPLICATION_UPDATE" as const,
+      title:  "Worker lock failed to release on hire",
+      body:   `A worker was hired but their active reservation lock could not be released automatically — the employer may keep being billed for it. Check /admin/locks.`,
+      link:   "/admin/locks",
+      metadata: { workerId, employerId, applicationId, error: error instanceof Error ? error.message : String(error) },
+    })),
+  }).catch(console.error);
+}
+
 const HIRE_REQUEST_SELECT = {
   id: true, status: true, workflowStatus: true,
   offeredSalary: true, offeredCurrency: true, startDate: true, contractType: true, hireConfirmedAt: true,
@@ -102,7 +125,10 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
           prisma.workerLock.update({ where: { id: activeLock.id }, data: { lockStatus: "RELEASED", releaseReason: "HIRED" } }),
           prisma.user.update({ where: { id: app.worker.id }, data: { isLocked: false, lockedByEmployerId: null, lockedUntil: null } }),
         ]);
-      }).catch((e: unknown) => console.error("[hire lock release]", e)),
+      }).catch((e: unknown) => {
+        console.error("[hire lock release]", e);
+        notifyAdminsOfLockReleaseFailure(app.worker.id, app.employer.id, applicationId, e).catch(console.error);
+      }),
 
       sendApplicationAcceptedWorkerEmail(
         app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
