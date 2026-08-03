@@ -6,13 +6,15 @@
 // admin conducts the actual call off-platform, records free-text notes + a
 // lightweight recommendation here, ticks "relayed to employer" once the
 // outcome has been sent manually (email/WhatsApp — never through the
-// platform), then either confirms the hire (unchanged flow) or marks the
-// candidate as not selected.
+// platform), then requests the hire (worker must confirm before it's final —
+// see the hire-confirmation-gate resequencing) or marks the candidate as not
+// selected.
 //
-// Queue = GET /admin/hiring/interview-hire-queue (workflowStatus stays
-// CLEARED_FOR_EMPLOYER through interview-request, screening, and hired/
-// not-selected, so the queue spans all of it, distinguished by
-// Application.status + the joined `interview` record).
+// Queue = GET /admin/hiring/interview-hire-queue. Updated for the resequencing:
+// spans DOCUMENTS_APPROVED through CLEARED_FOR_EMPLOYER (previously only
+// CLEARED_FOR_EMPLOYER, back when that was reached before this stage instead
+// of after it), distinguished by Application.status + workflowStatus +
+// the joined `interview` record together.
 
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/api-client";

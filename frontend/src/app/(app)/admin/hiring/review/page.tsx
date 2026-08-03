@@ -287,7 +287,7 @@ export default function AdminHiringReviewPage() {
     const res = await adminApi.skipDocumentVerification(selected.id);
     setSkippingDocs(false);
     if (res.success) {
-      showToast("No documents needed — moved to fee stage");
+      showToast("No documents needed — documents approved, ready for the employer");
       load("documents");
     } else {
       showToast(res.error ?? "Could not skip document verification", false);
@@ -473,7 +473,7 @@ export default function AdminHiringReviewPage() {
                           marginBottom: 20,
                         }}
                       >
-                        {skippingDocs ? "Working…" : "✓ No documents needed — proceed to fee"}
+                        {skippingDocs ? "Working…" : "✓ No documents needed — approve documents"}
                       </button>
                     ) : null}
 
