@@ -48,7 +48,19 @@ export async function getFeeQueue(req: Request, res: Response, next: NextFunctio
           worker: {
             select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } },
           },
-          job:           { select: { id: true, title: true, companyName: true, country: true } },
+          job: { select: { id: true, title: true, companyName: true, country: true } },
+          // Was missing — the other two queue endpoints feeding the same
+          // shared detail panel on /admin/hiring/review (getHiringReviewQueue,
+          // getDocumentQueue) both include this via APPLICATION_SUMMARY_INCLUDE.
+          // The panel's "Applicant header" block reads selected.employer.
+          // employerProfile unconditionally (not gated by which tab is
+          // active), so every tab's endpoint must return the same shape.
+          // Confirmed via a live repro: without this, switching to the
+          // Awaiting Fee tab crashed with "Cannot read properties of
+          // undefined (reading 'employerProfile')".
+          employer: {
+            select: { id: true, email: true, employerProfile: { select: { companyName: true } } },
+          },
           adminFeeCharge: true,
         },
       }),

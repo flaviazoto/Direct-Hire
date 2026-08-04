@@ -400,7 +400,14 @@ export default function AdminHiringReviewPage() {
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.secondary }}>{selected.job.title}</div>
                     <div style={{ fontSize: 12, color: C.muted }}>
-                      {selected.employer.employerProfile?.companyName ?? selected.employer.email} · {selected.job.country}
+                      {/* Second layer of protection, on top of the real fix
+                          (getFeeQueue now includes employer, matching the
+                          other two tabs' endpoints) — this header renders
+                          for all three tabs regardless of which queue
+                          endpoint populated `selected`, so a future 4th
+                          tab/endpoint that forgets the same include degrades
+                          to "—" here instead of crashing the page. */}
+                      {selected.employer?.employerProfile?.companyName ?? selected.employer?.email ?? "—"} · {selected.job.country}
                     </div>
                   </div>
                 </div>
