@@ -71,6 +71,15 @@ async function request<T>(path: string, options: RequestInit = {}, _retry = fals
         if (refreshed) return request<T>(path, options, true);
       }
       window.location.href = "/login?session=expired";
+      // Never resolve — same reasoning as the 403 SUBSCRIPTION_REQUIRED branch
+      // below: falling through to `return json` here hands the caller the
+      // failed-request body (e.g. { success: false }, or a queue endpoint's
+      // empty/error shape) while the browser is still navigating away. Any
+      // component that doesn't defensively re-check `success` before reading
+      // nested fields off the response (e.g. selected.employer.employerProfile
+      // on the admin hiring queues) crashes with a client-side exception
+      // instead of the page just redirecting to login.
+      return new Promise<ApiResult<T>>(() => {});
     }
 
     // Employer subscription gate (backend/src/middleware/subscription.middleware.ts):
