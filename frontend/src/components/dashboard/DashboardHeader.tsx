@@ -107,6 +107,7 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
     links: [
       { href: '/admin/hiring/review',    label: 'Application Review', Icon: ClipboardCheck },
       { href: '/admin/hiring/interview', label: 'Interview & Hire',   Icon: UserCheck       },
+      { href: '/admin/fee-schedules',    label: 'Fee Schedules',      Icon: CreditCard      },
     ],
   },
   {

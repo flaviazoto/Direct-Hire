@@ -309,6 +309,12 @@ export const adminApi = {
   getUnreadCount: () => get("/admin/notifications/unread-count"),
   markNotificationRead: (id: string) => patch(`/admin/notifications/${id}/read`),
   markAllNotificationsRead: () => patch("/admin/notifications/read-all"),
+  // ── Admin fee schedules (per country+visa admin processing fee) ─────────────
+  getFeeSchedules: () => get("/admin/fee-schedules"),
+  createFeeSchedule: (body: { countryCode: string; visaType: string; amountUsd: number }) =>
+    post("/admin/fee-schedules", body),
+  updateFeeSchedule: (id: string, body: { amountUsd?: number; isActive?: boolean }) =>
+    patch(`/admin/fee-schedules/${id}`, body),
   // ── External jobs ────────────────────────────────────────────────────────────
   getExternalJobs: (params?: Record<string, string>) =>
     get(`/admin/external-jobs${params ? "?" + new URLSearchParams(params) : ""}`),
