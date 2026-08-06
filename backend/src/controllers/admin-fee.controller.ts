@@ -75,7 +75,14 @@ export async function getFeeQueue(req: Request, res: Response, next: NextFunctio
 
 export async function getFeeSchedules(req: Request, res: Response, next: NextFunction) {
   try {
-    const rows = await prisma.adminFeeSchedule.findMany({ orderBy: [{ countryCode: "asc" }, { visaType: "asc" }] });
+    // Minor addition for the fee-schedule management page: resolves
+    // updatedById to a readable email for the "last updated by" column,
+    // rather than the page having to show a raw user id. Doesn't touch
+    // create/update's contract or createFeeCharge — read-only, additive.
+    const rows = await prisma.adminFeeSchedule.findMany({
+      orderBy: [{ countryCode: "asc" }, { visaType: "asc" }],
+      include: { updatedBy: { select: { email: true } } },
+    });
     return ok(res, rows);
   } catch (e) { next(e); }
 }
