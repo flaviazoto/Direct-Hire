@@ -1,0 +1,11 @@
+-- schema.prisma has always declared Notification.userId with
+-- onDelete: Cascade, but the live database never actually had this FK
+-- constraint (confirmed via information_schema during an account-cleanup
+-- task — every past user deletion silently left Notification rows behind
+-- instead of cascading). 12 pre-existing orphaned rows were cleaned up by
+-- scripts/backfill-notification-orphans.ts immediately before this
+-- migration was applied, so this ADD CONSTRAINT does not fail against
+-- existing violations. Matches every other User FK's naming/action
+-- convention in this schema (see migrate diff output: "<Table>_userId_fkey",
+-- ON DELETE CASCADE ON UPDATE CASCADE).
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
