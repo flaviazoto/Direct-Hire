@@ -38,7 +38,7 @@ async function notifyAdminsNewJob(jobId: string, jobTitle: string, companyName: 
       userId: a.id,
       title:  "New job post pending review",
       body:   `"${jobTitle}" by ${companyName} is awaiting moderation.`,
-      type:   "new_job_pending",
+      type:   "NEW_JOB_PENDING",
       link:   `/admin/jobs?jobId=${jobId}`,
     })),
   });

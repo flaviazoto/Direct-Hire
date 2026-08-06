@@ -129,8 +129,8 @@ enum NotificationType {
   ACCOUNT_REJECTED
   ACCOUNT_SUSPENDED
   ACCOUNT_REINSTATED
-  new_job_pending
-  lock_overridden
+  NEW_JOB_PENDING
+  LOCK_OVERRIDDEN
   GENERAL
 }
 

@@ -83,10 +83,10 @@ employerRouter.post("/subscription/portal",   requireEmployer, billing.createPor
 
 // ── Notifications (verified employer only — NOT subscription-gated: a lapsed
 // employer must still be able to see "your job was approved") ────────────────
-employerRouter.get( "/notifications",              requireVerifiedEmployer, notifCtrl.getNotifications);
-employerRouter.get( "/notifications/unread-count", requireVerifiedEmployer, notifCtrl.getUnreadCount);
-employerRouter.post("/notifications/read-all",     requireVerifiedEmployer, notifCtrl.markAllNotificationsRead);
-employerRouter.post("/notifications/:id/read",     requireVerifiedEmployer, notifCtrl.markNotificationRead);
+employerRouter.get(  "/notifications",              requireVerifiedEmployer, notifCtrl.getNotifications);
+employerRouter.get(  "/notifications/unread-count", requireVerifiedEmployer, notifCtrl.getUnreadCount);
+employerRouter.patch("/notifications/read-all",     requireVerifiedEmployer, notifCtrl.markAllNotificationsRead);
+employerRouter.patch("/notifications/:id/read",     requireVerifiedEmployer, notifCtrl.markNotificationRead);
 
 // ── Messages (received-message inbox, reusing the same role-agnostic handlers
 // as the worker side — Message.recipientId/senderId already generic) ─────────

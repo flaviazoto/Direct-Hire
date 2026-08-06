@@ -107,10 +107,10 @@ adminRouter.post("/growth/tasks/:id/approve",    requireAdmin, growthCtrl.approv
 adminRouter.post("/growth/tasks/:id/reject",     requireAdmin, growthCtrl.rejectGrowthTask);
 
 // ── Notifications ──────────────────────────────────────────────────────────────
-adminRouter.get( "/notifications",              requireAdmin, notifCtrl.getNotifications);
-adminRouter.get( "/notifications/unread-count", requireAdmin, notifCtrl.getUnreadCount);
-adminRouter.post("/notifications/read-all",     requireAdmin, notifCtrl.markAllNotificationsRead);
-adminRouter.post("/notifications/:id/read",     requireAdmin, notifCtrl.markNotificationRead);
+adminRouter.get(  "/notifications",              requireAdmin, notifCtrl.getNotifications);
+adminRouter.get(  "/notifications/unread-count", requireAdmin, notifCtrl.getUnreadCount);
+adminRouter.patch("/notifications/read-all",     requireAdmin, notifCtrl.markAllNotificationsRead);
+adminRouter.patch("/notifications/:id/read",     requireAdmin, notifCtrl.markNotificationRead);
 
 // ── Admin-mediated hiring workflow (Phase 2) ────────────────────────────────────
 // Static routes before /:applicationId param
