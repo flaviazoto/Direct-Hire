@@ -307,8 +307,8 @@ export const adminApi = {
   getNotifications: (params?: Record<string, string>) =>
     get(`/admin/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
   getUnreadCount: () => get("/admin/notifications/unread-count"),
-  markNotificationRead: (id: string) => post(`/admin/notifications/${id}/read`),
-  markAllNotificationsRead: () => post("/admin/notifications/read-all"),
+  markNotificationRead: (id: string) => patch(`/admin/notifications/${id}/read`),
+  markAllNotificationsRead: () => patch("/admin/notifications/read-all"),
   // ── External jobs ────────────────────────────────────────────────────────────
   getExternalJobs: (params?: Record<string, string>) =>
     get(`/admin/external-jobs${params ? "?" + new URLSearchParams(params) : ""}`),
@@ -506,8 +506,8 @@ export const employerApi = {
   getNotifications: (params?: Record<string, string>) =>
     get(`/employer/notifications${params ? "?" + new URLSearchParams(params) : ""}`),
   getUnreadCount: () => get("/employer/notifications/unread-count"),
-  markNotificationRead: (id: string) => post(`/employer/notifications/${id}/read`),
-  markAllNotificationsRead: () => post("/employer/notifications/read-all"),
+  markNotificationRead: (id: string) => patch(`/employer/notifications/${id}/read`),
+  markAllNotificationsRead: () => patch("/employer/notifications/read-all"),
   // ── Messages ─────────────────────────────────────────────────────────────────
   getMessages: (params?: Record<string, string>) =>
     get(`/employer/messages${params ? "?" + new URLSearchParams(params) : ""}`),

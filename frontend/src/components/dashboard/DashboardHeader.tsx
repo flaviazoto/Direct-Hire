@@ -13,25 +13,9 @@ import {
 } from 'lucide-react'
 import { employerApi, adminApi, workerApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
+import { type NotifItem, getNotificationIcon, timeAgo } from '@/lib/notifications'
 
-type NotifItem = {
-  id: string
-  title: string
-  body: string
-  isRead: boolean
-  link?: string | null
-  createdAt: string
-}
-
-function timeAgo(d: string) {
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-  return `${Math.floor(s / 86400)}d ago`
-}
-
-type Role = 'worker' | 'employer' | 'admin'
+export type Role = 'worker' | 'employer' | 'admin'
 
 type NavLink = {
   href: string
@@ -64,6 +48,7 @@ const ROLE_LINKS: Record<'worker' | 'employer', NavLink[]> = {
     { href: '/employer/interviews',   label: 'Interviews & Hiring', Icon: UserCheck },
     { href: '/employer/document-requests', label: 'Document Requests', Icon: FileText },
     { href: '/employer/messages',     label: 'Messages',     Icon: Mail          },
+    { href: '/employer/notifications', label: 'Notifications', Icon: Bell        },
     { href: '/employer/profile',      label: 'Account',      Icon: Settings      },
     { href: '/employer/locks',        label: 'Locks',        Icon: Lock          },
     { href: '/employer/subscription',  label: 'Billing',      Icon: CreditCard    },
@@ -87,8 +72,9 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
   {
     section: 'Overview',
     links: [
-      { href: '/admin/dashboard', label: 'Overview', Icon: LayoutGrid },
-      { href: '/admin/revenue',   label: 'Revenue',  Icon: TrendingUp },
+      { href: '/admin/dashboard',      label: 'Overview',      Icon: LayoutGrid },
+      { href: '/admin/revenue',        label: 'Revenue',       Icon: TrendingUp },
+      { href: '/admin/notifications',  label: 'Notifications', Icon: Bell       },
     ],
   },
   {
@@ -139,7 +125,7 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
 
 // Per-role accent — the ONE thing that still varies by role. Everything else
 // (surface, blur, text colors) is now shared across all three.
-const ROLE_ACCENT: Record<Role, {
+export const ROLE_ACCENT: Record<Role, {
   solid:       string // logo chip, active icon-tile fill
   activeText:  string // active nav label + left-border color
   activeBg:    string // active nav row translucent tint
@@ -187,6 +173,7 @@ export default function DashboardHeader({
   const [notifOpen,    setNotifOpen]    = useState(false)
   const [notifs,       setNotifs]       = useState<NotifItem[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
+  const [notifError,   setNotifError]   = useState<string | null>(null)
   const mobileNotifRef  = useRef<HTMLDivElement>(null)
   const desktopNotifRef = useRef<HTMLDivElement>(null)
 
@@ -202,6 +189,7 @@ export default function DashboardHeader({
     if (notifOpen) { setNotifOpen(false); return }
     setNotifOpen(true)
     setNotifLoading(true)
+    setNotifError(null)
     const res = role === 'admin'
       ? await adminApi.getNotifications({ limit: '10' })
       : role === 'employer'
@@ -210,6 +198,8 @@ export default function DashboardHeader({
     if (res.success) {
       const d = res.data as { data?: NotifItem[] } | NotifItem[] | undefined
       setNotifs(Array.isArray(d) ? d : (d as { data?: NotifItem[] } | undefined)?.data ?? [])
+    } else {
+      setNotifError(res.error ?? 'Could not load notifications')
     }
     setNotifLoading(false)
   }
@@ -302,6 +292,19 @@ export default function DashboardHeader({
     if (notifLoading) {
       return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading…</div>
     }
+    if (notifError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: '#f87171', marginBottom: 8 }}>{notifError}</div>
+          <button
+            onClick={toggleNotifOpen}
+            style={{ fontSize: 12, fontWeight: 600, color: accent.activeText, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Retry
+          </button>
+        </div>
+      )
+    }
     if (notifs.length === 0) {
       return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No notifications yet</div>
     }
@@ -310,19 +313,28 @@ export default function DashboardHeader({
         key={n.id}
         onClick={() => handleNotifClick(n)}
         style={{
-          width: '100%', display: 'flex', flexDirection: 'column', gap: 4,
+          width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10,
           padding: '12px 16px',
           background: n.isRead ? 'transparent' : accent.activeBg,
           border: 'none', borderBottom: '1px solid rgba(255,255,255,0.07)',
           cursor: 'pointer', textAlign: 'left',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent.activeText, flexShrink: 0 }} />}
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>{n.title}</span>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          background: 'rgba(255,255,255,0.05)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', fontSize: 14,
+        }}>
+          {getNotificationIcon(n.type)}
         </div>
-        <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{n.body}</span>
-        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#64748b' }}>{timeAgo(n.createdAt)}</span>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent.activeText, flexShrink: 0 }} />}
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</span>
+          </div>
+          <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</span>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#64748b' }}>{timeAgo(n.createdAt)}</span>
+        </div>
       </button>
     ))
   }
@@ -345,6 +357,17 @@ export default function DashboardHeader({
           )}
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>{renderNotifList()}</div>
+        <Link
+          href={`/${role}/notifications`}
+          onClick={() => setNotifOpen(false)}
+          style={{
+            flexShrink: 0, padding: '11px 16px', textAlign: 'center',
+            fontSize: 12, fontWeight: 700, color: accent.activeText,
+            borderTop: '1px solid rgba(255,255,255,0.07)', textDecoration: 'none',
+          }}
+        >
+          View all notifications →
+        </Link>
       </div>
     )
   }

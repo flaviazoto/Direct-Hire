@@ -5,16 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workerApi } from "@/lib/api-client";
 import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
-
-interface NotifItem {
-  id:        string;
-  type:      string;
-  title:     string;
-  body:      string;
-  isRead:    boolean;
-  link?:     string;
-  createdAt: string;
-}
+import { type NotifItem, getNotificationIcon, groupNotificationsByDate, timeAgo } from "@/lib/notifications";
 
 interface PagedResponse {
   success:    boolean;
@@ -22,23 +13,6 @@ interface PagedResponse {
   total:      number;
   totalPages: number;
   page:       number;
-}
-
-const TYPE_ICON: Record<string, string> = {
-  MESSAGE_RECEIVED:   "✉️",
-  APPLICATION_UPDATE: "📋",
-  PROFILE_APPROVED:   "✅",
-  PROFILE_REJECTED:   "❌",
-  JOB_MATCH:          "🎯",
-  GENERAL:            "🔔",
-};
-
-function timeAgo(d: string) {
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-  if (s < 60)    return "just now";
-  if (s < 3600)  return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function WorkerNotificationsPage() {
@@ -154,45 +128,55 @@ export default function WorkerNotificationsPage() {
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {notifs.map(n => (
-            <div
-              key={n.id}
-              onClick={() => handleClick(n)}
-              style={{
-                display:      "flex",
-                gap:          14,
-                padding:      "14px 16px",
-                background:   n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)",
-                border:       `1px solid ${n.isRead ? "rgba(255,255,255,0.05)" : "rgba(124,58,237,0.2)"}`,
-                borderRadius: 12,
-                cursor:       n.link ? "pointer" : "default",
-                transition:   "background 0.15s",
-              }}
-              onMouseOver={e => { if (n.link) e.currentTarget.style.background = "rgba(124,58,237,0.12)"; }}
-              onMouseOut={e  => { e.currentTarget.style.background = n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)"; }}
-            >
-              {/* Icon */}
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                {TYPE_ICON[n.type] ?? "🔔"}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {groupNotificationsByDate(notifs).map(({ group, items }) => (
+            <div key={group}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8, paddingLeft: 2 }}>
+                {group}
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {items.map(n => (
+                  <div
+                    key={n.id}
+                    onClick={() => handleClick(n)}
+                    style={{
+                      display:      "flex",
+                      gap:          14,
+                      padding:      "14px 16px",
+                      background:   n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)",
+                      border:       `1px solid ${n.isRead ? "rgba(255,255,255,0.05)" : "rgba(124,58,237,0.2)"}`,
+                      borderLeft:   n.isRead ? undefined : "3px solid #7c3aed",
+                      borderRadius: 12,
+                      cursor:       n.link ? "pointer" : "default",
+                      transition:   "background 0.15s",
+                    }}
+                    onMouseOver={e => { if (n.link) e.currentTarget.style.background = "rgba(124,58,237,0.12)"; }}
+                    onMouseOut={e  => { e.currentTarget.style.background = n.isRead ? "rgba(255,255,255,0.02)" : "rgba(124,58,237,0.07)"; }}
+                  >
+                    {/* Icon */}
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                      {getNotificationIcon(n.type)}
+                    </div>
 
-              {/* Content */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{n.title}</span>
-                  {!n.isRead && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, padding: "1px 7px" }}>New</span>
-                  )}
-                </div>
-                <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>{n.body}</p>
-                <div style={{ fontSize: 11, color: "#4b5563", marginTop: 5 }}>{timeAgo(n.createdAt)}</div>
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+                        {!n.isRead && (
+                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#7c3aed", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, padding: "1px 7px" }}>New</span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.body}</p>
+                      <div style={{ fontSize: 11, color: "#4b5563", marginTop: 5 }}>{timeAgo(n.createdAt)}</div>
+                    </div>
+
+                    {/* Unread dot */}
+                    {!n.isRead && (
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7c3aed", flexShrink: 0, marginTop: 6 }} />
+                    )}
+                  </div>
+                ))}
               </div>
-
-              {/* Unread dot */}
-              {!n.isRead && (
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7c3aed", flexShrink: 0, marginTop: 6 }} />
-              )}
             </div>
           ))}
         </div>
