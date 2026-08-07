@@ -178,6 +178,51 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
+  // ── Defer the InteractiveGlobe mount (Fix 1 — see InteractiveGlobe.tsx's
+  // own header comment for the full TBT investigation this addresses) ──────────
+  // The globe sits in the hero, above the fold, so it's essentially always
+  // "in view" on load — IntersectionObserver alone wouldn't defer anything
+  // here. The actual lever is requestIdleCallback: the static GlobePlaceholder
+  // (below) renders immediately so the hero never looks empty, but the real
+  // dynamic-imported component — and the WebGL/texture/geometry work it does
+  // on mount — doesn't start until the browser reports it's idle (i.e. after
+  // hydration and initial interactivity are already handled), so it no longer
+  // competes with the window Lighthouse measures for Total Blocking Time.
+  // IntersectionObserver is still layered on top for correctness (skips the
+  // work entirely if the hero somehow isn't in view yet) rather than because
+  // it's expected to defer much on this specific page.
+  const globeMountRef = useRef<HTMLDivElement>(null);
+  const [loadGlobe, setLoadGlobe] = useState(false);
+
+  useEffect(() => {
+    const el = globeMountRef.current;
+    if (!el) return;
+
+    let idleHandle: number | null = null;
+    const scheduleLoad = () => {
+      const ric = (window as typeof window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (ric) {
+        idleHandle = ric(() => setLoadGlobe(true), { timeout: 2000 });
+      } else {
+        idleHandle = window.setTimeout(() => setLoadGlobe(true), 300);
+      }
+    };
+
+    const obs = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { scheduleLoad(); obs.unobserve(e.target); } }),
+      { threshold: 0.01 },
+    );
+    obs.observe(el);
+
+    return () => {
+      obs.disconnect();
+      if (idleHandle !== null) {
+        const cic = (window as typeof window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+        if (cic) cic(idleHandle); else window.clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+
   return (
     <div ref={pageRef} style={{ background: "#0B1121", minHeight: "100vh", overflowX: "hidden" }}>
 
@@ -281,9 +326,11 @@ export default function LandingPage() {
               background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)",
               pointerEvents: "none", zIndex: 0,
             }} />
-            {/* Globe */}
-            <div style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <InteractiveGlobe />
+            {/* Globe — see the deferred-mount effect above: placeholder shows
+                immediately, the real dynamic-imported component (and its
+                WebGL/texture work) only mounts once the browser is idle. */}
+            <div ref={globeMountRef} style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {loadGlobe ? <InteractiveGlobe /> : <GlobePlaceholder />}
             </div>
 
           </div>

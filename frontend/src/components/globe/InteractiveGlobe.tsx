@@ -166,7 +166,14 @@ export default function InteractiveGlobe() {
     globeGroupRef.current = globeGroup;
 
     // ── Earth mesh ─────────────────────────────────────────────────────────────
-    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 96, 96);
+    // Fix 3 of the homepage TBT investigation: 96x96 segments (~9,300
+    // vertices/sphere) was high-poly overkill for a decorative sphere that
+    // never renders above 600px — this synchronous construction (x2, earth +
+    // clouds) was a real remaining contributor to blocking time even after
+    // deferring the mount (Fix 1) and shrinking the textures (Fix 2). 48x48
+    // matches the atmosphere/halo spheres below, still reads as fully smooth
+    // with Phong shading at actual display size.
+    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 48, 48);
     const earthMat = new THREE.MeshPhongMaterial({
       color:             0xffffff,
       specular:          new THREE.Color(0x8fb8df),
@@ -184,8 +191,18 @@ export default function InteractiveGlobe() {
       texture.anisotropy = maxAnisotropy;
       return texture;
     };
+    // Self-hosted, resized + compressed from the original three.js/three-globe
+    // example assets (Fix 2 of the homepage TBT investigation — see the report
+    // in that task for the before/after numbers). Originals were 4096x2048/
+    // 2048x1024 demo-quality textures totaling ~2.23MB pulled from two external
+    // CDNs (unpkg.com, threejs.org) DirectHire doesn't control; this sphere
+    // never renders above 600px, so that resolution bought nothing but load
+    // time. Downscaled to 1024x512 (color) / 512x256 (normal/specular/clouds)
+    // and re-compressed — ~125KB total (94% smaller), same visual result at
+    // actual display size, self-hosted so it isn't dependent on a stranger's
+    // package's example folder staying up.
     const earthTexture  = textureLoader.load(
-      "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
+      "/globe/earth-color.jpg",
       (tex) => {
         earthMat.map = prepareColorTexture(tex);
         earthMat.needsUpdate = true;
@@ -196,7 +213,7 @@ export default function InteractiveGlobe() {
     void earthTexture;
 
     const earthNormal = textureLoader.load(
-      "https://threejs.org/examples/textures/planets/earth_normal_2048.jpg",
+      "/globe/earth-normal.jpg",
       (tex) => {
         tex.anisotropy = maxAnisotropy;
         earthMat.normalMap = tex;
@@ -204,7 +221,7 @@ export default function InteractiveGlobe() {
       },
     );
     const earthSpecular = textureLoader.load(
-      "https://threejs.org/examples/textures/planets/earth_specular_2048.jpg",
+      "/globe/earth-specular.jpg",
       (tex) => {
         tex.anisotropy = maxAnisotropy;
         earthMat.specularMap = tex;
@@ -218,7 +235,7 @@ export default function InteractiveGlobe() {
       depthWrite: false,
     });
     const cloudTexture = textureLoader.load(
-      "https://threejs.org/examples/textures/planets/earth_clouds_1024.png",
+      "/globe/earth-clouds.png",
       (tex) => {
         cloudMaterial.map = prepareColorTexture(tex);
         cloudMaterial.alphaMap = tex;
@@ -226,7 +243,7 @@ export default function InteractiveGlobe() {
       },
     );
     const cloudMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS * 1.006, 96, 96),
+      new THREE.SphereGeometry(GLOBE_RADIUS * 1.006, 48, 48),
       cloudMaterial,
     );
     globeGroup.add(cloudMesh);
