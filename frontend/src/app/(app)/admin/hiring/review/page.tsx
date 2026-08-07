@@ -12,6 +12,7 @@
 // copied structure.
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
 import { C, pill, card, rowBg, inputStyle } from "@/lib/admin-theme";
 import { ErrorState, EmptyState } from "@/components/ui";
@@ -63,6 +64,13 @@ interface FeeCharge {
   status: string;
   paidAt: string | null;
   failedAt: string | null;
+}
+interface FeeSchedule {
+  id: string;
+  countryCode: string;
+  visaType: string;
+  amountUsd: string;
+  isActive: boolean;
 }
 interface AppRow {
   id: string;
@@ -189,6 +197,8 @@ export default function AdminHiringReviewPage() {
   const [skippingDocs, setSkippingDocs] = useState(false);
   const [visaType, setVisaType] = useState("");
   const [chargingFee, setChargingFee] = useState(false);
+  const [feeSchedules, setFeeSchedules] = useState<FeeSchedule[]>([]);
+  const [feeSchedulesLoaded, setFeeSchedulesLoaded] = useState(false);
 
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -217,6 +227,18 @@ export default function AdminHiringReviewPage() {
 
   useEffect(() => { load(tab); }, [tab, load]);
 
+  // Fetched once on first visit to the Awaiting Fee tab — the full schedule
+  // list is small (one row per country+visa combo) and shared across every
+  // application on this tab, so it's filtered client-side per selected
+  // row's country rather than re-fetched per application.
+  useEffect(() => {
+    if (tab !== "fee" || feeSchedulesLoaded) return;
+    adminApi.getFeeSchedules().then(res => {
+      if (res.success) setFeeSchedules((res.data as FeeSchedule[]) ?? []);
+      setFeeSchedulesLoaded(true);
+    });
+  }, [tab, feeSchedulesLoaded]);
+
   function switchTab(t: Tab) {
     setTab(t);
     setSelectedId(null);
@@ -226,6 +248,7 @@ export default function AdminHiringReviewPage() {
 
   useEffect(() => {
     setNoteText(selected?.adminReview?.noteToWorker ?? "");
+    setVisaType(""); // a visa type picked for one application's country isn't valid for another
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleApprove() {
@@ -307,6 +330,14 @@ export default function AdminHiringReviewPage() {
       showToast(res.error ?? "Could not start the fee charge", false);
     }
   }
+
+  // Only active schedules for this application's country — the dropdown's
+  // source of truth. createFeeCharge's own lookup is unchanged; this is
+  // purely showing the same data admin would otherwise have to guess at.
+  const availableSchedules = selected
+    ? feeSchedules.filter(s => s.isActive && s.countryCode === selected.job.country)
+    : [];
+  const selectedSchedule = availableSchedules.find(s => s.visaType === visaType) ?? null;
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
@@ -615,35 +646,59 @@ export default function AdminHiringReviewPage() {
                         <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
                           Hire confirmed by both sides — charge the admin fee
                         </div>
-                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
-                          Fee amount is resolved from the fee schedule for {selected.job.country} + the visa type below.
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <input
-                            value={visaType}
-                            onChange={e => setVisaType(e.target.value)}
-                            placeholder="Visa type, e.g. H-2A"
-                            style={{ ...inputStyle, flex: 1 }}
-                          />
-                          <button
-                            onClick={handleChargeFee}
-                            disabled={chargingFee || !visaType.trim()}
-                            style={{
-                              padding: "9px 16px", borderRadius: 8, border: "none",
-                              background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700,
-                              cursor: chargingFee || !visaType.trim() ? "default" : "pointer",
-                              opacity: !visaType.trim() ? 0.5 : 1, whiteSpace: "nowrap",
-                            }}
-                          >
-                            {chargingFee ? "Starting…" : "Charge admin fee"}
-                          </button>
-                        </div>
+                        {!feeSchedulesLoaded ? (
+                          <div style={{ fontSize: 12, color: C.muted }}>Loading fee schedules…</div>
+                        ) : availableSchedules.length === 0 ? (
+                          <div style={{ fontSize: 12, color: C.warning, lineHeight: 1.5 }}>
+                            No fee schedules configured for {selected.job.country} yet —{" "}
+                            <Link href="/admin/fee-schedules" style={{ color: C.accent, textDecoration: "underline" }}>
+                              add one on the Fee Schedules page
+                            </Link>.
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                              Select the visa type — the fee amount is resolved live from the fee schedule for {selected.job.country}.
+                            </div>
+                            <div style={{ display: "flex", gap: 8, marginBottom: selectedSchedule ? 10 : 0 }}>
+                              <select
+                                value={visaType}
+                                onChange={e => setVisaType(e.target.value)}
+                                style={{ ...inputStyle, flex: 1 }}
+                              >
+                                <option value="">Select visa type…</option>
+                                {availableSchedules.map(s => (
+                                  <option key={s.id} value={s.visaType}>{s.visaType}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={handleChargeFee}
+                                disabled={chargingFee || !selectedSchedule}
+                                style={{
+                                  padding: "9px 16px", borderRadius: 8, border: "none",
+                                  background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700,
+                                  cursor: chargingFee || !selectedSchedule ? "default" : "pointer",
+                                  opacity: !selectedSchedule ? 0.5 : 1, whiteSpace: "nowrap",
+                                }}
+                              >
+                                {chargingFee ? "Starting…" : "Charge admin fee"}
+                              </button>
+                            </div>
+                            {selectedSchedule && (
+                              <div style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>
+                                Fee: ${Number(selectedSchedule.amountUsd).toFixed(2)}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
 
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.5 }}>
-                      Fee schedule management (per-country/visa pricing) isn&apos;t available on this screen —
-                      it needs its own admin config page.
+                      Manage per-country/visa fee amounts on the{" "}
+                      <Link href="/admin/fee-schedules" style={{ color: C.accent, textDecoration: "underline" }}>
+                        Fee Schedules page
+                      </Link>.
                     </div>
                   </>
                 )}
