@@ -58,36 +58,34 @@ function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
   );
 }
 
-// ── Shaders ────────────────────────────────────────────────────────────────────
-
-const ATM_VERT = `
-  varying vec3 vNormal;
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const ATM_FRAG = `
-  varying vec3 vNormal;
-  void main() {
-    float i = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-    gl_FragColor = vec4(0.05, 0.35, 1.0, 1.0) * i;
-  }
-`;
-
-const HALO_VERT = ATM_VERT;
-
-const HALO_FRAG = `
-  uniform vec3  glowColor;
-  uniform float coefficient;
-  uniform float power;
-  varying vec3  vNormal;
-  void main() {
-    float intensity = pow(max(0.0, coefficient - dot(vNormal, vec3(0.0, 0.0, 1.0))), power);
-    gl_FragColor = vec4(glowColor, intensity * 0.45);
-  }
-`;
+// ── Glow (replaces the two custom ShaderMaterial spheres — Fix 4 of the TBT
+// investigation) ─────────────────────────────────────────────────────────────
+// Long-task profiling (see that task's report) showed a single ~2.9s task
+// dominating mobile TBT, unchanged by texture/geometry fixes — traced to
+// custom GLSL shader compilation for the atmosphere + halo glow effects.
+// Custom ShaderMaterials each require their own compile; the built-in Sprite
+// shader is already part of Three.js's core program cache, so two sprites
+// sharing one canvas-drawn radial-gradient texture cost effectively nothing
+// extra to compile. A ring-shaped gradient (transparent core, bright near
+// the edge, fading out) approximates the original shaders' rim-light falloff
+// — sprites are camera-facing quads, not true per-pixel Fresnel lighting, but
+// closely matches the original look for a small decorative element.
+function makeRingGlowTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0.00, "rgba(255,255,255,0)");
+  grad.addColorStop(0.60, "rgba(255,255,255,0)");
+  grad.addColorStop(0.80, "rgba(255,255,255,0.9)");
+  grad.addColorStop(1.00, "rgba(255,255,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -174,11 +172,18 @@ export default function InteractiveGlobe() {
     // matches the atmosphere/halo spheres below, still reads as fully smooth
     // with Phong shading at actual display size.
     const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 48, 48);
-    const earthMat = new THREE.MeshPhongMaterial({
+    // Fix 5 (step 2 of the shader-simplification task, tried after removing
+    // the custom atmosphere/halo shaders alone wasn't enough — mobile TBT was
+    // still ~2s, score 64): MeshLambertMaterial instead of MeshPhongMaterial.
+    // Lambert's shader has no specular-highlight pass, which is a real chunk
+    // of the remaining compile cost. It doesn't support normalMap/specularMap
+    // at all, so those two texture fetches were dropped below along with the
+    // Phong-only specular/shininess/normalScale properties — emissive still
+    // works (shared by both material types). The visual difference is the
+    // loss of the subtle ocean specular sheen and bump-mapped terrain relief;
+    // the day/night diffuse shading from the existing lights is unchanged.
+    const earthMat = new THREE.MeshLambertMaterial({
       color:             0xffffff,
-      specular:          new THREE.Color(0x8fb8df),
-      shininess:         24,
-      normalScale:       new THREE.Vector2(0.65, 0.65),
       emissive:          new THREE.Color(0x010713),
       emissiveIntensity: 0.12,
     });
@@ -197,10 +202,12 @@ export default function InteractiveGlobe() {
     // 2048x1024 demo-quality textures totaling ~2.23MB pulled from two external
     // CDNs (unpkg.com, threejs.org) DirectHire doesn't control; this sphere
     // never renders above 600px, so that resolution bought nothing but load
-    // time. Downscaled to 1024x512 (color) / 512x256 (normal/specular/clouds)
-    // and re-compressed — ~125KB total (94% smaller), same visual result at
-    // actual display size, self-hosted so it isn't dependent on a stranger's
-    // package's example folder staying up.
+    // time. Downscaled to 1024x512 (color) / 512x256 (clouds) and
+    // re-compressed. The normal/specular maps (originally loaded here too)
+    // were dropped when the material switched to Lambert above, which can't
+    // use them — public/globe/earth-normal.jpg and earth-specular.jpg are
+    // unused now but left in place rather than deleted, in case a material
+    // gets reverted later.
     const earthTexture  = textureLoader.load(
       "/globe/earth-color.jpg",
       (tex) => {
@@ -212,23 +219,7 @@ export default function InteractiveGlobe() {
     );
     void earthTexture;
 
-    const earthNormal = textureLoader.load(
-      "/globe/earth-normal.jpg",
-      (tex) => {
-        tex.anisotropy = maxAnisotropy;
-        earthMat.normalMap = tex;
-        earthMat.needsUpdate = true;
-      },
-    );
-    const earthSpecular = textureLoader.load(
-      "/globe/earth-specular.jpg",
-      (tex) => {
-        tex.anisotropy = maxAnisotropy;
-        earthMat.specularMap = tex;
-        earthMat.needsUpdate = true;
-      },
-    );
-    const cloudMaterial = new THREE.MeshPhongMaterial({
+    const cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
       opacity: 0.34,
@@ -248,36 +239,30 @@ export default function InteractiveGlobe() {
     );
     globeGroup.add(cloudMesh);
 
-    // ── Atmosphere glow ────────────────────────────────────────────────────────
-    globeGroup.add(new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS * 1.08, 48, 48),
-      new THREE.ShaderMaterial({
-        vertexShader:   ATM_VERT,
-        fragmentShader: ATM_FRAG,
-        side:        THREE.BackSide,
-        blending:    THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite:  false,
-      }),
-    ));
+    // ── Atmosphere + outer halo glow (sprites — see makeRingGlowTexture) ──────
+    const glowTexture = makeRingGlowTexture();
 
-    // ── Outer halo ─────────────────────────────────────────────────────────────
-    scene.add(new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS + 14, 48, 48),
-      new THREE.ShaderMaterial({
-        uniforms: {
-          glowColor:   { value: new THREE.Color(0x6ba5ff) },
-          coefficient: { value: 0.2 },
-          power:       { value: 6.2 },
-        },
-        vertexShader:   HALO_VERT,
-        fragmentShader: HALO_FRAG,
-        side:        THREE.FrontSide,
-        blending:    THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite:  false,
-      }),
-    ));
+    const atmosphereGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:         glowTexture,
+      color:       0x0d59ff,
+      opacity:     0.55,
+      transparent: true,
+      blending:    THREE.AdditiveBlending,
+      depthWrite:  false,
+    }));
+    atmosphereGlow.scale.set(GLOBE_RADIUS * 2.24, GLOBE_RADIUS * 2.24, 1);
+    scene.add(atmosphereGlow);
+
+    const outerHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:         glowTexture,
+      color:       0x6ba5ff,
+      opacity:     0.45,
+      transparent: true,
+      blending:    THREE.AdditiveBlending,
+      depthWrite:  false,
+    }));
+    outerHalo.scale.set(GLOBE_RADIUS * 2.5, GLOBE_RADIUS * 2.5, 1);
+    scene.add(outerHalo);
 
     // ── Grid lines ─────────────────────────────────────────────────────────────
     // ── Wireframe overlay ──────────────────────────────────────────────────────
@@ -576,12 +561,13 @@ export default function InteractiveGlobe() {
           obj.geometry.dispose();
           if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
           else obj.material.dispose();
+        } else if (obj instanceof THREE.Sprite) {
+          obj.material.dispose();
         }
       });
+      glowTexture.dispose();
       renderer.dispose();
       earthTexture.dispose();
-      earthNormal.dispose();
-      earthSpecular.dispose();
       cloudTexture.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
       if (css2dRenderer && el.contains(css2dRenderer.domElement)) {
