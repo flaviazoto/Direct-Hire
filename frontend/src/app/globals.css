@@ -509,14 +509,23 @@ input, button, textarea, select { font: inherit; }
 
 .dashboard-sidebar-nav {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.16) transparent;
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
   overscroll-behavior: contain;
 }
 
-.dashboard-sidebar-nav::-webkit-scrollbar { width: 5px; }
+/* Investigated as part of the "Fee Schedules nav link invisible" report:
+   the link itself renders correctly (confirmed via a real headless-browser
+   measurement — identical markup/style to its neighbors, present in the
+   DOM). The actual cause is that the admin nav list (19 links across 8
+   sections) overflows a typical ~900px viewport by ~300px+, so the last
+   items in a section can sit just below the fold of this scrollable area.
+   Scrolling reveals them — the container already scrolls correctly — but
+   the previous 5px/0.16-alpha scrollbar was too subtle to signal that more
+   content existed below. Bumped for discoverability, not a layout fix. */
+.dashboard-sidebar-nav::-webkit-scrollbar { width: 6px; }
 .dashboard-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
 .dashboard-sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.3);
   border-radius: 999px;
 }
 
