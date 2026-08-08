@@ -159,6 +159,7 @@ export function Nav() {
         <button
           onClick={() => setMenuOpen(false)}
           aria-label="Close menu"
+          tabIndex={menuOpen ? undefined : -1}
           style={{
             width: 44, height: 44, borderRadius: "50%",
             background: "rgba(255,255,255,0.08)",
@@ -179,6 +180,7 @@ export function Nav() {
             <Link
               key={href}
               href={href}
+              tabIndex={menuOpen ? undefined : -1}
               style={{
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "12px 12px", borderRadius: 16, marginBottom: 4,
@@ -215,13 +217,13 @@ export function Nav() {
       }}>
         {!loading && isLoggedIn ? (
           <>
-            <Link href={dashHref} className="btn-gradient" style={{
+            <Link href={dashHref} className="btn-gradient" tabIndex={menuOpen ? undefined : -1} style={{
               flex: 1, height: 48, textDecoration: "none",
               fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               Dashboard
             </Link>
-            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="btn-glass" style={{
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="btn-glass" tabIndex={menuOpen ? undefined : -1} style={{
               flex: 1, height: 48,
               fontFamily: "var(--font-body)", fontSize: 14,
             }}>
@@ -230,13 +232,13 @@ export function Nav() {
           </>
         ) : !loading ? (
           <>
-            <Link href="/login" className="btn-glass" style={{
+            <Link href="/login" className="btn-glass" tabIndex={menuOpen ? undefined : -1} style={{
               flex: 1, height: 48, textDecoration: "none",
               fontFamily: "var(--font-body)", fontSize: 14,
             }}>
               <LogIn size={16} /> Log in
             </Link>
-            <Link href="/register" className="btn-gradient" style={{
+            <Link href="/register" className="btn-gradient" tabIndex={menuOpen ? undefined : -1} style={{
               flex: 1, height: 48, textDecoration: "none",
               fontFamily: "var(--font-body)", fontSize: 14,
             }}>
