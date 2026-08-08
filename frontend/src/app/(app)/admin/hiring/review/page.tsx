@@ -111,10 +111,13 @@ function daysAgo(d: string) {
   return `${days} days ago`;
 }
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "review", label: "Application Review" },
-  { id: "documents", label: "Document Verification" },
-  { id: "fee", label: "Awaiting Fee" },
+// shortLabel is used below 640px — the full labels don't fit three-across on
+// a phone without wrapping each button to two lines and clipping the
+// queue-count badge off-screen (mobile-usability audit finding).
+const TABS: { id: Tab; label: string; shortLabel: string }[] = [
+  { id: "review", label: "Application Review", shortLabel: "Review" },
+  { id: "documents", label: "Document Verification", shortLabel: "Documents" },
+  { id: "fee", label: "Awaiting Fee", shortLabel: "Fee" },
 ];
 
 /* ─── Sub-components ────────────────────────────────────────────────────── */
@@ -340,7 +343,7 @@ export default function AdminHiringReviewPage() {
   const selectedSchedule = availableSchedules.find(s => s.visaType === visaType) ?? null;
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
+    <div className="px-4 py-6 sm:px-10 sm:py-8" style={{ maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -352,14 +355,16 @@ export default function AdminHiringReviewPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+      {/* Tabs — flex-wrap is a safety net so the queue-count badge always gets
+          its own line rather than ever being clipped off-screen, even if
+          labels/translations grow longer than expected in the future. */}
+      <div className="flex-wrap" style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => switchTab(t.id)}
+            className="px-2.5 py-2 sm:px-[18px] sm:py-2.5"
             style={{
-              padding: "10px 18px",
               border: "none",
               borderBottom: `2px solid ${tab === t.id ? C.accent : "transparent"}`,
               background: "transparent",
@@ -367,12 +372,14 @@ export default function AdminHiringReviewPage() {
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
+              whiteSpace: "nowrap",
             }}
           >
-            {t.label}
+            <span className="hidden sm:inline">{t.label}</span>
+            <span className="sm:hidden">{t.shortLabel}</span>
           </button>
         ))}
-        {!loading && <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 12, color: C.muted }}>{total} in queue</span>}
+        {!loading && <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>{total} in queue</span>}
       </div>
 
       {/* No-reject note */}
