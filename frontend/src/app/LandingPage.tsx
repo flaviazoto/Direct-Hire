@@ -13,8 +13,19 @@ const InteractiveGlobe = dynamic(
 // ── Globe fallback ────────────────────────────────────────────────────────────
 
 function GlobePlaceholder() {
+  // Must match InteractiveGlobe.tsx's real root exactly (className there:
+  // "relative w-full aspect-square max-w-[340px] sm:max-w-[480px]
+  // md:max-w-[600px] mx-auto touch-none") — this placeholder previously used
+  // a fixed maxWidth:540 with no responsive breakpoints, so swapping to the
+  // real component on mobile (340px cap there vs 540px here) shifted the
+  // whole hero-globe-col layout, including the absolutely-positioned glow
+  // div behind it. That's the exact CLS regression (0.00 -> 0.044) traced
+  // back to when the deferred-mount fix shipped — confirmed via the
+  // archived Lighthouse "layout-shifts" audit, which named this glow div by
+  // its bounding rect. Identical dimensions at every breakpoint = zero size
+  // change on swap = zero shift.
   return (
-    <div style={{ position: "relative", width: "100%", maxWidth: 540, aspectRatio: "1", flexShrink: 0, margin: "0 auto" }}>
+    <div className="relative w-full aspect-square max-w-[340px] sm:max-w-[480px] md:max-w-[600px] mx-auto" style={{ flexShrink: 0 }}>
       <div style={{
         width: "100%", height: "100%", borderRadius: "50%",
         background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #0B1121 100%)",
