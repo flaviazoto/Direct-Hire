@@ -328,77 +328,133 @@ export default function AdminFeeSchedulesPage() {
         {!loading && <span style={{ marginLeft: "auto", fontSize: 13, color: C.muted }}>{visible.length} schedule{visible.length !== 1 ? "s" : ""}</span>}
       </div>
 
-      {/* Table */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
-                {["Country", "Visa type", "Amount (USD)", "Status", "Last updated", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <td key={j} style={{ padding: "16px 20px" }}>
-                        <div style={{ height: 12, width: j === 0 ? "70%" : "50%", background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
-                      </td>
+      {/* Loading / error / empty states — shared by both the desktop table and
+          mobile card list below, rendered once regardless of viewport. */}
+      {loading ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ height: 14, width: `${70 - i * 8}%`, background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
+          ))}
+        </div>
+      ) : error ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
+          <ErrorState message={error} retry={load} title="Could not load fee schedules" />
+        </div>
+      ) : visible.length === 0 ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "64px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>💳</div>
+          <div style={{ color: C.muted, fontSize: 15 }}>
+            {rows.length === 0 ? "No fee schedules configured yet — add one to enable admin fee charges." : "No schedules match this filter."}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Desktop/tablet table (640px+). Note: below that width this table's
+              overflow-x:auto wrapper does NOT actually scroll — a <table> with
+              width:100% keeps its own CSS box pinned to the container width
+              even when its rendered content needs more (confirmed via direct
+              measurement: table.scrollWidth exceeds the wrapper's clientWidth,
+              but the wrapper's own scrollWidth never grows to match, so no
+              scrollbar appears and the later columns are just invisible with
+              no way to reach them — the exact bug the mobile-usability audit
+              found). /admin/external-jobs has the identical table markup and
+              very likely the same latent bug, unverified/unaudited — flagged
+              in this task's report, not fixed here (out of scope). Below
+              640px, the card list handles this instead of trying to patch
+              the scroll mechanism. */}
+          <div className="hidden sm:block" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
+                    {["Country", "Visa type", "Amount (USD)", "Status", "Last updated", "Actions"].map(h => (
+                      <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
                     ))}
                   </tr>
-                ))
-              ) : error ? (
-                <tr><td colSpan={6} style={{ padding: 24 }}>
-                  <ErrorState message={error} retry={load} title="Could not load fee schedules" />
-                </td></tr>
-              ) : visible.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: "64px 24px", textAlign: "center" }}>
-                    <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>💳</div>
-                    <div style={{ color: C.muted, fontSize: 15 }}>
-                      {rows.length === 0 ? "No fee schedules configured yet — add one to enable admin fee charges." : "No schedules match this filter."}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                visible.map(row => (
-                  <tr key={row.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <td style={{ padding: "14px 20px", fontSize: 13, fontWeight: 600, color: C.text }}>{row.countryCode}</td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{row.visaType}</td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>${Number(row.amountUsd).toFixed(2)}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
-                        padding: "3px 9px", borderRadius: 99,
-                        color: row.isActive ? C.green : C.muted,
-                        background: row.isActive ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
-                      }}>
-                        {row.isActive ? "ACTIVE" : "INACTIVE"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 20px", fontSize: 12, color: C.muted }}>
-                      {fmtDate(row.updatedAt)}{row.updatedBy && <> · {row.updatedBy.email}</>}
-                    </td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => { setFormError(null); setEditRow(row); }} style={{ background: "none", border: "none", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
-                          Edit
-                        </button>
-                        <button onClick={() => handleQuickToggle(row)} style={{ background: "none", border: "none", color: C.yellow, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
-                          {row.isActive ? "Deactivate" : "Reactivate"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {visible.map(row => (
+                    <tr key={row.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: "14px 20px", fontSize: 13, fontWeight: 600, color: C.text }}>{row.countryCode}</td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{row.visaType}</td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>${Number(row.amountUsd).toFixed(2)}</td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
+                          padding: "3px 9px", borderRadius: 99,
+                          color: row.isActive ? C.green : C.muted,
+                          background: row.isActive ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
+                        }}>
+                          {row.isActive ? "ACTIVE" : "INACTIVE"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: 12, color: C.muted }}>
+                        {fmtDate(row.updatedAt)}{row.updatedBy && <> · {row.updatedBy.email}</>}
+                      </td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => { setFormError(null); setEditRow(row); }} style={{ background: "none", border: "none", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                            Edit
+                          </button>
+                          <button onClick={() => handleQuickToggle(row)} style={{ background: "none", border: "none", color: C.yellow, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                            {row.isActive ? "Deactivate" : "Reactivate"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile card list (below 640px) — every field from the table row
+              is visible and reachable, no horizontal scroll at all needed.
+              Edit/toggle buttons are real min-44px touch targets, unlike the
+              table's small text-link buttons (appropriate there since desktop
+              is mouse-driven, not appropriate on a phone). */}
+          <div className="sm:hidden" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {visible.map(row => (
+              <div key={row.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{row.countryCode}</div>
+                    <div style={{ fontSize: 13, color: C.secondary, marginTop: 2 }}>{row.visaType}</div>
+                  </div>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
+                    padding: "3px 9px", borderRadius: 99,
+                    color: row.isActive ? C.green : C.muted,
+                    background: row.isActive ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
+                  }}>
+                    {row.isActive ? "ACTIVE" : "INACTIVE"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 10 }}>
+                  ${Number(row.amountUsd).toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+                  Updated {fmtDate(row.updatedAt)}{row.updatedBy && <> · {row.updatedBy.email}</>}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => { setFormError(null); setEditRow(row); }}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, background: "rgba(37,99,235,0.12)", border: `1px solid ${C.blue}55`, color: C.blue, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleQuickToggle(row)}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, background: "rgba(234,88,12,0.12)", border: `1px solid ${C.yellow}55`, color: C.yellow, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    {row.isActive ? "Deactivate" : "Reactivate"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {addOpen && (
         <AddModal
