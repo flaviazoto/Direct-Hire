@@ -413,7 +413,13 @@ export default function AdminFeeSchedulesPage() {
               Edit/toggle buttons are real min-44px touch targets, unlike the
               table's small text-link buttons (appropriate there since desktop
               is mouse-driven, not appropriate on a phone). */}
-          <div className="sm:hidden" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* display must come from the className, not an inline style — an
+              inline display value has higher specificity than any class
+              (including sm:hidden's media-query rule) and would always win.
+              This exact bug shipped here first, then caught during the
+              external-jobs mobile fix's desktop verification — table and
+              cards were both rendering at desktop width. */}
+          <div className="sm:hidden flex flex-col gap-3">
             {visible.map(row => (
               <div key={row.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
