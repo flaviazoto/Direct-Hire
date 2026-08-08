@@ -160,7 +160,7 @@ export function Nav() {
           onClick={() => setMenuOpen(false)}
           aria-label="Close menu"
           style={{
-            width: 36, height: 36, borderRadius: "50%",
+            width: 44, height: 44, borderRadius: "50%",
             background: "rgba(255,255,255,0.08)",
             border: "none", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -327,7 +327,7 @@ export function Nav() {
               style={{
                 display: "none",
                 alignItems: "center", justifyContent: "center",
-                width: 40, height: 40, borderRadius: 10,
+                width: 44, height: 44, borderRadius: 10,
                 border: "1px solid rgba(255,255,255,0.12)",
                 background: "rgba(255,255,255,0.06)",
                 color: "rgba(255,255,255,0.8)",

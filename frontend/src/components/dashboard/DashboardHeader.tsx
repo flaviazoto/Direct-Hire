@@ -279,8 +279,11 @@ export default function DashboardHeader({
     return bestMatch === href
   }
 
+  // 44x44 meets the standard touch-target guideline (was 36x36 — flagged by
+  // the mobile-usability audit as under-sized sitewide, since this one style
+  // object backs both mobile-header buttons below).
   const btnStyle: React.CSSProperties = {
-    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+    width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.08)',
@@ -423,7 +426,7 @@ export default function DashboardHeader({
           onClick={() => setMenuOpen(false)}
           aria-label="Close menu"
           style={{
-            width: 36, height: 36, borderRadius: '50%',
+            width: 44, height: 44, borderRadius: '50%',
             background: 'rgba(255,255,255,0.08)',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
