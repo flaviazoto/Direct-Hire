@@ -380,13 +380,14 @@ export default function DashboardHeader({
   // glass-appropriate "3px role-colored left border, no fill" active state,
   // now consistent across all three roles (admin used a different bg-fill
   // pattern previously; unified here since all roles share one glass shell).
-  function NavRow({ href, label, Icon, compact }: { href: string; label: string; Icon: React.ElementType; compact?: boolean }) {
+  function NavRow({ href, label, Icon, compact, tabIndex }: { href: string; label: string; Icon: React.ElementType; compact?: boolean; tabIndex?: number }) {
     const active = isActive(href)
     return (
       <Link
         key={href}
         href={href}
         aria-current={active ? 'page' : undefined}
+        tabIndex={tabIndex}
         style={{
           display: 'flex', alignItems: 'center', gap: compact ? 10 : 16,
           padding: compact ? '9px 12px' : '12px 12px',
@@ -425,6 +426,7 @@ export default function DashboardHeader({
         <button
           onClick={() => setMenuOpen(false)}
           aria-label="Close menu"
+          tabIndex={menuOpen ? undefined : -1}
           style={{
             width: 44, height: 44, borderRadius: '50%',
             background: 'rgba(255,255,255,0.08)',
@@ -437,27 +439,33 @@ export default function DashboardHeader({
         </button>
       </div>
 
-      {/* Nav links — grouped for admin, flat list for worker/employer */}
+      {/* Nav links — grouped for admin, flat list for worker/employer.
+          tabIndex={-1} on these two scroll containers too, not just the
+          links inside: Chrome makes any overflow-y:auto region with
+          overflowing content an implicit Tab stop (so keyboard users can
+          scroll it) even with no explicit tabIndex — aria-hidden requires
+          zero focusable descendants, full stop, so that implicit stop has
+          to be suppressed explicitly when closed. */}
       {role === 'admin' ? (
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4" tabIndex={menuOpen ? undefined : -1}>
           {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
             <div key={section} className="mb-4">
               <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-1`}>
                 {section}
               </p>
               {sectionLinks.map(({ href, label, Icon }) => (
-                <div key={href} className="mb-0.5"><NavRow href={href} label={label} Icon={Icon} /></div>
+                <div key={href} className="mb-0.5"><NavRow href={href} label={label} Icon={Icon} tabIndex={menuOpen ? undefined : -1} /></div>
               ))}
             </div>
           ))}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4" tabIndex={menuOpen ? undefined : -1}>
           <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-2`}>
             Menu
           </p>
           {links.map(({ href, label, Icon }) => (
-            <div key={href} className="mb-1"><NavRow href={href} label={label} Icon={Icon} /></div>
+            <div key={href} className="mb-1"><NavRow href={href} label={label} Icon={Icon} tabIndex={menuOpen ? undefined : -1} /></div>
           ))}
         </div>
       )}
@@ -471,6 +479,7 @@ export default function DashboardHeader({
       }}>
         <button
           onClick={() => { setMenuOpen(false); onLogout() }}
+          tabIndex={menuOpen ? undefined : -1}
           style={{
             width: '100%', height: 48, borderRadius: 16,
             border: '1px solid rgba(220,38,38,0.28)',
