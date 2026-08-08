@@ -370,92 +370,159 @@ export default function AdminExternalJobsPage() {
         {!loading && <span style={{ marginLeft: "auto", fontSize: 13, color: C.muted }}>{total} job{total !== 1 ? "s" : ""}</span>}
       </div>
 
-      {/* Table */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
-                {["Title", "Source", "Location", "Salary", "Status", "Posted", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j} style={{ padding: "16px 20px" }}>
-                        <div style={{ height: 12, width: j === 0 ? "70%" : "50%", background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
-                      </td>
+      {/* Loading / error / empty states — shared by both the desktop table and
+          mobile card list below, rendered once regardless of viewport (same
+          structure as the fee-schedules fix this mirrors). */}
+      {loading ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ height: 14, width: `${70 - i * 6}%`, background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
+          ))}
+        </div>
+      ) : error ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
+          <ErrorState message={error} retry={load} title="Could not load external jobs" />
+        </div>
+      ) : jobs.length === 0 ? (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "64px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>🔗</div>
+          <div style={{ color: C.muted, fontSize: 15 }}>No external jobs yet</div>
+          <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, marginTop: 6 }}>
+            Add a link from EURES, LinkedIn, Indeed, or a national job board.
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Desktop/tablet table (640px+). Below that width this table's
+              overflow-x:auto wrapper does NOT actually scroll — a <table>
+              with width:100% keeps its own CSS box pinned to the container
+              width even when its rendered content needs more (confirmed via
+              direct measurement: table.scrollWidth 623px vs the wrapper's
+              clientWidth 341px, identical to the bug just fixed on
+              /admin/fee-schedules), so no scrollbar ever appears and the
+              later columns are simply unreachable. The card list below
+              handles narrow viewports instead of patching the scroll
+              mechanism. */}
+          <div className="hidden sm:block" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.02)" }}>
+                    {["Title", "Source", "Location", "Salary", "Status", "Posted", "Actions"].map(h => (
+                      <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
                     ))}
                   </tr>
-                ))
-              ) : error ? (
-                <tr><td colSpan={7} style={{ padding: 24 }}>
-                  <ErrorState message={error} retry={load} title="Could not load external jobs" />
-                </td></tr>
-              ) : jobs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ padding: "64px 24px", textAlign: "center" }}>
-                    <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.2 }}>🔗</div>
-                    <div style={{ color: C.muted, fontSize: 15 }}>No external jobs yet</div>
-                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, marginTop: 6 }}>
-                      Add a link from EURES, LinkedIn, Indeed, or a national job board.
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                jobs.map(job => (
-                  <tr key={job.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <td style={{ padding: "14px 20px", fontSize: 13, fontWeight: 600, color: C.text, maxWidth: 260 }}>
-                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.title}</div>
-                    </td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{job.sourceName}</td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>
-                      {[job.city, job.country].filter(Boolean).join(", ")}
-                    </td>
-                    <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{fmtSalary(job)}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
-                        padding: "3px 9px", borderRadius: 99,
-                        color: job.status === "ACTIVE" ? C.green : C.muted,
-                        background: job.status === "ACTIVE" ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
-                      }}>
-                        {job.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 20px", fontSize: 12, color: C.muted }}>{fmtDate(job.createdAt)}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => openEdit(job)} style={{ background: "none", border: "none", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleArchiveToggle(job)}
-                          disabled={actionBusyId === job.id}
-                          style={{ background: "none", border: "none", color: C.yellow, fontSize: 12, fontWeight: 600, cursor: actionBusyId === job.id ? "not-allowed" : "pointer", padding: 0 }}
-                        >
-                          {job.status === "ACTIVE" ? "Archive" : "Reactivate"}
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(job)}
-                          disabled={actionBusyId === job.id}
-                          style={{ background: "none", border: "none", color: C.accent, fontSize: 12, fontWeight: 600, cursor: actionBusyId === job.id ? "not-allowed" : "pointer", padding: 0 }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {jobs.map(job => (
+                    <tr key={job.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: "14px 20px", fontSize: 13, fontWeight: 600, color: C.text, maxWidth: 260 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.title}</div>
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{job.sourceName}</td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>
+                        {[job.city, job.country].filter(Boolean).join(", ")}
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: C.secondary }}>{fmtSalary(job)}</td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
+                          padding: "3px 9px", borderRadius: 99,
+                          color: job.status === "ACTIVE" ? C.green : C.muted,
+                          background: job.status === "ACTIVE" ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
+                        }}>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: 12, color: C.muted }}>{fmtDate(job.createdAt)}</td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => openEdit(job)} style={{ background: "none", border: "none", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleArchiveToggle(job)}
+                            disabled={actionBusyId === job.id}
+                            style={{ background: "none", border: "none", color: C.yellow, fontSize: 12, fontWeight: 600, cursor: actionBusyId === job.id ? "not-allowed" : "pointer", padding: 0 }}
+                          >
+                            {job.status === "ACTIVE" ? "Archive" : "Reactivate"}
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(job)}
+                            disabled={actionBusyId === job.id}
+                            style={{ background: "none", border: "none", color: C.accent, fontSize: 12, fontWeight: 600, cursor: actionBusyId === job.id ? "not-allowed" : "pointer", padding: 0 }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile card list (below 640px), matching the visual pattern
+              established on /admin/fee-schedules' cards for consistency
+              between these two admin CRUD-table pages: title + status badge
+              up top, secondary fields (source/location/salary) below,
+              posted date muted, then real 44px+ action buttons. Title gets
+              a line-clamp instead of the table's single-line ellipsis since
+              cards have more natural width for wrapping. Three actions here
+              (vs. fee-schedules' two) sit in one row at flex:1 each — still
+              comfortably 44px+ tall at this width. */}
+          {/* display must come from the className, not an inline style — an
+              inline display value has higher specificity than any class
+              (including sm:hidden's media-query rule) and would always win,
+              which is exactly what caused this to show at desktop width too
+              until caught in verification (see this task's report). */}
+          <div className="sm:hidden flex flex-col gap-3">
+            {jobs.map(job => (
+              <div key={job.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{job.title}</div>
+                  <span style={{
+                    flexShrink: 0, display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700,
+                    padding: "3px 9px", borderRadius: 99,
+                    color: job.status === "ACTIVE" ? C.green : C.muted,
+                    background: job.status === "ACTIVE" ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
+                  }}>
+                    {job.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: C.secondary, marginBottom: 4 }}>
+                  {job.sourceName} · {[job.city, job.country].filter(Boolean).join(", ") || "—"}
+                </div>
+                <div style={{ fontSize: 13, color: C.secondary, marginBottom: 10 }}>{fmtSalary(job)}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>Posted {fmtDate(job.createdAt)}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => openEdit(job)}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, background: "rgba(37,99,235,0.12)", border: `1px solid ${C.blue}55`, color: C.blue, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleArchiveToggle(job)}
+                    disabled={actionBusyId === job.id}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, background: "rgba(234,88,12,0.12)", border: `1px solid ${C.yellow}55`, color: C.yellow, fontSize: 12, fontWeight: 700, cursor: actionBusyId === job.id ? "not-allowed" : "pointer" }}
+                  >
+                    {job.status === "ACTIVE" ? "Archive" : "Reactivate"}
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(job)}
+                    disabled={actionBusyId === job.id}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, background: "rgba(220,38,38,0.12)", border: `1px solid ${C.accent}55`, color: C.accent, fontSize: 12, fontWeight: 700, cursor: actionBusyId === job.id ? "not-allowed" : "pointer" }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {modalOpen && (
         <ExternalJobModal
