@@ -1,10 +1,85 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { Footer } from "@/components/Footer";
 
+const InteractiveGlobe = dynamic(
+  () => import("@/components/globe/InteractiveGlobe"),
+  { ssr: false, loading: () => <GlobePlaceholder /> },
+);
+
+// ── Globe fallback ────────────────────────────────────────────────────────────
+
+function GlobePlaceholder() {
+  // Must match InteractiveGlobe.tsx's real root exactly (className there:
+  // "relative w-full aspect-square max-w-[340px] sm:max-w-[480px]
+  // md:max-w-[600px] mx-auto touch-none") — this placeholder previously used
+  // a fixed maxWidth:540 with no responsive breakpoints, so swapping to the
+  // real component on mobile (340px cap there vs 540px here) shifted the
+  // whole hero-globe-col layout, including the absolutely-positioned glow
+  // div behind it. That's the exact CLS regression (0.00 -> 0.044) traced
+  // back to when the deferred-mount fix shipped — confirmed via the
+  // archived Lighthouse "layout-shifts" audit, which named this glow div by
+  // its bounding rect. Identical dimensions at every breakpoint = zero size
+  // change on swap = zero shift.
+  return (
+    <div className="relative w-full aspect-square max-w-[340px] sm:max-w-[480px] md:max-w-[600px] mx-auto" style={{ flexShrink: 0 }}>
+      <div style={{
+        width: "100%", height: "100%", borderRadius: "50%",
+        background: "radial-gradient(circle at 35% 35%, #1e54b7 0%, #0b1120 60%, #0B1121 100%)",
+        position: "relative", overflow: "hidden",
+        boxShadow: "0 0 80px rgba(30,84,183,0.2), 0 0 160px rgba(99,102,241,0.08)",
+      }}>
+        {[-120, -60, 0, 60, 120].map((offset, i) => (
+          <div key={i} style={{
+            position: "absolute", top: `${50 + offset * 0.22}%`,
+            left: "5%", width: "90%", height: 1,
+            background: "rgba(96,165,250,0.08)",
+          }} />
+        ))}
+        {GLOBE_DOTS.map((dot, i) => (
+          <div key={i} style={{ position: "absolute", top: dot.top, left: dot.left }}>
+            <div style={{
+              width: 6, height: 6, borderRadius: "50%", background: "#818cf8",
+              boxShadow: "0 0 6px rgba(129,140,248,0.8)",
+              animation: "dotPulse 2s ease-in-out infinite",
+              animationDelay: `${i * 0.25}s`,
+            }} />
+          </div>
+        ))}
+      </div>
+      {GLOBE_DOTS.filter(d => d.label).map((dot, i) => (
+        <div key={i} style={{
+          position: "absolute", top: `calc(${dot.top} - 26px)`, left: dot.left,
+          background: "rgba(1,9,19,0.9)", border: "1px solid rgba(99,102,241,0.25)",
+          borderRadius: 20, padding: "3px 9px", fontSize: 10, color: "#a5b4fc",
+          whiteSpace: "nowrap", fontFamily: "var(--font-body)", fontWeight: 600,
+          transform: "translateX(-50%)",
+        }}>
+          {dot.label}
+        </div>
+      ))}
+      <style>{`@keyframes dotPulse { 0%,100% { box-shadow: 0 0 6px rgba(129,140,248,0.8); } 50% { box-shadow: 0 0 12px rgba(129,140,248,0.4), 0 0 0 6px rgba(129,140,248,0.1); } }`}</style>
+    </div>
+  );
+}
+
 // ── Data ──────────────────────────────────────────────────────────────────────
+
+const GLOBE_DOTS = [
+  { top: "22%", left: "48%", label: null },
+  { top: "18%", left: "22%", label: null },
+  { top: "24%", left: "55%", label: null },
+  { top: "35%", left: "62%", label: null },
+  { top: "65%", left: "80%", label: null },
+  { top: "45%", left: "30%", label: null },
+  { top: "55%", left: "50%", label: null },
+  { top: "30%", left: "70%", label: null },
+  { top: "70%", left: "40%", label: null },
+  { top: "15%", left: "60%", label: null },
+];
 
 const AI_FEATURES = [
   { icon: "🧠", title: "AI Match Engine",     desc: "Skill similarity, experience depth, and salary alignment scored in real-time against live job postings." },
@@ -114,6 +189,51 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
+  // ── Defer the InteractiveGlobe mount (Fix 1 — see InteractiveGlobe.tsx's
+  // own header comment for the full TBT investigation this addresses) ──────────
+  // The globe sits in the hero, above the fold, so it's essentially always
+  // "in view" on load — IntersectionObserver alone wouldn't defer anything
+  // here. The actual lever is requestIdleCallback: the static GlobePlaceholder
+  // (below) renders immediately so the hero never looks empty, but the real
+  // dynamic-imported component — and the WebGL/texture/geometry work it does
+  // on mount — doesn't start until the browser reports it's idle (i.e. after
+  // hydration and initial interactivity are already handled), so it no longer
+  // competes with the window Lighthouse measures for Total Blocking Time.
+  // IntersectionObserver is still layered on top for correctness (skips the
+  // work entirely if the hero somehow isn't in view yet) rather than because
+  // it's expected to defer much on this specific page.
+  const globeMountRef = useRef<HTMLDivElement>(null);
+  const [loadGlobe, setLoadGlobe] = useState(false);
+
+  useEffect(() => {
+    const el = globeMountRef.current;
+    if (!el) return;
+
+    let idleHandle: number | null = null;
+    const scheduleLoad = () => {
+      const ric = (window as typeof window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (ric) {
+        idleHandle = ric(() => setLoadGlobe(true), { timeout: 2000 });
+      } else {
+        idleHandle = window.setTimeout(() => setLoadGlobe(true), 300);
+      }
+    };
+
+    const obs = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { scheduleLoad(); obs.unobserve(e.target); } }),
+      { threshold: 0.01 },
+    );
+    obs.observe(el);
+
+    return () => {
+      obs.disconnect();
+      if (idleHandle !== null) {
+        const cic = (window as typeof window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+        if (cic) cic(idleHandle); else window.clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+
   return (
     <div ref={pageRef} style={{ background: "#0B1121", minHeight: "100vh", overflowX: "hidden" }}>
 
@@ -217,47 +337,20 @@ export default function LandingPage() {
               background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)",
               pointerEvents: "none", zIndex: 0,
             }} />
-            {/* Globe — static image, replacing the interactive WebGL 3D globe.
-                Across this session's optimization work (deferred mount,
-                texture/geometry/shader/material simplification, task-splitting
-                the WebGL init), the globe's initialization remained a
-                variable, sometimes-severe Total Blocking Time cost (up to
-                ~4s in one real measurement) that couldn't be reliably tamed
-                without either a mobile regression or diminishing returns.
-                This removes that cost at the source: a single exported frame
-                from the actual former Three.js scene (same textures,
-                lighting, glow, and dot markers — not a redrawn illustration),
-                so the visual is unchanged but the ongoing JS/WebGL cost is
-                zero. Same responsive breakpoints as the component/placeholder
-                this replaces (340/480/600px) so there's no layout shift.
-                fetchPriority="high" since this is the LCP-relevant hero
-                image, immediately visible with no defer/mount step needed. */}
-            <div className="relative w-full aspect-square max-w-[340px] sm:max-w-[480px] md:max-w-[600px] mx-auto" style={{ position: "relative", zIndex: 1 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/globe/globe-hero.webp"
-                alt="Interactive world map illustrating DirectHire's hiring network across Albania, Croatia, Germany, Italy, and other active countries"
-                width={960}
-                height={960}
-                style={{ width: "100%", height: "100%", display: "block", borderRadius: "50%" }}
-                fetchPriority="high"
-              />
-
-              {/* Live badge */}
-              <div style={{
-                position: "absolute", top: 14, right: 14,
-                background: "rgba(5,8,15,0.82)",
-                border: "1px solid rgba(59,130,246,0.15)",
-                backdropFilter: "blur(12px)",
-                borderRadius: 8, padding: "5px 12px",
-                display: "flex", alignItems: "center", gap: 6,
-                pointerEvents: "none",
-              }}>
-                <div className="dh-pulse-dot" style={{ width: 7, height: 7 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", letterSpacing: "0.04em" }}>
-                  700K+ live jobs
-                </span>
-              </div>
+            {/* Globe — see the deferred-mount effect above: placeholder shows
+                immediately, the real dynamic-imported component (and its
+                WebGL/texture work) only mounts once the browser is idle.
+                Restored from commit da162cd (the fully-optimized state:
+                deferred mount, self-hosted/compressed textures, sprite-based
+                glow, Lambert material, 48x48 geometry) after a brief period
+                as a static image — the product owner's explicit call to
+                bring the real interactive globe back, accepting its known
+                variable/occasionally-severe mobile TBT cost as a deliberate
+                trade-off rather than an oversight. InteractiveGlobe.tsx
+                renders its own "Live badge" and "Drag to explore" overlays,
+                so neither is duplicated here. */}
+            <div ref={globeMountRef} style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {loadGlobe ? <InteractiveGlobe /> : <GlobePlaceholder />}
             </div>
 
           </div>
