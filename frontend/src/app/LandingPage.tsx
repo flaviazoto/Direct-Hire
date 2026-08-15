@@ -249,10 +249,18 @@ export default function LandingPage() {
           background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
           filter: "blur(80px)",
         }} />
-        <div className="hero-grid relative z-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
+        <div className="hero-grid relative z-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-[1.15fr_1fr] gap-8 md:gap-12 lg:gap-16 items-center">
 
-          {/* LEFT: text — below globe on mobile, left column on desktop */}
-          <div className="order-2 md:order-1 max-w-2xl md:max-w-xl">
+          {/* LEFT: text — the actual conversion content (headline, CTAs),
+              so it comes first in DOM/reading order at every breakpoint now,
+              not just desktop. Previously the globe led on mobile (order-1),
+              pushing the value proposition below a large decorative visual
+              on the screens where scroll real estate matters most. Column
+              ratio also shifted from an even 50/50 split to ~55/45 favoring
+              text at md+ — the globe is supporting/atmospheric, not the
+              primary conversion driver, and a dead-even split let it compete
+              with the headline for attention rather than clearly support it. */}
+          <div className="order-1 max-w-2xl md:max-w-xl">
             {/* H1 */}
             <h1 className="dh-reveal hero-h1 font-display font-black leading-tight tracking-tighter text-white mb-4 sm:mb-6 md:mb-8">
               Find World-Class Talent<br />
@@ -271,8 +279,12 @@ export default function LandingPage() {
               DirectHire&apos;s AI matches verified workers with employers across a growing network of countries — including Albania, Croatia, Germany, and Italy — intelligently, securely, and built to scale.
             </p>
 
-            {/* CTA buttons */}
-            <div className="dh-reveal hero-cta-row" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const, marginBottom: 52 }}>
+            {/* CTA buttons — marginBottom was a fixed 52px regardless of
+                breakpoint (out of step with every other spacing value in
+                this column, which all scale down via responsive Tailwind
+                classes); now mb-8 md:mb-10, in the same rhythm as the
+                headline/subhead above it. */}
+            <div className="dh-reveal hero-cta-row mb-8 md:mb-10" style={{ display: "flex", gap: 16, flexWrap: "wrap" as const }}>
               <Link href="/register?role=employer" style={{
                 display: "inline-flex", alignItems: "center",
                 padding: "14px 28px",
@@ -306,23 +318,28 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Trust badge pills */}
-            <div className="dh-reveal" style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 32 }}>
-              {TRUST_ITEMS.map(item => (
-                <span key={item} style={{
-                  fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
-                  color: "rgba(255,255,255,0.45)", letterSpacing: "0.04em",
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 999, padding: "4px 12px",
-                  whiteSpace: "nowrap" as const,
-                }}>
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            {/* Stats row */}
-            <div className="dh-reveal" style={{ paddingTop: "2rem", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            {/* Trust zone — badges + status line, previously two visually
+                disconnected blocks (pills with a 32px bottom margin, then a
+                separately top-bordered stats line right after, reading as
+                two unrelated afterthoughts rather than one proof point).
+                Now a single bordered block: badges and status line sit
+                together with a tight 12px gap between them, sharing one
+                top border and one paddingTop, so they read as one
+                connected "why trust us" beat instead of two. */}
+            <div className="dh-reveal" style={{ paddingTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 12 }}>
+                {TRUST_ITEMS.map(item => (
+                  <span key={item} style={{
+                    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
+                    color: "rgba(255,255,255,0.45)", letterSpacing: "0.04em",
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 999, padding: "4px 12px",
+                    whiteSpace: "nowrap" as const,
+                  }}>
+                    {item}
+                  </span>
+                ))}
+              </div>
               <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
                 Now active across Albania, Croatia, Germany, and Italy — expanding as we grow.
               </span>
@@ -330,7 +347,7 @@ export default function LandingPage() {
           </div>
 
           {/* RIGHT: Globe + floating cards — above text on mobile, right column on desktop */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }} className="hero-globe-col order-1 md:order-2">
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }} className="hero-globe-col order-2">
             {/* Glow behind globe */}
             <div aria-hidden style={{
               position: "absolute", width: 600, height: 600, borderRadius: "50%",
