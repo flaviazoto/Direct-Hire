@@ -65,6 +65,11 @@ const JOB_DETAIL_SELECT = {
   // createdAt is when the employer drafted it, approvedAt is when it actually
   // went public. Added for the public job detail page's JSON-LD (SEO phase 1).
   approvedAt:   true,
+  // AI Content Agent output, consumed as the primary source (falling back to
+  // constructed title/description when null) by generateMetadata on the
+  // public job detail page.
+  seoMetaTitle:       true,
+  seoMetaDescription: true,
 } as const;
 
 // ── Sort helper ────────────────────────────────────────────────────────────────

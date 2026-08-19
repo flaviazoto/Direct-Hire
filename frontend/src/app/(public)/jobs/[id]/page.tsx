@@ -146,10 +146,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 
   const location = [job.city, job.country].filter(Boolean).join(", ");
-  const title = `${job.title} at ${job.companyName} — DirectHire`;
-  const description = job.description.length > 200
+  const title = job.seoMetaTitle ?? `${job.title} at ${job.companyName} — DirectHire`;
+  const description = job.seoMetaDescription ?? (job.description.length > 200
     ? `${job.description.slice(0, 197)}...`
-    : job.description;
+    : job.description);
 
   return {
     title,

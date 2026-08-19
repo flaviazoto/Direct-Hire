@@ -35,6 +35,8 @@ export interface PublicJobDetail {
   description: string;
   requirements: string;
   benefits: string | null;
+  seoMetaTitle: string | null;
+  seoMetaDescription: string | null;
 }
 
 export interface PublicJobListItem {
