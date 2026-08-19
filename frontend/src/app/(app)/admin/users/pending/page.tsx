@@ -44,22 +44,67 @@ interface EmployerProfile {
   businessDescription?: string; nipt?: string;
 }
 
+interface UploadRecord {
+  id:           string;
+  fileType:     string;
+  fileName:     string;
+  fileUrl:      string;
+  signedUrl?:   string;
+  mimeType:     string;
+  sizeBytes:    number;
+  status:       string;
+  reviewStatus: "PENDING" | "APPROVED" | "REJECTED";
+  reviewNotes?: string | null;
+  reviewedAt?:  string | null;
+  uploadedAt:   string;
+}
+
+// UserDetail mirrors the real GET /admin/users/:id response shape — see
+// /admin/approvals' SlideOverPanel (the confirmed-working reference for this
+// same endpoint) for the same structure: user fields are nested under
+// `user`, not flat on the top-level object.
 interface UserDetail {
-  id:                      string;
-  email:                   string;
-  role:                    string;
-  accountStatus:           string;
-  verificationSubmittedAt: string | null;
-  approvedAt:              string | null;
-  rejectedAt:              string | null;
-  rejectionReason:         string | null;
-  suspendedAt:             string | null;
-  createdAt:               string;
-  profile:                 WorkerProfile | EmployerProfile | null;
-  recentAuditLogs:         AuditEntry[];
+  user: {
+    id:                      string;
+    email:                   string;
+    role:                    string;
+    accountStatus:           string;
+    verificationSubmittedAt: string | null;
+    approvedAt:              string | null;
+    rejectedAt:              string | null;
+    rejectionReason:         string | null;
+    suspendedAt:             string | null;
+    createdAt:               string;
+  };
+  profile:         WorkerProfile | EmployerProfile | null;
+  uploads:         UploadRecord[];
+  onboarding:      { onboardingStatus: string; completedSteps: number[]; totalSteps: number } | null;
+  verification:    { reviewStatus: string; adminNotes?: string; changesRequested?: string } | null;
+  recentAuditLogs: AuditEntry[];
 }
 
 type RoleTab = "ALL" | "WORKER" | "EMPLOYER";
+
+// ── Status badge config (onboarding status, matches /admin/approvals) ──────────
+
+const STATUS_BADGE: Record<string, { color: string; bg: string }> = {
+  SUBMITTED:      { color: C.blue,    bg: "rgba(0,144,255,0.12)"   },
+  APPROVED:       { color: C.green,   bg: "rgba(34,197,94,0.12)"   },
+  REJECTED:       { color: C.accent,  bg: "rgba(220,38,38,0.12)"   },
+  NEEDS_CHANGES:  { color: C.yellow,  bg: "rgba(245,158,11,0.12)"  },
+  PENDING_REVIEW: { color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+};
+
+// ── File type labels ─────────────────────────────────────────────────────────
+
+const FILE_LABELS: Record<string, string> = {
+  PROFILE_PHOTO:       "Profile Photo",
+  WORK_VIDEO:          "Work Video",
+  INTRO_VIDEO:         "Introduction Video",
+  MEDICAL_CERTIFICATE: "Medical Certificate",
+  BUSINESS_DOCUMENT:   "Business Document",
+  COMPANY_LOGO:        "Company Logo",
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +130,27 @@ function DetailField({ label, value }: { label: string; value?: string | number 
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: `1px solid ${C.border}`, gap: 16 }}>
       <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: 12, fontWeight: 600, color: C.secondary, textAlign: "right", wordBreak: "break-word", maxWidth: "60%" }}>{String(value)}</span>
+    </div>
+  );
+}
+
+// ── MediaViewer ────────────────────────────────────────────────────────────────
+
+function MediaViewer({ upload }: { upload: UploadRecord }) {
+  const url     = upload.signedUrl ?? upload.fileUrl;
+  if (!url) return null;
+  const isVideo = upload.mimeType.startsWith("video/");
+  const isImage = upload.mimeType.startsWith("image/");
+  const isPdf   = upload.mimeType === "application/pdf";
+  return (
+    <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, background: "#0a0a0a" }}>
+      <div style={{ padding: "8px 14px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.secondary }}>{FILE_LABELS[upload.fileType] ?? upload.fileType}</span>
+        <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, textDecoration: "none", fontWeight: 500 }}>Open ↗</a>
+      </div>
+      {isVideo && <video src={url} controls style={{ width: "100%", maxHeight: 280, background: "#000", display: "block" }} preload="metadata" />}
+      {isImage && <img src={url} alt={upload.fileName} style={{ width: "100%", maxHeight: 280, objectFit: "contain", background: "#0a0a0a", display: "block" }} loading="lazy" />}
+      {isPdf   && <embed src={url} type="application/pdf" style={{ width: "100%", height: 320, display: "block" }} />}
     </div>
   );
 }
@@ -115,6 +181,7 @@ function SlideOverPanel({
 }) {
   const [detail, setDetail]   = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewingDocId, setReviewingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -125,14 +192,67 @@ function SlideOverPanel({
     });
   }, [userId]);
 
-  const wp = detail?.role === "WORKER"   ? detail.profile as WorkerProfile   : null;
-  const ep = detail?.role === "EMPLOYER" ? detail.profile as EmployerProfile : null;
+  const handleDocumentReview = async (uploadId: string, decision: "PENDING" | "APPROVED" | "REJECTED") => {
+    setReviewingDocId(uploadId);
+    const res = await adminApi.reviewDocument(uploadId, { decision });
+    setReviewingDocId(null);
+    if (!res.success) return;
+    const updated = res.data as { id: string; reviewStatus: "PENDING" | "APPROVED" | "REJECTED"; reviewNotes?: string | null; reviewedAt?: string | null };
+    setDetail((prev) => {
+      if (!prev) return prev;
+      return { ...prev, uploads: prev.uploads.map(u => u.id === updated.id ? { ...u, reviewStatus: updated.reviewStatus, reviewNotes: updated.reviewNotes ?? null, reviewedAt: updated.reviewedAt ?? null } : u) };
+    });
+  };
+
+  const wp = detail?.user.role === "WORKER"   ? detail.profile as WorkerProfile   : null;
+  const ep = detail?.user.role === "EMPLOYER" ? detail.profile as EmployerProfile : null;
 
   const fullName = wp
-    ? [wp.firstName, wp.lastName].filter(Boolean).join(" ") || detail?.email
-    : ep?.companyName ?? detail?.email;
+    ? [wp.firstName, wp.lastName].filter(Boolean).join(" ") || detail?.user.email
+    : ep?.companyName ?? detail?.user.email;
 
-  const days      = daysAgo(detail?.verificationSubmittedAt ?? null);
+  const profilePhoto = detail?.uploads.find(u => u.fileType === "PROFILE_PHOTO");
+  const workVideo    = detail?.uploads.find(u => u.fileType === "WORK_VIDEO");
+  const introVideo   = detail?.uploads.find(u => u.fileType === "INTRO_VIDEO");
+  const medical      = detail?.uploads.find(u => u.fileType === "MEDICAL_CERTIFICATE");
+  const bizDoc       = detail?.uploads.find(u => u.fileType === "BUSINESS_DOCUMENT");
+
+  const completionPct = detail?.onboarding
+    ? Math.round(((detail.onboarding.completedSteps?.length ?? 0) / detail.onboarding.totalSteps) * 100)
+    : 0;
+  const onboardStatus = detail?.onboarding?.onboardingStatus ?? "";
+  const onBadge = STATUS_BADGE[onboardStatus] ?? { color: C.muted, bg: "rgba(113,113,122,0.12)" };
+
+  const renderDocReviewControls = (upload: UploadRecord) => {
+    const isApproved = upload.reviewStatus === "APPROVED";
+    const isRejected = upload.reviewStatus === "REJECTED";
+    const isPending  = upload.reviewStatus === "PENDING";
+    const sBadgeColor = isApproved ? C.green : isRejected ? C.accent : C.yellow;
+    const sBadgeBg    = isApproved ? "rgba(34,197,94,0.12)" : isRejected ? "rgba(220,38,38,0.12)" : "rgba(245,158,11,0.12)";
+    const busy = reviewingDocId === upload.id;
+    const db = (label: string, disabled: boolean, onClick: () => void, col: string, bg: string) => (
+      <button disabled={busy || disabled} onClick={onClick} style={{ padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: (busy || disabled) ? "not-allowed" : "pointer", background: (busy || disabled) ? "rgba(255,255,255,0.04)" : bg, border: `1px solid ${(busy || disabled) ? C.border : `${col}50`}`, color: (busy || disabled) ? C.muted : col, fontFamily: "inherit" }}>
+        {busy ? "…" : label}
+      </button>
+    );
+    return (
+      <div style={{ marginTop: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: sBadgeColor, background: sBadgeBg }}>
+            {upload.reviewStatus}
+          </span>
+          <div style={{ display: "flex", gap: 6 }}>
+            {db("Approve", isApproved, () => handleDocumentReview(upload.id, "APPROVED"), C.teal,   "rgba(20,184,166,0.15)")}
+            {db("Reject",  isRejected, () => handleDocumentReview(upload.id, "REJECTED"), C.accent, "rgba(220,38,38,0.15)")}
+            {db("Pending", isPending,  () => handleDocumentReview(upload.id, "PENDING"),  C.muted,  "rgba(113,113,122,0.12)")}
+          </div>
+        </div>
+        {upload.reviewNotes && <p style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>{upload.reviewNotes}</p>}
+      </div>
+    );
+  };
+
+  const days      = daysAgo(detail?.user.verificationSubmittedAt ?? null);
   const daysColor = days > 7 ? C.accent : days > 3 ? C.yellow : C.secondary;
 
   const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 };
@@ -148,7 +268,7 @@ function SlideOverPanel({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontWeight: 700, color: C.text, fontSize: 15 }}>Review Profile</h2>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: C.muted }}>{detail?.email ?? "Loading…"}</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: C.muted }}>{detail?.user.email ?? "Loading…"}</p>
           </div>
           <button
             onClick={onClose}
@@ -168,14 +288,18 @@ function SlideOverPanel({
             <>
               {/* Identity */}
               <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: C.secondary, flexShrink: 0 }}>
-                  {(fullName ?? "?")[0]?.toUpperCase()}
-                </div>
+                {profilePhoto ? (
+                  <img src={profilePhoto.signedUrl ?? profilePhoto.fileUrl} alt={fullName} style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.border}`, flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: C.secondary, flexShrink: 0 }}>
+                    {(fullName ?? "?")[0]?.toUpperCase()}
+                  </div>
+                )}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: C.text, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{detail.email}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{detail.user.email}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: detail.role === "WORKER" ? C.blue : C.teal, background: detail.role === "WORKER" ? "rgba(0,144,255,0.12)" : "rgba(20,184,166,0.12)" }}>{detail.role}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: detail.user.role === "WORKER" ? C.blue : C.teal, background: detail.user.role === "WORKER" ? "rgba(0,144,255,0.12)" : "rgba(20,184,166,0.12)" }}>{detail.user.role}</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: C.yellow, background: "rgba(245,158,11,0.12)" }}>
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.yellow }} />
                       Pending Review
@@ -183,15 +307,22 @@ function SlideOverPanel({
                     {days > 0 && (
                       <span style={{ fontSize: 12, fontWeight: 700, color: daysColor }}>{days}d waiting</span>
                     )}
+                    {onboardStatus && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: onBadge.color, background: onBadge.bg }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: onBadge.color }} />
+                        {onboardStatus.replace(/_/g, " ")}
+                      </span>
+                    )}
+                    <span style={{ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: C.muted, background: "rgba(255,255,255,0.07)" }}>{completionPct}% complete</span>
                   </div>
                 </div>
               </div>
 
               {/* Submission timing */}
               <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px" }}>
-                <DetailField label="Submitted"       value={fmtDate(detail.verificationSubmittedAt)} />
-                <DetailField label="Registered"      value={fmtDate(detail.createdAt)} />
-                {detail.rejectionReason && <DetailField label="Prev. Rejection" value={detail.rejectionReason} />}
+                <DetailField label="Submitted"       value={fmtDate(detail.user.verificationSubmittedAt)} />
+                <DetailField label="Registered"      value={fmtDate(detail.user.createdAt)} />
+                {detail.user.rejectionReason && <DetailField label="Prev. Rejection" value={detail.user.rejectionReason} />}
               </div>
 
               {/* Worker profile */}
@@ -275,6 +406,26 @@ function SlideOverPanel({
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Media */}
+              {workVideo && <div><span style={sectionLabel}>Work Video</span><MediaViewer upload={workVideo} />{renderDocReviewControls(workVideo)}</div>}
+              {introVideo && <div><span style={sectionLabel}>Introduction Video</span><MediaViewer upload={introVideo} />{renderDocReviewControls(introVideo)}</div>}
+              {medical   && <div><span style={sectionLabel}>Medical Certificate</span><MediaViewer upload={medical} />{renderDocReviewControls(medical)}</div>}
+              {bizDoc    && <div><span style={sectionLabel}>Business Document</span><MediaViewer upload={bizDoc} />{renderDocReviewControls(bizDoc)}</div>}
+
+              {/* Verification notes */}
+              {detail.verification?.adminNotes && (
+                <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.yellow, marginBottom: 6 }}>Previous Admin Notes</div>
+                  <p style={{ fontSize: 12, color: "rgba(245,158,11,0.85)", lineHeight: 1.6, margin: 0 }}>{detail.verification.adminNotes}</p>
+                </div>
+              )}
+              {detail.verification?.changesRequested && (
+                <div style={{ background: "rgba(0,144,255,0.08)", border: "1px solid rgba(0,144,255,0.25)", borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 6 }}>Changes Requested</div>
+                  <p style={{ fontSize: 12, color: "rgba(0,144,255,0.85)", lineHeight: 1.6, margin: 0 }}>{detail.verification.changesRequested}</p>
                 </div>
               )}
 
