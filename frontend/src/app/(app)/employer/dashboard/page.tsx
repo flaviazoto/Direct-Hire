@@ -1,127 +1,151 @@
 "use client";
 // src/app/(app)/employer/dashboard/page.tsx
+// Redesigned around the real hiring-workflow pipeline (AdminWorkflowStatus)
+// rather than the old generic application-status stats: priority banner +
+// 3 KPI cards + candidates-ready/jobs panels + demoted quick links. Built
+// against employer-theme.ts's shared violet glass tokens (Phase 3 system),
+// not the older teal-labelled `--employer-*` CSS variables this file used
+// to reference — those actually resolve to teal in design-system.css
+// (`--employer-3: #5eead4`), a legacy naming mismatch from before the
+// worker/employer/admin = teal/violet/gold convention was established.
 
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { userApi, employerApi } from "@/lib/api-client";
-import { LoadingPage, ToastDisplay, type ToastData } from "@/components/ui";
+import { LoadingPage, EmptyState, ToastDisplay, type ToastData } from "@/components/ui";
+import { C, card } from "@/lib/employer-theme";
 
 /* ─── Types ──────────────────────────────────────────────────────────────────── */
 
 interface EmpProfileData {
-  user:         { email: string; status: string };
-  profile:      {
-    companyName?: string; industry?: string; companySize?: string;
-    subscriptionPlan?: string; subscriptionStatus?: string;
-    trialEndsAt?: string; isVerified?: boolean; website?: string;
-    country?: string; city?: string; businessDescription?: string;
-    hiringCountries?: { country: string }[];
-    requiredSkills?: { skill: string }[];
-  } | null;
-  onboarding:   { onboardingStatus: string; isSubmitted: boolean; completedSteps: number[]; totalSteps: number } | null;
-  verification: { reviewStatus: string; changesRequested?: string } | null;
-  notifications: { id: string; title: string; body: string; isRead: boolean; createdAt: string }[];
+  user:    { email: string; status: string };
+  profile: { companyName?: string } | null;
+  onboarding: { onboardingStatus: string; isSubmitted: boolean; completedSteps: number[]; totalSteps: number } | null;
 }
 
 interface Job {
-  id:             string;
-  title:          string;
-  country?:       string;
-  city?:          string;
-  status?:        string;
-  applicantCount?: number;
-  salaryMin?:     number;
-  salaryMax?:     number;
-  currency?:      string;
-  createdAt?:     string;
-  skills?:        { skill: string }[];
+  id:                  string;
+  title:               string;
+  country?:            string;
+  city?:               string;
+  status?:             string;
+  applicationCount?:   number;
+  applicationDeadline?: string | null;
 }
 
-interface Application {
+interface CandidateApp {
   id:             string;
   status:         string;
-  aiMatchScore?:  number;
-  matchScore?:    number;
-  appliedAt?:     string;
-  jobPost?:       { title?: string; country?: string } | null;
-  workerProfile?: {
-    firstName?: string; lastName?: string;
-    countryOfResidence?: string; skills?: { skill: string }[];
-  } | null;
+  workflowStatus: string | null;
+  worker: { workerProfile: { firstName: string | null; lastName: string | null } | null };
+  job:    { id: string; title: string; companyName: string };
 }
 
-const STATUS_INFO: Record<string, { label: string; badge: string; desc: string; cta?: string }> = {
-  APPROVED:      { label: "Verified & Active", badge: "green", desc: "Your company is active and can post jobs." },
-  SUBMITTED:     { label: "Under Review",      badge: "blue",  desc: "We are verifying your company details. 24–48 hours." },
-  PENDING_REVIEW:{ label: "Under Review",      badge: "blue",  desc: "We are reviewing your company." },
-  NEEDS_CHANGES: { label: "Changes Required",  badge: "amber", desc: "Check your email for details.", cta: "Update Company" },
-  REJECTED:      { label: "Not Approved",      badge: "red",   desc: "Contact support for details." },
-  DRAFT:         { label: "Incomplete",        badge: "slate", desc: "Complete your company profile to get verified.", cta: "Complete Setup" },
-  IN_PROGRESS:   { label: "In Progress",       badge: "cyan",  desc: "Continue your profile.", cta: "Continue Setup" },
+const STATUS_INFO: Record<string, { label: string; desc: string; cta?: string }> = {
+  APPROVED:       { label: "Verified & active", desc: "Here's what needs your attention today." },
+  SUBMITTED:      { label: "Under review",      desc: "We're verifying your company details. 24–48 hours." },
+  PENDING_REVIEW: { label: "Under review",      desc: "We're reviewing your company." },
+  NEEDS_CHANGES:  { label: "Changes required",  desc: "Check your email for details.", cta: "Update company" },
+  REJECTED:       { label: "Not approved",      desc: "Contact support for details." },
+  DRAFT:          { label: "Incomplete",        desc: "Complete your company profile to get verified.", cta: "Complete setup" },
+  IN_PROGRESS:    { label: "In progress",       desc: "Continue your profile.", cta: "Continue setup" },
 };
+
+function candidateName(app: CandidateApp) {
+  return [app.worker.workerProfile?.firstName, app.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "Candidate";
+}
 
 /* ─── KPI card ───────────────────────────────────────────────────────────────── */
 
-function KpiCard({ label, value, icon, sub }: { label: string; value: string | number; icon: string; sub?: string }) {
+function KpiCard({ label, value, sub, flag }: { label: string; value: number; sub: string; flag?: boolean }) {
   return (
-    <div className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] hover:border-teal-500/35 transition-colors">
-      <div className="flex items-center justify-between">
-        <span className="text-xs sm:text-xs font-semibold text-muted uppercase tracking-wider">{label}</span>
-        <span className="text-lg sm:text-xl">{icon}</span>
+    <div style={card({ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 8, minHeight: 104 })}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+        {flag && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+            color: C.warning, background: "rgba(234,88,12,0.12)", border: "1px solid rgba(234,88,12,0.3)",
+            whiteSpace: "nowrap",
+          }}>
+            Action needed
+          </span>
+        )}
       </div>
-      <span className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-white leading-none">{value}</span>
-      {sub && <span className="text-xs sm:text-sm text-employer-3 font-body">{sub}</span>}
+      <span style={{ fontFamily: "var(--font-display, inherit)", fontWeight: 800, fontSize: 32, color: C.text, lineHeight: 1 }}>{value}</span>
+      <span style={{ fontSize: 12, color: C.muted }}>{sub}</span>
     </div>
   );
 }
 
-/* ─── Job Card ───────────────────────────────────────────────────────────────── */
+/* ─── Candidate row (left panel) ──────────────────────────────────────────────── */
 
-function JobCard({ job }: { job: Job }) {
-  const salary = job.salaryMin
-    ? `${job.currency ?? "$"}${(job.salaryMin / 1000).toFixed(0)}K${job.salaryMax ? `–${(job.salaryMax / 1000).toFixed(0)}K` : "+"}`
-    : null;
-  const skills = job.skills?.slice(0, 3) ?? [];
-
+function CandidateRow({ app }: { app: CandidateApp }) {
   return (
-    <Link href="/employer/jobs" style={{ textDecoration: "none" }}>
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+      padding: "14px 18px", borderBottom: `1px solid ${C.border}`, flexWrap: "wrap",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{candidateName(app)}</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{app.job.title}</div>
+      </div>
+      <Link href="/employer/interviews" style={{
+        flexShrink: 0, padding: "0 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+        color: C.accent, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)",
+        textDecoration: "none", minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
+      }}>
+        Review
+      </Link>
+    </div>
+  );
+}
+
+/* ─── Job row (right panel) ───────────────────────────────────────────────────── */
+
+function JobRow({ job }: { job: Job }) {
+  return (
+    <Link href="/employer/jobs" style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+      padding: "13px 18px", borderBottom: `1px solid ${C.border}`, textDecoration: "none",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.title}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{[job.city, job.country].filter(Boolean).join(", ") || "Remote"}</div>
+      </div>
+      <span style={{
+        flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
+        color: C.accent, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", whiteSpace: "nowrap",
+      }}>
+        {job.applicationCount ?? 0} applicant{job.applicationCount === 1 ? "" : "s"}
+      </span>
+    </Link>
+  );
+}
+
+/* ─── Quick link card ──────────────────────────────────────────────────────────── */
+
+function QuickLink({ href, icon, label, sub, accentBg, subColor }: {
+  href: string; icon: string; label: string; sub: string; accentBg?: string; subColor?: string;
+}) {
+  return (
+    <Link href={href} style={{
+      ...card({ padding: 14 }),
+      display: "flex", alignItems: "center", gap: 12,
+      textDecoration: "none", minHeight: 60, transition: "border-color 0.15s, background 0.15s",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderHover; e.currentTarget.style.background = C.cardHover; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}
+    >
       <div style={{
-        background: "var(--navy-2)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", padding: "20px",
-        display: "flex", flexDirection: "column", gap: 12,
-        height: "100%", transition: "border-color 0.2s, transform 0.2s",
-      }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(13,148,136,0.4)";
-          (e.currentTarget as HTMLDivElement).style.transform   = "translateY(-2px)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
-          (e.currentTarget as HTMLDivElement).style.transform   = "translateY(0)";
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 14, color: "var(--white)" }}>{job.title}</div>
-          {job.applicantCount != null && (
-            <span style={{
-              padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, flexShrink: 0,
-              background: "rgba(13,148,136,0.12)", color: "var(--employer-3)",
-              border: "1px solid rgba(13,148,136,0.2)",
-            }}>{job.applicantCount} applicants</span>
-          )}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-body)" }}>
-          {[job.city, job.country].filter(Boolean).join(", ") || "Remote"}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {salary && (
-            <span style={{ padding: "3px 9px", borderRadius: 999, fontSize: 11, background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.2)" }}>{salary}</span>
-          )}
-          {skills.map(s => (
-            <span key={s.skill} style={{ padding: "3px 9px", borderRadius: 999, fontSize: 11, background: "rgba(13,148,136,0.1)", color: "var(--employer-3)", border: "1px solid rgba(13,148,136,0.2)" }}>{s.skill}</span>
-          ))}
-        </div>
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        background: accentBg ?? "rgba(167,139,250,0.12)",
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+      }}>{icon}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+        <div style={{ fontSize: 11, color: subColor ?? C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
       </div>
     </Link>
   );
@@ -133,14 +157,16 @@ function EmployerDashboardContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  const [profileData, setProfileData]     = useState<EmpProfileData | null>(null);
-  const [jobs, setJobs]                   = useState<Job[]>([]);
-  const [topApps, setTopApps]             = useState<Application[]>([]);
+  const [profileData, setProfileData] = useState<EmpProfileData | null>(null);
+  const [jobs, setJobs]               = useState<Job[]>([]);
+  const [jobsTotal, setJobsTotal]     = useState(0);
+  const [candidates, setCandidates]   = useState<CandidateApp[]>([]);
+  const [readyCount, setReadyCount]       = useState(0);
+  const [inProcessCount, setInProcessCount] = useState(0);
   const [activeLockCount, setActiveLockCount] = useState<number | null>(null);
-  const [loading, setLoading]             = useState(true);
-  const [toast, setToast]                 = useState<ToastData>(null);
-  const [stats, setStats]                 = useState({ totalApplicants: 0, shortlisted: 0, interviewed: 0 });
-  const [subStatus, setSubStatus]         = useState<{ status: string; currentPeriodEnd: string | null; trialEndsAt: string | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast]     = useState<ToastData>(null);
+  const [subStatus, setSubStatus] = useState<{ status: string; currentPeriodEnd: string | null; trialEndsAt: string | null } | null>(null);
 
   const showToast = useCallback((msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -148,34 +174,32 @@ function EmployerDashboardContent() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("submitted") === "1") showToast("Company profile submitted for review!");
+    if (searchParams.get("submitted") === "1") showToast("Company profile submitted for review");
   }, [searchParams, showToast]);
 
   useEffect(() => {
     Promise.all([
       userApi.getProfile(),
-      employerApi.getJobs({ limit: "6" }),
-      employerApi.getApplications({ limit: "5" }),
+      employerApi.getJobs({ status: "APPROVED", limit: "50" }),
+      employerApi.getMyInterviews(),
       employerApi.getLocks({ status: "ACTIVE", limit: "1" }),
       employerApi.getSubscriptionStatus(),
-    ]).then(([pRes, jRes, aRes, lRes, sRes]) => {
+    ]).then(([pRes, jRes, iRes, lRes, sRes]) => {
       if (!pRes.success) { router.push("/login"); return; }
       setProfileData(pRes.data as EmpProfileData);
 
       if (jRes.success) {
-        const raw = jRes.data as { jobs?: Job[] } | Job[];
-        setJobs(Array.isArray(raw) ? raw : (raw.jobs ?? []));
+        const raw = jRes.data as Job[] | undefined;
+        setJobs(raw ?? []);
+        setJobsTotal((jRes as unknown as { total?: number }).total ?? (raw?.length ?? 0));
       }
-      if (aRes.success) {
-        const raw = aRes.data as { applications?: Application[] } | Application[];
-        const apps = Array.isArray(raw) ? raw : (raw.applications ?? []);
-        setTopApps(apps.sort((a, b) => (b.aiMatchScore ?? b.matchScore ?? 0) - (a.aiMatchScore ?? a.matchScore ?? 0)));
-        const s = (aRes as unknown as { stats?: { totalApplicants: number; shortlisted: number; interviewed: number } }).stats;
-        if (s) setStats(s);
+      if (iRes.success) {
+        setCandidates((iRes.data as unknown as CandidateApp[]) ?? []);
+        const stats = (iRes as unknown as { stats?: { readyCount: number; inProcessCount: number } }).stats;
+        if (stats) { setReadyCount(stats.readyCount); setInProcessCount(stats.inProcessCount); }
       }
       if (lRes.success && lRes.data) {
-        const d = lRes.data as { total?: number };
-        setActiveLockCount(d.total ?? 0);
+        setActiveLockCount((lRes.data as { total?: number }).total ?? 0);
       }
       if (sRes.success && sRes.data) {
         setSubStatus(sRes.data as { status: string; currentPeriodEnd: string | null; trialEndsAt: string | null });
@@ -184,299 +208,153 @@ function EmployerDashboardContent() {
     });
   }, [router]);
 
-  if (loading) return <LoadingPage color="blue" />;
+  if (loading) return <LoadingPage color="violet" />;
   if (!profileData) return null;
 
-  const { user, profile, onboarding, notifications } = profileData;
-  const company       = profile?.companyName ?? user.email;
-  const onbStatus     = onboarding?.onboardingStatus ?? "DRAFT";
-  const statusInfo    = STATUS_INFO[onbStatus] ?? STATUS_INFO.DRAFT;
-  const completionPct = onboarding
-    ? Math.round(((onboarding.completedSteps?.length ?? 0) / onboarding.totalSteps) * 100)
-    : 0;
+  const { user, profile, onboarding } = profileData;
+  const company    = profile?.companyName ?? user.email;
+  const onbStatus  = onboarding?.onboardingStatus ?? "DRAFT";
+  const statusInfo = STATUS_INFO[onbStatus] ?? STATUS_INFO.DRAFT;
   const isActive    = onbStatus === "APPROVED";
   const needsAction = ["DRAFT", "IN_PROGRESS", "NEEDS_CHANGES"].includes(onbStatus);
-  const unread      = notifications.filter(n => !n.isRead).length;
 
-  // Compact subscription-status signal for the "Billing" quick-nav card —
-  // mirrors the state names on /employer/subscription (ACTIVE/TRIAL/
-  // PAST_DUE/CANCELED/INACTIVE) so the two never disagree.
   const daysUntil = (iso: string | null) => iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)) : null;
   const subState = subStatus?.status ?? "INACTIVE";
   const billingSub =
-    subState === "ACTIVE"    ? "Active" :
-    subState === "PAST_DUE"  ? "Payment failed" :
-    subState === "CANCELED"  ? `Ends in ${daysUntil(subStatus?.currentPeriodEnd ?? null) ?? "—"}d` :
+    subState === "ACTIVE"   ? "Active" :
+    subState === "PAST_DUE" ? "Payment failed" :
+    subState === "CANCELED" ? `Ends in ${daysUntil(subStatus?.currentPeriodEnd ?? null) ?? "—"}d` :
     (subState === "TRIAL" || subState === "TRIALING") ? `Trial · ${daysUntil(subStatus?.trialEndsAt ?? null) ?? "—"}d left` :
     "Subscribe to unlock";
-  const billingAccent =
-    subState === "ACTIVE"   ? "rgba(13,148,136,0.12)" :
-    subState === "PAST_DUE" ? "rgba(220,38,38,0.14)" :
-    subState === "CANCELED" ? "rgba(245,158,11,0.14)" :
-    "rgba(13,148,136,0.12)";
 
-  // Real totals across ALL of this employer's applications (backend groupBy),
-  // not just the recent-5 list — topApps below stays scoped to that 5-item feed.
-  const totalApplicants  = stats.totalApplicants;
-  const shortlisted      = stats.shortlisted;
-  const interviews       = stats.interviewed;
+  const acceptingCount = jobs.filter(j => !j.applicationDeadline || new Date(j.applicationDeadline) > new Date()).length;
+  const readyCandidates = candidates.filter(c => c.workflowStatus === "DOCUMENTS_APPROVED");
 
   return (
-    <div style={{ maxWidth: 1280, margin: "0 auto", fontFamily: "var(--font-body)" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 4px" }}>
       <ToastDisplay toast={toast} />
 
-      {/* ── Welcome hero ─────────────────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-9 bg-gradient-to-b from-teal-500/5 to-transparent border-b border-border">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 md:gap-8 flex-wrap">
-          <div className="w-full">
-            <div className="inline-flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/25 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 mb-2 sm:mb-3 md:mb-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-employer-primary" />
-              <span className="text-xs sm:text-xs font-semibold uppercase tracking-wider text-employer-3">Employer Portal</span>
-            </div>
-            <h1 className="font-display font-bold text-2xl sm:text-3xl md:text-4xl text-white mb-1.5 sm:mb-2 md:mb-3 tracking-tight">
-              Welcome back, {company} 👋
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 flex flex-col gap-6 md:gap-7">
+
+        {/* ── Welcome header ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 style={{ fontWeight: 800, fontSize: 26, color: C.text, margin: 0, letterSpacing: "-0.02em" }}>
+              Welcome back, {company}
             </h1>
-            <p className="text-sm sm:text-base text-muted leading-relaxed max-w-md">
-              {isActive
-                ? `AI is actively matching candidates to your ${jobs.length} open position${jobs.length !== 1 ? "s" : ""}.`
-                : statusInfo.desc}
+            <p style={{ fontSize: 14, color: C.muted, margin: "6px 0 0" }}>
+              {isActive ? "Here's what needs your attention today." : statusInfo.desc}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {needsAction && (
-              <Link href="/employer/onboarding" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg bg-employer-primary text-white text-sm sm:text-base font-semibold shadow-glow hover:opacity-90 transition-opacity text-center">
-                {statusInfo.cta ?? "Continue Setup"} →
+              <Link href="/employer/onboarding" style={{
+                padding: "10px 20px", borderRadius: 10, background: C.accent, color: "#1a0b3d",
+                fontSize: 14, fontWeight: 700, textDecoration: "none", textAlign: "center", minHeight: 44,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {statusInfo.cta ?? "Continue setup"} →
               </Link>
             )}
             {isActive && (
-              <Link href="/employer/jobs/new" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg bg-employer-primary text-white text-sm sm:text-base font-semibold shadow-glow hover:opacity-90 transition-opacity text-center">
-                + Post a Job
+              <Link href="/employer/jobs/new" style={{
+                padding: "10px 20px", borderRadius: 10, background: C.accent, color: "#1a0b3d",
+                fontSize: 14, fontWeight: 700, textDecoration: "none", textAlign: "center", minHeight: 44,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}>
+                Post a job
               </Link>
             )}
-            <Link href="/employer/workers" className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg border border-border bg-transparent text-white text-sm sm:text-base font-semibold hover:bg-white/5 transition-colors text-center">
-              Find Talent
-            </Link>
           </div>
         </div>
-      </div>
 
-      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-12 flex flex-col gap-6 md:gap-7">
+        {/* ── Priority banner (conditional — omitted entirely when nothing needs action) ── */}
+        {readyCount > 0 && (
+          <Link href="/employer/interviews" style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+            padding: "14px 20px", borderRadius: 12, textDecoration: "none",
+            background: "rgba(234,88,12,0.08)", border: "1px solid rgba(234,88,12,0.3)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.warning, flexShrink: 0, boxShadow: `0 0 6px ${C.warning}` }} />
+              <span style={{ fontSize: 13, color: C.secondary }}>
+                <strong style={{ color: C.text }}>{readyCount} candidate{readyCount === 1 ? "" : "s"}</strong> ready for an interview or hire decision
+              </span>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.warning, flexShrink: 0 }}>Review now →</span>
+          </Link>
+        )}
 
-        {/* ── KPI row ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Active Jobs"         value={jobs.length}       icon="💼" sub="Open positions" />
-          <KpiCard label="Total Applicants"    value={totalApplicants}   icon="👥" sub="Across all jobs" />
-          <KpiCard label="AI Shortlisted"      value={shortlisted}       icon="⭐" sub="Top matches" />
-          <KpiCard label="Interviews Scheduled" value={interviews}        icon="📅" sub={interviews > 0 ? "Check calendar" : "None yet"} />
+        {/* ── KPI row ─────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <KpiCard label="Active jobs" value={jobsTotal} sub={`${acceptingCount} accepting applications`} />
+          <KpiCard label="Candidates ready" value={readyCount} sub="Awaiting your decision" flag={readyCount > 0} />
+          <KpiCard label="In process" value={inProcessCount} sub="Documents, hire and fee stages" />
         </div>
 
-        {/* ── Top AI Candidates ────────────────────────────────────────────────── */}
-        {topApps.length > 0 && (
-          <div style={{
-            background: "var(--navy-2)", border: "1px solid var(--border)",
-            borderLeft: "3px solid var(--employer-primary)",
-            borderRadius: "var(--r-lg)", overflow: "hidden",
-          }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--white)", margin: 0 }}>
-                AI Top Matches
-              </h2>
-              <Link href="/employer/applications" style={{ fontSize: 13, fontWeight: 600, color: "var(--employer-3)", textDecoration: "none" }}>
-                View all →
-              </Link>
+        {/* ── Two-column panel row ──────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+
+          {/* Candidates ready for you */}
+          <div style={card({ overflow: "hidden" })}>
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>Candidates ready for you</h2>
+              <Link href="/employer/interviews" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>View all →</Link>
             </div>
-
-            {/* Table header */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "48px 1fr 140px 140px 80px",
-              padding: "10px 22px",
-              background: "rgba(255,255,255,0.02)",
-              borderBottom: "1px solid var(--border)",
-            }}>
-              {["Rank", "Candidate", "Match Score", "Role", "Actions"].map(h => (
-                <span key={h} style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
-              ))}
-            </div>
-
-            {topApps.map((app, i) => {
-              const name  = [app.workerProfile?.firstName, app.workerProfile?.lastName].filter(Boolean).join(" ") || "Anonymous";
-              const score = app.aiMatchScore ?? app.matchScore ?? 0;
-              const role  = app.jobPost?.title ?? "—";
-              const loc   = app.workerProfile?.countryOfResidence ?? app.jobPost?.country ?? "—";
-
-              return (
-                <div key={app.id} style={{
-                  display: "grid", gridTemplateColumns: "48px 1fr 140px 140px 80px",
-                  padding: "14px 22px", alignItems: "center",
-                  borderBottom: "1px solid var(--border)",
-                  transition: "background 0.15s",
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                >
-                  {/* Rank */}
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 800,
-                    background: i === 0 ? "linear-gradient(135deg, var(--employer-primary), var(--employer-2))" : "rgba(255,255,255,0.06)",
-                    color: i === 0 ? "#fff" : "var(--muted)",
-                    boxShadow: i === 0 ? "0 0 10px var(--employer-glow)" : "none",
-                  }}>{i + 1}</div>
-
-                  {/* Candidate */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-                      background: "linear-gradient(135deg, var(--employer-primary), var(--employer-2))",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700, color: "#fff",
-                    }}>{name[0]?.toUpperCase() ?? "?"}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{loc}</div>
-                    </div>
-                  </div>
-
-                  {/* Match score */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ flex: 1, height: 5, background: "rgba(13,148,136,0.12)", borderRadius: 999, overflow: "hidden" }}>
-                      <div style={{ width: `${score}%`, height: "100%", background: "linear-gradient(90deg, var(--employer-primary), var(--employer-2))", borderRadius: 999 }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--employer-3)", fontFamily: "var(--font-display)", flexShrink: 0 }}>{score}%</span>
-                  </div>
-
-                  {/* Role */}
-                  <span style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role}</span>
-
-                  {/* Actions */}
-                  <Link href={`/employer/applications?highlight=${app.id}`} style={{
-                    padding: "5px 12px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 600,
-                    background: "rgba(13,148,136,0.12)", color: "var(--employer-3)",
-                    border: "1px solid rgba(13,148,136,0.2)", textDecoration: "none",
-                  }}>View</Link>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── Active Jobs grid ──────────────────────────────────────────────────── */}
-        {jobs.length > 0 && (
-          <div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 md:mb-5">
-              <h2 className="font-display font-bold text-xl sm:text-2xl text-white">
-                Active Jobs
-              </h2>
-              <Link href="/employer/jobs" className="text-sm font-semibold text-employer-3 hover:text-employer-primary transition-colors">
-                Manage all jobs →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-              {jobs.slice(0, 6).map(job => <JobCard key={job.id} job={job} />)}
-            </div>
-          </div>
-        )}
-
-        {/* ── Status + Notifications ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-
-          {/* Verification status */}
-          <div className="bg-navy-2 border border-border rounded-xl overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
-              <h3 className="font-display font-bold text-base sm:text-lg text-white">Verification Status</h3>
-            </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {[
-                { label: "Profile Complete",   done: completionPct === 100 },
-                { label: "Submitted",          done: !!onboarding?.isSubmitted },
-                { label: "Under Review",       done: ["SUBMITTED", "PENDING_REVIEW", "APPROVED"].includes(onbStatus) },
-                { label: "Verified & Active",  done: isActive },
-              ].map((step, i) => (
-                <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 12, fontWeight: 700,
-                    background: step.done ? "linear-gradient(135deg, var(--employer-primary), var(--employer-2))" : "rgba(255,255,255,0.05)",
-                    color: step.done ? "#fff" : "var(--muted)",
-                    border: step.done ? "none" : "1px solid var(--border)",
-                    boxShadow: step.done ? "0 0 10px var(--employer-glow)" : "none",
-                  }}>{step.done ? "✓" : i + 1}</div>
-                  <span style={{ fontSize: 13, color: step.done ? "var(--white)" : "var(--muted)", fontWeight: step.done ? 500 : 400, fontFamily: "var(--font-body)" }}>
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div style={{
-            background: "var(--navy-2)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)", overflow: "hidden",
-          }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--white)", margin: 0 }}>Notifications</h3>
-              {unread > 0 && (
-                <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--employer-primary)", color: "#fff" }}>
-                  {unread} new
-                </span>
-              )}
-            </div>
-            {notifications.length === 0 ? (
-              <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>No notifications yet</div>
+            {readyCandidates.length === 0 ? (
+              <div style={{ padding: "32px 20px" }}>
+                <EmptyState
+                  icon="🎙️"
+                  title="No candidates ready yet"
+                  description="Candidates appear here once their documents are approved."
+                />
+              </div>
             ) : (
               <div>
-                {notifications.slice(0, 4).map(n => (
-                  <div key={n.id} style={{
-                    padding: "13px 22px", borderBottom: "1px solid var(--border)",
-                    background: !n.isRead ? "rgba(13,148,136,0.04)" : "transparent",
-                    display: "flex", alignItems: "flex-start", gap: 10,
-                  }}>
-                    {!n.isRead && (
-                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--employer-primary)", flexShrink: 0, marginTop: 5, boxShadow: "0 0 6px var(--employer-primary)" }} />
-                    )}
-                    <div style={{ marginLeft: n.isRead ? 17 : 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--white)", marginBottom: 2 }}>{n.title}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{n.body}</div>
-                    </div>
-                  </div>
-                ))}
+                {readyCandidates.slice(0, 6).map(app => <CandidateRow key={app.id} app={app} />)}
+              </div>
+            )}
+          </div>
+
+          {/* Your jobs */}
+          <div style={card({ overflow: "hidden" })}>
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ fontWeight: 700, fontSize: 15, color: C.text, margin: 0 }}>Your jobs</h2>
+              <Link href="/employer/jobs" style={{ fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}>View all →</Link>
+            </div>
+            {jobs.length === 0 ? (
+              <div style={{ padding: "28px 20px" }}>
+                <EmptyState
+                  icon="💼"
+                  title="No jobs posted yet"
+                  description="Post your first job to start receiving applications."
+                  action={
+                    <Link href="/employer/jobs/new" style={{
+                      display: "inline-flex", padding: "0 18px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                      color: "#1a0b3d", background: C.accent, textDecoration: "none", marginTop: 10, minHeight: 44, alignItems: "center", justifyContent: "center",
+                    }}>
+                      Post a job
+                    </Link>
+                  }
+                />
+              </div>
+            ) : (
+              <div>
+                {jobs.slice(0, 6).map(job => <JobRow key={job.id} job={job} />)}
               </div>
             )}
           </div>
         </div>
 
-        {/* ── Quick links ───────────────────────────────────────────────────────── */}
+        {/* ── Quick links ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { href: "/employer/workers",     icon: "🔍", label: "Find Workers",   sub: "Browse all talent" },
-            { href: "/employer/applications",icon: "👥", label: "Applications",   sub: `${totalApplicants} total` },
-            { href: "/employer/locks",       icon: "🔒", label: "Reservations",   sub: activeLockCount ? `${activeLockCount} active` : "Manage holds" },
-          ].map(({ href, icon, label, sub }) => (
-            <Link key={href} href={href} className="bg-navy-2 border border-border rounded-2xl p-4 flex flex-col gap-3 min-h-[100px] no-underline transition-all hover:border-teal-500/35 hover:bg-teal-500/5">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/12 flex items-center justify-center text-xl flex-shrink-0">{icon}</div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white truncate">{label}</div>
-                <div className="text-xs text-muted line-clamp-1">{sub}</div>
-              </div>
-            </Link>
-          ))}
-          <Link href="/employer/subscription" style={{
-            background: "var(--navy-2)", border: "1px solid var(--border)", borderRadius: 16, padding: 16,
-            display: "flex", flexDirection: "column", gap: 12, minHeight: 100,
-            textDecoration: "none", transition: "border-color 0.15s, background 0.15s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.35)"; e.currentTarget.style.background = "rgba(20,184,166,0.05)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--navy-2)"; }}
-          >
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: billingAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💳</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Billing</div>
-              <div style={{ fontSize: 12, color: subState === "PAST_DUE" ? "#f87171" : "var(--muted)" }}>{billingSub}</div>
-            </div>
-          </Link>
+          <QuickLink href="/employer/jobs/new" icon="➕" label="Post a job" sub="Create a listing" />
+          <QuickLink href="/employer/workers"  icon="🔍" label="Find talent" sub="Browse candidates" />
+          <QuickLink href="/employer/locks"    icon="🔒" label="Reservations" sub={activeLockCount ? `${activeLockCount} active` : "Manage holds"} />
+          <QuickLink
+            href="/employer/subscription" icon="💳" label="Billing" sub={billingSub}
+            subColor={subState === "PAST_DUE" ? C.danger : undefined}
+          />
         </div>
 
       </div>
@@ -486,7 +364,7 @@ function EmployerDashboardContent() {
 
 export default function EmployerDashboardPage() {
   return (
-    <Suspense fallback={<LoadingPage color="blue" />}>
+    <Suspense fallback={<LoadingPage color="violet" />}>
       <EmployerDashboardContent />
     </Suspense>
   );

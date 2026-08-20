@@ -95,6 +95,23 @@ export async function getMyInterviews(req: Request, res: Response, next: NextFun
   try {
     const employerId = req.user!.sub;
 
+    // `data` (the applications array) is unchanged from before — the existing
+    // /employer/interviews page reads res.data as that array directly. `stats`
+    // is a new sibling field (custom response shape, not the plain ok()
+    // helper — same convention getEmployerApplications already uses for its
+    // own `stats` block) added for the employer dashboard's KPI cards: ready
+    // = DOCUMENTS_APPROVED (genuinely awaiting the employer's interview/hire
+    // decision); inProcess = every other non-terminal workflow stage,
+    // including ones this endpoint doesn't otherwise return rows for
+    // (PENDING_ADMIN_REVIEW/APPROVED_QUEUED/DOCUMENTS_PENDING — still in
+    // document collection, not yet the employer's turn) — one extra groupBy,
+    // no new route.
+    // Sequential, not Promise.all — the dev DB connection pool is
+    // connection_limit=1, and two concurrent queries here just queue up
+    // behind each other anyway while holding up whichever other request
+    // needs that one connection (confirmed the hard way earlier this
+    // session: Promise.all across a real connection_limit=1 pool times out
+    // rather than actually running in parallel).
     const applications = await prisma.application.findMany({
       where: {
         employerId,
@@ -106,8 +123,26 @@ export async function getMyInterviews(req: Request, res: Response, next: NextFun
       orderBy: { updatedAt: "desc" },
       include: APPLICATION_SUMMARY_INCLUDE,
     });
+    const workflowStatusCounts = await prisma.application.groupBy({
+      by:     ["workflowStatus"],
+      where:  { employerId, workflowStatus: { not: null } },
+      _count: { _all: true },
+    });
 
-    return ok(res, applications);
+    const countOf = (statuses: string[]) =>
+      workflowStatusCounts
+        .filter(c => c.workflowStatus && statuses.includes(c.workflowStatus))
+        .reduce((sum, c) => sum + c._count._all, 0);
+
+    const stats = {
+      readyCount:     countOf(["DOCUMENTS_APPROVED"]),
+      inProcessCount: countOf([
+        "PENDING_ADMIN_REVIEW", "APPROVED_QUEUED", "DOCUMENTS_PENDING",
+        "HIRE_PENDING_WORKER_CONFIRMATION", "ADMIN_FEE_DUE", "ADMIN_FEE_PAID",
+      ]),
+    };
+
+    return res.json({ success: true, data: applications, stats });
   } catch (e) { next(e); }
 }
 
