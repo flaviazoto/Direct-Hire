@@ -11,6 +11,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { enqueue } from "../services/queue";
+import { insertAuditLog } from "../lib/audit";
 
 const STATUS_VALUES = [
   "PENDING", "IN_PROGRESS", "AWAITING_APPROVAL", "APPROVED", "REJECTED", "COMPLETED", "FAILED",
@@ -234,5 +235,79 @@ export async function getGrowthContentDrafts(req: Request, res: Response, next: 
     ]);
 
     return paginated(res, rows, total, page, limit);
+  } catch (e) { next(e); }
+}
+
+// ── POST /admin/growth/content/:id/publish ──────────────────────────────────
+// Level 1 (human-gated) publish step — deliberately separate from approve.
+// approveGrowthTask only ever moves a linked draft to APPROVED; nothing else
+// in this file has ever written publishedAt. Going with Option A from the
+// audit: no dedicated PUBLISHED enum value (GrowthTaskStatus is shared with
+// GrowthAgentTask, which has no concept of "published" — adding it there
+// too for one model's sake was worse than just reading two fields together).
+// "Live" = status === APPROVED && publishedAt !== null, checked here and by
+// the public blog endpoints. No $transaction — unlike approve/reject there's
+// no second row (task) to keep in sync; this only ever touches the draft.
+
+export async function publishGrowthContentDraft(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = req.user!.sub;
+    const { id }  = req.params;
+
+    const draft = await prisma.growthContentDraft.findUnique({ where: { id } });
+    if (!draft) return err(res, "Content draft not found", 404);
+    if (draft.status !== "APPROVED") {
+      return err(res, `Cannot publish a draft with status ${draft.status} — it must be approved first.`, 400);
+    }
+
+    const updated = await prisma.growthContentDraft.update({
+      where: { id },
+      data:  { publishedAt: new Date() },
+    });
+
+    insertAuditLog({
+      actorId:  adminId,
+      targetId: adminId,
+      action:   "GROWTH_CONTENT_PUBLISHED",
+      entity:   "GrowthContentDraft",
+      entityId: id,
+      metadata: { title: draft.title, slug: draft.slug },
+    }).catch(console.error);
+
+    return ok(res, updated, "Content published");
+  } catch (e) { next(e); }
+}
+
+// ── POST /admin/growth/content/:id/unpublish ─────────────────────────────────
+// Corrects a mistake without deleting the row — sets publishedAt back to
+// null, leaves status (and the underlying content) untouched, so it can be
+// republished later without re-approving.
+
+export async function unpublishGrowthContentDraft(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = req.user!.sub;
+    const { id }  = req.params;
+
+    const draft = await prisma.growthContentDraft.findUnique({ where: { id } });
+    if (!draft) return err(res, "Content draft not found", 404);
+    if (draft.publishedAt === null) {
+      return err(res, "This draft is not currently published.", 400);
+    }
+
+    const updated = await prisma.growthContentDraft.update({
+      where: { id },
+      data:  { publishedAt: null },
+    });
+
+    insertAuditLog({
+      actorId:  adminId,
+      targetId: adminId,
+      action:   "GROWTH_CONTENT_UNPUBLISHED",
+      entity:   "GrowthContentDraft",
+      entityId: id,
+      metadata: { title: draft.title, slug: draft.slug },
+    }).catch(console.error);
+
+    return ok(res, updated, "Content unpublished");
   } catch (e) { next(e); }
 }

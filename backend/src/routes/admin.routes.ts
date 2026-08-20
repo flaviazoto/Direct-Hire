@@ -98,6 +98,8 @@ adminRouter.get("/system-health", requireAdmin, systemHealthCtrl.getSystemHealth
 // ── Growth / Marketing agents (task log + approval workflow) ────────────────
 // Static routes before /:id param
 adminRouter.get( "/growth/content",              requireAdmin, growthCtrl.getGrowthContentDrafts);
+adminRouter.post("/growth/content/:id/publish",   requireAdmin, growthCtrl.publishGrowthContentDraft);
+adminRouter.post("/growth/content/:id/unpublish", requireAdmin, growthCtrl.unpublishGrowthContentDraft);
 adminRouter.get( "/growth/eligible-jobs",         requireAdmin, growthCtrl.getEligibleJobs);
 adminRouter.get( "/growth/eligible-employers",    requireAdmin, growthCtrl.getEligibleEmployers);
 adminRouter.post("/growth/tasks/run",            requireAdmin, growthCtrl.runGrowthTask);
