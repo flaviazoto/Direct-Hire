@@ -334,6 +334,8 @@ export const adminApi = {
   rejectGrowthTask: (id: string, reason: string) => post(`/admin/growth/tasks/${id}/reject`, { reason }),
   getGrowthContentDrafts: (params?: Record<string, string>) =>
     get(`/admin/growth/content${params ? "?" + new URLSearchParams(params) : ""}`),
+  publishGrowthContentDraft:   (id: string) => post(`/admin/growth/content/${id}/publish`, {}),
+  unpublishGrowthContentDraft: (id: string) => post(`/admin/growth/content/${id}/unpublish`, {}),
   // ── Admin-mediated hiring workflow (Phase 2 backend, Phase 3 frontend) ───────
   getHiringReviewQueue: (params?: Record<string, string>) =>
     get(`/admin/hiring/review-queue${params ? "?" + new URLSearchParams(params) : ""}`),

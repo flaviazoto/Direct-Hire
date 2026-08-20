@@ -57,6 +57,30 @@ interface EligibleEmployer {
   subscriptionStatus: string | null;
 }
 
+interface GrowthContentDraft {
+  id:              string;
+  contentType:     string;
+  title:           string;
+  slug:            string;
+  body:            string;
+  metaTitle:       string | null;
+  metaDescription: string | null;
+  targetKeyword:   string | null;
+  sourceTaskId:    string | null;
+  status:          GrowthTaskStatus;
+  publishedAt:     string | null;
+  createdAt:       string;
+  updatedAt:       string;
+}
+
+interface ContentPage {
+  success:    boolean;
+  data:       GrowthContentDraft[];
+  total:      number;
+  totalPages: number;
+  error?:     string;
+}
+
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
 function truncate(text: string, max = 100): string {
@@ -165,6 +189,23 @@ export default function AdminGrowthPage() {
   const [selectedEmployerId, setSelectedEmployerId] = useState("");
   const [draftingReengagement, setDraftingReengagement] = useState(false);
 
+  // ── Content drafts tab (GrowthContentDraft — separate from the task log
+  // above; a task's AWAITING_APPROVAL/APPROVED status is about the AGENT
+  // RUN, this is about the ARTICLE it produced, which needs its own
+  // Level-1 human-gated publish step — see admin-growth.controller.ts) ────
+  const [activeTab, setActiveTab] = useState<"tasks" | "content">("tasks");
+  const [drafts,        setDrafts]        = useState<GrowthContentDraft[]>([]);
+  const [draftsTotal,   setDraftsTotal]   = useState(0);
+  const [draftsPage,    setDraftsPage]    = useState(1);
+  const [draftsLoading, setDraftsLoading] = useState(true);
+  const [draftsFetching, setDraftsFetching] = useState(false);
+  const [draftsError,   setDraftsError]   = useState<string | null>(null);
+  const [draftsStatusFilter, setDraftsStatusFilter] = useState("");
+  const [draftsTypeFilter,   setDraftsTypeFilter]   = useState("");
+  const [publishingId,   setPublishingId]   = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
+  const [expandedDraft,  setExpandedDraft]  = useState<string | null>(null);
+
   const showToast = useCallback((msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
@@ -204,6 +245,55 @@ export default function AdminGrowthPage() {
   }, [page, filterStatus, agentName]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  const loadDrafts = useCallback(() => {
+    setDraftsFetching(true);
+    setDraftsError(null);
+    const params: Record<string, string> = { page: String(draftsPage), limit: String(PAGE_SIZE) };
+    if (draftsStatusFilter) params.status      = draftsStatusFilter;
+    if (draftsTypeFilter)   params.contentType = draftsTypeFilter;
+
+    adminApi.getGrowthContentDrafts(params)
+      .then(res => {
+        const r = res as unknown as ContentPage;
+        if (r.success) {
+          setDrafts(r.data ?? []);
+          setDraftsTotal((res as unknown as { total?: number }).total ?? 0);
+        } else {
+          setDraftsError(r.error ?? "Could not load content drafts.");
+        }
+      })
+      .catch(() => setDraftsError("Network error - check your connection."))
+      .finally(() => { setDraftsLoading(false); setDraftsFetching(false); });
+  }, [draftsPage, draftsStatusFilter, draftsTypeFilter]);
+
+  useEffect(() => { if (activeTab === "content") loadDrafts(); }, [activeTab, loadDrafts]);
+
+  async function handlePublish(id: string) {
+    setPublishingId(id);
+    try {
+      const res = await adminApi.publishGrowthContentDraft(id);
+      if (res.success) { showToast("Content published"); loadDrafts(); }
+      else showToast(res.error ?? "Publish failed", false);
+    } catch {
+      showToast("Network error - publish failed", false);
+    } finally {
+      setPublishingId(null);
+    }
+  }
+
+  async function handleUnpublish(id: string) {
+    setUnpublishingId(id);
+    try {
+      const res = await adminApi.unpublishGrowthContentDraft(id);
+      if (res.success) { showToast("Content unpublished"); loadDrafts(); }
+      else showToast(res.error ?? "Unpublish failed", false);
+    } catch {
+      showToast("Network error - unpublish failed", false);
+    } finally {
+      setUnpublishingId(null);
+    }
+  }
 
   function handleAgentInput(val: string) {
     setAgentInput(val);
@@ -465,6 +555,29 @@ export default function AdminGrowthPage() {
         </div>
       </div>
 
+      {/* ── Tab toggle: task log vs. content drafts ─────────────────────────────── */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 24, background: C.card, padding: 4, borderRadius: 10, border: `1px solid ${C.border}`, width: "fit-content" }}>
+        {([
+          { key: "tasks" as const,   label: "Tasks" },
+          { key: "content" as const, label: "Content Drafts" },
+        ]).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            style={{
+              padding: "7px 16px", borderRadius: 7, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+              background: activeTab === t.key ? C.accent : "transparent",
+              color: activeTab === t.key ? "#fff" : C.muted,
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "tasks" && (
+      <>
       {/* ── Career guide generator panel ──────────────────────────────────────── */}
       {showGenerator && (
         <div style={{
@@ -806,6 +919,234 @@ export default function AdminGrowthPage() {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {activeTab === "content" && (
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+
+        {/* Filter bar */}
+        <div style={{
+          padding: "14px 20px", borderBottom: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const,
+        }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: C.text, margin: 0, flexShrink: 0 }}>
+            Content Drafts
+          </h2>
+          <span style={{ fontSize: 12, color: C.muted, marginRight: "auto" }}>
+            {draftsTotal.toLocaleString()} total
+          </span>
+
+          <input
+            type="text"
+            placeholder="Filter by content type…"
+            value={draftsTypeFilter}
+            onChange={e => { setDraftsTypeFilter(e.target.value); setDraftsPage(1); }}
+            style={{ ...inputStyle, width: 200 }}
+          />
+
+          <select
+            value={draftsStatusFilter}
+            onChange={e => { setDraftsStatusFilter(e.target.value); setDraftsPage(1); }}
+            style={{ ...selectStyle, color: draftsStatusFilter ? C.text : C.muted }}
+          >
+            <option value="">All Statuses</option>
+            {STATUS_VALUES.map(s => (
+              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+            ))}
+          </select>
+
+          {(draftsStatusFilter || draftsTypeFilter) && (
+            <button
+              onClick={() => { setDraftsStatusFilter(""); setDraftsTypeFilter(""); setDraftsPage(1); }}
+              style={{
+                padding: "7px 12px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
+                background: "transparent", color: C.muted,
+                fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" as const,
+              }}
+            >Clear ×</button>
+          )}
+        </div>
+
+        {/* Table header */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 140px 150px 130px 210px",
+          padding: "9px 20px",
+          background: "rgba(255,255,255,0.02)",
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          {["Title", "Content Type", "Status", "Updated", "Actions"].map(h => (
+            <span key={h} style={{
+              fontSize: 11, fontWeight: 700, color: C.muted,
+              textTransform: "uppercase" as const, letterSpacing: "0.06em",
+            }}>{h}</span>
+          ))}
+        </div>
+
+        {/* Rows */}
+        {draftsLoading || draftsFetching ? (
+          <div style={{ padding: "48px 20px", textAlign: "center", color: C.muted, fontSize: 13 }}>
+            Loading…
+          </div>
+        ) : draftsError ? (
+          <div style={{ padding: "24px" }}>
+            <ErrorState message={draftsError} retry={loadDrafts} title="Could not load content drafts" />
+          </div>
+        ) : drafts.length === 0 ? (
+          <EmptyState
+            icon="📝"
+            title={draftsStatusFilter || draftsTypeFilter ? "No drafts match these filters" : "No content drafts yet"}
+            description={draftsStatusFilter || draftsTypeFilter ? undefined : "Drafts appear here once the Content Agent generates one — see the Tasks tab."}
+          />
+        ) : drafts.map(draft => {
+          const canPublish   = draft.status === "APPROVED" && draft.publishedAt === null;
+          const canUnpublish = draft.publishedAt !== null;
+          return (
+            <div key={draft.id}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 140px 150px 130px 210px",
+                  padding: "13px 20px", alignItems: "center",
+                  borderBottom: expandedDraft === draft.id ? "none" : `1px solid ${C.border}`,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {draft.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    /{draft.slug}
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 13, color: C.secondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {draft.contentType}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                  <StatusPill status={draft.status} />
+                  {draft.publishedAt && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: C.success }}>● Live</span>
+                  )}
+                </div>
+
+                <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>
+                  {timeAgo(draft.updatedAt)}
+                </span>
+
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                  {canPublish && (
+                    <button
+                      onClick={() => handlePublish(draft.id)}
+                      disabled={publishingId === draft.id}
+                      style={{
+                        padding: "4px 10px", borderRadius: 6,
+                        border: `1px solid ${C.success}`,
+                        background: "rgba(22,163,74,0.12)", color: C.success,
+                        fontSize: 11, fontWeight: 700, cursor: publishingId === draft.id ? "default" : "pointer",
+                      }}
+                    >{publishingId === draft.id ? "Publishing…" : "Publish"}</button>
+                  )}
+                  {canUnpublish && (
+                    <button
+                      onClick={() => handleUnpublish(draft.id)}
+                      disabled={unpublishingId === draft.id}
+                      style={{
+                        padding: "4px 10px", borderRadius: 6,
+                        border: `1px solid ${C.danger}`,
+                        background: "rgba(220,38,38,0.12)", color: C.danger,
+                        fontSize: 11, fontWeight: 700, cursor: unpublishingId === draft.id ? "default" : "pointer",
+                      }}
+                    >{unpublishingId === draft.id ? "Unpublishing…" : "Unpublish"}</button>
+                  )}
+                  <button
+                    onClick={() => setExpandedDraft(expandedDraft === draft.id ? null : draft.id)}
+                    style={{
+                      background: "none", border: "none", padding: "4px 2px", cursor: "pointer",
+                      fontSize: 11, fontWeight: 700, color: C.accent, fontFamily: "inherit",
+                    }}
+                  >
+                    {expandedDraft === draft.id ? "Hide" : "View"}
+                  </button>
+                </div>
+              </div>
+
+              {expandedDraft === draft.id && (
+                <div style={{ padding: "0 20px 16px", borderBottom: `1px solid ${C.border}` }}>
+                  <div style={{ background: "#060606", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px", maxHeight: 320, overflowY: "auto" }}>
+                    {draft.metaTitle && (
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                        <strong style={{ color: C.secondary }}>Meta title:</strong> {draft.metaTitle}
+                      </div>
+                    )}
+                    {draft.metaDescription && (
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                        <strong style={{ color: C.secondary }}>Meta description:</strong> {draft.metaDescription}
+                      </div>
+                    )}
+                    <pre style={{ fontSize: 12, fontFamily: "inherit", color: "#e4e4e7", margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                      {draft.body}
+                    </pre>
+                  </div>
+                  {draft.publishedAt && (
+                    <a
+                      href={`/blog/${draft.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: "inline-block", marginTop: 10, fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: "none" }}
+                    >
+                      View live on the blog ↗
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Pagination */}
+        {Math.ceil(draftsTotal / PAGE_SIZE) > 1 && (
+          <div style={{
+            padding: "14px 20px", borderTop: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end",
+          }}>
+            <span style={{ fontSize: 12, color: C.muted, marginRight: "auto" }}>
+              Page {draftsPage} of {Math.ceil(draftsTotal / PAGE_SIZE)} · {draftsTotal.toLocaleString()} drafts
+            </span>
+            <button
+              disabled={draftsPage <= 1}
+              onClick={() => setDraftsPage(p => p - 1)}
+              style={{
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
+                background: draftsPage <= 1 ? "transparent" : "rgba(255,255,255,0.04)",
+                color: draftsPage <= 1 ? C.muted : C.text,
+                fontSize: 13, fontWeight: 600,
+                cursor: draftsPage <= 1 ? "default" : "pointer",
+              }}
+            >← Prev</button>
+            <button
+              disabled={draftsPage >= Math.ceil(draftsTotal / PAGE_SIZE)}
+              onClick={() => setDraftsPage(p => p + 1)}
+              style={{
+                padding: "6px 14px", borderRadius: 7,
+                border: `1px solid ${C.border}`,
+                background: draftsPage >= Math.ceil(draftsTotal / PAGE_SIZE) ? "transparent" : "rgba(255,255,255,0.04)",
+                color: draftsPage >= Math.ceil(draftsTotal / PAGE_SIZE) ? C.muted : C.text,
+                fontSize: 13, fontWeight: 600,
+                cursor: draftsPage >= Math.ceil(draftsTotal / PAGE_SIZE) ? "default" : "pointer",
+              }}
+            >Next →</button>
+          </div>
+        )}
+      </div>
+      )}
 
       {/* ── Toast ─────────────────────────────────────────────────────────────── */}
       {toast && (
