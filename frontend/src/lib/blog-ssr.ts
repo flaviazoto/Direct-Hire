@@ -64,3 +64,35 @@ export async function getPublicBlogPostServer(slug: string): Promise<PublicBlogD
     return null;
   }
 }
+
+// Used by sitemap.ts — walks every page of published posts (the list
+// endpoint already filters status=APPROVED && publishedAt!==null server-
+// side). Exact mirror of jobs-ssr.ts's getAllPublicJobIdsServer: same
+// pagination-loop shape, same revalidate window, same silent-break-on-
+// failure (never throws — a sitemap build shouldn't fail because one
+// fetch hiccupped). getPagination() caps limit at 100 server-side
+// regardless of what we ask for.
+export async function getAllPublishedBlogSlugsServer(): Promise<PublicBlogListItem[]> {
+  const all: PublicBlogListItem[] = [];
+  let page = 1;
+  const limit = 100;
+
+  while (true) {
+    let json: { success: boolean; data?: PublicBlogListItem[]; totalPages?: number };
+    try {
+      const res = await fetch(`${API_BASE}/api/public/blog?page=${page}&limit=${limit}`, {
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) break;
+      json = await res.json();
+    } catch {
+      break;
+    }
+    if (!json.success || !json.data) break;
+    all.push(...json.data);
+    if (page >= (json.totalPages ?? 1)) break;
+    page++;
+  }
+
+  return all;
+}

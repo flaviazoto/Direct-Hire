@@ -1,15 +1,18 @@
 // frontend/src/app/sitemap.ts
 // Dynamic sitemap (App Router convention — served at /sitemap.xml).
-// Static public marketing pages + every APPROVED job's detail page.
+// Static public marketing pages + every APPROVED job's detail page +
+// every published blog post.
 
 import type { MetadataRoute } from "next";
 import { getAllPublicJobIdsServer } from "@/lib/jobs-ssr";
+import { getAllPublishedBlogSlugsServer } from "@/lib/blog-ssr";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://directhire.cc";
 
 const STATIC_PATHS: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
   { path: "/",              changeFrequency: "weekly",  priority: 1.0 },
   { path: "/jobs",          changeFrequency: "hourly",  priority: 0.9 },
+  { path: "/blog",          changeFrequency: "weekly",  priority: 0.6 },
   { path: "/for-workers",   changeFrequency: "monthly", priority: 0.6 },
   { path: "/for-employers", changeFrequency: "monthly", priority: 0.6 },
   { path: "/pricing",       changeFrequency: "monthly", priority: 0.5 },
@@ -36,5 +39,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-  return [...staticEntries, ...jobEntries];
+  const posts = await getAllPublishedBlogSlugsServer();
+  const blogEntries: MetadataRoute.Sitemap = posts.map(post => ({
+    url: `${APP_URL}/blog/${post.slug}`,
+    // publishedAt (not createdAt) is when the post actually went live —
+    // same "use the went-public timestamp, not the drafted one" reasoning
+    // as the job detail page's approvedAt/JobPosting.datePosted.
+    lastModified: post.publishedAt,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...jobEntries, ...blogEntries];
 }
