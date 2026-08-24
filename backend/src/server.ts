@@ -63,6 +63,16 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3000")
   .split(",")
   .map(o => o.trim())
   .filter(Boolean);
+// Outside production, always allow the local dev frontend regardless of
+// whatever ALLOWED_ORIGINS is actually set to (including a value that only
+// lists the production origin, as backend/.env currently does) — the
+// guarantee lives here in code, not in a value someone has to remember to
+// set correctly in every environment. Same "extra allowance only in non-
+// prod" shape as the existing NODE_ENV !== "production" gate just below
+// (the /uploads static-file mount).
+if (process.env.NODE_ENV !== "production" && !ALLOWED_ORIGINS.includes("http://localhost:3000")) {
+  ALLOWED_ORIGINS.push("http://localhost:3000");
+}
 const CORS_OPTIONS: cors.CorsOptions = {
   origin: (origin, callback) => {
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
