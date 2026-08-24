@@ -120,7 +120,10 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
   },
   {
     section: 'Settings',
-    links: [{ href: '/admin/pricing', label: 'Pricing', Icon: Tag }],
+    links: [
+      { href: '/admin/pricing', label: 'Pricing',       Icon: Tag      },
+      { href: '/admin/growth',  label: 'Growth Agents',  Icon: FileText },
+    ],
   },
 ]
 
