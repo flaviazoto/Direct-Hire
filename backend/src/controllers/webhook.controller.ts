@@ -1,7 +1,7 @@
 // backend/src/controllers/webhook.controller.ts
 // Stripe webhook handler — no auth middleware, uses raw body for signature verification
 import { Request, Response } from "express";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import stripe, { mapStripeStatus } from "../services/stripe";
 import prisma from "../lib/prisma";
 import { sendEmail } from "../services/email";
