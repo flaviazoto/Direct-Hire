@@ -9,10 +9,13 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import stripe from "../services/stripe";
+import { paymentsEnabled } from "../config/flags";
 
 // ── Simple in-memory cache (60-second TTL) — same pattern as public-jobs.controller.ts ──
+// Cache entries are keyed off the payments-flag state so flipping
+// PAYMENTS_ENABLED never serves a stale response built under the old state.
 
-interface CacheEntry { data: unknown; expiresAt: number }
+interface CacheEntry { data: unknown; expiresAt: number; paymentsEnabled: boolean }
 let cached: CacheEntry | null = null;
 const CACHE_TTL_MS = 60_000;
 
@@ -20,7 +23,25 @@ const CACHE_TTL_MS = 60_000;
 
 export async function getPublicPricingConfig(req: Request, res: Response, next: NextFunction) {
   try {
-    if (cached && Date.now() < cached.expiresAt) return res.json(cached.data);
+    const enabled = paymentsEnabled();
+
+    if (cached && cached.paymentsEnabled === enabled && Date.now() < cached.expiresAt) {
+      return res.json(cached.data);
+    }
+
+    if (!enabled) {
+      const payload = {
+        success: true,
+        data: {
+          paymentsEnabled: false,
+          lock:            null,
+          employerPrice:   null,
+          applicationFee:  null,
+        },
+      };
+      cached = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS, paymentsEnabled: enabled };
+      return res.json(payload);
+    }
 
     const [rateRow, maxDaysRow, maxConcurrentRow] = await Promise.all([
       prisma.platformConfig.findUnique({ where: { key: "lock_daily_rate_cents" } }),
@@ -51,6 +72,7 @@ export async function getPublicPricingConfig(req: Request, res: Response, next: 
     const payload = {
       success: true,
       data: {
+        paymentsEnabled: true,
         lock: {
           dailyRateCents,
           currency:    "USD",
@@ -63,7 +85,7 @@ export async function getPublicPricingConfig(req: Request, res: Response, next: 
       },
     };
 
-    cached = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS };
+    cached = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS, paymentsEnabled: enabled };
     return res.json(payload);
   } catch (e) { next(e); }
 }

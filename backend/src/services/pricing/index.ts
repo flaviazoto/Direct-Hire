@@ -8,6 +8,7 @@
 // Set env DISABLE_APPLICATION_FEES=true to bypass all fees (returns 0).
 
 import prisma from "../../lib/prisma";
+import { applicationFeesDisabled } from "../../config/flags";
 
 export interface FeeParams {
   jobId:      string;
@@ -79,7 +80,7 @@ function applyFormula(opts: {
 // ── Main async export ─────────────────────────────────────────────────────────
 
 export async function calculateApplicationFeeAsync(params: FeeParams): Promise<FeeResult> {
-  if (process.env.DISABLE_APPLICATION_FEES === "true") return ZERO_FEE;
+  if (applicationFeesDisabled()) return ZERO_FEE;
 
   const [enabledStr, baseFeeStr] = await Promise.all([
     cfg("application_fee_enabled",    "true"),
