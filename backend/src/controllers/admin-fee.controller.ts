@@ -26,6 +26,38 @@ import {
   sendClearedForEmployerEmail,
 } from "../services/email";
 
+// AdminFeeCharge.status is a plain string column (see schema.prisma), not a
+// Postgres enum — this is the single TS source of truth for its allowed
+// values so every read/write site stays in sync without a migration.
+export const ADMIN_FEE_CHARGE_STATUSES = ["PENDING", "SUCCEEDED", "FAILED", "REFUNDED", "WAIVED"] as const;
+export type AdminFeeChargeStatus = typeof ADMIN_FEE_CHARGE_STATUSES[number];
+
+// ── Shared post-clear side effects (worker email + audit log) ─────────────────
+// Used by both confirmFeeCharge (paid path) and worker-hire.controller.ts's
+// PAYMENTS_ENABLED=false waiver path — same notification, different trigger.
+export function notifyApplicationClearedForEmployer(opts: {
+  applicationId:   string;
+  workerId:        string;
+  workerEmail:     string;
+  workerFirstName: string;
+  jobTitle:        string;
+  companyName:     string;
+  actorId:         string;
+  auditNotes:      string;
+  auditMetadata?:  Record<string, unknown>;
+}) {
+  sendClearedForEmployerEmail(opts.workerId, opts.workerEmail, opts.workerFirstName, opts.jobTitle, opts.companyName).catch(
+    (e: unknown) => console.error("[cleared for employer email]", e),
+  );
+
+  insertAdminAuditLog({
+    actorId: opts.actorId, targetId: opts.workerId,
+    action:  "APPLICATION_STATUS_CHANGED",
+    notes:   opts.auditNotes,
+    metadata: { applicationId: opts.applicationId, ...opts.auditMetadata },
+  }).catch(console.error);
+}
+
 // ── GET /admin/hiring/fee-queue ────────────────────────────────────────────────
 // Phase 3 addition — no Phase 2 endpoint listed applications at this stage.
 // Applications sitting at ADMIN_FEE_DUE (fee not yet resolved/attempted, or a
@@ -164,6 +196,12 @@ export async function createFeeCharge(req: Request, res: Response, next: NextFun
       },
     });
     if (!app) return err(res, "Application not found", 404);
+
+    const existingCharge = await prisma.adminFeeCharge.findUnique({ where: { applicationId } });
+    if (existingCharge?.status === "WAIVED") {
+      return err(res, "This application's admin processing fee was waived — no payment is required.", 409, { code: "FEE_WAIVED" });
+    }
+
     // Major resequencing: the fee no longer follows DOCUMENTS_APPROVED
     // directly — it follows the employer-hire + worker-confirm gate (see
     // lib/hire.ts and worker-hire.controller.ts), which is what actually
@@ -254,6 +292,9 @@ export async function confirmFeeCharge(req: Request, res: Response, next: NextFu
     if (existingCharge?.status === "SUCCEEDED") {
       return ok(res, existingCharge, "Fee already confirmed");
     }
+    if (existingCharge?.status === "WAIVED") {
+      return err(res, "This application's admin processing fee was waived — nothing to confirm.", 409, { code: "FEE_WAIVED" });
+    }
 
     type PaymentIntent = Awaited<ReturnType<typeof stripe.paymentIntents.retrieve>>;
     let paymentIntent: PaymentIntent;
@@ -307,16 +348,13 @@ export async function confirmFeeCharge(req: Request, res: Response, next: NextFu
 
     const workerFirstName = (await prisma.workerProfile.findUnique({ where: { userId: app.worker.id }, select: { firstName: true } }))?.firstName ?? "there";
     const workerEmail = (await prisma.user.findUnique({ where: { id: app.worker.id }, select: { email: true } }))?.email ?? "";
-    sendClearedForEmployerEmail(app.worker.id, workerEmail, workerFirstName, app.job.title, app.job.companyName).catch(
-      (e: unknown) => console.error("[cleared for employer email]", e),
-    );
-
-    insertAdminAuditLog({
-      actorId: adminId, targetId: app.worker.id,
-      action: "APPLICATION_STATUS_CHANGED",
-      notes: "ADMIN_FEE_DUE -> ADMIN_FEE_PAID -> CLEARED_FOR_EMPLOYER",
-      metadata: { applicationId, amountUsd, stripePaymentIntentId: paymentIntentId },
-    }).catch(console.error);
+    notifyApplicationClearedForEmployer({
+      applicationId, workerId: app.worker.id, workerEmail, workerFirstName,
+      jobTitle: app.job.title, companyName: app.job.companyName,
+      actorId: adminId,
+      auditNotes: "ADMIN_FEE_DUE -> ADMIN_FEE_PAID -> CLEARED_FOR_EMPLOYER",
+      auditMetadata: { amountUsd, stripePaymentIntentId: paymentIntentId },
+    });
 
     return ok(res, charge, "Fee confirmed — application cleared for employer");
   } catch (e) { next(e); }

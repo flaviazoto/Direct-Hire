@@ -2,6 +2,7 @@
 // Guards routes that require an active employer subscription.
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
+import { paymentsEnabled } from "../config/flags";
 
 export async function requireSubscription(
   req: Request, res: Response, next: NextFunction,
@@ -9,6 +10,8 @@ export async function requireSubscription(
   try {
     const userId = req.user?.sub;
     if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
+
+    if (!paymentsEnabled()) return next();
 
     const ep = await prisma.employerProfile.findUnique({
       where:  { userId },

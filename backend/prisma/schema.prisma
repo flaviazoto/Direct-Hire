@@ -1375,7 +1375,7 @@ model AdminFeeCharge {
   stripeRefundId        String? @map("stripe_refund_id")
   totalRefundedCents    Int     @default(0) @map("total_refunded_cents")
 
-  status String @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED — matches Payment.status's convention exactly
+  status String @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED | WAIVED — matches Payment.status's convention, plus WAIVED for PAYMENTS_ENABLED=false
 
   createdAt DateTime  @default(now()) @map("created_at")
   paidAt    DateTime? @map("paid_at")

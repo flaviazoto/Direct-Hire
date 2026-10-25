@@ -17,6 +17,7 @@ import { insertAdminAuditLog } from "../lib/audit";
 import { decrypt } from "../lib/encrypt";
 import { calculateMatchScore } from "../services/matching";
 import { calculateApplicationFeeAsync } from "../services/pricing";
+import { paymentsEnabled } from "../config/flags";
 import stripe from "../services/stripe";
 import { generateInvoice } from "../services/invoices";
 import { uploadRawBuffer, getSignedUrlForPath } from "../services/storage";
@@ -105,6 +106,7 @@ const WORKER_SCORE_SELECT = {
 // and lockWorker's inline gate — an employer mid-trial can post jobs (createJob
 // goes through that same middleware), so workers must be able to apply to them.
 function isEmployerSubscriptionValid(ep?: { subscriptionStatus: string | null; trialEndsAt: Date | null } | null) {
+  if (!paymentsEnabled()) return true;
   const isActive   = ep?.subscriptionStatus === "ACTIVE";
   const isTrialing = ep?.subscriptionStatus === "TRIAL" && ep?.trialEndsAt != null && ep.trialEndsAt.getTime() > Date.now();
   return isActive || isTrialing;

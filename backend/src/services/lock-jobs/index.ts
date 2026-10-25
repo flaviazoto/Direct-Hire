@@ -27,6 +27,7 @@ import {
   sendSubscriptionExpiryWarningEmail,
 } from "../email";
 import { insertAdminAuditLog } from "../../lib/audit";
+import { paymentsEnabled } from "../../config/flags";
 
 // ── Job run log helper ────────────────────────────────────────────────────────
 
@@ -509,6 +510,13 @@ export async function runLockExpiryProcessor(): Promise<void> {
 export async function runSubscriptionExpiryWarnings(): Promise<void> {
   const JOB_NAME  = "subscription-expiry-warnings";
   const startedAt = new Date();
+
+  if (!paymentsEnabled()) {
+    console.log(`[${JOB_NAME}] Skipped — PAYMENTS_ENABLED=false`);
+    await writeJobLog({ jobName: JOB_NAME, status: "success", recordsProcessed: 0, recordsFailed: 0, startedAt });
+    return;
+  }
+
   const now       = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
 

@@ -21,6 +21,8 @@ import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
 import { insertAdminAuditLog } from "../lib/audit";
 import { sendApplicationAcceptedWorkerEmail, sendHireConfirmationEmployerEmail } from "../services/email";
+import { paymentsEnabled } from "../config/flags";
+import { notifyApplicationClearedForEmployer, type AdminFeeChargeStatus } from "./admin-fee.controller";
 
 // Audit finding: the WorkerLock-release side effect below used to just
 // console.error on failure — if it fails, the employer keeps being billed
@@ -43,6 +45,23 @@ async function notifyAdminsOfLockReleaseFailure(workerId: string, employerId: st
       metadata: { workerId, employerId, applicationId, error: error instanceof Error ? error.message : String(error) },
     })),
   }).catch(console.error);
+}
+
+// Shared by both the paid-fee path and the PAYMENTS_ENABLED=false waiver path
+// below — hired, no longer needs a lock, regardless of how the fee is resolved.
+function releaseActiveLockOnHire(workerId: string, employerId: string, applicationId: string) {
+  return prisma.workerLock.findFirst({
+    where: { workerId, employerId, lockStatus: "ACTIVE" },
+  }).then(activeLock => {
+    if (!activeLock) return;
+    return prisma.$transaction([
+      prisma.workerLock.update({ where: { id: activeLock.id }, data: { lockStatus: "RELEASED", releaseReason: "HIRED" } }),
+      prisma.user.update({ where: { id: workerId }, data: { isLocked: false, lockedByEmployerId: null, lockedUntil: null } }),
+    ]);
+  }).catch((e: unknown) => {
+    console.error("[hire lock release]", e);
+    notifyAdminsOfLockReleaseFailure(workerId, employerId, applicationId, e).catch(console.error);
+  });
 }
 
 const HIRE_REQUEST_SELECT = {
@@ -87,7 +106,7 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
       where: { id: applicationId },
       include: {
         worker:   { select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } } },
-        job:      { select: { title: true, companyName: true } },
+        job:      { select: { title: true, companyName: true, country: true } },
         employer: { select: { id: true, email: true, employerProfile: { select: { companyName: true, contactPersonName: true } } } },
       },
     });
@@ -98,6 +117,65 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
     }
 
     const now = new Date();
+    const workerName = [app.worker.workerProfile?.firstName, app.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "the candidate";
+    const workerFirstName = app.worker.workerProfile?.firstName ?? "";
+    const employerDisplayName = app.employer.employerProfile?.companyName ?? app.employer.employerProfile?.contactPersonName ?? app.employer.email;
+    const offeredSalary = app.offeredSalary ? app.offeredSalary.toString() : undefined;
+    const startDate = app.startDate ? app.startDate.toISOString() : undefined;
+
+    // ── PAYMENTS_ENABLED=false: waive the admin fee and clear immediately ──────
+    // instead of parking at ADMIN_FEE_DUE for an admin to charge later.
+    if (!paymentsEnabled()) {
+      const schedule = await prisma.adminFeeSchedule.findFirst({
+        where:   { countryCode: app.job.country },
+        orderBy: { visaType: "asc" },
+      });
+      const countryCode = app.job.country;
+      const visaType = schedule?.visaType ?? "UNKNOWN";
+      const waivedStatus: AdminFeeChargeStatus = "WAIVED";
+
+      const [, updated] = await prisma.$transaction([
+        prisma.adminFeeCharge.upsert({
+          where:  { applicationId },
+          update: { status: waivedStatus, amountUsd: 0, countryCode, visaType },
+          create: {
+            applicationId, workerId: app.worker.id,
+            countryCode, visaType, amountUsd: 0, currency: "usd",
+            status: waivedStatus,
+          },
+        }),
+        prisma.application.update({
+          where: { id: applicationId },
+          data: {
+            status:          "ACCEPTED",
+            acceptedAt:      now,
+            hireConfirmedAt: now,
+            workflowStatus:  "CLEARED_FOR_EMPLOYER",
+          },
+        }),
+      ]);
+
+      releaseActiveLockOnHire(app.worker.id, app.employer.id, applicationId).catch(console.error);
+      sendApplicationAcceptedWorkerEmail(
+        app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
+      ).catch((e: unknown) => console.error("[accepted worker email]", e));
+      sendHireConfirmationEmployerEmail({
+        employerUserId: app.employer.id, employerEmail: app.employer.email, employerName: employerDisplayName,
+        workerName, jobTitle: app.job.title,
+        startDate, contractType: app.contractType ?? undefined,
+        offeredSalary, offeredCurrency: app.offeredCurrency ?? "USD",
+      }).catch((e: unknown) => console.error("[hire confirmation email]", e));
+
+      notifyApplicationClearedForEmployer({
+        applicationId, workerId: app.worker.id, workerEmail: app.worker.email, workerFirstName,
+        jobTitle: app.job.title, companyName: app.job.companyName,
+        actorId: workerId,
+        auditNotes: "ADMIN_FEE_DUE waived (PAYMENTS_ENABLED=false) -> CLEARED_FOR_EMPLOYER",
+      });
+
+      return ok(res, updated, "Hire confirmed — no processing fee is due");
+    }
+
     const updated = await prisma.application.update({
       where: { id: applicationId },
       data: {
@@ -108,27 +186,10 @@ export async function confirmHire(req: Request, res: Response, next: NextFunctio
       },
     });
 
-    const workerName = [app.worker.workerProfile?.firstName, app.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "the candidate";
-    const workerFirstName = app.worker.workerProfile?.firstName ?? "";
-    const employerDisplayName = app.employer.employerProfile?.companyName ?? app.employer.employerProfile?.contactPersonName ?? app.employer.email;
-    const offeredSalary = app.offeredSalary ? app.offeredSalary.toString() : undefined;
-    const startDate = app.startDate ? app.startDate.toISOString() : undefined;
-
     const sideEffects: Promise<unknown>[] = [
       // Release any active lock the employer holds on this worker — hired, no longer needs a lock.
       // Identical logic to the old admin-only confirmHire.
-      prisma.workerLock.findFirst({
-        where: { workerId: app.worker.id, employerId: app.employer.id, lockStatus: "ACTIVE" },
-      }).then(activeLock => {
-        if (!activeLock) return;
-        return prisma.$transaction([
-          prisma.workerLock.update({ where: { id: activeLock.id }, data: { lockStatus: "RELEASED", releaseReason: "HIRED" } }),
-          prisma.user.update({ where: { id: app.worker.id }, data: { isLocked: false, lockedByEmployerId: null, lockedUntil: null } }),
-        ]);
-      }).catch((e: unknown) => {
-        console.error("[hire lock release]", e);
-        notifyAdminsOfLockReleaseFailure(app.worker.id, app.employer.id, applicationId, e).catch(console.error);
-      }),
+      releaseActiveLockOnHire(app.worker.id, app.employer.id, applicationId),
 
       sendApplicationAcceptedWorkerEmail(
         app.worker.id, app.worker.email, workerFirstName, app.job.title, app.job.companyName,
