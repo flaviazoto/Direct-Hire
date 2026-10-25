@@ -257,9 +257,41 @@ describe("OAuth role escalation", () => {
     const { findOrCreateOAuthUser } = await import("../src/routes/oauth.handler");
     const email = uniqueEmail("Oauth").replace(/^o/, "O");
     const user = await findOrCreateOAuthUser({
-      provider: "google", providerId: `g-${Date.now()}`, email, firstName: "O", lastName: "A", role: "admin" as never,
+      provider: "google", providerId: `g-${Date.now()}`, email, emailVerified: true, firstName: "O", lastName: "A", role: "admin" as never,
     });
     assert.equal(user.role, "WORKER");
     assert.equal(user.email, email.toLowerCase());
+  });
+});
+
+describe("email matching is exact (no LIKE wildcards)", () => {
+  it("_ and % in a login email do not match other accounts", async () => {
+    const user = await createUser({ email: uniqueEmail("axb") });
+    const wildcard = user.email.replace(/^axb/, "a_b");
+    assert.equal((await login(wildcard)).status, 401);
+    assert.equal((await login(user.email)).status, 200);
+  });
+
+  it("an OAuth email containing wildcards does not link to an existing account", async () => {
+    const { findOrCreateOAuthUser } = await import("../src/routes/oauth.handler");
+    const victim = await createUser({ email: uniqueEmail("victim") });
+    const crafted = victim.email.replace(/^victim/, "v_ctim");
+    const created = await findOrCreateOAuthUser({
+      provider: "google", providerId: `g-wild-${Date.now()}`, email: crafted, emailVerified: true, firstName: "X", lastName: "Y",
+    });
+    assert.notEqual(created.id, victim.id);
+    const prisma = await db();
+    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: victim.id } })).googleId, null);
+  });
+
+  it("OAuth refuses an email the provider has not verified", async () => {
+    const { findOrCreateOAuthUser, OAuthEmailUnverifiedError } = await import("../src/routes/oauth.handler");
+    const existing = await createUser();
+    await assert.rejects(
+      findOrCreateOAuthUser({ provider: "linkedin", providerId: `li-${Date.now()}`, email: existing.email, emailVerified: false, firstName: "A", lastName: "B" }),
+      OAuthEmailUnverifiedError,
+    );
+    const prisma = await db();
+    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: existing.id } })).linkedinId, null);
   });
 });

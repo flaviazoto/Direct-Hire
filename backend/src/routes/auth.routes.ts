@@ -17,7 +17,8 @@ authRouter.post("/verify-email",           ctrl.verifyEmail);
 authRouter.post("/send-verification-code", otpLimiter,          ctrl.sendVerificationCode);
 authRouter.post("/verify-email-code",      otpLimiter,          ctrl.verifyEmailCode);
 authRouter.post("/oauth/complete",         authLimiter, ctrl.oauthComplete);
-authRouter.delete("/account",              requireAnyAuth, ctrl.deleteAccount);
+// authLimiter: the password check here must not become an unthrottled guessing oracle
+authRouter.delete("/account",              authLimiter, requireAnyAuth, ctrl.deleteAccount);
 
 // OAuth initiate — rate-limited to prevent abuse
 authRouter.get("/google",            authLimiter, googleInitiate);

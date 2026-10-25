@@ -13,7 +13,13 @@ export function normalizeEmail(email: string): string {
 /** zod email field that normalizes before validating. */
 export const zEmail = () => z.string().trim().toLowerCase().pipe(z.string().email());
 
-/** Case-insensitive User lookup by email: prisma.user.findFirst({ where: userEmailWhere(email) }). */
+/**
+ * Case-insensitive User lookup by email: prisma.user.findFirst({ where: userEmailWhere(email) }).
+ * Prisma compiles insensitive equals to ILIKE without escaping, so % and _ in
+ * the input would act as wildcards ("a_b@x" matching "axb@x"). Escape them so
+ * this is an exact, case-insensitive comparison.
+ */
 export function userEmailWhere(email: string): Prisma.UserWhereInput {
-  return { email: { equals: normalizeEmail(email), mode: "insensitive" } };
+  const literal = normalizeEmail(email).replace(/[\\%_]/g, (c) => "\\" + c);
+  return { email: { equals: literal, mode: "insensitive" } };
 }

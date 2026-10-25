@@ -11,6 +11,10 @@ import { normalizeEmail, userEmailWhere } from "../lib/email-normalize";
 // OAuth can only ever create the two self-service roles. The role arrives via
 // the client-controlled ?role= / state parameter, so anything else (including
 // "admin") falls back to WORKER.
+export class OAuthEmailUnverifiedError extends Error {
+  constructor() { super("OAuth provider email is missing or unverified"); }
+}
+
 export function selfServiceRole(raw: string | undefined): Role {
   return (raw ?? "").toUpperCase() === "EMPLOYER" ? "EMPLOYER" : "WORKER";
 }
@@ -19,6 +23,9 @@ interface OAuthUserInput {
   provider:   "google" | "linkedin";
   providerId: string;
   email:      string;
+  // Whether the provider has verified the address. Unverified addresses are
+  // refused: linking by email would otherwise allow account takeover.
+  emailVerified: boolean;
   firstName:  string;
   lastName:   string;
   avatarUrl?: string;
@@ -27,6 +34,7 @@ interface OAuthUserInput {
 
 export async function findOrCreateOAuthUser(input: OAuthUserInput) {
   const providerField = input.provider === "google" ? "googleId" : "linkedinId";
+  if (!input.emailVerified || !input.email) throw new OAuthEmailUnverifiedError();
   const email         = normalizeEmail(input.email);
 
   // Find by provider ID first
@@ -36,7 +44,9 @@ export async function findOrCreateOAuthUser(input: OAuthUserInput) {
   if (byProvider) return byProvider;
 
   // Fall back to email — link the provider to an existing account
-  const byEmail = await prisma.user.findFirst({ where: userEmailWhere(email) });
+  const matches = await prisma.user.findMany({ where: userEmailWhere(email), take: 2 });
+  if (matches.length > 1) throw new Error("OAuth email matches more than one account; refusing to link");
+  const byEmail = matches[0];
   if (byEmail) {
     return (prisma.user as any).update({
       where: { id: byEmail.id },
@@ -195,15 +205,18 @@ export async function linkedinCallback(req: Request, res: Response) {
     const profileRes = await fetch("https://api.linkedin.com/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
-    const profile = await profileRes.json() as Record<string, string>;
+    const profile = await profileRes.json() as Record<string, string | boolean>;
+    const linkedinVerified = profile.email_verified === true || profile.email_verified === "true";
+    if (!profile.email || !linkedinVerified) return res.redirect(`${FRONTEND}/login?error=linkedin_failed`);
 
     const user         = await findOrCreateOAuthUser({
       provider:   "linkedin",
-      providerId: profile.sub,
-      email:      profile.email,
-      firstName:  profile.given_name  ?? "",
-      lastName:   profile.family_name ?? "",
-      avatarUrl:  profile.picture,
+      providerId: String(profile.sub),
+      email:      String(profile.email),
+      emailVerified: linkedinVerified,
+      firstName:  String(profile.given_name ?? ""),
+      lastName:   String(profile.family_name ?? ""),
+      avatarUrl:  profile.picture ? String(profile.picture) : undefined,
       role:       selfServiceRole(role),
     });
     const handoffToken = await issueHandoffToken({ sub: user.id, email: user.email, role: user.role as Role });
@@ -244,8 +257,6 @@ export async function googleCallback(req: Request, res: Response) {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     const profile = await profileRes.json() as Record<string, string | boolean>;
-    // Only trust addresses Google has verified — an unverified one could be
-    // used to link to (take over) an existing account with that email.
     if (!profile.email || (profile.email_verified !== true && profile.email_verified !== "true")) {
       return res.redirect(`${FRONTEND}/login?error=google_email_unverified`);
     }
@@ -254,6 +265,7 @@ export async function googleCallback(req: Request, res: Response) {
       provider:   "google",
       providerId: String(profile.sub),
       email:      String(profile.email),
+      emailVerified: true,
       firstName:  String(profile.given_name ?? ""),
       lastName:   String(profile.family_name ?? ""),
       avatarUrl:  profile.picture ? String(profile.picture) : undefined,
