@@ -99,8 +99,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(rateLimiter);
 
+// Short commit of the running build (set by Railway on GitHub deploys), so a
+// deploy can be confirmed from outside. Commit IDs are public in the repo.
+const BUILD_COMMIT = (process.env.RAILWAY_GIT_COMMIT_SHA ?? "").slice(0, 7) || null;
+
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "directhire-api", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", service: "directhire-api", commit: BUILD_COMMIT, timestamp: new Date().toISOString() });
 });
 
 // /api/health — namespaced alias of the same liveness check (no auth, no DB
@@ -108,7 +112,7 @@ app.get("/health", (_req, res) => {
 // an external uptime monitor (e.g. UptimeRobot) to ping under the same /api/*
 // convention every other route in this app uses.
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", commit: BUILD_COMMIT, timestamp: new Date().toISOString() });
 });
 
 if (process.env.NODE_ENV !== "production") {
