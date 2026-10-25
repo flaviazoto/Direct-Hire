@@ -21,6 +21,7 @@ import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import stripe from "../services/stripe";
 import { insertAdminAuditLog } from "../lib/audit";
+import { paymentsEnabled } from "../config/flags";
 import {
   sendAdminFeeDueEmail,
   sendClearedForEmployerEmail,
@@ -192,7 +193,7 @@ export async function createFeeCharge(req: Request, res: Response, next: NextFun
       where:  { id: applicationId },
       include: {
         worker: { select: { id: true, email: true, workerProfile: { select: { firstName: true, lastName: true } } } },
-        job:    { select: { country: true } },
+        job:    { select: { country: true, title: true, companyName: true } },
       },
     });
     if (!app) return err(res, "Application not found", 404);
@@ -213,6 +214,31 @@ export async function createFeeCharge(req: Request, res: Response, next: NextFun
     // beyond the workflowStatus gate itself.
     if (app.workflowStatus !== "ADMIN_FEE_DUE") {
       return err(res, `Cannot create a fee charge — application is at workflow stage ${app.workflowStatus ?? "none"}, not ADMIN_FEE_DUE. The employer must hire and the worker must confirm first.`, 400);
+    }
+
+    // Free mode: applications that reached ADMIN_FEE_DUE before the platform
+    // went free are waived here instead of charged — same outcome as
+    // confirmHire's waiver for new hires ($0 WAIVED charge, cleared for employer).
+    if (!paymentsEnabled()) {
+      const [charge] = await prisma.$transaction([
+        prisma.adminFeeCharge.upsert({
+          where:  { applicationId },
+          update: { status: "WAIVED", amountUsd: 0, countryCode: app.job.country, visaType },
+          create: {
+            applicationId, workerId: app.worker.id, countryCode: app.job.country, visaType,
+            amountUsd: 0, currency: "usd", status: "WAIVED",
+          },
+        }),
+        prisma.application.update({ where: { id: applicationId }, data: { workflowStatus: "CLEARED_FOR_EMPLOYER" } }),
+      ]);
+      notifyApplicationClearedForEmployer({
+        applicationId, workerId: app.worker.id, workerEmail: app.worker.email,
+        workerFirstName: app.worker.workerProfile?.firstName ?? "there",
+        jobTitle: app.job.title, companyName: app.job.companyName,
+        actorId: req.user!.sub,
+        auditNotes: "ADMIN_FEE_DUE waived by admin (PAYMENTS_ENABLED=false) -> CLEARED_FOR_EMPLOYER",
+      });
+      return ok(res, { requiresPayment: false, charge }, "Fee waived — application cleared for employer");
     }
 
     const countryCode = app.job.country;

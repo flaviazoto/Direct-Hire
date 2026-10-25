@@ -166,6 +166,28 @@ describe("free platform: workers", () => {
   });
 });
 
+describe("free platform: existing fee-due applications", () => {
+  it("an application already at ADMIN_FEE_DUE is waived and cleared, not charged", async () => {
+    const prisma = await db();
+    const { employer } = await freeEmployer();
+    const job = await approvedJob(employer.id);
+    const worker = await discoverableWorker();
+    const app = await prisma.application.create({
+      data: { workerId: worker.id, jobId: job.id, employerId: employer.id, status: "ACCEPTED", workflowStatus: "ADMIN_FEE_DUE" },
+    });
+    const admin = await createUser({ role: "ADMIN" });
+    const token = (await login(admin.email)).token!;
+    const r = await call("POST", `/api/admin/hiring/applications/${app.id}/fee/create`, { token, body: { visaType: "WORK" } });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.data.requiresPayment, false);
+    assert.equal((await prisma.application.findUniqueOrThrow({ where: { id: app.id } })).workflowStatus, "CLEARED_FOR_EMPLOYER");
+    const charge = await prisma.adminFeeCharge.findUniqueOrThrow({ where: { applicationId: app.id } });
+    assert.equal(charge.status, "WAIVED");
+    assert.equal(Number(charge.amountUsd), 0);
+    assert.equal(charge.stripePaymentIntentId, null);
+  });
+});
+
 describe("free platform: emails", () => {
   it("the cancellation email does not threaten loss of access", async () => {
     const { subscriptionCanceledTemplate } = await import("../src/services/email/templates");
