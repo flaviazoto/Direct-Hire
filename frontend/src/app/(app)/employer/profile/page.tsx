@@ -53,6 +53,7 @@ export default function EmployerProfilePage() {
   const [toast, setToast]                 = useState<ToastData>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError]     = useState<string | null>(null);
   const [form, setForm]       = useState({
     companyName: "", contactPersonName: "", industry: "",
@@ -106,7 +107,7 @@ export default function EmployerProfilePage() {
   const handleDeleteAccount = useCallback(async () => {
     setDeleteLoading(true);
     setDeleteError(null);
-    const res = await authApi.deleteAccount();
+    const res = await authApi.deleteAccount(deletePassword);
     if (!res.success) {
       setDeleteError(res.error ?? "Failed to delete account");
       setDeleteLoading(false);
@@ -115,7 +116,7 @@ export default function EmployerProfilePage() {
     localStorage.removeItem("dh_token");
     localStorage.removeItem("dh_role");
     router.replace("/");
-  }, [router]);
+  }, [router, deletePassword]);
 
   if (loading) return <LoadingPage color="teal" />;
   if (error) {
@@ -246,11 +247,30 @@ export default function EmployerProfilePage() {
               All your company data, job posts, and applications will be permanently removed.
               This action <strong style={{ color: "#0f172a" }}>cannot be undone</strong>.
             </p>
+            <label style={{ display: "block", fontSize: 12, color: "#475569", marginBottom: 6 }} htmlFor="delete-password">
+              Enter your password to confirm
+            </label>
+            <input
+              id="delete-password"
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !deleteLoading) handleDeleteAccount(); }}
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 8, fontSize: 14, marginBottom: 6,
+                background: "#ffffff", color: "#0f172a",
+                border: "1px solid #cbd5e1",
+              }}
+            />
+            <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 16 }}>
+              Signed in with Google? Sign out and back in, then delete within 10 minutes — no password needed.
+            </p>
             {deleteError && (
               <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 16 }}>{deleteError}</p>
             )}
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-              <Button variant="ghost" size="sm" onClick={() => { setShowDeleteModal(false); setDeleteError(null); }} disabled={deleteLoading}>
+              <Button variant="ghost" size="sm" onClick={() => { setShowDeleteModal(false); setDeleteError(null); setDeletePassword(""); }} disabled={deleteLoading}>
                 Cancel
               </Button>
               <Button variant="danger" size="sm" onClick={handleDeleteAccount} disabled={deleteLoading}>

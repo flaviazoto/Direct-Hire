@@ -203,7 +203,9 @@ export const authApi = {
   refresh: () => post("/auth/refresh"),
   sendVerificationCode: (email: string) => post("/auth/send-verification-code", { email }),
   verifyEmailCode: (email: string, code: string) => post("/auth/verify-email-code", { email, code }),
-  deleteAccount: () => del("/auth/account"),
+  // password is required unless the user signed in within the last 10 minutes
+  deleteAccount: (password?: string) =>
+    request("/auth/account", { method: "DELETE", body: JSON.stringify({ password: password || undefined }) }),
 };
 
 export const onboardingApi = {
@@ -244,7 +246,6 @@ export const adminApi = {
     get(`/admin/audit-log${params ? "?" + new URLSearchParams(params) : ""}`),
   getUsers: (params?: Record<string, string>) =>
     get(`/admin/users${params ? "?" + new URLSearchParams(params) : ""}`),
-  suspendUser: (id: string) => patch(`/admin/users/${id}/suspend`),
   activateUser: (id: string) => patch(`/admin/users/${id}/activate`),
   getUserDetail: (id: string) => get(`/admin/users/${id}`),
   reviewDocument: (id: string, body: { decision: "PENDING" | "APPROVED" | "REJECTED"; notes?: string }) =>

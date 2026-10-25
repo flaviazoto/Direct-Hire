@@ -4,8 +4,16 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import prisma from "../lib/prisma";
 import { issueHandoffToken, type Role } from "../lib/auth";
+import { normalizeEmail, userEmailWhere } from "../lib/email-normalize";
 
 // ── Internal helpers ──────────────────────────────────────────
+
+// OAuth can only ever create the two self-service roles. The role arrives via
+// the client-controlled ?role= / state parameter, so anything else (including
+// "admin") falls back to WORKER.
+export function selfServiceRole(raw: string | undefined): Role {
+  return (raw ?? "").toUpperCase() === "EMPLOYER" ? "EMPLOYER" : "WORKER";
+}
 
 interface OAuthUserInput {
   provider:   "google" | "linkedin";
@@ -17,8 +25,9 @@ interface OAuthUserInput {
   role?:      Role;
 }
 
-async function findOrCreateOAuthUser(input: OAuthUserInput) {
+export async function findOrCreateOAuthUser(input: OAuthUserInput) {
   const providerField = input.provider === "google" ? "googleId" : "linkedinId";
+  const email         = normalizeEmail(input.email);
 
   // Find by provider ID first
   const byProvider = await (prisma.user as any).findFirst({
@@ -27,7 +36,7 @@ async function findOrCreateOAuthUser(input: OAuthUserInput) {
   if (byProvider) return byProvider;
 
   // Fall back to email — link the provider to an existing account
-  const byEmail = await prisma.user.findUnique({ where: { email: input.email } });
+  const byEmail = await prisma.user.findFirst({ where: userEmailWhere(email) });
   if (byEmail) {
     return (prisma.user as any).update({
       where: { id: byEmail.id },
@@ -39,14 +48,14 @@ async function findOrCreateOAuthUser(input: OAuthUserInput) {
   }
 
   // Create new user + profile + onboarding in one transaction
-  const role       = input.role ?? "WORKER";
+  const role       = selfServiceRole(input.role);
   const totalSteps = role === "WORKER" ? 7 : 6;
   const randomPass = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12);
 
   return prisma.$transaction(async (tx) => {
     const newUser = await (tx.user as any).create({
       data: {
-        email:           input.email,
+        email,
         passwordHash:    randomPass,
         role,
         status:          "ACTIVE",
@@ -73,7 +82,7 @@ async function findOrCreateOAuthUser(input: OAuthUserInput) {
         role,
         currentStep:      0,
         completedSteps:   [],
-        draftData:        { email: input.email, firstName: input.firstName, lastName: input.lastName },
+        draftData:        { email, firstName: input.firstName, lastName: input.lastName },
         totalSteps,
         onboardingStatus: "DRAFT",
       },
@@ -195,7 +204,7 @@ export async function linkedinCallback(req: Request, res: Response) {
       firstName:  profile.given_name  ?? "",
       lastName:   profile.family_name ?? "",
       avatarUrl:  profile.picture,
-      role:       ((role ?? "WORKER").toUpperCase() as Role),
+      role:       selfServiceRole(role),
     });
     const handoffToken = await issueHandoffToken({ sub: user.id, email: user.email, role: user.role as Role });
     const dest         = buildRedirect(user, redirect);
@@ -234,16 +243,21 @@ export async function googleCallback(req: Request, res: Response) {
     const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
-    const profile = await profileRes.json() as Record<string, string>;
+    const profile = await profileRes.json() as Record<string, string | boolean>;
+    // Only trust addresses Google has verified — an unverified one could be
+    // used to link to (take over) an existing account with that email.
+    if (!profile.email || (profile.email_verified !== true && profile.email_verified !== "true")) {
+      return res.redirect(`${FRONTEND}/login?error=google_email_unverified`);
+    }
 
     const user         = await findOrCreateOAuthUser({
       provider:   "google",
-      providerId: profile.sub,
-      email:      profile.email,
-      firstName:  profile.given_name  ?? "",
-      lastName:   profile.family_name ?? "",
-      avatarUrl:  profile.picture,
-      role:       ((role ?? "WORKER").toUpperCase() as Role),
+      providerId: String(profile.sub),
+      email:      String(profile.email),
+      firstName:  String(profile.given_name ?? ""),
+      lastName:   String(profile.family_name ?? ""),
+      avatarUrl:  profile.picture ? String(profile.picture) : undefined,
+      role:       selfServiceRole(role),
     });
     const handoffToken = await issueHandoffToken({ sub: user.id, email: user.email, role: user.role as Role });
     const dest         = buildRedirect(user, redirect);

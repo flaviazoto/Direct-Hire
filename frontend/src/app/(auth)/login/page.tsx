@@ -129,6 +129,7 @@ function LoginPageContent() {
     if (searchParams.get("reset") === "1")           { setNoticeType("success"); setNotice("Password reset successfully. Please log in."); }
     const oauthErr = searchParams.get("error");
     if (oauthErr === "google_failed")   { setNoticeType("error"); setNotice("Google sign-in failed. Please try again."); }
+    if (oauthErr === "google_email_unverified") { setNoticeType("error"); setNotice("Your Google account email is not verified. Verify it with Google, or register with email and password."); }
     if (oauthErr === "invalid_state")   { setNoticeType("error"); setNotice("Sign-in request expired or was tampered with. Please try again."); }
   }, [searchParams]);
 

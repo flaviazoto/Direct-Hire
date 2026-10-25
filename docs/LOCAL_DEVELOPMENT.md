@@ -45,6 +45,20 @@ npm run db:seed                           # synthetic users only
 is in `prisma/archived_migrations`. Until the migration baseline is repaired,
 use `db push` for local databases only.
 
+## Automated API tests
+
+```bash
+cd backend
+DATABASE_URL=postgresql://directhire:directhire_local_only@localhost:5434/dh_test \
+DIRECT_URL=postgresql://directhire:directhire_local_only@localhost:5434/dh_test \
+  npx prisma db push --skip-generate      # after schema changes
+npm run test:api
+```
+
+`tests/helpers/harness.ts` empties `dh_test`, then starts the real API on port
+4200 with fixed test secrets and no scheduler, console email and local
+storage. It refuses any database other than a local `dh_test`.
+
 ## Safety guard
 
 `src/lib/db-guard.ts` refuses any database host that isn't local:

@@ -5,9 +5,10 @@ import prisma from "../lib/prisma";
 import {
   signAccessToken, signRefreshToken, verifyRefreshToken,
   setAuthCookies, clearAuthCookies, generateSecureToken,
-  tokenExpiresAt, COOKIE_REFRESH, verifyHandoffToken,
-  type Role,
+  tokenExpiresAt, verifyHandoffToken, freshAuthPayload, isRecentAuth,
+  readRefreshTokens, type Role,
 } from "../lib/auth";
+import { zEmail, userEmailWhere } from "../lib/email-normalize";
 import { ok, err } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { z } from "zod";
@@ -23,7 +24,7 @@ const CURRENT_CONSENT_POLICY_VERSION = "2025-01";
 const RegisterSchema = z.object({
   firstName:       z.string().trim().min(1).max(100),
   lastName:        z.string().trim().min(1).max(100),
-  email:           z.string().email(),
+  email:           zEmail(),
   password:        z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
   confirmPassword: z.string(),
   role:            z.enum(["WORKER", "EMPLOYER"]),
@@ -35,11 +36,11 @@ const RegisterSchema = z.object({
 });
 
 const LoginSchema = z.object({
-  email:    z.string().email(),
+  email:    zEmail(),
   password: z.string().min(1),
 });
 
-const ForgotSchema = z.object({ email: z.string().email() });
+const ForgotSchema = z.object({ email: zEmail() });
 
 const ResetSchema = z.object({
   token:           z.string().min(1),
@@ -58,7 +59,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
   try {
     const input = RegisterSchema.parse(req.body);
 
-    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    const existing = await prisma.user.findFirst({ where: userEmailWhere(input.email) });
     if (existing) return err(res, "An account with this email already exists", 409);
 
     const passwordHash = await bcrypt.hash(input.password, 12);
@@ -116,14 +117,8 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       return { user };
     });
 
-    // Issue tokens
-    const tokenPayload = { sub: result.user.id, email: result.user.email, role: result.user.role as Role };
-    const accessToken  = await signAccessToken(tokenPayload);
-    const refreshToken = await signRefreshToken(tokenPayload);
-
-    await prisma.session.create({
-      data: { userId: result.user.id, refreshToken, expiresAt: tokenExpiresAt(24 * 30) },
-    });
+    // No tokens or session here: the account can't be used until the email
+    // is verified and the user signs in.
 
     // Generate OTP and store it (replaces token-based email verification)
     const code      = generateOTP();
@@ -152,12 +147,9 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       console.error("[register] OTP email error:", e)
     );
 
-    setAuthCookies(res, accessToken, refreshToken);
     return ok(res, {
       user:  { id: result.user.id, email: result.user.email, role: result.user.role },
       email: result.user.email,
-      accessToken,
-      token: accessToken,
       role: result.user.role,
     }, "Check your email for a verification code", 201);
   } catch (e) { next(e); }
@@ -168,7 +160,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const input = LoginSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    const user = await prisma.user.findFirst({ where: userEmailWhere(input.email) });
     if (!user) return err(res, "Invalid email or password", 401);
 
     const valid = await bcrypt.compare(input.password, user.passwordHash);
@@ -176,6 +168,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
     if (user.status === "SUSPENDED") return err(res, "Your account has been suspended. Contact support.", 403, { accountStatus: "SUSPENDED" });
     if (user.status === "BANNED")    return err(res, "Account permanently disabled.", 403);
+    if (user.accountStatus === "SUSPENDED") return err(res, "Your account has been suspended. Contact support.", 403, { accountStatus: "SUSPENDED" });
 
     // Account status gate — ADMIN role bypasses this (seeded accounts skip OTP flow)
     if (user.role !== "ADMIN") {
@@ -192,7 +185,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-    const tokenPayload = { sub: user.id, email: user.email, role: user.role as Role };
+    const tokenPayload = freshAuthPayload(user);
     const accessToken  = await signAccessToken(tokenPayload);
     const refreshToken = await signRefreshToken(tokenPayload);
 
@@ -220,14 +213,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 // ── logout ────────────────────────────────────────────────────
 export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.cookies?.[COOKIE_REFRESH];
+    const tokens = readRefreshTokens(req);
     let userId: string | undefined;
-    if (token) {
+    if (tokens.length) {
       const session = await prisma.session
-        .findUnique({ where: { refreshToken: token }, select: { userId: true } })
+        .findFirst({ where: { refreshToken: { in: tokens } }, select: { userId: true } })
         .catch(() => undefined);
-      userId = session?.userId;
-      await prisma.session.deleteMany({ where: { refreshToken: token } }).catch(() => {});
+      userId = session?.userId ?? undefined;
+      await prisma.session.deleteMany({ where: { refreshToken: { in: tokens } } }).catch(() => {});
     }
     if (userId) {
       insertAuditLog({ actorId: userId, targetId: userId, action: "LOGOUT", entity: "Session" }).catch(() => {});
@@ -240,34 +233,45 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 // ── refresh ───────────────────────────────────────────────────
 export async function refresh(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.cookies?.[COOKIE_REFRESH];
-    if (!token) {
+    const candidates = readRefreshTokens(req);
+    if (candidates.length === 0) {
       clearAuthCookies(res);
       return err(res, "No refresh token", 401);
     }
 
-    let payload;
-    try { payload = await verifyRefreshToken(token); }
-    catch {
-      clearAuthCookies(res);
-      return err(res, "Invalid or expired refresh token", 401);
+    // A browser may send a stale legacy-path cookie alongside the current one;
+    // use the first candidate that verifies and still has a live session.
+    let token:   string | undefined;
+    let payload: Awaited<ReturnType<typeof verifyRefreshToken>> | undefined;
+    for (const candidate of candidates) {
+      try {
+        const verified = await verifyRefreshToken(candidate);
+        const session  = await prisma.session.findUnique({ where: { refreshToken: candidate } });
+        if (session && session.expiresAt >= new Date() && session.userId === verified.sub) {
+          token = candidate; payload = verified;
+          break;
+        }
+      } catch { /* try the next candidate */ }
     }
-
-    const session = await prisma.session.findUnique({ where: { refreshToken: token } });
-    if (!session || session.expiresAt < new Date()) {
-      await prisma.session.deleteMany({ where: { refreshToken: token } }).catch(() => {});
+    if (!token || !payload) {
+      await prisma.session.deleteMany({ where: { refreshToken: { in: candidates } } }).catch(() => {});
       clearAuthCookies(res);
       return err(res, "Session expired", 401);
     }
 
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || user.status === "BANNED" || user.status === "SUSPENDED") {
+    if (
+      !user || user.status === "BANNED" || user.status === "SUSPENDED" ||
+      user.accountStatus === "SUSPENDED" ||
+      (user.accountStatus === "PENDING_EMAIL_VERIFICATION" && user.role !== "ADMIN")
+    ) {
       await prisma.session.deleteMany({ where: { refreshToken: token } }).catch(() => {});
       clearAuthCookies(res);
       return err(res, "Account unavailable", 403);
     }
 
-    const newPayload      = { sub: user.id, email: user.email, role: user.role as Role };
+    // authTime is carried forward: refreshing is not a fresh sign-in.
+    const newPayload      = { sub: user.id, email: user.email, role: user.role as Role, authTime: payload.authTime };
     const newAccessToken  = await signAccessToken(newPayload);
     const newRefreshToken = await signRefreshToken(newPayload);
 
@@ -287,7 +291,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
 export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = ForgotSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({ where: userEmailWhere(email) });
 
     if (user) {
       await prisma.passwordResetToken.updateMany({
@@ -299,7 +303,7 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
       await prisma.passwordResetToken.create({
         data: { userId: user.id, token, expiresAt: tokenExpiresAt(1) },
       });
-      await enqueue("email.passwordReset", { userId: user.id, to: email, resetUrl });
+      await enqueue("email.passwordReset", { userId: user.id, to: user.email, resetUrl });
     }
 
     // Always return success (prevents email enumeration)
@@ -357,20 +361,23 @@ export async function verifyEmail(req: Request, res: Response, next: NextFunctio
 
 
 // ── Schemas for OTP endpoints ─────────────────────────────────
-const SendCodeSchema   = z.object({ email: z.string().email() });
-const VerifyCodeSchema = z.object({ email: z.string().email(), code: z.string().length(6) });
+// Compared against when there is no real code, so failures take as long as
+// a genuine check. Hash of a random value that is not a 6-digit code.
+const DUMMY_OTP_HASH = "$2a$10$PpYH/ZumCgm4ORfSAw7lmOhn6lkvcPe/Uc7L/NavZrqPa4qggYcKO";
+const SendCodeSchema   = z.object({ email: zEmail() });
+const VerifyCodeSchema = z.object({ email: zEmail(), code: z.string().length(6) });
 
 // ── sendVerificationCode ──────────────────────────────────────
 export async function sendVerificationCode(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = SendCodeSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({ where: userEmailWhere(email) });
 
-    // Generic success even when user not found — prevents email enumeration
-    if (!user) return ok(res, null, "Verification code sent");
-
-    if (user.isEmailVerified) return err(res, "Email already verified", 400);
+    // Same response for unknown, already-verified and rate-limited addresses,
+    // so the endpoint can't be used to discover which emails have accounts.
+    const GENERIC = "If this email needs verifying, a code has been sent.";
+    if (!user || user.isEmailVerified) return ok(res, null, GENERIC);
 
     // Per-user rate limit: max 3 codes in the last hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -381,9 +388,7 @@ export async function sendVerificationCode(req: Request, res: Response, next: Ne
         createdAt: { gt: oneHourAgo },
       },
     });
-    if (recentCount >= 3) {
-      return err(res, "Too many requests. Try again in an hour.", 429);
-    }
+    if (recentCount >= 3) return ok(res, null, GENERIC);
 
     const code = generateOTP();
     const hash = await hashOTP(code);
@@ -412,11 +417,11 @@ export async function sendVerificationCode(req: Request, res: Response, next: Ne
     ]);
 
     // Fire-and-forget — email failure must not fail the request
-    sendOtpVerification(user.id, email, code, 10).catch((e) =>
+    sendOtpVerification(user.id, user.email, code, 10).catch((e) =>
       console.error("[sendVerificationCode] email error:", e)
     );
 
-    return ok(res, null, "Verification code sent");
+    return ok(res, null, GENERIC);
   } catch (e) { next(e); }
 }
 
@@ -425,42 +430,40 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
   try {
     const { email, code } = VerifyCodeSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // One response for every failure (unknown email, no code, expired, too
+    // many attempts, wrong code) and one bcrypt comparison on every path, so
+    // status, body and timing don't reveal whether the account exists.
+    const fail = () => err(res, "Invalid or expired code. Request a new code if needed.", 400);
+
+    const user = await prisma.user.findFirst({
+      where: userEmailWhere(email),
       include: { workerProfile: true, employerProfile: true },
     });
-    if (!user) return err(res, "User not found", 404);
+    const record = user
+      ? await prisma.verificationCode.findFirst({
+          where:   { userId: user.id, type: "EMAIL_VERIFICATION", usedAt: null },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
 
-    // Latest unused code for this user
-    const record = await prisma.verificationCode.findFirst({
-      where:   { userId: user.id, type: "EMAIL_VERIFICATION", usedAt: null },
-      orderBy: { createdAt: "desc" },
-    });
-    if (!record) return err(res, "No pending verification. Request a new code.", 400);
+    const valid = await verifyOTP(code, record?.codeHash ?? DUMMY_OTP_HASH);
+    if (!user || !record || record.expiresAt < new Date()) return fail();
 
-    if (record.expiresAt < new Date()) {
-      return err(res, "Code expired. Request a new one.", 400);
-    }
-
-    if (record.attempts >= 5) {
-      return err(res, "Too many failed attempts. Request a new code.", 429);
-    }
-
-    // Increment attempts before verifying (counts this attempt)
-    await prisma.verificationCode.update({
-      where: { id: record.id },
+    // Count the attempt atomically; concurrent guesses can't exceed the cap.
+    const counted = await prisma.verificationCode.updateMany({
+      where: { id: record.id, usedAt: null, attempts: { lt: 5 } },
       data:  { attempts: { increment: 1 } },
     });
+    if (counted.count === 0 || !valid) return fail();
 
-    const valid = await verifyOTP(code, record.codeHash);
-    if (!valid) return err(res, "Invalid code.", 400);
+    // Success — mark code used (only once) and update user
+    const claimed = await prisma.verificationCode.updateMany({
+      where: { id: record.id, usedAt: null },
+      data:  { usedAt: new Date() },
+    });
+    if (claimed.count === 0) return fail();
 
-    // Success — mark code used and update user
     await prisma.$transaction([
-      prisma.verificationCode.update({
-        where: { id: record.id },
-        data:  { usedAt: new Date() },
-      }),
       prisma.user.update({
         where: { id: user.id },
         data: {
@@ -473,7 +476,7 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
     ]);
 
     // Notify user — fire-and-forget
-    sendEmailVerified(user.id, email, user.workerProfile?.firstName ?? user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there", user.role as "WORKER" | "EMPLOYER")
+    sendEmailVerified(user.id, user.email, user.workerProfile?.firstName ?? user.employerProfile?.contactPersonName?.split(" ")[0] ?? "there", user.role as "WORKER" | "EMPLOYER")
       .catch((e) => console.error("[verifyEmailCode] email error:", e));
 
     return ok(res, { accountStatus: "PENDING_REVIEW" }, "Email verified. Your account is under review.");
@@ -481,6 +484,9 @@ export async function verifyEmailCode(req: Request, res: Response, next: NextFun
 }
 
 // ── deleteAccount ─────────────────────────────────────────────
+const REAUTH_WINDOW_SECONDS = 10 * 60;
+const DeleteAccountSchema   = z.object({ password: z.string().max(200).optional() });
+
 export async function deleteAccount(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.sub;
@@ -488,6 +494,14 @@ export async function deleteAccount(req: Request, res: Response, next: NextFunct
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return err(res, "User not found", 404);
+
+    // Require recent authentication: the current password, or a sign-in within
+    // the last 10 minutes (covers Google accounts, which have no usable password).
+    const { password } = DeleteAccountSchema.parse(req.body ?? {});
+    const passwordOk = password ? await bcrypt.compare(password, user.passwordHash) : false;
+    if (!passwordOk && !isRecentAuth(req.user!, REAUTH_WINDOW_SECONDS)) {
+      return err(res, password ? "Incorrect password." : "Please confirm your password to delete your account.", 401, { code: "REAUTH_REQUIRED" });
+    }
 
     // Write audit log BEFORE deleting the user (FK would prevent it after)
     await insertAuditLog({
@@ -552,13 +566,13 @@ export async function oauthComplete(req: Request, res: Response, next: NextFunct
 
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) return err(res, "User not found", 404);
-    if (user.status === "BANNED" || user.status === "SUSPENDED") {
+    if (user.status === "BANNED" || user.status === "SUSPENDED" || user.accountStatus === "SUSPENDED") {
       return err(res, "Account unavailable", 403);
     }
 
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-    const tokenPayload = { sub: user.id, email: user.email, role: user.role as Role };
+    const tokenPayload = freshAuthPayload(user);
     const accessToken  = await signAccessToken(tokenPayload);
     const refreshToken = await signRefreshToken(tokenPayload);
 

@@ -39,7 +39,6 @@ adminRouter.get("/users/:id",                requireAdmin, ctrl.getUserDetail);
 adminRouter.get(  "/workers/pending-documents",           requireAdmin, docsCtrl.getPendingDocumentWorkers);
 adminRouter.get(  "/workers/:id/documents",               requireAdmin, docsCtrl.getWorkerDocuments);
 adminRouter.patch("/workers/:id/documents/review",        requireAdmin, docsCtrl.reviewWorkerDocuments);
-adminRouter.patch("/users/:id/suspend",      requireAdmin, ctrl.suspendUser);       // legacy (UserStatus field)
 adminRouter.patch("/users/:id/activate",     requireAdmin, ctrl.activateUser);      // legacy (UserStatus field)
 adminRouter.post("/users/:id/approve",       requireAdmin, ctrl.approveUser);
 adminRouter.post("/users/:id/reject",        requireAdmin, ctrl.rejectUser);

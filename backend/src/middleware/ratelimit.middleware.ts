@@ -13,14 +13,14 @@ export const rateLimiter = rateLimit({
 // Stricter limiter for auth endpoints
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max:      20,
+  max:      parseInt(process.env.AUTH_RATE_LIMIT_MAX ?? "20"),
   message:  { success: false, error: "Too many auth attempts. Try again in 15 minutes." },
 });
 
 // OTP endpoints: 10 requests per 15 min per IP
 export const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max:      10,
+  max:      parseInt(process.env.OTP_RATE_LIMIT_MAX ?? "10"),
   standardHeaders: true,
   legacyHeaders:   false,
   message:  { success: false, error: "Too many requests. Try again in 15 minutes." },

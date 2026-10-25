@@ -213,6 +213,11 @@ export async function startBullMQWorker(): Promise<void> {
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function startScheduler(): Promise<void> {
+  // Automated API tests run the server without background jobs.
+  if (process.env.DISABLE_SCHEDULER === "true") {
+    console.log("[Scheduler] Disabled (DISABLE_SCHEDULER=true)");
+    return;
+  }
   const useRedis = !!process.env.REDIS_URL && process.env.JOBS_INLINE_MODE !== "true";
 
   if (useRedis) {

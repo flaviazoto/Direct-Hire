@@ -700,14 +700,6 @@ export async function updateJobStatus(req: Request, res: Response, next: NextFun
   } catch (e) { next(e); }
 }
 
-export async function suspendUser(req: Request, res: Response, next: NextFunction) {
-  try {
-    await prisma.user.update({ where: { id: req.params.id }, data: { status: "SUSPENDED" } });
-    await insertAuditLog({ actorId: req.user!.sub, targetId: req.params.id, action: "USER_SUSPENDED", entity: "User", entityId: req.params.id });
-    return ok(res, null, "User suspended");
-  } catch (e) { next(e); }
-}
-
 export async function activateUser(req: Request, res: Response, next: NextFunction) {
   try {
     await prisma.user.update({ where: { id: req.params.id }, data: { status: "ACTIVE" } });
@@ -1069,6 +1061,8 @@ export async function suspendUserAccount(req: Request, res: Response, next: Next
       },
     });
     if (!user) return err(res, "User not found", 404);
+    if (id === adminId)        return err(res, "You cannot suspend your own account", 400);
+    if (user.role === "ADMIN") return err(res, "Admin accounts cannot be suspended here", 400);
     if (user.accountStatus !== "VERIFIED") {
       return err(res, `Cannot suspend user with status: ${user.accountStatus}`, 400);
     }

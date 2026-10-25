@@ -40,6 +40,15 @@ export function requireAuth(allowedRoles?: Role[], options?: { requireVerified?:
       if (user.status === "SUSPENDED" || user.status === "BANNED") {
         return err(res, "Account is not active", 403);
       }
+      // Admin suspension sets accountStatus (not status); enforce it on every
+      // request so existing access tokens stop working immediately.
+      if (user.accountStatus === "SUSPENDED") {
+        return err(res, "Your account has been suspended. Contact support.", 403, { accountStatus: "SUSPENDED" });
+      }
+      // Same gate as login: admins are exempt (seeded accounts skip the OTP flow).
+      if (user.accountStatus === "PENDING_EMAIL_VERIFICATION" && user.role !== "ADMIN") {
+        return err(res, "Please verify your email first.", 403, { accountStatus: "PENDING_EMAIL_VERIFICATION" });
+      }
 
       if (allowedRoles && !allowedRoles.includes(user.role as Role)) {
         return err(res, "Forbidden - insufficient permissions", 403);
