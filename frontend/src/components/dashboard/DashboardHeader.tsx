@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { employerApi, adminApi, workerApi } from '@/lib/api-client'
 import { useNotificationPolling } from '@/hooks/useNotificationPolling'
+import { usePaymentsEnabled } from '@/lib/payments-flag'
 import { type NotifItem, getNotificationIcon, timeAgo } from '@/lib/notifications'
 
 export type Role = 'worker' | 'employer' | 'admin'
@@ -126,6 +127,22 @@ const ADMIN_LINKS: AdminLinkGroup[] = [
     ],
   },
 ]
+
+// Free mode (PAYMENTS_ENABLED=false): pricing/fee controls are hidden, and the
+// worker/employer payment pages stay reachable as history (existing
+// subscribers still need them to cancel).
+const PAYMENT_CONTROL_HREFS = new Set(['/admin/fee-schedules', '/admin/pricing'])
+const FREE_MODE_LABELS: Record<string, string> = {
+  '/worker/payments':       'Payment history',
+  '/employer/subscription': 'Billing history',
+}
+
+function forPaymentsMode<T extends { href: string; label: string }>(links: T[], free: boolean): T[] {
+  if (!free) return links
+  return links
+    .filter(l => !PAYMENT_CONTROL_HREFS.has(l.href))
+    .map(l => (FREE_MODE_LABELS[l.href] ? { ...l, label: FREE_MODE_LABELS[l.href] } : l))
+}
 
 // Per-role accent — the ONE thing that still varies by role. Everything else
 // (surface, blur, text colors) is now shared across all three.
@@ -266,10 +283,17 @@ export default function DashboardHeader({
 
   useEffect(() => { setMenuOpen(false); setNotifOpen(false) }, [pathname])
 
-  const links = role === 'admin' ? [] : ROLE_LINKS[role]
+  // Only switch to free-mode navigation once the flag is known, so paid-mode
+  // links never flicker away while it loads.
+  const payments = usePaymentsEnabled()
+  const freeMode = !payments.loading && !payments.enabled
+  const links = role === 'admin' ? [] : forPaymentsMode(ROLE_LINKS[role], freeMode)
+  const adminLinks = ADMIN_LINKS
+    .map(group => ({ ...group, links: forPaymentsMode(group.links, freeMode) }))
+    .filter(group => group.links.length > 0)
   const accent = ROLE_ACCENT[role]
   const roleHrefs = role === 'admin'
-    ? ADMIN_LINKS.flatMap(group => group.links.map(link => link.href))
+    ? adminLinks.flatMap(group => group.links.map(link => link.href))
     : links.map(link => link.href)
 
   const isActive = (href: string) => {
@@ -451,7 +475,7 @@ export default function DashboardHeader({
           to be suppressed explicitly when closed. */}
       {role === 'admin' ? (
         <div className="flex-1 overflow-y-auto px-4 py-4" tabIndex={menuOpen ? undefined : -1}>
-          {ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+          {adminLinks.map(({ section, links: sectionLinks }) => (
             <div key={section} className="mb-4">
               <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-1`}>
                 {section}
@@ -615,7 +639,7 @@ export default function DashboardHeader({
 
         <nav className="dashboard-sidebar-nav" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {role === 'admin' ? (
-            ADMIN_LINKS.map(({ section, links: sectionLinks }) => (
+            adminLinks.map(({ section, links: sectionLinks }) => (
               <div key={section} className="mb-4">
                 <p className={`text-[10px] font-semibold ${accent.sectionLabelClass} uppercase tracking-widest px-3 mb-1`}>
                   {section}

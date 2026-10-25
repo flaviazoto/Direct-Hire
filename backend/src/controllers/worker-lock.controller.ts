@@ -25,6 +25,49 @@ import {
 import { insertAdminAuditLog } from "../lib/audit";
 import { generateInvoice } from "../services/invoices";
 import { employerCanViewWorker } from "../lib/worker-visibility";
+import { paymentsEnabled } from "../config/flags";
+
+// ── Free reservations (PAYMENTS_ENABLED=false) ───────────────────────────────
+// No charge, so abuse limits do the work a price used to: the existing
+// concurrent and duration caps, a total-length cap that extensions can't
+// exceed, and a cooldown before the same employer re-reserves the same worker.
+const FREE_RELOCK_COOLDOWN_DAYS = 7;
+class LockConflictError extends Error {}
+class LockLimitError extends Error {}
+
+async function notifyLockCreated(args: {
+  lock: { id: string };
+  employerId: string;
+  employerEmail: string;
+  employerName: string;
+  worker: { id: string; email: string; firstName: string; fullName: string };
+  start: Date;
+  expiry: Date;
+  lockDays: number;
+  dailyFee: number;
+}) {
+  const { lock, employerId, employerEmail, employerName, worker, start, expiry, lockDays, dailyFee } = args;
+  await Promise.all([
+    insertAdminAuditLog({
+      actorId:  employerId,
+      targetId: worker.id,
+      action:   "WORKER_LOCKED",
+      metadata: { lock_id: lock.id, lock_days: lockDays, daily_fee: dailyFee, lock_expiry_date: expiry.toISOString(), free: dailyFee === 0 },
+    }),
+    sendWorkerLockedWorkerEmail(worker.id, worker.email, worker.firstName, expiry),
+    sendWorkerLockedEmployerEmail(employerId, employerEmail, worker.firstName, worker.fullName, start, expiry, dailyFee, "USD", lockDays),
+    prisma.notification.create({
+      data: {
+        userId:   worker.id,
+        type:     "WORKER_LOCKED",
+        title:    "Your profile has been reserved",
+        body:     `${employerName} has placed a reservation on your profile until ${expiry.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`,
+        link:     "/worker/reservations",
+        metadata: { lockId: lock.id },
+      },
+    }),
+  ]);
+}
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -94,7 +137,7 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
     const ep = employerFull.employerProfile;
     const isActive   = ep?.subscriptionStatus === "ACTIVE";
     const isTrialing = ep?.subscriptionStatus === "TRIAL" && ep?.trialEndsAt != null && ep.trialEndsAt.getTime() > Date.now();
-    if (!isActive && !isTrialing) {
+    if (paymentsEnabled() && !isActive && !isTrialing) {
       return err(
         res,
         "An active subscription is required to reserve workers.",
@@ -160,6 +203,65 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
         403,
         { code: "MAX_LOCKS_REACHED", current: activeLockCount, max: maxConcurrentInt },
       );
+    }
+
+    // ── Free mode: reserve immediately, no PaymentIntent ──────────────────────
+    if (!paymentsEnabled()) {
+      const cooldownStart = new Date(Date.now() - FREE_RELOCK_COOLDOWN_DAYS * 24 * 3600 * 1000);
+      const recent = await prisma.workerLock.count({
+        where: { employerId, workerId, lockStatus: { not: "ACTIVE" }, updatedAt: { gte: cooldownStart } },
+      });
+      if (recent > 0) {
+        return err(res, `You can reserve this worker again ${FREE_RELOCK_COOLDOWN_DAYS} days after your last reservation ended.`, 429, { code: "RELOCK_COOLDOWN" });
+      }
+
+      const now    = new Date();
+      const expiry = new Date(now.getTime() + lock_days * 24 * 3600 * 1000);
+      let lock;
+      try {
+        lock = await prisma.$transaction(async (tx) => {
+          // Serialize this employer's reservations (transaction-scoped advisory
+          // lock) so parallel requests can't each see a count under the limit.
+          await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${employerId}))`;
+          // Claim the worker atomically: only one concurrent request can flip
+          // isLocked from false, so two employers can't both reserve them.
+          const claimed = await tx.user.updateMany({
+            where: { id: workerId, isLocked: false },
+            data:  { isLocked: true, lockedByEmployerId: employerId, lockedUntil: expiry, lockCount: { increment: 1 } },
+          });
+          if (claimed.count === 0) throw new LockConflictError();
+          // Re-checked inside the transaction so parallel requests from one
+          // employer can't exceed the concurrent limit either.
+          const active = await tx.workerLock.count({ where: { employerId, lockStatus: "ACTIVE" } });
+          if (active >= maxConcurrentInt) throw new LockLimitError();
+          return tx.workerLock.create({
+            data: {
+              workerId, employerId, lockStatus: "ACTIVE", dailyFee: 0, currency: "USD",
+              lockStartDate: now, lockExpiryDate: expiry, lockDays: lock_days,
+              totalBilled: 0, totalDaysBilled: 0,
+            },
+          });
+        });
+      } catch (e) {
+        if (e instanceof LockConflictError) {
+          return err(res, "This worker is currently reserved by another employer.", 409, { code: "WORKER_LOCKED" });
+        }
+        if (e instanceof LockLimitError) {
+          return err(res, `You can only reserve up to ${maxConcurrentInt} workers at a time.`, 403, { code: "MAX_LOCKS_REACHED", max: maxConcurrentInt });
+        }
+        throw e;
+      }
+
+      const employerName = ep?.companyName ?? ep?.contactPersonName ?? "Employer";
+      const firstName = worker.workerProfile?.firstName ?? "";
+      notifyLockCreated({
+        lock, employerId, employerEmail: employerFull.email, employerName,
+        worker: { id: workerId, email: worker.email, firstName,
+                  fullName: [firstName, worker.workerProfile?.lastName].filter(Boolean).join(" ") || "Worker" },
+        start: now, expiry, lockDays: lock_days, dailyFee: 0,
+      }).catch(console.error);
+
+      return ok(res, { requiresPayment: false, lock }, "Worker reservation confirmed", 201);
     }
 
     // ── FIX 3: Create Stripe PaymentIntent (upfront charge for all days) ──────
@@ -441,10 +543,31 @@ export async function extendLock(req: Request, res: Response, next: NextFunction
     });
     if (!lock) return err(res, "No active reservation found for this worker.", 404);
 
-    // 60-day total cap
+    // 60-day total cap (free reservations: capped at the platform maximum)
     const totalDays = Math.round(
       (lock.lockExpiryDate.getTime() - lock.lockStartDate.getTime()) / (24 * 3600 * 1000),
     ) + additional_days;
+
+    if (!paymentsEnabled()) {
+      const maxDays = parseInt(await cfg("lock_max_duration_days", "14"));
+      if (totalDays > maxDays) {
+        return err(res, `Cannot extend: free reservations can last at most ${maxDays} days in total.`, 400, { code: "MAX_DURATION" });
+      }
+      const newExpiry = new Date(lock.lockExpiryDate.getTime() + additional_days * 24 * 3600 * 1000);
+      const [updated] = await prisma.$transaction([
+        prisma.workerLock.update({
+          where: { id: lock.id },
+          data:  { lockExpiryDate: newExpiry, lockDays: { increment: additional_days }, expiryWarningSent: false },
+        }),
+        prisma.user.update({ where: { id: workerId }, data: { lockedUntil: newExpiry } }),
+      ]);
+      insertAdminAuditLog({
+        actorId: employerId, targetId: workerId, action: "WORKER_LOCK_EXTENDED",
+        metadata: { lock_id: lock.id, additional_days, new_expiry: newExpiry.toISOString(), free: true },
+      }).catch(console.error);
+      return ok(res, { requiresPayment: false, lock: updated }, "Reservation extended");
+    }
+
     if (totalDays > 60) {
       return err(
         res,

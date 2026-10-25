@@ -6,6 +6,7 @@ import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -150,6 +151,19 @@ function LocksContent() {
   // Extend modal
   const [extendLock,    setExtendLock]    = useState<Lock | null>(null);
   const [extendDays,    setExtendDays]    = useState(7);
+  // Free mode: no Stripe step, and total length is capped at the platform
+  // maximum (lock_max_duration_days) instead of 60 days.
+  const payments = usePaymentsEnabled();
+  const freeMode = !payments.loading && !payments.enabled;
+  const [freeMaxDays, setFreeMaxDays] = useState(14);
+  useEffect(() => {
+    if (!freeMode) return;
+    employerApi.getLockRate().then(r => {
+      const max = (r.data as { maxDays?: number } | undefined)?.maxDays;
+      if (r.success && max) setFreeMaxDays(max);
+    });
+  }, [freeMode]);
+  const extendCapDays = freeMode ? freeMaxDays : 60;
   const [extendLoading, setExtendLoading] = useState(false);
   const [extendError,   setExtendError]   = useState("");
   const [extendPhase,   setExtendPhase]   = useState<"configure" | "payment">("configure");
@@ -259,12 +273,17 @@ function LocksContent() {
   async function handleExtend() {
     if (!extendLock) return;
     const total = currentTotalDays(extendLock) + extendDays;
-    if (total > 60) { setExtendError(`Cannot exceed 60 days total. Max additional: ${60 - currentTotalDays(extendLock)} days.`); return; }
+    if (total > extendCapDays) { setExtendError(`Cannot exceed ${extendCapDays} days total. Max additional: ${Math.max(0, extendCapDays - currentTotalDays(extendLock))} days.`); return; }
     setExtendLoading(true);
     setExtendError("");
     const res = await employerApi.extendWorkerLock(extendLock.worker.id, { additional_days: extendDays });
     setExtendLoading(false);
-    if (res.success) {
+    if (res.success && (res.data as { requiresPayment?: boolean })?.requiresPayment === false) {
+      const expiry = (res.data as { lock?: { lockExpiryDate?: string } })?.lock?.lockExpiryDate;
+      closeExtendModal();
+      await fetchLocks(1);
+      showToast(`Reservation extended${expiry ? " to " + fmtDateLong(expiry) : ""}`, "ok");
+    } else if (res.success) {
       const data = res.data as { clientSecret: string; paymentIntentId: string; additionalCents: number };
       setExtendClientSecret(data.clientSecret);
       setExtendPaymentIntentId(data.paymentIntentId);
@@ -331,8 +350,8 @@ function LocksContent() {
 
   // Extend modal computed
   const extendCurrentTotal = extendLock ? currentTotalDays(extendLock) : 0;
-  const extendCapExceeded  = extendCurrentTotal + extendDays > 60;
-  const extendMaxAllowed   = Math.max(0, 60 - extendCurrentTotal);
+  const extendCapExceeded  = extendCurrentTotal + extendDays > extendCapDays;
+  const extendMaxAllowed   = Math.max(0, extendCapDays - extendCurrentTotal);
   const extendNewExpiry    = extendLock
     ? new Date(new Date(extendLock.lock_expiry_date).getTime() + extendDays * 24 * 3600 * 1000)
     : null;
@@ -488,7 +507,7 @@ function LocksContent() {
               {/* Cap/preview */}
               {extendCapExceeded ? (
                 <div style={{ color: "#f87171", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
-                  Cannot exceed 60 days total.<br />
+                  Cannot exceed {extendCapDays} days total.<br />
                   You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
                 </div>
               ) : (
@@ -497,7 +516,9 @@ function LocksContent() {
                     New expiry: {extendNewExpiry ? fmtDateLong(extendNewExpiry) : "—"}
                   </div>
                   <div style={{ color: "#71717a", fontSize: 12, marginTop: 3 }}>
-                    {extendDays} × {extendLock.currency} {Number(extendLock.daily_fee).toFixed(2)} = {extendLock.currency} {extendAddedCost} additional
+                    {freeMode
+                      ? "No charge"
+                      : <>{extendDays} × {extendLock.currency} {Number(extendLock.daily_fee).toFixed(2)} = {extendLock.currency} {extendAddedCost} additional</>}
                   </div>
                 </div>
               )}
@@ -514,7 +535,7 @@ function LocksContent() {
                   style={{ ...mBtnPrimary, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: extendCapExceeded ? 0.5 : 1, cursor: extendCapExceeded ? "not-allowed" : "pointer" }}
                 >
                   {extendLoading && <Spinner size="xs" color="white" />}
-                  {extendCapExceeded ? "Confirm extension" : `Confirm & Charge ${extendLock.currency} ${extendAddedCost}`}
+                  {extendCapExceeded || freeMode ? "Confirm extension" : `Confirm & Charge ${extendLock.currency} ${extendAddedCost}`}
                 </button>
               </div>
             </>

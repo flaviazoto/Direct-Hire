@@ -10,6 +10,7 @@
 // worker/employer/admin = teal/violet/gold convention was established.
 
 import { Suspense, useEffect, useState, useCallback } from "react";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { userApi, employerApi } from "@/lib/api-client";
@@ -166,6 +167,8 @@ function EmployerDashboardContent() {
   const [activeLockCount, setActiveLockCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast]     = useState<ToastData>(null);
+  const payments = usePaymentsEnabled();
+  const freeMode = !payments.loading && !payments.enabled;
   const [subStatus, setSubStatus] = useState<{ status: string; currentPeriodEnd: string | null; trialEndsAt: string | null } | null>(null);
 
   const showToast = useCallback((msg: string, type: "ok" | "err" = "ok") => {
@@ -221,6 +224,8 @@ function EmployerDashboardContent() {
   const daysUntil = (iso: string | null) => iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)) : null;
   const subState = subStatus?.status ?? "INACTIVE";
   const billingSub =
+    freeMode && !["ACTIVE", "PAST_DUE"].includes(subState) ? "Free — no subscription needed" :
+    freeMode ? "No longer required" :
     subState === "ACTIVE"   ? "Active" :
     subState === "PAST_DUE" ? "Payment failed" :
     subState === "CANCELED" ? `Ends in ${daysUntil(subStatus?.currentPeriodEnd ?? null) ?? "—"}d` :
@@ -353,7 +358,7 @@ function EmployerDashboardContent() {
           <QuickLink href="/employer/locks"    icon="🔒" label="Reservations" sub={activeLockCount ? `${activeLockCount} active` : "Manage holds"} />
           <QuickLink
             href="/employer/subscription" icon="💳" label="Billing" sub={billingSub}
-            subColor={subState === "PAST_DUE" ? C.danger : undefined}
+            subColor={subState === "PAST_DUE" && !freeMode ? C.danger : undefined}
           />
         </div>
 

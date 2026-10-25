@@ -22,6 +22,7 @@
 // the flat white-card resting state used everywhere else on this page.
 
 import { Suspense, useEffect, useState, useCallback } from "react";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { useSearchParams } from "next/navigation";
 import { employerApi } from "@/lib/api-client";
 import { LoadingPage, ErrorState } from "@/components/ui";
@@ -168,6 +169,10 @@ function EmployerSubscriptionContent() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCancel,   setShowCancel]   = useState(false);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+  // Free mode (PAYMENTS_ENABLED=false): no new subscriptions; existing
+  // subscribers can still cancel and see their invoices here.
+  const payments = usePaymentsEnabled();
+  const freeMode = !payments.loading && !payments.enabled;
 
   const fromSuccess  = searchParams?.get("success")  === "1";
   const fromCanceled = searchParams?.get("canceled") === "1";
@@ -262,7 +267,7 @@ function EmployerSubscriptionContent() {
   // on the price (not currently configured — see report — but handled for
   // forward-compatibility since mapStripeStatus can produce it).
   const isTrial     = status === "TRIAL" || status === "TRIALING";
-  const showPlanCard = isInactive || isTrial;
+  const showPlanCard = !freeMode && (isInactive || isTrial);
 
   const priceDisplay = sub?.planPrice
     ? `${fmtAmount(sub.planPrice.amountCents, sub.planPrice.currency)}`
@@ -326,7 +331,7 @@ function EmployerSubscriptionContent() {
       )}
 
       {/* PAST_DUE — clear warning: what's restricted right now, and how to fix it */}
-      {isPastDue && (
+      {isPastDue && !freeMode && (
         <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(234,88,12,0.06)", border: "1px solid rgba(234,88,12,0.3)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fb923c", marginBottom: 4 }}>⚠ Your last payment failed</div>
           <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
@@ -336,7 +341,17 @@ function EmployerSubscriptionContent() {
       )}
 
       {/* CANCELED — access-until date, resubscribe CTA */}
-      {isCanceled && (
+      {freeMode && (
+        <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.25)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#4ade80", marginBottom: 4 }}>DirectHire is free for employers</div>
+          <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+            You don&apos;t need a subscription to post jobs, browse candidates or reserve workers.
+            {(isActive || isPastDue) && " Your existing subscription is no longer needed — cancel it below to stop future charges."}
+          </div>
+        </div>
+      )}
+
+      {isCanceled && !freeMode && (
         <div style={{ marginBottom: 24, padding: "14px 20px", borderRadius: 10, background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600 }}>
           Your subscription ends on {fmtDate(sub?.currentPeriodEnd)}{cancelDays != null ? ` (${cancelDays} day${cancelDays === 1 ? "" : "s"} left)` : ""}. Resubscribe below to keep uninterrupted access.
         </div>
@@ -344,9 +359,9 @@ function EmployerSubscriptionContent() {
 
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: "var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight: 700, fontSize: 24, color: "#ffffff", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
-          Subscription &amp; billing
+          {freeMode ? "Billing history" : <>Subscription &amp; billing</>}
         </h1>
-        <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>Manage your plan and payment details</p>
+        <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>{freeMode ? "Past invoices and any remaining subscription" : "Manage your plan and payment details"}</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -374,7 +389,11 @@ function EmployerSubscriptionContent() {
               </span>
             </div>
 
-            {priceDisplay ? (
+            {freeMode ? (
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
+                {isInactive || isTrial ? "No subscription needed." : "Subscription no longer required."}
+              </div>
+            ) : priceDisplay ? (
               <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: 30, color: "#ffffff", marginBottom: 4 }}>
                 {priceDisplay}
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>{intervalDisplay}</span>
@@ -396,14 +415,14 @@ function EmployerSubscriptionContent() {
                 {trialDays != null && trialDays > 0
                   ? `Trial — ${trialDays} day${trialDays === 1 ? "" : "s"} left (ends ${fmtDate(sub.trialEndsAt)})`
                   : `Trial ended ${fmtDate(sub.trialEndsAt)}`}
-                {" · "}subscribe any time to keep access without interruption.
+                {!freeMode && " · subscribe any time to keep access without interruption."}
               </div>
             )}
 
             {/* ── Action buttons ── */}
             <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginTop: 6 }}>
 
-              {isInactive && (
+              {isInactive && !freeMode && (
                 <button
                   onClick={handleSubscribe}
                   disabled={!!actionBusy}
@@ -426,7 +445,7 @@ function EmployerSubscriptionContent() {
                       ? <><Spinner />Opening portal…</>
                       : isPastDue ? "Fix payment method →" : "Manage billing →"}
                   </button>
-                  {isActive && (
+                  {(isActive || (freeMode && isPastDue)) && (
                     <button
                       onClick={() => setShowCancel(true)}
                       disabled={!!actionBusy}
@@ -438,7 +457,7 @@ function EmployerSubscriptionContent() {
                 </>
               )}
 
-              {isCanceled && (
+              {isCanceled && !freeMode && (
                 <button
                   onClick={handleSubscribe}
                   disabled={!!actionBusy}
@@ -450,7 +469,7 @@ function EmployerSubscriptionContent() {
                 </button>
               )}
 
-              {isTrial && (
+              {isTrial && !freeMode && (
                 <button
                   onClick={handleSubscribe}
                   disabled={!!actionBusy}

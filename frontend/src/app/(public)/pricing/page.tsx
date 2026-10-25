@@ -37,15 +37,22 @@ interface EmployerPrice { amountCents: number; currency: string; interval: strin
 export default function PricingPage() {
   const [employerPrice, setEmployerPrice] = useState<EmployerPrice | null>(null);
   const [lockRate, setLockRate] = useState<LockRate | null>(null);
+  // "free" when the backend runs with PAYMENTS_ENABLED=false. Nothing
+  // price-related renders until this is known, so visitors never see a flash
+  // of paid pricing on a free platform (or the reverse).
+  const [mode, setMode] = useState<"loading" | "free" | "paid">("loading");
 
   useEffect(() => {
     publicConfigApi.getPricing().then(r => {
-      const data = (r as { success: boolean; data?: { lock: LockRate; employerPrice: EmployerPrice | null } }).data;
+      const data = (r as { success: boolean; data?: { paymentsEnabled?: boolean; lock: LockRate; employerPrice: EmployerPrice | null } }).data;
       if ((r as { success: boolean }).success && data) {
         setLockRate(data.lock);
         setEmployerPrice(data.employerPrice);
+        setMode(data.paymentsEnabled === false ? "free" : "paid");
+      } else {
+        setMode("paid");
       }
-    });
+    }).catch(() => setMode("paid"));
   }, []);
 
   const employerPriceDisplay = employerPrice
@@ -56,7 +63,37 @@ export default function PricingPage() {
     ? `Worker Lock — reserve up to ${lockRate.maxConcurrent} candidates, up to ${lockRate.maxDays} days each (${lockRate.rateDisplay}/day)`
     : "Worker Lock — reserve candidates exclusively for a limited time (a daily fee applies separately)";
 
-  const PLANS = [
+  const FREE_PLANS = [
+    {
+      id: "worker", name: "For Workers", price: "Free", period: "", href: "/register?role=worker",
+      desc: "Create a profile and get matched to open roles.",
+      highlight: false,
+      features: [
+        "Job matching",
+        "Verified employers",
+        "Application tracking",
+        "No application fees",
+      ],
+      cta: "Create a free profile",
+    },
+    {
+      id: "employer", name: "For Employers", price: "Free", period: "", href: "/register?role=employer",
+      desc: "Post jobs and find verified candidates.",
+      highlight: true,
+      features: [
+        "Unlimited job posts",
+        "Verified, ranked candidates",
+        "Fraud detection for every account",
+        lockRate
+          ? `Reserve up to ${lockRate.maxConcurrent} candidates at a time, up to ${lockRate.maxDays} days each`
+          : "Reserve candidates for a limited time",
+        "No subscription, no card required",
+      ],
+      cta: "Create a free account",
+    },
+  ];
+
+  const PAID_PLANS = [
     {
       id: "worker", name: "For Workers", price: "Free", period: "", href: "/register?role=worker",
       desc: "Create a profile and get AI-matched to open roles.",
@@ -83,6 +120,7 @@ export default function PricingPage() {
       cta: "Start free trial",
     },
   ];
+  const PLANS = mode === "free" ? FREE_PLANS : mode === "paid" ? PAID_PLANS : [];
 
   return (
     <main style={{ background:"var(--glass-base)", minHeight:"100vh", color:"#ffffff", overflowX:"hidden" }}>
@@ -96,15 +134,24 @@ export default function PricingPage() {
             background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.25)",
             marginBottom:24,
           }}>
-            <span style={{ fontSize:12, fontWeight:600, color:"#818cf8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Simple, transparent pricing</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"#818cf8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{mode === "free" ? "Free for everyone" : "Simple, transparent pricing"}</span>
           </div>
           <h1 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:700, fontSize:"clamp(2rem, 4vw, 3.5rem)", lineHeight:1.1, letterSpacing:"-0.02em", color:"#ffffff", marginBottom:20 }}>
-            Pricing for workers and employers
+            {mode === "free" ? "DirectHire is free" : "Pricing for workers and employers"}
           </h1>
-          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:18, lineHeight:1.7, color:"#cbd5e1", marginBottom:12 }}>
-            Workers register free — always. Employers get a 14-day free trial, no credit card required.
-          </p>
-          <p style={{ fontSize:14, color:"#94a3b8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Workers always register free. Application fees are charged per job application and vary by region.</p>
+          {mode === "free" && (
+            <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:18, lineHeight:1.7, color:"#cbd5e1", marginBottom:12 }}>
+              No subscriptions, no application fees and no reservation charges — for workers or employers.
+            </p>
+          )}
+          {mode === "paid" && (
+            <>
+              <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:18, lineHeight:1.7, color:"#cbd5e1", marginBottom:12 }}>
+                Workers register free — always. Employers get a 14-day free trial, no credit card required.
+              </p>
+              <p style={{ fontSize:14, color:"#94a3b8", fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>Workers always register free. Application fees are charged per job application and vary by region.</p>
+            </>
+          )}
         </div>
       </section>
 
@@ -151,7 +198,7 @@ export default function PricingPage() {
       </section>
 
       {/* WORKER PRICING — worker role color (teal), this section is specifically about workers */}
-      <section className="section-sm" style={{ background:"var(--glass-base)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
+      {mode === "paid" && <section className="section-sm" style={{ background:"var(--glass-base)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div className="container" style={{ textAlign:"center" }}>
           <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:16 }}>Worker pricing</h2>
           <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#cbd5e1", maxWidth:640, margin:"0 auto 32px" }}>
@@ -170,17 +217,21 @@ export default function PricingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* FAQ */}
       <section className="section-sm" style={{ background:"rgba(255,255,255,0.02)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div className="container">
           <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:40, textAlign:"center" }}>Pricing FAQ</h2>
           <div style={{ maxWidth:700, margin:"0 auto" }}>
-            {[
+            {(mode === "free" ? [
+              { q:"Is DirectHire really free?", a:"Yes. Creating a profile, applying to jobs, posting jobs, browsing candidates and reserving workers are all free. No card is needed." },
+              { q:"I had a paid subscription — what happens to it?", a:<>It&apos;s no longer needed. Employers can cancel it from <Link href="/employer/subscription" style={{ color: "#a78bfa" }}>Billing history</Link> to stop future charges; past invoices stay available there.</> },
+              { q:"What happens to my data if I close my account?", a:<>See our <Link href="/privacy" style={{ color: "#a78bfa" }}>Privacy Policy</Link> for how to request account deletion.</> },
+            ] : mode === "paid" ? [
               { q:"Is the 14-day trial really free?", a:"Yes. No credit card is required to start. You get full access to your chosen plan for 14 days. Your card is only charged after the trial ends — or you can cancel before then at no cost." },
               { q:"What happens to my data if I cancel?", a:<>Canceling your subscription stops future billing — your account and data remain exactly as they were. If you want your data deleted entirely, see our <Link href="/privacy" style={{ color: "#a78bfa" }}>Privacy Policy</Link> for how to request account deletion.</> },
-            ].map((item, i, arr) => (
+            ] : []).map((item, i, arr) => (
               <div key={i} style={{ padding:"24px 0", borderBottom:i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
                 <div style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:17, color:"#ffffff", marginBottom:10 }}>{item.q}</div>
                 <p style={{ fontSize:15, color:"#94a3b8", lineHeight:1.65, fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)" }}>{item.a}</p>
@@ -193,10 +244,10 @@ export default function PricingPage() {
       {/* CTA */}
       <section className="section-sm" style={{ background:"var(--glass-base)", borderTop:"1px solid rgba(255,255,255,0.07)", textAlign:"center" }}>
         <div className="container">
-          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:16 }}>Start your free trial today</h2>
-          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#cbd5e1", maxWidth:440, margin:"0 auto 32px" }}>14-day free trial for employers. No credit card required.</p>
+          <h2 style={{ fontFamily:"var(--font-display,'Manrope',system-ui,sans-serif)", fontWeight:600, fontSize:"clamp(1.5rem, 3vw, 2.25rem)", color:"#ffffff", marginBottom:16 }}>{mode === "free" ? "Get started today" : "Start your free trial today"}</h2>
+          <p style={{ fontFamily:"var(--font-body,'Inter',system-ui,sans-serif)", fontSize:16, lineHeight:1.65, color:"#cbd5e1", maxWidth:440, margin:"0 auto 32px" }}>{mode === "free" ? "Free for workers and employers. No card required." : "14-day free trial for employers. No credit card required."}</p>
           <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
-            <Link href="/register" className="btn-gradient" style={{ display:"inline-block", padding:"14px 32px" }}>Start free trial →</Link>
+            <Link href="/register" className="btn-gradient" style={{ display:"inline-block", padding:"14px 32px" }}>{mode === "free" ? "Create a free account →" : "Start free trial →"}</Link>
             <Link href="/contact" className="btn-glass" style={{ display:"inline-block", padding:"14px 32px" }}>Talk to sales</Link>
           </div>
         </div>

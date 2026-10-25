@@ -1,5 +1,6 @@
 // backend/src/controllers/billing.controller.ts
 import { Request, Response, NextFunction } from "express";
+import { paymentsEnabled } from "../config/flags";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
 import stripe, {
@@ -17,6 +18,12 @@ export async function createCheckout(
   req: Request, res: Response, next: NextFunction,
 ) {
   try {
+    // Free mode: no new subscriptions. Cancel and the billing portal stay
+    // available so existing subscribers can still stop recurring charges.
+    if (!paymentsEnabled()) {
+      return err(res, "DirectHire is free — no subscription is needed.", 409, { code: "PAYMENTS_DISABLED" });
+    }
+
     const userId = req.user!.sub;
 
     const [user, ep] = await Promise.all([

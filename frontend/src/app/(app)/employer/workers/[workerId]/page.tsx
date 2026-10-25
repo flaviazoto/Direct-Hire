@@ -5,6 +5,7 @@ import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useStat
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
@@ -153,6 +154,11 @@ function WorkerProfileContent() {
 
   // Platform lock rate (fetched on load for badge + modal preview)
   const [lockRate, setLockRate] = useState<LockRate | null>(null);
+  // Free mode (PAYMENTS_ENABLED=false): reservations confirm immediately, no
+  // Stripe step, and extensions are capped at the platform maximum duration.
+  const payments      = usePaymentsEnabled();
+  const freeMode      = !payments.loading && !payments.enabled;
+  const extendCapDays = freeMode ? (lockRate?.maxDays ?? 14) : 60;
 
   // Lock modal state
   const [showModal,    setShowModal]    = useState(false);
@@ -339,7 +345,12 @@ function WorkerProfileContent() {
     setModalError("");
     const res = await employerApi.lockWorker(workerId, { lock_days: modalDays });
     setModalLoading(false);
-    if (res.success) {
+    if (res.success && (res.data as { requiresPayment?: boolean })?.requiresPayment === false) {
+      closeReserveModal();
+      await refetchLock();
+      const expiry = (res.data as { lock?: { lockExpiryDate?: string } })?.lock?.lockExpiryDate;
+      showToast(`Worker reserved${expiry ? " until " + fmtDate(expiry) : ""}`, "ok");
+    } else if (res.success) {
       const data = res.data as {
         clientSecret:    string;
         paymentIntentId: string;
@@ -358,7 +369,7 @@ function WorkerProfileContent() {
         closeReserveModal();
         await refetchLock();
         showToast("This worker is already reserved by another employer.", "err");
-      } else if (errData.code === "CONCURRENT_LIMIT") {
+      } else if (errData.code === "CONCURRENT_LIMIT" || errData.code === "MAX_LOCKS_REACHED") {
         setModalError("You've reached the maximum number of concurrent reservations.");
       } else {
         setModalError(res.error ?? "Something went wrong. Please try again.");
@@ -384,15 +395,20 @@ function WorkerProfileContent() {
     const currentTotal = Math.round(
       (new Date(lock.lock_expiry_date).getTime() - new Date(lock.lock_start_date).getTime()) / (24 * 3600 * 1000)
     );
-    if (currentTotal + extendDays > 60) {
-      setExtendError(`Cannot exceed 60 days total. You can add up to ${60 - currentTotal} more day(s).`);
+    if (currentTotal + extendDays > extendCapDays) {
+      setExtendError(`Cannot exceed ${extendCapDays} days total. You can add up to ${Math.max(0, extendCapDays - currentTotal)} more day(s).`);
       return;
     }
     setExtendLoading(true);
     setExtendError("");
     const res = await employerApi.extendWorkerLock(workerId, { additional_days: extendDays });
     setExtendLoading(false);
-    if (res.success) {
+    if (res.success && (res.data as { requiresPayment?: boolean })?.requiresPayment === false) {
+      closeExtendModal();
+      await refetchLock();
+      const newExpiry = (res.data as { lock?: { lockExpiryDate?: string } })?.lock?.lockExpiryDate;
+      showToast(`Reservation extended${newExpiry ? " to " + fmtDate(newExpiry) : ""}`, "ok");
+    } else if (res.success) {
       const data = res.data as { clientSecret: string; paymentIntentId: string; additionalCents: number };
       setExtendClientSecret(data.clientSecret);
       setExtendPaymentIntentId(data.paymentIntentId);
@@ -466,8 +482,8 @@ function WorkerProfileContent() {
     ? Math.round((new Date(lock.lock_expiry_date).getTime() - new Date(lock.lock_start_date).getTime()) / (24 * 3600 * 1000))
     : 0;
   const extendNewTotal    = extendCurrentTotal + extendDays;
-  const extendCapExceeded = extendNewTotal > 60;
-  const extendMaxAllowed  = Math.max(0, 60 - extendCurrentTotal);
+  const extendCapExceeded = extendNewTotal > extendCapDays;
+  const extendMaxAllowed  = Math.max(0, extendCapDays - extendCurrentTotal);
   const extendNewExpiry   = lock
     ? new Date(new Date(lock.lock_expiry_date).getTime() + extendDays * 24 * 3600 * 1000)
     : null;
@@ -578,7 +594,9 @@ function WorkerProfileContent() {
             <>
               {lockRate && (
                 <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", padding: "6px 0 2px" }}>
-                  Reservation fee: <strong>{lockRate.rateDisplay}/day</strong> · Up to {lockRate.maxDays} days
+                  {freeMode
+                    ? <>Reservations are <strong>free</strong> · Up to {lockRate.maxDays} days</>
+                    : <>Reservation fee: <strong>{lockRate.rateDisplay}/day</strong> · Up to {lockRate.maxDays} days</>}
                 </div>
               )}
               <button
@@ -1108,7 +1126,17 @@ function WorkerProfileContent() {
                 style={inputStyle}
               />
 
-              {lockRate ? (
+              {freeMode ? (
+                <div style={{ background: "rgba(13,148,136,0.1)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 10, padding: 14, marginTop: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
+                    <span>{modalDays} day{modalDays !== 1 ? "s" : ""}</span>
+                    <span>Free</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#2DD4BF", marginTop: 4 }}>
+                    No payment needed. You can release the reservation at any time.
+                  </div>
+                </div>
+              ) : lockRate ? (
                 <div style={{ background: "rgba(13,148,136,0.1)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 10, padding: 14, marginTop: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF", marginBottom: 8 }}>Pricing</div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1", marginBottom: 4 }}>
@@ -1147,9 +1175,11 @@ function WorkerProfileContent() {
                   style={{ ...btnPrimaryStyle, flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                 >
                   {modalLoading && <Spinner size="xs" color="white" />}
-                  {lockRate
-                    ? `Confirm & Pay $${((lockRate.dailyRateCents * modalDays) / 100).toFixed(2)}`
-                    : "Continue to payment"}
+                  {freeMode
+                    ? "Confirm reservation"
+                    : lockRate
+                      ? `Confirm & Pay $${((lockRate.dailyRateCents * modalDays) / 100).toFixed(2)}`
+                      : "Continue to payment"}
                 </button>
               </div>
             </>
@@ -1254,7 +1284,7 @@ function WorkerProfileContent() {
               {/* Cap validator / preview */}
               {extendCapExceeded ? (
                 <div style={{ color: "#f87171", fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>
-                  Cannot exceed 60 days total.<br />
+                  Cannot exceed {extendCapDays} days total.<br />
                   You can add up to {extendMaxAllowed} more day{extendMaxAllowed !== 1 ? "s" : ""}.
                 </div>
               ) : (
@@ -1263,7 +1293,9 @@ function WorkerProfileContent() {
                     New expiry: {extendNewExpiry ? fmtDate(extendNewExpiry) : "—"}
                   </div>
                   <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 3 }}>
-                    {extendDays} × {lock.currency} {Number(lock.daily_fee).toFixed(2)} = {lock.currency} {extendAddedCost} additional
+                    {freeMode
+                      ? "No charge"
+                      : <>{extendDays} × {lock.currency} {Number(lock.daily_fee).toFixed(2)} = {lock.currency} {extendAddedCost} additional</>}
                   </div>
                 </div>
               )}
@@ -1293,7 +1325,7 @@ function WorkerProfileContent() {
                   }}
                 >
                   {extendLoading && <Spinner size="xs" color="white" />}
-                  {extendCapExceeded ? "Confirm extension" : `Confirm & Charge ${lock.currency} ${extendAddedCost}`}
+                  {extendCapExceeded || freeMode ? "Confirm extension" : `Confirm & Charge ${lock.currency} ${extendAddedCost}`}
                 </button>
               </div>
             </>

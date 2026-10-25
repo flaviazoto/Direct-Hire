@@ -2,6 +2,8 @@
 // Production-quality HTML email templates
 // Each returns { subject, html, text }
 
+import { paymentsEnabled } from "../../config/flags";
+
 interface TemplateResult {
   subject: string;
   html: string;
@@ -885,9 +887,12 @@ export function workerLockedEmployerTemplate(vars: {
       summaryRow("Worker",        vars.workerName) +
       summaryRow("Start date",    fmtDate(vars.lockStartDate)) +
       summaryRow("Expiry date",   fmtDate(vars.lockExpiryDate)) +
-      summaryRow("Daily fee",     `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
-      summaryRow("Duration",      `${vars.lockDays} day${vars.lockDays !== 1 ? "s" : ""}`) +
-      summaryRow("Est. total",    `${vars.currency} ${estTotal}`),
+      (vars.dailyFee === 0
+        ? summaryRow("Duration",      `${vars.lockDays} day${vars.lockDays !== 1 ? "s" : ""}`) +
+          summaryRow("Cost",          "Free")
+        : summaryRow("Daily fee",     `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
+          summaryRow("Duration",      `${vars.lockDays} day${vars.lockDays !== 1 ? "s" : ""}`) +
+          summaryRow("Est. total",    `${vars.currency} ${estTotal}`)),
     )}
     ${p("You can manage your reservations from your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
@@ -897,7 +902,7 @@ export function workerLockedEmployerTemplate(vars: {
   return {
     subject: `Reservation confirmed — ${vars.workerFirstName}`,
     html,
-    text: `Your reservation for ${vars.workerName} is confirmed. Start: ${fmtDate(vars.lockStartDate)}, Expiry: ${fmtDate(vars.lockExpiryDate)}, Daily fee: ${vars.currency} ${vars.dailyFee.toFixed(2)}, Est. total: ${vars.currency} ${estTotal}.`,
+    text: `Your reservation for ${vars.workerName} is confirmed. Start: ${fmtDate(vars.lockStartDate)}, Expiry: ${fmtDate(vars.lockExpiryDate)}, ${vars.dailyFee === 0 ? "Cost: free." : `Daily fee: ${vars.currency} ${vars.dailyFee.toFixed(2)}, Est. total: ${vars.currency} ${estTotal}.`}`,
   };
 }
 
@@ -941,8 +946,10 @@ export function workerLockExtendedEmployerTemplate(vars: {
     ${summaryTable(
       summaryRow("New expiry date",    expiry) +
       summaryRow("Total duration",     `${vars.newTotalDays} day${vars.newTotalDays !== 1 ? "s" : ""}`) +
-      summaryRow("Daily fee",          `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
-      summaryRow("Updated est. total", `${vars.currency} ${estTotal}`),
+      (vars.dailyFee === 0
+        ? summaryRow("Cost",               "Free")
+        : summaryRow("Daily fee",          `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
+          summaryRow("Updated est. total", `${vars.currency} ${estTotal}`)),
     )}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
@@ -951,7 +958,7 @@ export function workerLockExtendedEmployerTemplate(vars: {
   return {
     subject: `Reservation extended — ${vars.workerFirstName}`,
     html,
-    text: `Your reservation for ${vars.workerName} has been extended until ${expiry}. Updated est. total: ${vars.currency} ${estTotal} over ${vars.newTotalDays} days.`,
+    text: `Your reservation for ${vars.workerName} has been extended until ${expiry}.${vars.dailyFee === 0 ? "" : ` Updated est. total: ${vars.currency} ${estTotal} over ${vars.newTotalDays} days.`}`,
   };
 }
 
@@ -1196,6 +1203,23 @@ export function subscriptionCanceledTemplate(vars: {
   accessUntil:      Date;
 }): TemplateResult {
   const until = fmtDate(vars.accessUntil);
+  if (!paymentsEnabled()) {
+    const freeHtml = layout(`
+    ${badge("SUBSCRIPTION CANCELED", "#64748B")}
+    <br/><br/>
+    ${h1(`Hi ${vars.name}, your subscription is canceled`)}
+    ${p("We've confirmed your cancellation. You will not be charged again.")}
+    ${p("DirectHire is now free for employers, so you keep full access to posting jobs, browsing candidates and reserving workers — no subscription needed.")}
+    ${btn(`${APP_URL}/employer/dashboard`, "Go to dashboard", BRAND_COLOR)}
+    ${divider()}
+    ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
+  `);
+    return {
+      subject: `Your DirectHire subscription is canceled`,
+      html: freeHtml,
+      text: `Hi ${vars.name}, your cancellation is confirmed and you will not be charged again. DirectHire is now free for employers, so you keep full access without a subscription.`,
+    };
+  }
   const html = layout(`
     ${badge("SUBSCRIPTION CANCELED", "#64748B")}
     <br/><br/>
