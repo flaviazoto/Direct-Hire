@@ -1,6 +1,9 @@
 // backend/src/lib/prisma.ts
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { guardRuntimeDatabase } from "./db-guard";
+
+guardRuntimeDatabase();
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 

@@ -1,0 +1,27 @@
+# Local development and test databases — never production.
+# Start:  docker compose -f docker-compose.dev.yml up -d
+# Stop:   docker compose -f docker-compose.dev.yml down        (add -v to wipe data)
+#
+# dh_dev  → backend/.env DATABASE_URL / DIRECT_URL
+# dh_test → automated API tests
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: directhire-dev-db
+    environment:
+      POSTGRES_USER: directhire
+      POSTGRES_PASSWORD: directhire_local_only
+      POSTGRES_DB: dh_dev
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - directhire-dev-db:/var/lib/postgresql/data
+      - ./scripts/dev-db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U directhire -d dh_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  directhire-dev-db:

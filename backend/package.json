@@ -9,19 +9,20 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "worker": "tsx scripts/jobs-worker.ts",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "tsx scripts/guard-db.ts db:migrate && prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
-    "db:seed": "tsx scripts/seed.ts",
+    "db:seed": "tsx scripts/guard-db.ts db:seed && tsx scripts/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:reset": "prisma migrate reset --force && tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/guard-db.ts db:reset && prisma migrate reset --force && tsx scripts/seed.ts",
     "backup:db": "tsx scripts/export-db-backup.ts",
     "reencrypt:passports": "tsx scripts/reencrypt-passports.ts",
     "backfill:worker-phones": "tsx scripts/backfill-worker-phones.ts",
     "flip-video-privacy": "tsx scripts/flip-video-privacy.ts",
     "sweep:orphaned-profiles": "tsx scripts/sweep-orphaned-profiles.ts",
     "backfill:invoices": "tsx scripts/backfill-invoices.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/guard-db.ts seed:demo && tsx scripts/seed-demo.ts",
+    "db:guard": "tsx scripts/guard-db.ts db:guard"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
