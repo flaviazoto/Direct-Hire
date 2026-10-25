@@ -8,7 +8,7 @@ import { enqueue } from "../services/queue";
 import { sendAccountApproved, sendAccountRejected, sendAccountSuspended, sendAccountReinstated } from "../services/email";
 import { z } from "zod";
 import { decrypt } from "../lib/encrypt";
-import { insertAuditLog } from "../lib/audit";
+import { insertAuditLog, recordSensitiveAccess } from "../lib/audit";
 import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 
 // ── Audit log helper (raw insert — AdminAuditLog not yet in generated client) ──
@@ -748,6 +748,8 @@ export async function getUserDetail(req: Request, res: Response, next: NextFunct
       // Local storage — fileUrl is already accessible
       enrichedUploads = uploads.map(u => ({ ...u, signedUrl: u.fileUrl }));
     }
+    await recordSensitiveAccess(req.user, id,
+      uploads.filter(u => u.isPrivate).map(u => ({ kind: u.fileType, id: u.id })), "admin.userDetail", req.ip);
 
     let profile = null;
     let onboarding = null;

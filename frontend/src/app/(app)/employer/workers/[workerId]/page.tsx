@@ -15,8 +15,12 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 interface WorkerDetail {
   id:                  string;
-  email:               string;
+  // Contact details are null until an application reaches CLEARED_FOR_EMPLOYER.
+  email:               string | null;
   phone:               string | null;
+  contact_released:    boolean;
+  // True when this employer may message the worker (application or reservation).
+  can_message:         boolean;
   created_at:          string;
   lock_count:          number;
   account_status:      string;
@@ -31,8 +35,6 @@ interface WorkerDetail {
   expected_salary:     string | null;
   bio:                 string | null;
   availability_date:   string | null;
-  marital_status:      string | null;
-  number_of_children:  number;
   profile_score:       number | null;
   trust_score:         number | null;
   skills:              { skill: string }[];
@@ -598,6 +600,7 @@ function WorkerProfileContent() {
               >
                 Reserve this worker
               </button>
+              {worker.can_message && (
               <button
                 onClick={() => setShowMsgModal(true)}
                 style={{
@@ -618,6 +621,7 @@ function WorkerProfileContent() {
               >
                 ✉ Message
               </button>
+              )}
               <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
                 Secure exclusive access during your hiring process
               </div>
@@ -672,12 +676,14 @@ function WorkerProfileContent() {
                   Release
                 </button>
               </div>
+              {worker.can_message && (
               <button
                 onClick={() => setShowMsgModal(true)}
                 style={{ width: "100%", padding: "8px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontWeight: 500, color: "#475569", cursor: "pointer" }}
               >
                 ✉ Message
               </button>
+              )}
             </div>
           )}
 
@@ -715,12 +721,14 @@ function WorkerProfileContent() {
               }}>
                 Currently reserved
               </button>
+              {worker.can_message && (
               <button
                 onClick={() => setShowMsgModal(true)}
                 style={{ width: "100%", padding: "10px 0", background: "white", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 14, fontWeight: 500, color: "#374151", cursor: "pointer" }}
               >
                 ✉ Message
               </button>
+              )}
             </>
           )}
         </div>
@@ -761,7 +769,7 @@ function WorkerProfileContent() {
       {activeTab === "overview" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Personal details grid */}
-          {(worker.nationality || worker.phone || worker.availability_date || worker.marital_status != null) && (
+          {(worker.nationality || worker.phone || worker.availability_date) && (
             <Section title="Personal details">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px 24px" }}>
                 {worker.nationality && (
@@ -801,6 +809,11 @@ function WorkerProfileContent() {
                 )}
               </div>
             </Section>
+          )}
+          {!worker.contact_released && (
+            <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+              Contact details are shared once the hiring process is complete. Until then, DirectHire arranges interviews for you.
+            </p>
           )}
           {worker.target_countries.length > 0 && (
             <Section title="Countries willing to work in">

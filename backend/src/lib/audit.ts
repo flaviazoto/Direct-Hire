@@ -52,3 +52,32 @@ export async function insertAdminAuditLog(entry: AdminAuditEntry): Promise<void>
     entry.metadata ? JSON.stringify(entry.metadata) : null,
   );
 }
+
+// ── Sensitive-data access trail ───────────────────────────────────────────────
+// Every time staff are shown private worker documents or decrypted identity
+// data, record who, what and from where. Written to the free-form AuditLog
+// (no enum migration needed). A logging failure is reported but never blocks
+// the reviewer.
+
+export interface SensitiveItem {
+  kind: string;  // e.g. an Upload fileType, "PASSPORT_NUMBER", "APPLICATION_DOCUMENT"
+  id?:  string;
+}
+
+export async function recordSensitiveAccess(
+  actor: { sub: string } | undefined,
+  targetUserId: string,
+  items: SensitiveItem[],
+  context: string,
+  ip?: string,
+): Promise<void> {
+  if (!actor || items.length === 0) return;
+  await insertAuditLog({
+    actorId:  actor.sub,
+    targetId: targetUserId,
+    action:   "SENSITIVE_DATA_VIEWED",
+    entity:   "User",
+    entityId: targetUserId,
+    metadata: { context, items, ip: ip ?? null },
+  }).catch((e) => console.error("[audit] sensitive access log failed:", e instanceof Error ? e.message : e));
+}

@@ -4,7 +4,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { decrypt } from "../lib/encrypt";
-import { insertAdminAuditLog } from "../lib/audit";
+import { insertAdminAuditLog, recordSensitiveAccess } from "../lib/audit";
 import { sendEmail } from "../services/email";
 import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
 
@@ -184,6 +184,11 @@ export async function getWorkerDocuments(
     if (p.passportNumber) {
       try { passportNumber = decrypt(p.passportNumber); } catch { passportNumber = null; }
     }
+
+    await recordSensitiveAccess(req.user, user.id, [
+      ...user.uploads.filter(u => u.isPrivate).map(u => ({ kind: u.fileType, id: u.id })),
+      ...(passportNumber ? [{ kind: "PASSPORT_NUMBER" }] : []),
+    ], "admin.workerDocuments", req.ip);
 
     return ok(res, {
       userId:              user.id,

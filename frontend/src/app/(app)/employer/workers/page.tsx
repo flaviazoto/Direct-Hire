@@ -39,7 +39,7 @@ interface WorkersResponse {
 
 interface GroupMember {
   workerId: string;
-  worker: { id: string; email: string; workerProfile: { firstName: string | null; lastName: string | null } | null };
+  worker: { id: string; workerProfile: { firstName: string | null; lastName: string | null } | null };
 }
 interface BulkQuoteRequest {
   id: string;
@@ -371,7 +371,7 @@ function GroupPanel({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
           {members.map(m => {
-            const name = [m.worker.workerProfile?.firstName, m.worker.workerProfile?.lastName].filter(Boolean).join(" ") || m.worker.email;
+            const name = [m.worker.workerProfile?.firstName, m.worker.workerProfile?.lastName].filter(Boolean).join(" ") || "Worker";
             return (
               <div key={m.workerId} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",

@@ -161,7 +161,7 @@ export async function createUser(opts: { role?: Role; accountStatus?: AccountSta
       accountStatus: opts.accountStatus ?? "VERIFIED",
       isEmailVerified: (opts.accountStatus ?? "VERIFIED") !== "PENDING_EMAIL_VERIFICATION",
       ...(role === "WORKER" ? { workerProfile: { create: { firstName: "Test", lastName: "Worker" } } } : {}),
-      ...(role === "EMPLOYER" ? { employerProfile: { create: { companyName: "Test Co", contactPersonName: "Test Employer" } } } : {}),
+      ...(role === "EMPLOYER" ? { employerProfile: { create: { companyName: "Test Co", contactPersonName: "Test Employer", subscriptionStatus: "ACTIVE" } } } : {}),
     },
   });
   return user;

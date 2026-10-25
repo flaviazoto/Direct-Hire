@@ -163,6 +163,11 @@ export async function replyToMessage(req: Request, res: Response, next: NextFunc
     ]);
     if (!recipient) return err(res, "Recipient not found", 404);
 
+    // Replies only: the other person must have messaged this worker first, so
+    // workers can't use this endpoint to message arbitrary accounts.
+    const thread = await prisma.message.count({ where: { senderId: otherUserId, recipientId: workerId } });
+    if (thread === 0) return err(res, "Recipient not found", 404);
+
     const workerName = [worker?.workerProfile?.firstName, worker?.workerProfile?.lastName]
       .filter(Boolean).join(" ") || "A candidate";
 

@@ -11,7 +11,8 @@ export const ALLOWED_MIME: Record<FileType, string[]> = {
   INTRO_VIDEO:         ["video/mp4","video/quicktime","video/webm"],
   MEDICAL_CERTIFICATE: ["image/jpeg","image/png","application/pdf"],
   BUSINESS_DOCUMENT:   ["application/pdf","image/jpeg","image/png"],
-  COMPANY_LOGO:        ["image/jpeg","image/png","image/svg+xml","image/webp"],
+  // No SVG: it can carry script and can't be content-verified like raster images.
+  COMPANY_LOGO:        ["image/jpeg","image/png","image/webp"],
   OTHER:               ["application/pdf","image/jpeg","image/png"],
 };
 

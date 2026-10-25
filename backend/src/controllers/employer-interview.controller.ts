@@ -17,7 +17,7 @@ import { EMPLOYER_VISIBLE_WORKFLOW_STATUSES } from "../lib/hire";
 const APPLICATION_SUMMARY_INCLUDE = {
   worker: {
     select: {
-      id: true, email: true,
+      id: true,
       workerProfile: { select: { firstName: true, lastName: true } },
     },
   },

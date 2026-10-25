@@ -9,11 +9,12 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
+import { employerCanViewWorker } from "../lib/worker-visibility";
 
 const MEMBER_INCLUDE = {
   worker: {
     select: {
-      id: true, email: true,
+      id: true,
       workerProfile: { select: { firstName: true, lastName: true, profession: true } },
     },
   },
@@ -50,6 +51,7 @@ export async function addGroupMember(req: Request, res: Response, next: NextFunc
       select: { id: true, role: true, isLocked: true, lockedByEmployerId: true },
     });
     if (!worker || worker.role !== "WORKER") return err(res, "Worker not found", 404);
+    if (!(await employerCanViewWorker(employerId, workerId))) return err(res, "Worker not found", 404);
 
     // Phase 4, Step 2 addition — Phase 2 deliberately left this unrestricted
     // (flagged as an open question, not decided). Now decided: a worker

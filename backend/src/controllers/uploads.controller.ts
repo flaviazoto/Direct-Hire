@@ -3,8 +3,9 @@ import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
 import { uploadFile as storageUpload, deleteFile, ALLOWED_MIME, MAX_SIZE, SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
+import { verifiedMime } from "../lib/file-signature";
 import type { FileType } from "../types";
-import { insertAuditLog } from "../lib/audit";
+import { insertAuditLog, recordSensitiveAccess } from "../lib/audit";
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg':      'jpg',
@@ -47,13 +48,16 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
     if (!allowed.includes(file.mimetype)) {
       return err(res, `Invalid file type for ${fileType}. Allowed: ${allowed.join(", ")}`, 422);
     }
+    // The declared type must match the file's actual content.
+    const mimeType = verifiedMime(file.buffer, file.mimetype, allowed);
+    if (!mimeType) return err(res, "File content does not match its type. Upload a genuine image, video or PDF.", 422);
     const maxSize = MAX_SIZE[fileType];
     if (maxSize && file.size > maxSize) {
       return err(res, `File too large. Max for ${fileType}: ${Math.round(maxSize / 1024 / 1024)} MB`, 422);
     }
 
     // Safe filename — never trust the original user-provided name
-    const ext          = MIME_TO_EXT[file.mimetype] ?? 'bin';
+    const ext          = MIME_TO_EXT[mimeType] ?? 'bin';
     const safeFileName = `${userId}-${Date.now()}.${ext}`;
 
     // PROFILE_PHOTO and COMPANY_LOGO stay public per the storage sensitivity
@@ -64,7 +68,7 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
     const isPrivate = ["MEDICAL_CERTIFICATE","BUSINESS_DOCUMENT","WORK_VIDEO","INTRO_VIDEO"].includes(fileType);
     const result    = await storageUpload({
       userId, fileType, fileName: safeFileName,
-      mimeType: file.mimetype, buffer: file.buffer, isPrivate,
+      mimeType, buffer: file.buffer, isPrivate,
     });
 
     await insertAuditLog({
@@ -199,6 +203,11 @@ export async function getUploadUrl(req: Request, res: Response, next: NextFuncti
       where: isAdmin ? { id: uploadId } : { id: uploadId, userId },
     });
     if (!record) return err(res, "File not found", 404);
+
+    // Staff opening someone else's private file is logged.
+    if (isAdmin && record.userId !== userId && record.isPrivate) {
+      await recordSensitiveAccess(req.user, record.userId, [{ kind: record.fileType, id: record.id }], "uploads.getUrl", req.ip);
+    }
 
     let url = record.fileUrl;
 

@@ -16,7 +16,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
-import { insertAdminAuditLog } from "../lib/audit";
+import { insertAdminAuditLog, recordSensitiveAccess } from "../lib/audit";
 import { getSignedUrlForPath } from "../services/storage";
 import {
   sendApplicationApprovedQueuedEmail,
@@ -201,6 +201,10 @@ export async function getDocumentQueue(req: Request, res: Response, next: NextFu
         catch { return d; }
       })),
     })));
+
+    await Promise.all(rawRows.map((row) => recordSensitiveAccess(req.user, row.workerId,
+      row.documents.filter((d) => d.filePath).map((d) => ({ kind: "APPLICATION_DOCUMENT", id: d.id })),
+      "admin.documentQueue", req.ip)));
 
     return paginated(res, rows, total, page, limit);
   } catch (e) { next(e); }

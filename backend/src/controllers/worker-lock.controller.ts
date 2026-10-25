@@ -24,6 +24,7 @@ import {
 } from "../services/email";
 import { insertAdminAuditLog } from "../lib/audit";
 import { generateInvoice } from "../services/invoices";
+import { employerCanViewWorker } from "../lib/worker-visibility";
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ export async function lockWorker(req: Request, res: Response, next: NextFunction
 
     if (!worker || worker.role !== "WORKER") return err(res, "Worker not found", 404);
     if (worker.accountStatus !== "VERIFIED")  return err(res, "Worker is not verified", 400);
+    if (!(await employerCanViewWorker(employerId, workerId))) return err(res, "Worker not found", 404);
 
     if (worker.isLocked) {
       return err(res, "This worker is currently reserved by another employer.", 409, {

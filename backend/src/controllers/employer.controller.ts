@@ -7,10 +7,15 @@ import { ok, err, paginated, getPagination } from "../lib/response";
 import { sendEmail } from "../services/email";
 import { decrypt } from "../lib/encrypt";
 import { SIGNED_URL_EXPIRY_SECONDS } from "../services/storage";
+import { escapeHtml } from "../lib/html";
+import {
+  DISCOVERABLE_WORKER_WHERE, EMPLOYER_VISIBLE_FILE_TYPES,
+  employerCanViewWorker, employerContactReleased, hasRecruitmentRelationship,
+} from "../lib/worker-visibility";
 
 // Job CRUD is handled by employer-jobs.controller.ts
 
-// GET /api/employer/workers  (replaces /candidates — shows all role=WORKER accounts)
+// GET /api/employer/workers  (replaces /candidates) — approved, searchable workers only
 export async function getCandidates(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.sub;
@@ -20,28 +25,27 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
     const ep = await prisma.employerProfile.findUnique({ where: { userId } });
     if (!ep) return err(res, "Employer profile not found", 404);
 
-    // Base: every user with the WORKER role (regardless of isSearchable or accountStatus)
-    const where: Prisma.UserWhereInput = { role: "WORKER" };
+    // Only approved, searchable, active workers. Filters are ANDed on top so
+    // they can never widen the base set.
+    const filters: Prisma.UserWhereInput[] = [DISCOVERABLE_WORKER_WHERE];
 
-    if (available_only === "true") where.isLocked = false;
+    if (available_only === "true") filters.push({ isLocked: false });
 
-    // Country filter: only applies when a workerProfile exists with that country
     if (country) {
-      where.workerProfile = {
-        countryOfResidence: { contains: country, mode: "insensitive" },
-      };
+      filters.push({ workerProfile: { is: { countryOfResidence: { contains: country, mode: "insensitive" } } } });
     }
 
-    // Search across profile fields + email fallback
+    // Search profile fields only — never email, which employers must not see.
     if (search) {
-      where.OR = [
-        { workerProfile: { firstName:  { contains: search, mode: "insensitive" } } },
-        { workerProfile: { lastName:   { contains: search, mode: "insensitive" } } },
-        { workerProfile: { profession: { contains: search, mode: "insensitive" } } },
-        { workerProfile: { skills: { some: { skill: { contains: search, mode: "insensitive" } } } } },
-        { email: { contains: search, mode: "insensitive" } },
-      ];
+      filters.push({ OR: [
+        { workerProfile: { is: { firstName:  { contains: search, mode: "insensitive" } } } },
+        { workerProfile: { is: { lastName:   { contains: search, mode: "insensitive" } } } },
+        { workerProfile: { is: { profession: { contains: search, mode: "insensitive" } } } },
+        { workerProfile: { is: { skills: { some: { skill: { contains: search, mode: "insensitive" } } } } } },
+      ] });
     }
+
+    const where: Prisma.UserWhereInput = { AND: filters };
 
     const [rows, total] = await Promise.all([
       prisma.user.findMany({
@@ -51,7 +55,6 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
         orderBy: [{ createdAt: "desc" }],
         select: {
           id:                 true,
-          email:              true,
           isLocked:           true,
           lockedByEmployerId: true,
           accountStatus:      true,
@@ -100,7 +103,7 @@ export async function getCandidates(req: Request, res: Response, next: NextFunct
 
       return {
         userId:             u.id,
-        name:               p ? ([p.firstName, p.lastName].filter(Boolean).join(" ") || u.email) : u.email,
+        name:               p ? ([p.firstName, p.lastName].filter(Boolean).join(" ") || "Worker") : "Worker",
         profession:         p?.profession         ?? null,
         countryOfResidence: p?.countryOfResidence ?? null,
         yearsExperience:    p?.yearsExperience    ?? null,
@@ -144,7 +147,15 @@ export async function getBilling(req: Request, res: Response, next: NextFunction
 
 export async function getWorkerDetail(req: Request, res: Response, next: NextFunction) {
   try {
+    const employerId   = req.user!.sub;
     const { workerId } = req.params;
+
+    // Same 404 for "doesn't exist" and "not visible to you", so IDs can't be probed.
+    if (!(await employerCanViewWorker(employerId, workerId))) return err(res, "Worker not found", 404);
+    const [contactReleased, canMessage] = await Promise.all([
+      employerContactReleased(employerId, workerId),
+      hasRecruitmentRelationship(employerId, workerId),
+    ]);
 
     const user = await prisma.user.findUnique({
       where: { id: workerId },
@@ -166,8 +177,6 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
             expectedSalary:      true,
             additionalNotes:     true,
             availabilityDate:    true,
-            maritalStatus:       true,
-            numberOfChildren:    true,
             profileScore:        true,
             trustScore:          true,
             documentsVerified:   true,
@@ -181,7 +190,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
           select: { reviewStatus: true },
         },
         uploads: {
-          where:   { deletedAt: null },
+          where:   { deletedAt: null, status: "UPLOADED", fileType: { in: EMPLOYER_VISIBLE_FILE_TYPES } },
           select:  {
             id:           true,
             fileType:     true,
@@ -208,7 +217,7 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
     // try/catch-null so one bad row (malformed ciphertext, key rotation,
     // etc.) can never turn into a 500 for this whole endpoint.
     let phone: string | null = null;
-    if (p.phone) {
+    if (contactReleased && p.phone) {
       try { phone = decrypt(p.phone); } catch { phone = null; }
     }
 
@@ -238,8 +247,11 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
 
     return ok(res, {
       id:                user.id,
-      email:             user.email,
+      // Contact details only once the hire is cleared; null until then.
+      email:             contactReleased ? user.email : null,
       phone,
+      contact_released:  contactReleased,
+      can_message:       canMessage,
       created_at:        user.createdAt,
       lock_count:        user.lockCount,
       account_status:    user.accountStatus,
@@ -254,8 +266,6 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
       expected_salary:   p.expectedSalary,
       bio:               p.additionalNotes,
       availability_date: p.availabilityDate ?? null,
-      marital_status:    p.maritalStatus ?? null,
-      number_of_children: p.numberOfChildren,
       profile_score:     p.profileScore ?? null,
       trust_score:       p.trustScore ?? null,
       skills:            p.skills,
@@ -312,6 +322,12 @@ export async function messageWorker(req: Request, res: Response, next: NextFunct
     const employerId = req.user!.sub;
     const { workerId, message } = MessageWorkerSchema.parse(req.body);
 
+    // Only workers this employer is already recruiting (an application or an
+    // active reservation) — not cold outreach to the whole directory.
+    if (!(await hasRecruitmentRelationship(employerId, workerId))) {
+      return err(res, "You can message workers who applied to your jobs or that you have reserved.", 403, { code: "NO_RECRUITMENT_RELATIONSHIP" });
+    }
+
     const [worker, employer] = await Promise.all([
       prisma.user.findUnique({
         where: { id: workerId, role: "WORKER" },
@@ -335,7 +351,9 @@ export async function messageWorker(req: Request, res: Response, next: NextFunct
       employer?.employerProfile?.companyName ??
       "An employer";
     const workerFirstName = worker.workerProfile?.firstName ?? "there";
-    const safeMessage     = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeMessage     = escapeHtml(message);
+    const safeEmployer    = escapeHtml(employerName);
+    const safeWorkerName  = escapeHtml(workerFirstName);
 
     const notifBody  = message.slice(0, 100) + (message.length > 100 ? "…" : "");
     const notifTitle = `New message from ${employerName}`;
@@ -387,9 +405,9 @@ export async function messageWorker(req: Request, res: Response, next: NextFunct
                 <tr>
                   <td style="padding:32px;">
                     <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488;text-transform:uppercase;letter-spacing:0.05em;">New message</p>
-                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${workerFirstName},</h1>
+                    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${safeWorkerName},</h1>
                     <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
-                      <strong>${employerName}</strong> has sent you a message on DirectHire:
+                      <strong>${safeEmployer}</strong> has sent you a message on DirectHire:
                     </p>
                     <div style="background:#f8fafc;border-left:3px solid #0d9488;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
                       <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;white-space:pre-line;">${safeMessage}</p>

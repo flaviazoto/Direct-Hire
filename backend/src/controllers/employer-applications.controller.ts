@@ -36,10 +36,11 @@ const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
 } as const;
 
 // ── Shared worker select ──────────────────────────────────────────────────────
+// No email: employers don't receive worker contact details (see
+// lib/worker-visibility.ts — released only at CLEARED_FOR_EMPLOYER).
 
 const WORKER_SELECT = {
   id:                true,
-  email:             true,
   isLocked:          true,
   lockedByEmployerId: true,
   workerProfile: {
@@ -247,7 +248,6 @@ export async function getJobApplications(req: Request, res: Response, next: Next
       interview_responded_at:     r.interviewRespondedAt,
       worker: {
         id:           r.worker.id,
-        email:        r.worker.email,
         first_name:   r.worker.workerProfile?.firstName  ?? null,
         last_name:    r.worker.workerProfile?.lastName   ?? null,
         is_locked:    (r.worker as unknown as { isLocked?: boolean }).isLocked   ?? false,

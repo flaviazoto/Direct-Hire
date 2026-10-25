@@ -3,6 +3,7 @@
 // Workers can only access their own applications (always filtered by workerId = JWT sub).
 
 import { Request, Response, NextFunction } from "express";
+import { verifiedMime } from "../lib/file-signature";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
@@ -830,6 +831,8 @@ export async function submitApplicationDocument(req: Request, res: Response, nex
     if (file.size > DOC_MAX_SIZE) {
       return err(res, `File too large. Max ${Math.round(DOC_MAX_SIZE / 1024 / 1024)} MB`, 422);
     }
+    const mimeType = verifiedMime(file.buffer, file.mimetype, DOC_ALLOWED_MIME);
+    if (!mimeType) return err(res, "File content does not match its type. Upload a genuine PDF, JPEG or PNG.", 422);
 
     const app = await prisma.application.findUnique({ where: { id }, select: { id: true, workerId: true } });
     if (!app) return err(res, "Application not found", 404);
@@ -841,9 +844,9 @@ export async function submitApplicationDocument(req: Request, res: Response, nex
       return err(res, `This document is already ${doc.status.toLowerCase()} — nothing to submit.`, 400);
     }
 
-    const ext = DOC_MIME_TO_EXT[file.mimetype] ?? "bin";
+    const ext = DOC_MIME_TO_EXT[mimeType] ?? "bin";
     const filePath = `${workerId}/application-documents/${documentId}.${ext}`;
-    const fileUrl = await uploadRawBuffer(filePath, file.buffer, file.mimetype, true);
+    const fileUrl = await uploadRawBuffer(filePath, file.buffer, mimeType, true);
 
     const now = new Date();
     const updated = await prisma.applicationDocument.update({
@@ -929,6 +932,8 @@ export async function submitEmployerDocumentRequest(req: Request, res: Response,
     if (file.size > DOC_MAX_SIZE) {
       return err(res, `File too large. Max ${Math.round(DOC_MAX_SIZE / 1024 / 1024)} MB`, 422);
     }
+    const mimeType = verifiedMime(file.buffer, file.mimetype, DOC_ALLOWED_MIME);
+    if (!mimeType) return err(res, "File content does not match its type. Upload a genuine PDF, JPEG or PNG.", 422);
 
     const request = await prisma.employerDocumentRequest.findUnique({
       where:  { id: requestId },
@@ -940,9 +945,9 @@ export async function submitEmployerDocumentRequest(req: Request, res: Response,
       return err(res, `This document is already ${request.status.toLowerCase()} — nothing to submit.`, 400);
     }
 
-    const ext = DOC_MIME_TO_EXT[file.mimetype] ?? "bin";
+    const ext = DOC_MIME_TO_EXT[mimeType] ?? "bin";
     const filePath = `${workerId}/employer-document-requests/${requestId}.${ext}`;
-    const fileUrl = await uploadRawBuffer(filePath, file.buffer, file.mimetype, true);
+    const fileUrl = await uploadRawBuffer(filePath, file.buffer, mimeType, true);
 
     const now = new Date();
     const updated = await prisma.employerDocumentRequest.update({
