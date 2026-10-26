@@ -202,6 +202,11 @@ enum AuditAction {
   WORKER_LOCK_EXPIRED
   WORKER_LOCK_OVERRIDDEN
   DOCUMENT_BATCH_REVIEWED
+  // Present in production (added outside the migration history); unused by
+  // code but kept so the enum matches the live database.
+  PASSPORT_VIEWED
+  PHONE_VIEWED
+  WORKER_ERASED
 }
 
 enum JobPostStatus {
@@ -227,7 +232,8 @@ enum ContractType {
 
 model User {
   id                         String        @id @default(cuid())
-  email                      String        @unique
+  // CITEXT: case-insensitive, so the unique index rejects "Ana@x" when "ana@x" exists.
+  email                      String        @unique @db.Citext
   passwordHash               String
   role                       Role
   isEmailVerified            Boolean       @default(false)

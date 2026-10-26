@@ -37,13 +37,12 @@ docker compose -f docker-compose.dev.yml up -d
 ```bash
 cd backend
 npm run db:guard                          # confirms .env points at a local database
-npx prisma db push --skip-generate        # until the migration baseline is fixed
+npx prisma migrate deploy                # builds the schema from the migrations
 npm run db:seed                           # synthetic users only
 ```
 
-`prisma migrate deploy` cannot build an empty database yet: the initial schema
-is in `prisma/archived_migrations`. Until the migration baseline is repaired,
-use `db push` for local databases only.
+See [MIGRATIONS.md](MIGRATIONS.md) for how the migration history is organised
+and how production is migrated.
 
 ## Automated API tests
 
@@ -51,7 +50,7 @@ use `db push` for local databases only.
 cd backend
 DATABASE_URL=postgresql://directhire:directhire_local_only@localhost:5434/dh_test \
 DIRECT_URL=postgresql://directhire:directhire_local_only@localhost:5434/dh_test \
-  npx prisma db push --skip-generate      # after schema changes
+  npx prisma migrate deploy               # after schema changes
 npm run test:api
 ```
 

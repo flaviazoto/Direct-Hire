@@ -396,33 +396,48 @@ export async function confirmLock(req: Request, res: Response, next: NextFunctio
       ?? employer?.employerProfile?.contactPersonName
       ?? "Employer";
 
-    // ── Atomic: create lock record + update worker flags ──────────────────────
-    const [lock] = await prisma.$transaction([
-      prisma.workerLock.create({
-        data: {
-          workerId,
-          employerId,
-          lockStatus:            "ACTIVE",
-          dailyFee,
-          currency:              "USD",
-          lockStartDate:         now,
-          lockExpiryDate,
-          lockDays,
-          totalBilled:           totalCents / 100,  // full amount actually charged by Stripe
-          totalDaysBilled:       lockDays,
-          stripePaymentIntentId: paymentIntentId,
-        },
-      }),
-      prisma.user.update({
-        where: { id: workerId },
-        data: {
-          isLocked:           true,
-          lockedByEmployerId: employerId,
-          lockedUntil:        lockExpiryDate,
-          lockCount:          { increment: 1 },
-        },
-      }),
-    ]);
+    // ── Atomic: claim the worker, then create the lock ────────────────────────
+    // The availability check above runs outside any transaction, so two
+    // confirmations can both pass it. Claiming with a conditional update makes
+    // exactly one win; the loser is either a duplicate confirm of this same
+    // payment (return the existing lock) or another employer (refund, 409).
+    let lock;
+    try {
+      lock = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.user.updateMany({
+          where: { id: workerId, isLocked: false },
+          data: {
+            isLocked:           true,
+            lockedByEmployerId: employerId,
+            lockedUntil:        lockExpiryDate,
+            lockCount:          { increment: 1 },
+          },
+        });
+        if (claimed.count === 0) throw new LockConflictError();
+        return tx.workerLock.create({
+          data: {
+            workerId,
+            employerId,
+            lockStatus:            "ACTIVE",
+            dailyFee,
+            currency:              "USD",
+            lockStartDate:         now,
+            lockExpiryDate,
+            lockDays,
+            totalBilled:           totalCents / 100,  // full amount actually charged by Stripe
+            totalDaysBilled:       lockDays,
+            stripePaymentIntentId: paymentIntentId,
+          },
+        });
+      });
+    } catch (e) {
+      if (!(e instanceof LockConflictError)) throw e;
+      const same = await prisma.workerLock.findFirst({ where: { workerId, employerId, stripePaymentIntentId: paymentIntentId } });
+      if (same) return ok(res, same, "Reservation already confirmed");
+      stripe.refunds.create({ payment_intent: paymentIntentId, reason: "duplicate" })
+        .catch(err => console.error("[confirmLock] Auto-refund failed:", err));
+      return err(res, "This worker was reserved by another employer. Your payment will be refunded.", 409, { code: "WORKER_LOCKED" });
+    }
 
     // ── First billing charge — already collected by Stripe ────────────────────
     await prisma.lockBillingCharge.create({

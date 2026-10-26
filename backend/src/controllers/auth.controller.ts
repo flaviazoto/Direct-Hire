@@ -524,6 +524,22 @@ export async function deleteAccount(req: Request, res: Response, next: NextFunct
       where: { OR: [{ adminId: userId }, { targetUserId: userId }] },
     });
 
+    // A worker's applications cascade away with the user; keep each job's
+    // applicationCount (non-withdrawn applications) in step.
+    if (role === "WORKER") {
+      const open = await prisma.application.groupBy({
+        by:    ["jobId"],
+        where: { workerId: userId, status: { not: "WITHDRAWN" } },
+        _count: { _all: true },
+      });
+      for (const g of open) {
+        await prisma.jobPost.updateMany({
+          where: { id: g.jobId, applicationCount: { gte: g._count._all } },
+          data:  { applicationCount: { decrement: g._count._all } },
+        });
+      }
+    }
+
     // Remove applications where user is the employer (no cascade for employer relation)
     if (role === "EMPLOYER") {
       await prisma.application.deleteMany({ where: { employerId: userId } });

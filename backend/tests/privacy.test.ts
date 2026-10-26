@@ -261,3 +261,22 @@ describe("sensitive document access is audited", () => {
     assert.ok(rows.every((r) => JSON.stringify(r.newValue).includes(cert.id)));
   });
 });
+
+describe("data integrity", () => {
+  it("deleting a worker account keeps job application counts correct", async () => {
+    const prisma = await db();
+    const worker = await makeWorker();
+    const { employer } = await employerSession();
+    const app = await makeApplication(worker, employer);
+    await prisma.jobPost.update({ where: { id: app.jobId }, data: { applicationCount: 1 } });
+    const token = (await login(worker.email)).token!;
+    assert.equal((await call("DELETE", "/api/auth/account", { token, body: {} })).status, 200);
+    assert.equal((await prisma.jobPost.findUniqueOrThrow({ where: { id: app.jobId } })).applicationCount, 0);
+  });
+
+  it("the database itself rejects case-variant duplicate emails (CITEXT)", async () => {
+    const prisma = await db();
+    const user = await createUser();
+    await assert.rejects(prisma.user.create({ data: { email: user.email.toUpperCase(), passwordHash: "x", role: "WORKER" } }));
+  });
+});
