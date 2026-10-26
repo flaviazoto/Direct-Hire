@@ -36,6 +36,7 @@ import morgan from "morgan";
 import path from "path";
 
 import { authRouter }        from "./routes/auth.routes";
+import { mediaRouter } from "./routes/media.routes";
 import { onboardingRouter }  from "./routes/onboarding.routes";
 import { uploadsRouter }     from "./routes/uploads.routes";
 import { userRouter }        from "./routes/user.routes";
@@ -51,6 +52,7 @@ import { unsubscribeRouter }   from "./routes/unsubscribe.routes";
 import { stripeWebhook }     from "./controllers/webhook.controller";
 import { resendWebhook }     from "./controllers/resend-webhook.controller";
 import { errorHandler }      from "./middleware/error.middleware";
+import { requestId }         from "./middleware/request-id.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
 import { startScheduler } from "./services/scheduler";
@@ -81,9 +83,10 @@ const CORS_OPTIONS: cors.CorsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Cron-Secret"],
-  exposedHeaders: ["Set-Cookie"],
+  exposedHeaders: ["Set-Cookie", "X-Request-Id"],
 };
 
+app.use(requestId);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors(CORS_OPTIONS));
 app.options("*", cors(CORS_OPTIONS));
@@ -96,7 +99,10 @@ app.post("/api/webhooks/resend", express.raw({ type: "application/json" }), rese
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+morgan.token("id", (req) => (req as express.Request).id ?? "-");
+app.use(morgan(process.env.NODE_ENV === "production"
+  ? ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" rid=:id'
+  : "dev"));
 app.use(rateLimiter);
 
 // Short commit of the running build (set by Railway on GitHub deploys), so a
@@ -120,6 +126,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 app.use("/api/auth",        authRouter);
+app.use("/api/media",       mediaRouter);
 app.use("/api/onboarding",  onboardingRouter);
 app.use("/api/uploads",     uploadsRouter);
 app.use("/api/user",        userRouter);

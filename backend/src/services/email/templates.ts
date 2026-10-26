@@ -3,6 +3,7 @@
 // Each returns { subject, html, text }
 
 import { paymentsEnabled } from "../../config/flags";
+import { escapeHtml } from "../../lib/html";
 
 interface TemplateResult {
   subject: string;
@@ -101,7 +102,7 @@ export function welcomeTemplate(vars: {
   const html = layout(`
     ${badge(isWorker ? "WORKER REGISTRATION" : "EMPLOYER REGISTRATION")}
     <br/><br/>
-    ${h1(`Welcome to ${APP_NAME}, ${vars.firstName}!`)}
+    ${h1(`Welcome to ${APP_NAME}, ${escapeHtml(vars.firstName)}!`)}
     ${p(`We're excited to have you on board. You've successfully created your ${isWorker ? "worker" : "employer"} account.`)}
     ${p(isWorker
       ? "Complete your profile to get matched with top global employers. The more complete your profile, the higher your AI match score."
@@ -127,11 +128,11 @@ export function otpVerificationTemplate(vars: { code: string; expiresMinutes: nu
     <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
       <tr>
         <td style="background:#F7F9FF;border:2px solid #E2E8F0;border-radius:16px;padding:24px 48px;text-align:center;">
-          <span style="font-family:'Courier New',Courier,monospace;font-size:42px;font-weight:800;color:#08142A;letter-spacing:10px;display:block;">${vars.code}</span>
+          <span style="font-family:'Courier New',Courier,monospace;font-size:42px;font-weight:800;color:#08142A;letter-spacing:10px;display:block;">${escapeHtml(vars.code)}</span>
         </td>
       </tr>
     </table>
-    ${p(`This code expires in <strong>${vars.expiresMinutes} minutes.</strong>`)}
+    ${p(`This code expires in <strong>${escapeHtml(vars.expiresMinutes)} minutes.</strong>`)}
     ${p("If you did not request this, ignore this email. Your account will remain unchanged.")}
     ${divider()}
     ${p("For security, never share this code with anyone — Direct Hire staff will never ask for it.")}
@@ -150,7 +151,7 @@ export function passwordResetTemplate(vars: { resetUrl: string }): TemplateResul
     ${h1("Reset your password")}
     ${p("We received a request to reset your password. Click the button below to create a new password.")}
     ${p("<strong>This link expires in 1 hour.</strong>")}
-    ${btn(vars.resetUrl, "Reset Password", "#DC2626")}
+    ${btn(escapeHtml(vars.resetUrl), "Reset Password", "#DC2626")}
     ${divider()}
     ${p("If you didn't request a password reset, please ignore this email. Your password will not be changed.")}
   `);
@@ -169,7 +170,7 @@ export function onboardingSubmittedTemplate(vars: {
     ${badge("APPLICATION SUBMITTED")}
     <br/><br/>
     ${h1("Your application has been submitted!")}
-    ${p(`Hi ${vars.name}, we've received your ${vars.role === "WORKER" ? "worker profile" : "company registration"} and it is now under review.`)}
+    ${p(`Hi ${escapeHtml(vars.name)}, we've received your ${escapeHtml(vars.role === "WORKER" ? "worker profile" : "company registration")} and it is now under review.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr>
         <td>
@@ -181,7 +182,7 @@ export function onboardingSubmittedTemplate(vars: {
         </td>
       </tr>
     </table>
-    ${btn(`${APP_URL}/${vars.role === "WORKER" ? "worker" : "employer"}/dashboard`, "View Your Dashboard")}
+    ${btn(`${APP_URL}/${escapeHtml(vars.role === "WORKER" ? "worker" : "employer")}/dashboard`, "View Your Dashboard")}
   `);
   return {
     subject: `Application submitted — we're reviewing it now`,
@@ -194,12 +195,12 @@ export function emailVerifiedTemplate(vars: {
   firstName: string;
   role: "WORKER" | "EMPLOYER";
 }): TemplateResult {
-  const dashboardUrl = `${APP_URL}/${vars.role === "WORKER" ? "worker" : "employer"}/dashboard`;
+  const dashboardUrl = `${APP_URL}/${escapeHtml(vars.role === "WORKER" ? "worker" : "employer")}/dashboard`;
   const html = layout(`
     ${badge("✓ EMAIL VERIFIED", "#059669")}
     <br/><br/>
     ${h1("Your email is verified!")}
-    ${p(`Hi ${vars.firstName}, your email address has been confirmed. Your account is now under review by our team.`)}
+    ${p(`Hi ${escapeHtml(vars.firstName)}, your email address has been confirmed. Your account is now under review by our team.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr>
         <td>
@@ -235,7 +236,7 @@ export function accountApprovedTemplate(vars: {
     </table>
     ${badge("✓ ACCOUNT APPROVED", "#059669")}
     <br/><br/>
-    ${h1(`Welcome, ${vars.firstName}! Your account is approved.`)}
+    ${h1(`Welcome, ${escapeHtml(vars.firstName)}! Your account is approved.`)}
     ${p("Your account has been reviewed and <strong>approved</strong>. You now have full access to the DirectHire platform.")}
     ${p(isWorker
       ? "Complete your profile to appear in search results and get matched with top global employers."
@@ -259,7 +260,7 @@ export function accountRejectedTemplate(vars: {
   const html = layout(`
     ${badge("APPLICATION UPDATE", "#64748B")}
     <br/><br/>
-    ${h1(`Hi ${vars.firstName}, we've reviewed your application`)}
+    ${h1(`Hi ${escapeHtml(vars.firstName)}, we've reviewed your application`)}
     ${p("We appreciate you taking the time to apply to DirectHire.")}
     ${p("After careful review, we're unable to approve your account at this time.")}
     ${p(`If you have questions or believe this decision was made in error, please reach out to us directly at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
@@ -279,7 +280,7 @@ export function accountSuspendedTemplate(vars: {
   const html = layout(`
     ${badge("ACCOUNT NOTICE", "#64748B")}
     <br/><br/>
-    ${h1(`Hi ${vars.firstName}, your account has been suspended`)}
+    ${h1(`Hi ${escapeHtml(vars.firstName)}, your account has been suspended`)}
     ${p("Your access to DirectHire has been temporarily suspended pending a review of your account.")}
     ${p("If you believe this is an error, please reach out to our support team and we will look into it as quickly as possible.")}
     ${btn("mailto:support@directhire.cc", "Contact Support", "#64748B")}
@@ -300,7 +301,7 @@ export function accountReinstatedTemplate(vars: {
   const html = layout(`
     ${badge("✓ ACCOUNT REINSTATED", "#0090FF")}
     <br/><br/>
-    ${h1(`Welcome back, ${vars.firstName}!`)}
+    ${h1(`Welcome back, ${escapeHtml(vars.firstName)}!`)}
     ${p("Your DirectHire account is active again. You can now log in and access all platform features.")}
     ${btn(loginUrl, "Log in to DirectHire", "#0090FF")}
     ${divider()}
@@ -320,11 +321,11 @@ export function needsChangesTemplate(vars: {
   const html = layout(`
     ${badge("ACTION REQUIRED", "#D97706")}
     <br/><br/>
-    ${h1(`Hi ${vars.name}, your profile needs a few updates`)}
+    ${h1(`Hi ${escapeHtml(vars.name)}, your profile needs a few updates`)}
     ${p("Our review team has requested the following changes before your account can be approved:")}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#FFFBEB;border-radius:12px;border-left:4px solid #D97706;margin:20px 0;">
       <tr><td>
-        <p style="margin:0;font-size:14px;color:#78350F;line-height:1.7;">${vars.changes}</p>
+        <p style="margin:0;font-size:14px;color:#78350F;line-height:1.7;">${escapeHtml(vars.changes)}</p>
       </td></tr>
     </table>
     ${btn(`${APP_URL}/worker/onboarding`, "Update My Profile", "#D97706")}
@@ -349,12 +350,12 @@ export function adminNewSubmissionTemplate(vars: {
     ${h1("New application requires review")}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr><td>
-        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Name:</strong> ${vars.submitterName}</p>
-        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Email:</strong> ${vars.submitterEmail}</p>
-        <p style="margin:0;font-size:14px;color:#334155;"><strong>Role:</strong> ${vars.submitterRole}</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Name:</strong> ${escapeHtml(vars.submitterName)}</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Email:</strong> ${escapeHtml(vars.submitterEmail)}</p>
+        <p style="margin:0;font-size:14px;color:#334155;"><strong>Role:</strong> ${escapeHtml(vars.submitterRole)}</p>
       </td></tr>
     </table>
-    ${btn(vars.adminUrl, "Review in Admin Panel", "#7C3AED")}
+    ${btn(escapeHtml(vars.adminUrl), "Review in Admin Panel", "#7C3AED")}
   `);
   return {
     subject: `[Admin] New ${vars.submitterRole} application — ${vars.submitterName}`,
@@ -370,8 +371,8 @@ export function jobSubmittedTemplate(vars: {
   const html = layout(`
     ${badge("JOB POST SUBMITTED", "#7C3AED")}
     <br/><br/>
-    ${h1(`Your job post has been submitted, ${vars.employerName}!`)}
-    ${p(`<strong>"${vars.jobTitle}"</strong> has been submitted for review. Our moderation team will check it and get back to you shortly.`)}
+    ${h1(`Your job post has been submitted, ${escapeHtml(vars.employerName)}!`)}
+    ${p(`<strong>"${escapeHtml(vars.jobTitle)}"</strong> has been submitted for review. Our moderation team will check it and get back to you shortly.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr>
         <td>
@@ -402,17 +403,17 @@ export function onboardingReminderTemplate(vars: {
   const html = layout(`
     ${badge("REMINDER")}
     <br/><br/>
-    ${h1(`${vars.firstName}, your profile is ${vars.completionPct}% complete`)}
+    ${h1(`${escapeHtml(vars.firstName)}, your profile is ${escapeHtml(vars.completionPct)}% complete`)}
     ${p(`You started your ${APP_NAME} registration but haven't finished yet. Complete your profile to start getting AI-matched to opportunities.`)}
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
       <tr>
         <td style="background:#E2E8F0;border-radius:99px;height:8px;overflow:hidden;">
-          <div style="background:${BRAND_COLOR};width:${vars.completionPct}%;height:8px;border-radius:99px;"></div>
+          <div style="background:${BRAND_COLOR};width:${escapeHtml(vars.completionPct)}%;height:8px;border-radius:99px;"></div>
         </td>
       </tr>
     </table>
-    <p style="font-size:14px;color:#64748B;text-align:right;margin:8px 0 20px;">${vars.completionPct}% complete</p>
-    ${btn(vars.continueUrl, "Continue Registration")}
+    <p style="font-size:14px;color:#64748B;text-align:right;margin:8px 0 20px;">${escapeHtml(vars.completionPct)}% complete</p>
+    ${btn(escapeHtml(vars.continueUrl), "Continue Registration")}
     ${p("It only takes a few more minutes. Verified profiles get 3× more employer views.")}
   `, { unsubscribeUrl: vars.unsubscribeUrl });
   return {
@@ -429,7 +430,7 @@ export function jobApprovedTemplate(vars: {
   jobTitle: string;
   jobId: string;
 }): TemplateResult {
-  const jobUrl       = `${APP_URL}/jobs/${vars.jobId}`;
+  const jobUrl       = `${APP_URL}/jobs/${escapeHtml(vars.jobId)}`;
   const dashboardUrl = `${APP_URL}/employer/jobs`;
   const html = layout(`
     <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
@@ -441,8 +442,8 @@ export function jobApprovedTemplate(vars: {
     </table>
     ${badge("✓ APPROVED", "#16A34A")}
     <br/><br/>
-    ${h1(`Great news, ${vars.firstName}!`)}
-    ${p(`Your job post <strong>"${vars.jobTitle}"</strong> has been reviewed and approved. It's now live on ${APP_NAME}.`)}
+    ${h1(`Great news, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`Your job post <strong>"${escapeHtml(vars.jobTitle)}"</strong> has been reviewed and approved. It's now live on ${APP_NAME}.`)}
     ${btn(jobUrl, "View live post", "#16A34A")}
     ${p("Workers who match your requirements will be notified automatically. You can manage applications from your dashboard.")}
     ${btn(dashboardUrl, "Go to my dashboard")}
@@ -461,16 +462,16 @@ export function jobRejectedTemplate(vars: {
   jobId: string;
   reason: string;
 }): TemplateResult {
-  const editUrl = `${APP_URL}/employer/jobs/${vars.jobId}/edit`;
+  const editUrl = `${APP_URL}/employer/jobs/${escapeHtml(vars.jobId)}/edit`;
   const html = layout(`
     ${badge("JOB POST UPDATE", "#64748B")}
     <br/><br/>
     ${h1(`Update on your job post`)}
-    ${p(`We reviewed your job post <strong>"${vars.jobTitle}"</strong> and are unable to approve it at this time.`)}
+    ${p(`We reviewed your job post <strong>"${escapeHtml(vars.jobTitle)}"</strong> and are unable to approve it at this time.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
-        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.reason}</p>
+        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${escapeHtml(vars.reason)}</p>
       </td></tr>
     </table>
     ${p("You can edit your post and resubmit from your dashboard.")}
@@ -490,7 +491,7 @@ export function jobChangesRequestedTemplate(vars: {
   jobId: string;
   notes: string;
 }): TemplateResult {
-  const editUrl = `${APP_URL}/employer/jobs/${vars.jobId}/edit`;
+  const editUrl = `${APP_URL}/employer/jobs/${escapeHtml(vars.jobId)}/edit`;
   const html = layout(`
     <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr>
@@ -502,11 +503,11 @@ export function jobChangesRequestedTemplate(vars: {
     ${badge("FEEDBACK", "#1D4ED8")}
     <br/><br/>
     ${h1(`Feedback on your job post`)}
-    ${p(`Our moderation team has reviewed <strong>"${vars.jobTitle}"</strong> and has some feedback.`)}
+    ${p(`Our moderation team has reviewed <strong>"${escapeHtml(vars.jobTitle)}"</strong> and has some feedback.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Changes needed</p>
-        <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${vars.notes}</p>
+        <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${escapeHtml(vars.notes)}</p>
       </td></tr>
     </table>
     ${p("Please make these updates and resubmit.")}
@@ -530,11 +531,11 @@ export function jobResubmittedNotificationTemplate(vars: {
     ${badge("JOB RESUBMITTED", "#7C3AED")}
     <br/><br/>
     ${h1(`Job post resubmitted`)}
-    ${p(`Job post <strong>"${vars.jobTitle}"</strong> by <strong>${vars.company}</strong> (${vars.employerName}) has been resubmitted after changes.`)}
+    ${p(`Job post <strong>"${escapeHtml(vars.jobTitle)}"</strong> by <strong>${escapeHtml(vars.company)}</strong> (${escapeHtml(vars.employerName)}) has been resubmitted after changes.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Original rejection reason</p>
-        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.notes}</p>
+        <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${escapeHtml(vars.notes)}</p>
       </td></tr>
     </table>
     ${btn(pendingUrl, "Review in Admin Panel", "#7C3AED")}
@@ -563,8 +564,8 @@ export function applicationShortlistedTemplate(vars: {
     </table>
     ${badge("⭐ SHORTLISTED", "#D97706")}
     <br/><br/>
-    ${h1(`Great news, ${vars.firstName}!`)}
-    ${p(`You've been shortlisted by <strong>${vars.companyName}</strong> for the <strong>"${vars.jobTitle}"</strong> role.`)}
+    ${h1(`Great news, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`You've been shortlisted by <strong>${escapeHtml(vars.companyName)}</strong> for the <strong>"${escapeHtml(vars.jobTitle)}"</strong> role.`)}
     ${p("Our hiring team will be reviewing your profile and will be in touch soon.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#D97706")}
     ${divider()}
@@ -584,12 +585,12 @@ export function applicationInterviewedTemplate(vars: {
   applicationId:         string;
   interviewInstructions?: string;
 }): TemplateResult {
-  const contactUrl = `${APP_URL}/worker/applications/${vars.applicationId}`;
+  const contactUrl = `${APP_URL}/worker/applications/${escapeHtml(vars.applicationId)}`;
   const instructionsBlock = vars.interviewInstructions
     ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#EFF6FF;border-radius:12px;border-left:4px solid #3B82F6;margin:20px 0;">
         <tr><td>
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1E40AF;text-transform:uppercase;letter-spacing:0.5px;">Interview instructions</p>
-          <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${vars.interviewInstructions}</p>
+          <p style="margin:0;font-size:14px;color:#1E3A8A;line-height:1.7;">${escapeHtml(vars.interviewInstructions)}</p>
         </td></tr>
        </table>`
     : "";
@@ -603,8 +604,8 @@ export function applicationInterviewedTemplate(vars: {
     </table>
     ${badge("INTERVIEW INVITATION", "#0D9488")}
     <br/><br/>
-    ${h1(`Congratulations, ${vars.firstName}!`)}
-    ${p(`<strong>${vars.companyName}</strong> would like to interview you for <strong>"${vars.jobTitle}"</strong>.`)}
+    ${h1(`Congratulations, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`<strong>${escapeHtml(vars.companyName)}</strong> would like to interview you for <strong>"${escapeHtml(vars.jobTitle)}"</strong>.`)}
     ${p("Your contact details have been shared with the employer, and you can now view their contact information in your DirectHire dashboard to arrange your interview.")}
     ${instructionsBlock}
     ${btn(contactUrl, "View contact details", "#0D9488")}
@@ -627,12 +628,12 @@ export function interviewResponseTemplate(vars: {
 }): TemplateResult {
   const accepted     = vars.response === "ACCEPTED";
   const accentColor  = accepted ? "#0D9488" : "#DC2626";
-  const applicantsUrl = `${APP_URL}/employer/jobs/${vars.jobId}/applicants`;
+  const applicantsUrl = `${APP_URL}/employer/jobs/${escapeHtml(vars.jobId)}/applicants`;
   const messageBlock = vars.message
     ? `<table width="100%" cellpadding="16" cellspacing="0" style="background:#F8FAFC;border-radius:12px;border-left:4px solid ${accentColor};margin:20px 0;">
         <tr><td>
-          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:0.5px;">Message from ${vars.workerName}</p>
-          <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${vars.message}</p>
+          <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:0.5px;">Message from ${escapeHtml(vars.workerName)}</p>
+          <p style="margin:0;font-size:14px;color:#334155;line-height:1.7;">${escapeHtml(vars.message)}</p>
         </td></tr>
        </table>`
     : "";
@@ -640,9 +641,9 @@ export function interviewResponseTemplate(vars: {
     ${badge(accepted ? "INTERVIEW ACCEPTED" : "INTERVIEW DECLINED", accentColor)}
     <br/><br/>
     ${h1(accepted
-      ? `${vars.workerName} accepted your interview invitation`
-      : `${vars.workerName} declined your interview invitation`)}
-    ${p(`This is regarding your job posting <strong>"${vars.jobTitle}"</strong>.`)}
+      ? `${escapeHtml(vars.workerName)} accepted your interview invitation`
+      : `${escapeHtml(vars.workerName)} declined your interview invitation`)}
+    ${p(`This is regarding your job posting <strong>"${escapeHtml(vars.jobTitle)}"</strong>.`)}
     ${messageBlock}
     ${btn(applicantsUrl, "View applicant", accentColor)}
     ${divider()}
@@ -670,8 +671,8 @@ export function applicationAcceptedWorkerTemplate(vars: {
     </table>
     ${badge("✓ YOU GOT THE JOB", "#16A34A")}
     <br/><br/>
-    ${h1(`Congratulations, ${vars.firstName}!`)}
-    ${p(`<strong>${vars.companyName}</strong> has accepted your application for <strong>"${vars.jobTitle}"</strong>.`)}
+    ${h1(`Congratulations, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`<strong>${escapeHtml(vars.companyName)}</strong> has accepted your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong>.`)}
     ${p("They will be in touch with you directly to discuss next steps.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
   `);
@@ -692,9 +693,9 @@ export function hireConfirmationEmployerTemplate(vars: {
   offeredCurrency?: string;
 }): TemplateResult {
   const detailRows = [
-    vars.offeredSalary ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;width:140px;">Offered salary</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${vars.offeredCurrency ?? "USD"} ${parseFloat(vars.offeredSalary).toLocaleString()}/month</td></tr>` : "",
+    vars.offeredSalary ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;width:140px;">Offered salary</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${escapeHtml(vars.offeredCurrency ?? "USD")} ${parseFloat(vars.offeredSalary).toLocaleString()}/month</td></tr>` : "",
     vars.startDate    ? `<tr><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;color:#64748B;">Start date</td><td style="padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px;font-weight:600;color:#08142A;">${new Date(vars.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</td></tr>` : "",
-    vars.contractType ? `<tr><td style="padding:10px 0;font-size:14px;color:#64748B;">Contract type</td><td style="padding:10px 0;font-size:14px;font-weight:600;color:#08142A;">${vars.contractType}</td></tr>` : "",
+    vars.contractType ? `<tr><td style="padding:10px 0;font-size:14px;color:#64748B;">Contract type</td><td style="padding:10px 0;font-size:14px;font-weight:600;color:#08142A;">${escapeHtml(vars.contractType)}</td></tr>` : "",
   ].filter(Boolean).join("");
 
   const detailsBlock = detailRows
@@ -705,9 +706,9 @@ export function hireConfirmationEmployerTemplate(vars: {
     ${badge("✓ HIRE CONFIRMED", "#16A34A")}
     <br/><br/>
     ${h1("Hire confirmed")}
-    ${p(`You have successfully hired <strong>${vars.workerName}</strong> for <strong>"${vars.jobTitle}"</strong>.`)}
+    ${p(`You have successfully hired <strong>${escapeHtml(vars.workerName)}</strong> for <strong>"${escapeHtml(vars.jobTitle)}"</strong>.`)}
     ${detailsBlock}
-    ${p(`${vars.workerName} has been notified and their profile is now available to other employers. Their full contact details are in your dashboard.`)}
+    ${p(`${escapeHtml(vars.workerName)} has been notified and their profile is now available to other employers. Their full contact details are in your dashboard.`)}
     ${btn(`${APP_URL}/employer/applications`, "View all applications", "#16A34A")}
     ${divider()}
     ${p(`Questions? Contact us at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
@@ -727,7 +728,7 @@ export function applicationRejectedWorkerTemplate(vars: {
     ${badge("APPLICATION UPDATE", "#64748B")}
     <br/><br/>
     ${h1(`Thank you for your interest`)}
-    ${p(`Thank you for applying to <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong>.`)}
+    ${p(`Thank you for applying to <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong>.`)}
     ${p("After careful consideration, we will not be moving forward with your application at this time.")}
     ${p("We encourage you to keep applying — new opportunities are added to DirectHire daily.")}
     ${btn(`${APP_URL}/jobs`, "Browse more jobs")}
@@ -747,12 +748,12 @@ export function newApplicationTemplate(vars: {
   applicationId: string;
   jobId:         string;
 }): TemplateResult {
-  const appUrl = `${APP_URL}/employer/jobs/${vars.jobId}/applicants`;
+  const appUrl = `${APP_URL}/employer/jobs/${escapeHtml(vars.jobId)}/applicants`;
   const html = layout(`
     ${badge("NEW APPLICATION", "#7C3AED")}
     <br/><br/>
     ${h1("New application received")}
-    ${p(`A new candidate has applied for your <strong>"${vars.jobTitle}"</strong> position.`)}
+    ${p(`A new candidate has applied for your <strong>"${escapeHtml(vars.jobTitle)}"</strong> position.`)}
     ${p("View their profile and take action from your dashboard.")}
     ${btn(appUrl, "Review applicant", "#7C3AED")}
     ${divider()}
@@ -775,7 +776,7 @@ export function applicationWithdrawnTemplate(vars: {
     ${badge("APPLICATION WITHDRAWN", "#64748B")}
     <br/><br/>
     ${h1("A candidate withdrew their application")}
-    ${p(`<strong>${vars.workerName}</strong> has withdrawn their application for <strong>"${vars.jobTitle}"</strong>.`)}
+    ${p(`<strong>${escapeHtml(vars.workerName)}</strong> has withdrawn their application for <strong>"${escapeHtml(vars.jobTitle)}"</strong>.`)}
     ${p("Their application has been removed from your applicant list.")}
     ${btn(dashUrl, "View my jobs")}
   `);
@@ -850,7 +851,7 @@ export function workerLockedWorkerTemplate(vars: {
   const html = layout(`
     ${badge("PROFILE RESERVED")}
     <br/><br/>
-    ${h1(`${vars.firstName ? vars.firstName + ", your" : "Your"} profile has been reserved`)}
+    ${h1(`${escapeHtml(vars.firstName ? vars.firstName + ", your" : "Your")} profile has been reserved`)}
     ${p(`An employer has reserved your profile until <strong>${expiry}</strong>.`)}
     ${p("Other employers cannot proceed with hiring you during this period. You will be notified when the reservation ends or is released early.")}
     ${summaryTable(
@@ -881,18 +882,18 @@ export function workerLockedEmployerTemplate(vars: {
   const html = layout(`
     ${badge("✓ RESERVATION CONFIRMED", "#16A34A")}
     <br/><br/>
-    ${h1(`Reservation created for ${vars.workerName}`)}
+    ${h1(`Reservation created for ${escapeHtml(vars.workerName)}`)}
     ${p(`Your profile reservation has been successfully placed. Here is a summary:`)}
     ${summaryTable(
-      summaryRow("Worker",        vars.workerName) +
+      summaryRow("Worker",        escapeHtml(vars.workerName)) +
       summaryRow("Start date",    fmtDate(vars.lockStartDate)) +
       summaryRow("Expiry date",   fmtDate(vars.lockExpiryDate)) +
       (vars.dailyFee === 0
-        ? summaryRow("Duration",      `${vars.lockDays} day${vars.lockDays !== 1 ? "s" : ""}`) +
+        ? summaryRow("Duration",      `${escapeHtml(vars.lockDays)} day${escapeHtml(vars.lockDays !== 1 ? "s" : "")}`) +
           summaryRow("Cost",          "Free")
-        : summaryRow("Daily fee",     `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
-          summaryRow("Duration",      `${vars.lockDays} day${vars.lockDays !== 1 ? "s" : ""}`) +
-          summaryRow("Est. total",    `${vars.currency} ${estTotal}`)),
+        : summaryRow("Daily fee",     `${escapeHtml(vars.currency)} ${escapeHtml(vars.dailyFee.toFixed(2))}`) +
+          summaryRow("Duration",      `${escapeHtml(vars.lockDays)} day${escapeHtml(vars.lockDays !== 1 ? "s" : "")}`) +
+          summaryRow("Est. total",    `${escapeHtml(vars.currency)} ${estTotal}`)),
     )}
     ${p("You can manage your reservations from your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
@@ -914,7 +915,7 @@ export function workerLockExtendedWorkerTemplate(vars: {
   const html = layout(`
     ${badge("RESERVATION EXTENDED")}
     <br/><br/>
-    ${h1(`${vars.firstName ? vars.firstName + ", your" : "Your"} reservation has been extended`)}
+    ${h1(`${escapeHtml(vars.firstName ? vars.firstName + ", your" : "Your")} reservation has been extended`)}
     ${p(`Your profile reservation has been extended. Your profile will remain reserved until <strong>${expiry}</strong>.`)}
     ${summaryTable(summaryRow("New expiry date", expiry))}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
@@ -941,15 +942,15 @@ export function workerLockExtendedEmployerTemplate(vars: {
   const html = layout(`
     ${badge("✓ RESERVATION EXTENDED", "#16A34A")}
     <br/><br/>
-    ${h1(`Reservation extended — ${vars.workerName}`)}
-    ${p(`The reservation for ${vars.workerName} has been successfully extended.`)}
+    ${h1(`Reservation extended — ${escapeHtml(vars.workerName)}`)}
+    ${p(`The reservation for ${escapeHtml(vars.workerName)} has been successfully extended.`)}
     ${summaryTable(
       summaryRow("New expiry date",    expiry) +
-      summaryRow("Total duration",     `${vars.newTotalDays} day${vars.newTotalDays !== 1 ? "s" : ""}`) +
+      summaryRow("Total duration",     `${escapeHtml(vars.newTotalDays)} day${escapeHtml(vars.newTotalDays !== 1 ? "s" : "")}`) +
       (vars.dailyFee === 0
         ? summaryRow("Cost",               "Free")
-        : summaryRow("Daily fee",          `${vars.currency} ${vars.dailyFee.toFixed(2)}`) +
-          summaryRow("Updated est. total", `${vars.currency} ${estTotal}`)),
+        : summaryRow("Daily fee",          `${escapeHtml(vars.currency)} ${escapeHtml(vars.dailyFee.toFixed(2))}`) +
+          summaryRow("Updated est. total", `${escapeHtml(vars.currency)} ${estTotal}`)),
     )}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
     ${divider()}
@@ -968,7 +969,7 @@ export function workerLockReleasedWorkerTemplate(vars: {
   const html = layout(`
     ${badge("✓ RESERVATION ENDED", "#16A34A")}
     <br/><br/>
-    ${h1(`${vars.firstName ? vars.firstName + ", your" : "Your"} profile is now available`)}
+    ${h1(`${escapeHtml(vars.firstName ? vars.firstName + ", your" : "Your")} profile is now available`)}
     ${p("Your profile reservation has ended. You are now available to be contacted and hired by other employers on Direct Hire.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
     ${divider()}
@@ -990,12 +991,12 @@ export function workerLockReleasedEmployerTemplate(vars: {
   const html = layout(`
     ${badge("RESERVATION RELEASED")}
     <br/><br/>
-    ${h1(`Reservation released — ${vars.workerName}`)}
-    ${p(`The reservation for ${vars.workerName} has been released. Here is your billing summary:`)}
+    ${h1(`Reservation released — ${escapeHtml(vars.workerName)}`)}
+    ${p(`The reservation for ${escapeHtml(vars.workerName)} has been released. Here is your billing summary:`)}
     ${summaryTable(
-      summaryRow("Worker",         vars.workerName) +
-      summaryRow("Days billed",    `${vars.totalDaysBilled}`) +
-      summaryRow("Total billed",   `${vars.currency} ${vars.totalBilled.toFixed(2)}`),
+      summaryRow("Worker",         escapeHtml(vars.workerName)) +
+      summaryRow("Days billed",    `${escapeHtml(vars.totalDaysBilled)}`) +
+      summaryRow("Total billed",   `${escapeHtml(vars.currency)} ${escapeHtml(vars.totalBilled.toFixed(2))}`),
     )}
     ${btn(`${APP_URL}/employer/locks`, "View All Reservations")}
     ${divider()}
@@ -1017,8 +1018,8 @@ export function lockExpiryWarningTemplate(vars: {
   const html = layout(`
     ${badge("⚠ RESERVATION EXPIRING SOON", "#D97706")}
     <br/><br/>
-    ${h1(`Your reservation for ${vars.workerFirstName} expires in 48 hours`)}
-    ${p(`The reservation for <strong>${vars.workerFirstName}</strong> will expire on <strong>${expiry}</strong>.`)}
+    ${h1(`Your reservation for ${escapeHtml(vars.workerFirstName)} expires in 48 hours`)}
+    ${p(`The reservation for <strong>${escapeHtml(vars.workerFirstName)}</strong> will expire on <strong>${expiry}</strong>.`)}
     ${p("If you would like to continue the reservation, extend it from your dashboard before it expires. Once expired, the worker will become available to other employers.")}
     ${btn(`${APP_URL}/employer/locks`, "Extend Reservation", "#D97706")}
     ${divider()}
@@ -1037,7 +1038,7 @@ export function lockExpiredWorkerTemplate(vars: {
   const html = layout(`
     ${badge("✓ RESERVATION ENDED", "#16A34A")}
     <br/><br/>
-    ${h1(`${vars.firstName ? vars.firstName + ", your" : "Your"} profile is now available`)}
+    ${h1(`${escapeHtml(vars.firstName ? vars.firstName + ", your" : "Your")} profile is now available`)}
     ${p("Your profile reservation has ended — the reservation period has passed and you are now fully available on Direct Hire.")}
     ${p("Other employers can now contact and proceed with hiring you.")}
     ${btn(`${APP_URL}/worker/dashboard`, "View Dashboard")}
@@ -1060,12 +1061,12 @@ export function lockExpiredEmployerTemplate(vars: {
   const html = layout(`
     ${badge("RESERVATION EXPIRED")}
     <br/><br/>
-    ${h1(`Reservation expired — ${vars.workerName}`)}
-    ${p(`The reservation for <strong>${vars.workerName}</strong> has expired. The worker is now available to other employers. Here is your billing summary:`)}
+    ${h1(`Reservation expired — ${escapeHtml(vars.workerName)}`)}
+    ${p(`The reservation for <strong>${escapeHtml(vars.workerName)}</strong> has expired. The worker is now available to other employers. Here is your billing summary:`)}
     ${summaryTable(
-      summaryRow("Worker",       vars.workerName) +
-      summaryRow("Days billed",  `${vars.totalDaysBilled}`) +
-      summaryRow("Total billed", `${vars.currency} ${vars.totalBilled.toFixed(2)}`),
+      summaryRow("Worker",       escapeHtml(vars.workerName)) +
+      summaryRow("Days billed",  `${escapeHtml(vars.totalDaysBilled)}`) +
+      summaryRow("Total billed", `${escapeHtml(vars.currency)} ${escapeHtml(vars.totalBilled.toFixed(2))}`),
     )}
     ${p("You can view your reservation history in your employer dashboard.")}
     ${btn(`${APP_URL}/employer/locks`, "View Reservations")}
@@ -1087,8 +1088,8 @@ export function lockOverrideEmployerTemplate(vars: {
   const html = layout(`
     ${badge("RESERVATION ENDED BY DIRECTHIRE", "#64748B")}
     <br/><br/>
-    ${h1(`Your reservation on ${vars.workerName} has ended`)}
-    ${p(`Your reservation on <strong>${vars.workerName}</strong> has been ended by the DirectHire moderation team.`)}
+    ${h1(`Your reservation on ${escapeHtml(vars.workerName)} has ended`)}
+    ${p(`Your reservation on <strong>${escapeHtml(vars.workerName)}</strong> has been ended by the DirectHire moderation team.`)}
     ${p("The worker is no longer reserved to your account.")}
     ${p(`If you have questions about this decision, please contact our support team at <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>.`)}
     ${btn(`${APP_URL}/employer/locks`, "View My Reservations")}
@@ -1112,8 +1113,8 @@ export function applicationConfirmationTemplate(vars: {
   const html = layout(`
     ${badge("APPLICATION SUBMITTED", "#0D9488")}
     <br/><br/>
-    ${h1(`Hi ${vars.firstName}, you're in!`)}
-    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has been submitted successfully.`)}
+    ${h1(`Hi ${escapeHtml(vars.firstName)}, you're in!`)}
+    ${p(`Your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong> has been submitted successfully.`)}
     ${p("We will notify you as soon as the employer reviews your profile. In the meantime, you can track all your applications from your dashboard.")}
     ${btn(trackUrl, "Track my applications", "#0D9488")}
     ${divider()}
@@ -1143,13 +1144,13 @@ export function contactFormTemplate(vars: {
       <tr style="border-bottom:1px solid #E2E8F0;">
         <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
           <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">From</p>
-          <p style="margin:4px 0 0;font-size:15px;color:#334155;font-weight:600;">${vars.name} &lt;${vars.email}&gt;</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;font-weight:600;">${escapeHtml(vars.name)} &lt;${escapeHtml(vars.email)}&gt;</p>
         </td>
       </tr>
       <tr>
         <td style="border-bottom:1px solid #E2E8F0;padding:14px;">
           <p style="margin:0;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">Subject</p>
-          <p style="margin:4px 0 0;font-size:15px;color:#334155;">${vars.subject}</p>
+          <p style="margin:4px 0 0;font-size:15px;color:#334155;">${escapeHtml(vars.subject)}</p>
         </td>
       </tr>
       <tr>
@@ -1159,7 +1160,7 @@ export function contactFormTemplate(vars: {
         </td>
       </tr>
     </table>
-    ${btn(`mailto:${vars.email}`, `Reply to ${vars.name}`)}
+    ${btn(`mailto:${escapeHtml(vars.email)}`, `Reply to ${escapeHtml(vars.name)}`)}
   `);
   return {
     subject: `[Contact] ${vars.subject} — ${vars.name}`,
@@ -1175,7 +1176,7 @@ export function contactConfirmationTemplate(vars: {
     ${badge("✓ MESSAGE RECEIVED", "#059669")}
     <br/><br/>
     ${h1("We got your message!")}
-    ${p(`Hi ${vars.name}, thanks for reaching out to DirectHire. We've received your message and will get back to you within 24 hours on business days.`)}
+    ${p(`Hi ${escapeHtml(vars.name)}, thanks for reaching out to DirectHire. We've received your message and will get back to you within 24 hours on business days.`)}
     <table width="100%" cellpadding="16" cellspacing="0" style="background:#F7F9FF;border-radius:12px;margin:20px 0;">
       <tr>
         <td>
@@ -1207,7 +1208,7 @@ export function subscriptionCanceledTemplate(vars: {
     const freeHtml = layout(`
     ${badge("SUBSCRIPTION CANCELED", "#64748B")}
     <br/><br/>
-    ${h1(`Hi ${vars.name}, your subscription is canceled`)}
+    ${h1(`Hi ${escapeHtml(vars.name)}, your subscription is canceled`)}
     ${p("We've confirmed your cancellation. You will not be charged again.")}
     ${p("DirectHire is now free for employers, so you keep full access to posting jobs, browsing candidates and reserving workers — no subscription needed.")}
     ${btn(`${APP_URL}/employer/dashboard`, "Go to dashboard", BRAND_COLOR)}
@@ -1223,7 +1224,7 @@ export function subscriptionCanceledTemplate(vars: {
   const html = layout(`
     ${badge("SUBSCRIPTION CANCELED", "#64748B")}
     <br/><br/>
-    ${h1(`Hi ${vars.name}, your subscription is set to cancel`)}
+    ${h1(`Hi ${escapeHtml(vars.name)}, your subscription is set to cancel`)}
     ${p("We've confirmed your cancellation request. You will not be charged again.")}
     ${summaryTable(
       summaryRow("Access until", until),
@@ -1249,7 +1250,7 @@ export function subscriptionExpiryWarningTemplate(vars: {
   const html = layout(`
     ${badge("⚠ ACCESS ENDING SOON", "#D97706")}
     <br/><br/>
-    ${h1(`Hi ${vars.name}, your access ends in 3 days`)}
+    ${h1(`Hi ${escapeHtml(vars.name)}, your access ends in 3 days`)}
     ${p(`Your canceled DirectHire subscription remains active until <strong>${until}</strong>. After that, you'll lose access to candidate search and job posting until you resubscribe.`)}
     ${btn(`${APP_URL}/employer/subscription`, "Resubscribe", "#D97706")}
     ${divider()}
@@ -1272,8 +1273,8 @@ export function jobClosedApplicantTemplate(vars: {
   const html = layout(`
     ${badge("POSITION CLOSED", "#64748B")}
     <br/><br/>
-    ${h1(`Hi ${vars.firstName}, this position has closed`)}
-    ${p(`The position you applied for, <strong>${vars.jobTitle}</strong> at ${vars.companyName}, has been closed by the employer.`)}
+    ${h1(`Hi ${escapeHtml(vars.firstName)}, this position has closed`)}
+    ${p(`The position you applied for, <strong>${escapeHtml(vars.jobTitle)}</strong> at ${escapeHtml(vars.companyName)}, has been closed by the employer.`)}
     ${p("This does not affect your other applications. Browse the job feed for similar opportunities.")}
     ${btn(`${APP_URL}/worker/jobs`, "Browse Jobs")}
     ${divider()}
@@ -1296,11 +1297,11 @@ export function jobMatchTemplate(vars: {
   unsubscribeUrl: string;
 }): TemplateResult {
   const html = layout(`
-    ${badge(`${vars.matchPct}% MATCH`, "#16A34A")}
+    ${badge(`${escapeHtml(vars.matchPct)}% MATCH`, "#16A34A")}
     <br/><br/>
-    ${h1(`${vars.firstName}, a new job matches your profile`)}
-    ${p(`<strong>${vars.jobTitle}</strong> looks like a strong fit for your profile — a ${vars.matchPct}% match based on your skills, experience, and target countries.`)}
-    ${btn(vars.jobsUrl, "View Job")}
+    ${h1(`${escapeHtml(vars.firstName)}, a new job matches your profile`)}
+    ${p(`<strong>${escapeHtml(vars.jobTitle)}</strong> looks like a strong fit for your profile — a ${escapeHtml(vars.matchPct)}% match based on your skills, experience, and target countries.`)}
+    ${btn(escapeHtml(vars.jobsUrl), "View Job")}
     ${p("You're receiving this because your profile closely matches a newly-approved job. You can unsubscribe from match recommendations any time.")}
   `, { unsubscribeUrl: vars.unsubscribeUrl });
   return {
@@ -1322,19 +1323,19 @@ export function invoiceReceiptTemplate(vars: {
     ${badge(vars.isCredit ? "CREDIT NOTE" : "✓ PAYMENT RECEIVED", vars.isCredit ? "#B45309" : "#16A34A")}
     <br/><br/>
     ${h1(vars.isCredit ? "Your DirectHire credit note" : "Your DirectHire receipt")}
-    ${p(`Hi ${vars.firstName}, ${vars.isCredit ? "a partial refund has been processed for" : "thank you for your payment for"} the following:`)}
+    ${p(`Hi ${escapeHtml(vars.firstName)}, ${escapeHtml(vars.isCredit ? "a partial refund has been processed for" : "thank you for your payment for")} the following:`)}
     ${summaryTable(
-      summaryRow("Invoice number", vars.invoiceNumber) +
-      summaryRow("Description",    vars.description) +
-      summaryRow("Amount",         vars.amountDisplay),
+      summaryRow("Invoice number", escapeHtml(vars.invoiceNumber)) +
+      summaryRow("Description",    escapeHtml(vars.description)) +
+      summaryRow("Amount",         escapeHtml(vars.amountDisplay)),
     )}
     ${p("The PDF invoice is attached to this email, and always available for download from your payments page.")}
-    ${btn(vars.paymentsUrl, "View Payments")}
+    ${btn(escapeHtml(vars.paymentsUrl), "View Payments")}
     ${divider()}
     ${p(`Questions? <a href="mailto:support@directhire.cc" style="color:${BRAND_COLOR};">support@directhire.cc</a>`)}
   `);
   return {
-    subject: vars.isCredit ? `Your DirectHire credit note — ${vars.invoiceNumber}` : `Your DirectHire receipt — ${vars.invoiceNumber}`,
+    subject: vars.isCredit ? `Your DirectHire credit note — ${escapeHtml(vars.invoiceNumber)}` : `Your DirectHire receipt — ${escapeHtml(vars.invoiceNumber)}`,
     html,
     text: `${vars.isCredit ? "Credit note" : "Receipt"} ${vars.invoiceNumber}: ${vars.description}, ${vars.amountDisplay}. PDF attached; also downloadable from ${vars.paymentsUrl}.`,
   };
@@ -1350,13 +1351,13 @@ export function healthCheckAlertTemplate(vars: {
   const html = layout(`
     ${badge("ALERT", "#DC2626")}
     <br/><br/>
-    ${h1(`${vars.checkName} is failing`)}
+    ${h1(`${escapeHtml(vars.checkName)} is failing`)}
     ${p("The production health monitor detected a failing check.")}
     ${summaryTable(
-      summaryRow("Check",     vars.checkName) +
+      summaryRow("Check",     escapeHtml(vars.checkName)) +
       summaryRow("Status",    "Failing") +
-      summaryRow("Error",     vars.error) +
-      summaryRow("Time (UTC)", vars.timestamp),
+      summaryRow("Error",     escapeHtml(vars.error)) +
+      summaryRow("Time (UTC)", escapeHtml(vars.timestamp)),
     )}
     ${p("You won't be re-alerted for this same check for 60 minutes. A separate email will be sent once it recovers.")}
   `);
@@ -1374,11 +1375,11 @@ export function healthCheckRecoveryTemplate(vars: {
   const html = layout(`
     ${badge("RECOVERED", "#16A34A")}
     <br/><br/>
-    ${h1(`${vars.checkName} is passing again`)}
+    ${h1(`${escapeHtml(vars.checkName)} is passing again`)}
     ${summaryTable(
-      summaryRow("Check",      vars.checkName) +
+      summaryRow("Check",      escapeHtml(vars.checkName)) +
       summaryRow("Status",     "Recovered") +
-      summaryRow("Time (UTC)", vars.timestamp),
+      summaryRow("Time (UTC)", escapeHtml(vars.timestamp)),
     )}
   `);
   return {
@@ -1398,8 +1399,8 @@ export function applicationApprovedQueuedTemplate(vars: {
   const html = layout(`
     ${badge("✓ REVIEW PASSED", "#16A34A")}
     <br/><br/>
-    ${h1(`Good news, ${vars.firstName}!`)}
-    ${p(`Your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> has passed our team's initial review and is now queued for processing.`)}
+    ${h1(`Good news, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`Your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong> has passed our team's initial review and is now queued for processing.`)}
     ${p("We may reach out if any documents are needed to move things forward. No action is required from you right now.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
   `);
@@ -1419,9 +1420,9 @@ export function applicationDocumentRequestedTemplate(vars: {
   const html = layout(`
     ${badge("DOCUMENT NEEDED", "#D97706")}
     <br/><br/>
-    ${h1(`Action needed, ${vars.firstName}`)}
-    ${p(`To keep moving forward with your application for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong>, our team needs the following document from you:`)}
-    ${summaryTable(summaryRow("Document requested", vars.documentType))}
+    ${h1(`Action needed, ${escapeHtml(vars.firstName)}`)}
+    ${p(`To keep moving forward with your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong>, our team needs the following document from you:`)}
+    ${summaryTable(summaryRow("Document requested", escapeHtml(vars.documentType)))}
     ${btn(`${APP_URL}/worker/document-requests`, "Upload document", "#D97706")}
   `);
   return {
@@ -1443,8 +1444,8 @@ export function applicationDocumentsApprovedTemplate(vars: {
   const html = layout(`
     ${badge("✓ DOCUMENTS VERIFIED", "#16A34A")}
     <br/><br/>
-    ${h1(`Documents verified, ${vars.firstName}!`)}
-    ${p(`Your documents for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> have been reviewed and approved. We're now moving your application forward.`)}
+    ${h1(`Documents verified, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`Your documents for <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong> have been reviewed and approved. We're now moving your application forward.`)}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
   `);
   return {
@@ -1467,8 +1468,8 @@ export function hireRequestedWorkerTemplate(vars: {
   const html = layout(`
     ${badge("ACTION NEEDED", "#D97706")}
     <br/><br/>
-    ${h1(`${vars.companyName} wants to hire you, ${vars.firstName}!`)}
-    ${p(`They'd like to move forward with your application for <strong>"${vars.jobTitle}"</strong>. This isn't final yet — please log in and confirm to proceed.`)}
+    ${h1(`${escapeHtml(vars.companyName)} wants to hire you, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`They'd like to move forward with your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong>. This isn't final yet — please log in and confirm to proceed.`)}
     ${btn(`${APP_URL}/worker/application-status`, "Confirm your hire", "#D97706")}
   `);
   return {
@@ -1485,8 +1486,8 @@ export function adminFeeDueTemplate(vars: {
   const html = layout(`
     ${badge("PAYMENT DUE", "#D97706")}
     <br/><br/>
-    ${h1(`One more step, ${vars.firstName}`)}
-    ${p(`Your hire has been confirmed. A processing fee of <strong>$${vars.amountUsd}</strong> is due to finalize your placement — this covers visa and documentation processing for your role.`)}
+    ${h1(`One more step, ${escapeHtml(vars.firstName)}`)}
+    ${p(`Your hire has been confirmed. A processing fee of <strong>$${escapeHtml(vars.amountUsd)}</strong> is due to finalize your placement — this covers visa and documentation processing for your role.`)}
     ${btn(`${APP_URL}/worker/applications`, "Pay now", "#D97706")}
   `);
   return {
@@ -1504,8 +1505,8 @@ export function clearedForEmployerTemplate(vars: {
   const html = layout(`
     ${badge("✓ CLEARED", "#16A34A")}
     <br/><br/>
-    ${h1(`You're all set, ${vars.firstName}!`)}
-    ${p(`Your placement for <strong>"${vars.jobTitle}"</strong> at <strong>${vars.companyName}</strong> is fully confirmed — your hire is in place and processing is complete.`)}
+    ${h1(`You're all set, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`Your placement for <strong>"${escapeHtml(vars.jobTitle)}"</strong> at <strong>${escapeHtml(vars.companyName)}</strong> is fully confirmed — your hire is in place and processing is complete.`)}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#16A34A")}
   `);
   return {
@@ -1527,10 +1528,10 @@ export function bulkQuoteReadyTemplate(vars: {
   const html = layout(`
     ${badge("QUOTE READY", "#16A34A")}
     <br/><br/>
-    ${h1(`Your bulk hiring quote is ready, ${vars.contactName}`)}
+    ${h1(`Your bulk hiring quote is ready, ${escapeHtml(vars.contactName)}`)}
     ${p(`Our team has prepared a quote for your bulk hiring request.`)}
-    ${summaryTable(summaryRow("Quote amount", `$${vars.quoteAmountUsd}`))}
-    ${vars.quoteNotes ? p(vars.quoteNotes) : ""}
+    ${summaryTable(summaryRow("Quote amount", `$${escapeHtml(vars.quoteAmountUsd)}`))}
+    ${vars.quoteNotes ? p(escapeHtml(vars.quoteNotes)) : ""}
     ${btn(`${APP_URL}/employer/dashboard`, "View quote", "#16A34A")}
   `);
   return {
@@ -1555,8 +1556,8 @@ export function applicationInterviewInProgressTemplate(vars: {
   const html = layout(`
     ${badge("📋 INTERVIEW IN PROGRESS", "#1848CC")}
     <br/><br/>
-    ${h1(`You're moving forward, ${vars.firstName}!`)}
-    ${p(`<strong>${vars.companyName}</strong> would like to move ahead with your application for <strong>"${vars.jobTitle}"</strong>. Our team will be in touch to conduct a screening call on their behalf.`)}
+    ${h1(`You're moving forward, ${escapeHtml(vars.firstName)}!`)}
+    ${p(`<strong>${escapeHtml(vars.companyName)}</strong> would like to move ahead with your application for <strong>"${escapeHtml(vars.jobTitle)}"</strong>. Our team will be in touch to conduct a screening call on their behalf.`)}
     ${p("No action is needed from you right now — we'll reach out directly to schedule the call.")}
     ${btn(`${APP_URL}/worker/applications`, "View my applications", "#1848CC")}
   `);

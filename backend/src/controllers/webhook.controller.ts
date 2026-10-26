@@ -1,6 +1,7 @@
 // backend/src/controllers/webhook.controller.ts
 // Stripe webhook handler — no auth middleware, uses raw body for signature verification
 import { Request, Response } from "express";
+import { escapeHtml } from "../lib/html";
 import Stripe from "stripe";
 import stripe, { mapStripeStatus } from "../services/stripe";
 import prisma from "../lib/prisma";
@@ -210,7 +211,7 @@ function confirmEmail(name: string, amount: string): string {
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488;text-transform:uppercase;">Payment confirmed</p>
-          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${name} ✓</h1>
+          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${escapeHtml(name)} ✓</h1>
           <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
             Your DirectHire Employer subscription payment of <strong>${amount}</strong> was successful.
           </p>
@@ -241,7 +242,7 @@ function failEmail(name: string): string {
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#dc2626;text-transform:uppercase;">Action required</p>
-          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${name}, payment failed</h1>
+          <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Hi ${escapeHtml(name)}, payment failed</h1>
           <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
             We were unable to process your DirectHire subscription payment. Please update your payment method to keep your account active.
           </p>

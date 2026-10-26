@@ -1011,6 +1011,21 @@ model AiDecisionLog {
 // JOB RUN LOGS
 // ─────────────────────────────────────────────
 
+// Pending storage erasure for deleted accounts. A row is written when an
+// account is deleted; the storage-cleanup job retries until the user folder
+// is gone, so a storage outage can never silently leave files behind.
+model StorageDeletion {
+  id          String    @id @default(cuid())
+  prefix      String // storage folder to remove, e.g. "<userId>"
+  attempts    Int       @default(0)
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([completedAt])
+  @@map("storage_deletions")
+}
+
 model JobRunLog {
   id               String   @id @default(cuid())
   jobName          String   @map("job_name")

@@ -15,6 +15,7 @@ import { z } from "zod";
 import { generateOTP, hashOTP, verifyOTP } from "../common/utils/otp.util";
 import { sendOtpVerification, sendEmailVerified } from "../services/email";
 import { insertAuditLog } from "../lib/audit";
+import { eraseUserStorage } from "../services/storage/erasure";
 
 // GDPR consent — bump whenever /terms or /privacy changes materially
 // (both currently show "Last updated: January 2025").
@@ -565,6 +566,9 @@ export async function deleteAccount(req: Request, res: Response, next: NextFunct
 
     // Delete the user — cascades handle everything else
     await prisma.user.delete({ where: { id: userId } });
+
+    // Remove their stored files (queued and retried until done).
+    await eraseUserStorage(userId);
 
     clearAuthCookies(res);
     return ok(res, null, "Account deleted");

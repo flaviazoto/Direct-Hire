@@ -461,16 +461,33 @@ async function writeOnboardingRemindersJobLog(opts: {
 
 export async function runOnboardingReminders(): Promise<void> {
   const startedAt = new Date();
+  try {
+    await sendOnboardingReminders(startedAt);
+  } catch (err) {
+    // Always leave a JobRunLog row, so a crash shows up as a failed run
+    // instead of the job silently never appearing.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[Cron] onboarding-reminders failed:", message);
+    await writeOnboardingRemindersJobLog({ status: "failed", recordsProcessed: 0, recordsFailed: 0, errorMessage: message.slice(0, 1000), startedAt })
+      .catch((e) => console.error("[Cron] could not write onboarding-reminders job log:", e));
+    throw err;
+  }
+}
+
+async function sendOnboardingReminders(startedAt: Date): Promise<void> {
   const prisma = (await import("../../lib/prisma")).default;
   const cutoff = new Date(Date.now() - 24 * 3600 * 1000); // 24h ago
 
+  // Only rows whose user still exists, is active and hasn't unsubscribed.
+  // (Rows orphaned by deleted users used to crash the include below.)
   const stale = await prisma.onboardingProgress.findMany({
     where: {
       isSubmitted: false,
       onboardingStatus: { in: ["DRAFT", "IN_PROGRESS"] },
       lastSavedAt: { lt: cutoff },
+      user: { is: { status: { notIn: ["SUSPENDED", "BANNED"] }, accountStatus: { not: "SUSPENDED" }, emailUnsubscribedAt: null } },
     },
-    include: { user: true },
+    include: { user: { select: { email: true } } },
   });
 
   if (stale.length === 0) {
@@ -495,24 +512,34 @@ export async function runOnboardingReminders(): Promise<void> {
   const remindedRecently = new Set(recentReminders.map((r) => r.userId));
 
   let sent = 0;
+  let failed = 0;
   for (const op of stale) {
     if (op.userId && remindedRecently.has(op.userId)) continue;
 
     const pct = Math.round((op.completedSteps.length / op.totalSteps) * 100);
     const firstName =
       (op.draftData as Record<string, unknown>)?.firstName as string | undefined ?? "there";
-    const continueUrl = `${process.env.FRONTEND_URL ?? "https://directhire.io"}/${op.role.toLowerCase()}/onboarding`;
-    await enqueue("email.onboardingReminder", {
-      userId: op.userId,
-      to:     op.user.email,
-      firstName,
-      continueUrl,
-      completionPct: pct,
-    });
-    sent++;
+    const continueUrl = `${process.env.FRONTEND_URL ?? "https://directhire.cc"}/${op.role.toLowerCase()}/onboarding`;
+    try {
+      await enqueue("email.onboardingReminder", {
+        userId: op.userId,
+        to:     op.user.email,
+        firstName,
+        continueUrl,
+        completionPct: pct,
+      });
+      sent++;
+    } catch (err) {
+      // One bad recipient must not stop the rest.
+      failed++;
+      console.error(`[Cron] onboarding reminder failed for ${op.userId}:`, err instanceof Error ? err.message : err);
+    }
   }
-  console.log(`[Cron] Sent ${sent} onboarding reminder(s), skipped ${stale.length - sent} (reminded within the last 7 days).`);
-  await writeOnboardingRemindersJobLog({ status: "success", recordsProcessed: sent, recordsFailed: 0, startedAt });
+  console.log(`[Cron] Sent ${sent} onboarding reminder(s), ${failed} failed, skipped ${stale.length - sent - failed} (reminded within the last 7 days).`);
+  await writeOnboardingRemindersJobLog({
+    status: failed === 0 ? "success" : sent > 0 ? "partial" : "failed",
+    recordsProcessed: sent, recordsFailed: failed, startedAt,
+  });
 }
 
 // ── Verification code cleanup ─────────────────────────────────

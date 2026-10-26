@@ -38,6 +38,7 @@ export const TEST_ENV: Record<string, string> = {
   PAYMENTS_ENABLED: "false",
   AUTH_RATE_LIMIT_MAX: "100000",
   OTP_RATE_LIMIT_MAX: "100000",
+  CONTACT_RATE_LIMIT_MAX: "100000",
   RATE_LIMIT_MAX_REQUESTS: "100000",
 };
 

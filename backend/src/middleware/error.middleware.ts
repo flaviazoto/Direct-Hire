@@ -1,10 +1,11 @@
 // backend/src/middleware/error.middleware.ts
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { MulterError } from "multer";
 
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) {
@@ -36,8 +37,40 @@ export function errorHandler(
     });
   }
 
-  // Generic error
-  const message = err instanceof Error ? err.message : "An unexpected error occurred";
-  console.error("[Server Error]", err);
-  return res.status(500).json({ success: false, error: message });
+  // Upload too large / malformed multipart
+  if (err instanceof MulterError) {
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    return res.status(status).json({
+      success: false,
+      error:   err.code === "LIMIT_FILE_SIZE" ? "File too large" : "Invalid upload",
+      code:    err.code,
+    });
+  }
+
+  // Disallowed CORS origin (thrown by the cors origin callback in server.ts)
+  if (err instanceof Error && err.message.startsWith("CORS:")) {
+    return res.status(403).json({ success: false, error: "Origin not allowed", code: "CORS_FORBIDDEN" });
+  }
+
+  // Client errors raised by Express/body-parser (malformed JSON, body too
+  // large, …) carry a 4xx status and a safe message.
+  const status = (err as { status?: number; statusCode?: number })?.status
+    ?? (err as { statusCode?: number })?.statusCode;
+  if (typeof status === "number" && status >= 400 && status < 500) {
+    const type = (err as { type?: string }).type;
+    const error = type === "entity.parse.failed" ? "Malformed JSON body"
+      : type === "entity.too.large" ? "Request body too large"
+      : "Bad request";
+    return res.status(status).json({ success: false, error });
+  }
+
+  // Unexpected error: full details stay in the server log; the client gets a
+  // generic message plus the request ID to quote to support.
+  console.error(`[Server Error] requestId=${req.id ?? "-"} ${req.method} ${req.originalUrl}`, err);
+  return res.status(500).json({
+    success:   false,
+    error:     "Something went wrong. Please try again.",
+    code:      "INTERNAL_ERROR",
+    requestId: req.id,
+  });
 }

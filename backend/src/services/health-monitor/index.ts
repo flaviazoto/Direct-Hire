@@ -27,6 +27,9 @@
 // previously failing and therefore needs a recovery email.
 
 import prisma from "../../lib/prisma";
+import { INTERNAL_MONITOR_HEADER } from "../../middleware/ratelimit.middleware";
+
+const monitorHeaders = (): Record<string, string> => (process.env.CRON_SECRET ? { [INTERNAL_MONITOR_HEADER]: process.env.CRON_SECRET } : {});
 import { sendHealthCheckAlertEmail, sendHealthCheckRecoveryEmail } from "../email";
 
 const JOB_NAME     = "health-monitor";
@@ -53,7 +56,7 @@ async function checkPublicJobsEndpoint(): Promise<CheckResult> {
   const name  = "public-jobs-endpoint";
   const start = Date.now();
   try {
-    const res = await fetch(`${backendUrl()}/api/public/jobs?limit=1`, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`${backendUrl()}/api/public/jobs?limit=1`, { signal: AbortSignal.timeout(10_000), headers: monitorHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json() as { success?: boolean };
     if (json?.success !== true) throw new Error(`Response missing { success: true } — got ${JSON.stringify(json).slice(0, 200)}`);
@@ -67,7 +70,7 @@ async function checkHealthEndpoint(): Promise<CheckResult> {
   const name  = "health-endpoint";
   const start = Date.now();
   try {
-    const res = await fetch(`${backendUrl()}/api/health`, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`${backendUrl()}/api/health`, { signal: AbortSignal.timeout(10_000), headers: monitorHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json() as { status?: string };
     if (json?.status !== "ok") throw new Error(`Response missing { status: "ok" } — got ${JSON.stringify(json).slice(0, 200)}`);

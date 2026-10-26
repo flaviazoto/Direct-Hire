@@ -41,6 +41,12 @@ adminRouter.get(  "/workers/:id/documents",               requireAdmin, docsCtrl
 adminRouter.patch("/workers/:id/documents/review",        requireAdmin, docsCtrl.reviewWorkerDocuments);
 adminRouter.patch("/users/:id/activate",     requireAdmin, ctrl.activateUser);      // legacy (UserStatus field)
 adminRouter.post("/users/:id/approve",       requireAdmin, ctrl.approveUser);
+// Diagnostic: how the API sees the caller's IP through the Vercel/Railway
+// proxies — used to set "trust proxy" (and so rate-limit keying) correctly.
+adminRouter.get("/system/request-info", requireAdmin, (req, res) => res.json({
+  success: true,
+  data: { ip: req.ip, ips: req.ips, xForwardedFor: req.headers["x-forwarded-for"] ?? null, trustProxy: req.app.get("trust proxy") },
+}));
 adminRouter.post("/users/:id/reject",        requireAdmin, ctrl.rejectUser);
 adminRouter.post("/users/:id/suspend",       requireAdmin, ctrl.suspendUserAccount);
 adminRouter.post("/users/:id/reinstate",     requireAdmin, ctrl.reinstateUser);

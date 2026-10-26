@@ -21,6 +21,7 @@ import { ok } from "../lib/response";
 const EXPECTED_INTERVAL_MINUTES: Record<string, number> = {
   "health-monitor":                 15,
   "lock-expiry-processor":          60,
+  "storage-cleanup":                60,
   "lock-daily-billing":             24 * 60,
   "subscription-expiry-warnings":   24 * 60,
   "match-score-recalc":             24 * 60,

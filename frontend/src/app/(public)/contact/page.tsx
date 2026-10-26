@@ -1,6 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// Cloudflare Turnstile, only when a site key is configured.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+declare global {
+  interface Window {
+    turnstile?: { render: (el: HTMLElement, opts: { sitekey: string; callback: (token: string) => void; "expired-callback"?: () => void; theme?: string }) => string; reset: (id?: string) => void };
+  }
+}
 import { Footer } from "@/components/Footer";
 
 // ── Social icons (same paths as Footer.tsx) ───────────────────────────────────
@@ -43,6 +51,25 @@ export default function ContactPage() {
   const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  // Honeypot: hidden from people, so only bots fill it in.
+  const [website, setWebsite] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !captchaRef.current) return;
+    const el = captchaRef.current;
+    const render = () => window.turnstile?.render(el, {
+      sitekey: TURNSTILE_SITE_KEY, theme: "dark",
+      callback: setCaptchaToken, "expired-callback": () => setCaptchaToken(""),
+    });
+    if (window.turnstile) { render(); return; }
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.onload = render;
+    document.head.appendChild(script);
+  }, [sent]);
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.message) return;
@@ -57,12 +84,21 @@ export default function ContactPage() {
           email: form.email,
           subject: form.subject || "General enquiry",
           message: form.message,
+          website,
+          ...(captchaToken ? { captchaToken } : {}),
         }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: string; fieldErrors?: Record<string, string> } | null;
+        const fieldMsg = body?.fieldErrors ? Object.values(body.fieldErrors)[0] : undefined;
+        throw new Error(fieldMsg ?? body?.error ?? "Failed");
+      }
       setSent(true);
-    } catch {
-      setError("Failed to send message. Please email hello@directhire.cc directly.");
+    } catch (e) {
+      const msg = e instanceof Error && e.message !== "Failed" ? e.message : null;
+      setError(msg ?? "Failed to send message. Please email hello@directhire.cc directly.");
+      setCaptchaToken("");
+      if (window.turnstile) window.turnstile.reset();
     } finally {
       setLoading(false);
     }
@@ -240,6 +276,13 @@ export default function ContactPage() {
                       />
                     </div>
 
+                    {/* Honeypot — off-screen, not focusable, ignored by people */}
+                    <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+                      <label>Website<input tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} /></label>
+                    </div>
+
+                    {TURNSTILE_SITE_KEY && <div ref={captchaRef} />}
+
                     {error && (
                       <div style={{
                         background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
@@ -252,7 +295,7 @@ export default function ContactPage() {
 
                     <button
                       onClick={handleSubmit}
-                      disabled={loading || !form.name || !form.email || !form.message}
+                      disabled={loading || !form.name || !form.email || !form.message || (!!TURNSTILE_SITE_KEY && !captchaToken)}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "center",
                         padding: "15px", borderRadius: 12, fontWeight: 700, fontSize: 16,

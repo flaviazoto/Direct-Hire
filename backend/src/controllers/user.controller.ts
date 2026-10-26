@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
 import { decrypt, encrypt } from "../lib/encrypt";
+import { insertAuditLog } from "../lib/audit";
 
 export async function getProfile(req: Request, res: Response, next: NextFunction) {
   try {
@@ -141,12 +142,57 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       };
 
       const updateData = stripUndefined(data);
+
+      // Identity fields back the verified documents. If a docs-verified worker
+      // changes them, the documents go back to review — the same treatment as
+      // re-uploading a document (uploads.controller.ts).
+      const current = await prisma.workerProfile.findUnique({
+        where:  { userId },
+        select: { firstName: true, lastName: true, nationality: true, passportNumber: true, documentsVerified: true },
+      });
+      const same = (a: string | null | undefined, b: string | undefined) =>
+        b === undefined || (a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
+      let currentPassport: string | null = null;
+      if (current?.passportNumber) { try { currentPassport = decrypt(current.passportNumber); } catch { currentPassport = null; } }
+      const changedIdentity = current?.documentsVerified === true && [
+        !same(current.firstName,   data.firstName)   ? "firstName"      : null,
+        !same(current.lastName,    data.lastName)    ? "lastName"       : null,
+        !same(current.nationality, data.nationality) ? "nationality"    : null,
+        rawPassport !== undefined && rawPassport !== currentPassport ? "passportNumber" : null,
+      ].filter((f): f is string => f !== null);
+
       if (Object.keys(updateData).length > 0) {
         await prisma.workerProfile.upsert({
           where:  { userId },
           create: { userId, ...updateData },
-          update: updateData,
+          update: changedIdentity && changedIdentity.length > 0 ? { ...updateData, documentsVerified: false } : updateData,
         });
+      }
+
+      if (changedIdentity && changedIdentity.length > 0) {
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+        Promise.all([
+          insertAuditLog({
+            actorId: userId, targetId: userId, action: "IDENTITY_CHANGED_REREVIEW", entity: "WorkerProfile",
+            metadata: { fields: changedIdentity },
+          }),
+          prisma.notification.create({
+            data: {
+              userId, type: "DOCUMENT_PENDING", title: "Profile details under review",
+              body: "You changed details that appear on your verified documents, so our team will review them again.",
+              link: "/worker/documents",
+            },
+          }),
+          ...(admins.length > 0 ? [prisma.notification.createMany({
+            data: admins.map((a) => ({
+              userId: a.id, type: "DOCUMENT_PENDING" as const,
+              title:  "Verified worker changed identity details",
+              body:   `Changed: ${changedIdentity.join(", ")} — documents need re-review.`,
+              link:   `/admin/document-review/${userId}`,
+            })),
+          })] : []),
+        ]).catch((e: unknown) => console.error("[updateProfile re-review]", e));
+        return ok(res, { reReviewRequired: true, changedFields: changedIdentity }, "Profile updated — your documents will be reviewed again");
       }
     }
 

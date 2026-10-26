@@ -27,6 +27,11 @@ partly built outside the history. On 2026-10-26 the chain was replaced:
    It is idempotent and does nothing on a database built from the baseline.
 3. `20261026000200_repair_application_counts`: recomputes
    `job_posts.application_count`.
+4. `20261026000300_media_urls`: points profile photos and company logos at
+   the stable `/api/media/<id>` route. Their stored storage "public URLs"
+   don't load, because the bucket is private.
+5. `20261026000400_storage_deletions`: adds the queue table used to retry
+   storage erasure for deleted accounts.
 
 ## Fresh database (local, CI, staging)
 

@@ -80,8 +80,6 @@ async function supabaseUpload(buffer: Buffer, filePath: string, mimeType: string
       message:    error.message,
       bucket,
       filePath,
-      supabaseUrl: process.env.SUPABASE_URL,
-      keyPrefix:   process.env.SUPABASE_SERVICE_KEY?.substring(0, 30),
     });
     throw new Error(`Supabase upload: ${error.message}`);
   }
@@ -89,6 +87,13 @@ async function supabaseUpload(buffer: Buffer, filePath: string, mimeType: string
   if (isPrivate) return filePath;
   const { data: urlData } = client.storage.from(bucket).getPublicUrl(filePath);
   return urlData.publicUrl;
+}
+
+// Display images served through the stable /api/media/<id> route
+// (routes/media.routes.ts) instead of a storage URL.
+export const MEDIA_FILE_TYPES: FileType[] = ["PROFILE_PHOTO", "COMPANY_LOGO"];
+export function mediaPath(uploadId: string): string {
+  return `/api/media/${uploadId}`;
 }
 
 // ── Main upload function ──────────────────────────────────────
@@ -111,9 +116,12 @@ export async function uploadFile(params: UploadParams): Promise<UploadResult> {
       url = await localUpload(buffer, filePath);
     }
 
+    // Public display images get the stable media route: the bucket is
+    // private, so a storage "public URL" would not load.
+    const fileUrl = !isPrivate && MEDIA_FILE_TYPES.includes(fileType) ? mediaPath(record.id) : url;
     const updated = await prisma.upload.update({
       where: { id: record.id },
-      data:  { fileUrl: url, filePath, status: "UPLOADED" },
+      data:  { fileUrl, filePath, status: "UPLOADED" },
     });
 
     return { id: updated.id, fileUrl: updated.fileUrl, filePath: updated.filePath,

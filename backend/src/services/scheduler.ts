@@ -19,6 +19,7 @@
 import { runLockDailyBilling, runLockExpiryProcessor } from "./lock-jobs";
 import { runMatchScoreRecalc } from "./scoring-jobs";
 import { runOnboardingReminders } from "./queue";
+import { runStorageCleanup } from "./storage/erasure";
 import { runHealthCheck } from "./health-monitor";
 
 const LOCK_DAILY_BILLING_CRON    = "5 0 * * *";
@@ -234,6 +235,7 @@ export async function startScheduler(): Promise<void> {
   console.log("[Scheduler] Using inline setTimeout scheduler (no Redis)");
   scheduleRecurringDaily("lock-daily-billing",    0, 5,  runLockDailyBilling);
   scheduleRecurringHourly("lock-expiry-processor", 15,   runLockExpiryProcessor);
+  scheduleRecurringHourly("storage-cleanup",       40,   runStorageCleanup);
   scheduleRecurringDaily("match-score-recalc",    2, 15, runMatchScoreRecalc);
   scheduleRecurringDaily("onboarding-reminders",  9, 0,  runOnboardingReminders);
   scheduleRecurringQuarterHourly("health-monitor", runHealthCheck);
