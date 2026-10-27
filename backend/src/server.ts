@@ -37,6 +37,7 @@ import path from "path";
 
 import { authRouter }        from "./routes/auth.routes";
 import { mediaRouter } from "./routes/media.routes";
+import { cspReportRouter } from "./routes/csp-report.routes";
 import { onboardingRouter }  from "./routes/onboarding.routes";
 import { uploadsRouter }     from "./routes/uploads.routes";
 import { userRouter }        from "./routes/user.routes";
@@ -52,6 +53,7 @@ import { unsubscribeRouter }   from "./routes/unsubscribe.routes";
 import { stripeWebhook }     from "./controllers/webhook.controller";
 import { resendWebhook }     from "./controllers/resend-webhook.controller";
 import { errorHandler }      from "./middleware/error.middleware";
+import prisma               from "./lib/prisma";
 import { requestId }         from "./middleware/request-id.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
@@ -97,6 +99,8 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), strip
 // Same requirement — Resend webhooks are Svix-signed over the raw body.
 app.post("/api/webhooks/resend", express.raw({ type: "application/json" }), resendWebhook);
 
+// CSP reports use their own content types and parser — mounted before express.json().
+app.use("/api/csp-report", cspReportRouter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 morgan.token("id", (req) => (req as express.Request).id ?? "-");
@@ -146,7 +150,7 @@ app.use((_req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n🚀 Direct Hire API running at http://localhost:${PORT}`);
   console.log(`   Environment : ${process.env.NODE_ENV}`);
   console.log(`   Frontend URL: ${FRONTEND_URL}`);
@@ -160,5 +164,27 @@ app.listen(PORT, () => {
   // Lock billing + expiry scheduler
   startScheduler().catch(console.error);
 });
+
+// Graceful shutdown: Railway sends SIGTERM on every deploy/restart. Stop
+// accepting connections, let in-flight requests finish (up to 10s), then
+// close the database pool, instead of cutting requests off mid-flight.
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[server] ${signal} received — draining connections`);
+  const force = setTimeout(() => {
+    console.error("[server] drain timed out after 10s — exiting");
+    process.exit(1);
+  }, 10_000);
+  force.unref();
+  server.close(async () => {
+    await prisma.$disconnect().catch(() => {});
+    console.log("[server] shut down cleanly");
+    process.exit(0);
+  });
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));
 
 export default app;

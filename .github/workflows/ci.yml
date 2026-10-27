@@ -1,0 +1,128 @@
+# Continuous integration: every push and pull request.
+# Builds the database from the migrations, checks they match schema.prisma,
+# runs the API regression tests, then type-checks, lints and builds the
+# frontend against a running API (public pages fetch from it at build time).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  TEST_DATABASE_URL: postgresql://directhire:directhire_ci@localhost:5432/dh_test
+  DEV_DATABASE_URL: postgresql://directhire:directhire_ci@localhost:5432/dh_dev
+
+jobs:
+  backend:
+    name: Backend — types, migrations, API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: directhire
+          POSTGRES_PASSWORD: directhire_ci
+          POSTGRES_DB: dh_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U directhire -d dh_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Prisma client
+        working-directory: backend
+        run: npx prisma generate
+      - name: Type-check
+        working-directory: backend
+        run: npx tsc --noEmit
+      - name: Build schema from migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+        run: npx prisma migrate deploy
+      - name: Migrations match schema.prisma
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+        # --exit-code: 2 when there is a difference, which fails the step.
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: API regression tests
+        working-directory: backend
+        run: npm run test:api
+
+  frontend:
+    name: Frontend — types, lint, production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: directhire
+          POSTGRES_PASSWORD: directhire_ci
+          POSTGRES_DB: dh_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U directhire -d dh_dev"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      # Throwaway values for the CI-only API used during the build.
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: ${{ env.DEV_DATABASE_URL }}
+      DIRECT_URL: ${{ env.DEV_DATABASE_URL }}
+      JWT_ACCESS_SECRET: ci-access-secret-0000000000000000000000000000000000000000000000
+      JWT_REFRESH_SECRET: ci-refresh-secret-000000000000000000000000000000000000000000000
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      CRON_SECRET: ci-cron-secret
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:4000
+      GOOGLE_CLIENT_ID: ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci
+      EMAIL_PROVIDER: console
+      STORAGE_PROVIDER: local
+      DISABLE_SCHEDULER: "true"
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc --noEmit
+      - name: Lint
+        working-directory: frontend
+        run: npx next lint
+      - name: Start API for the build
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          npx tsx scripts/seed.ts
+          nohup npx tsx src/server.ts > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:4000/health && exit 0; sleep 1; done
+          cat api.log; exit 1
+      - name: Production build
+        working-directory: frontend
+        run: npx next build
+      - name: API log (on failure)
+        if: failure()
+        working-directory: backend
+        run: cat api.log || true

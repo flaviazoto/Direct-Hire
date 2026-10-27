@@ -34,61 +34,52 @@ interface PublicBlogListResult {
   totalPages: number;
 }
 
+// Failure policy: only a real 404 means "not found". Network errors and 5xx
+// responses THROW, so ISR keeps serving the last good page instead of caching
+// an empty list or a false 404 for an hour, and a build made while the API is
+// down fails loudly instead of deploying pages with missing content.
 export async function getPublicBlogListServer(page = 1, limit = 20): Promise<PublicBlogListResult> {
-  const empty: PublicBlogListResult = { posts: [], total: 0, page, limit, totalPages: 0 };
-  try {
-    const res = await fetch(`${API_BASE}/api/public/blog?page=${page}&limit=${limit}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return empty;
-    const json = await res.json() as {
-      success: boolean; data?: PublicBlogListItem[]; total?: number; totalPages?: number;
-    };
-    if (!json.success || !json.data) return empty;
-    return { posts: json.data, total: json.total ?? 0, page, limit, totalPages: json.totalPages ?? 0 };
-  } catch {
-    return empty;
-  }
+  const res = await fetch(`${API_BASE}/api/public/blog?page=${page}&limit=${limit}`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`Public blog list: API responded ${res.status}`);
+  const json = await res.json() as {
+    success: boolean; data?: PublicBlogListItem[]; total?: number; totalPages?: number;
+  };
+  if (!json.success || !json.data) throw new Error("Public blog list: unexpected API response");
+  return { posts: json.data, total: json.total ?? 0, page, limit, totalPages: json.totalPages ?? 0 };
 }
 
 export async function getPublicBlogPostServer(slug: string): Promise<PublicBlogDetail | null> {
-  try {
-    const res = await fetch(`${API_BASE}/api/public/blog/${slug}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const json = await res.json() as { success: boolean; data?: PublicBlogDetail };
-    if (!json.success || !json.data) return null;
-    return json.data;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${API_BASE}/api/public/blog/${slug}`, {
+    next: { revalidate: 3600 },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Public blog post ${slug}: API responded ${res.status}`);
+  const json = await res.json() as { success: boolean; data?: PublicBlogDetail };
+  if (!json.success || !json.data) return null;
+  return json.data;
 }
 
 // Used by sitemap.ts — walks every page of published posts (the list
 // endpoint already filters status=APPROVED && publishedAt!==null server-
 // side). Exact mirror of jobs-ssr.ts's getAllPublicJobIdsServer: same
-// pagination-loop shape, same revalidate window, same silent-break-on-
-// failure (never throws — a sitemap build shouldn't fail because one
-// fetch hiccupped). getPagination() caps limit at 100 server-side
-// regardless of what we ask for.
+// pagination-loop shape and revalidate window. Throws on failure: a sitemap
+// silently missing pages would get them dropped from search indexes, while a
+// failed regeneration keeps serving the previous sitemap. getPagination()
+// caps limit at 100 server-side regardless of what we ask for.
 export async function getAllPublishedBlogSlugsServer(): Promise<PublicBlogListItem[]> {
   const all: PublicBlogListItem[] = [];
   let page = 1;
   const limit = 100;
 
   while (true) {
-    let json: { success: boolean; data?: PublicBlogListItem[]; totalPages?: number };
-    try {
-      const res = await fetch(`${API_BASE}/api/public/blog?page=${page}&limit=${limit}`, {
-        next: { revalidate: 3600 },
-      });
-      if (!res.ok) break;
-      json = await res.json();
-    } catch {
-      break;
-    }
-    if (!json.success || !json.data) break;
+    const res = await fetch(`${API_BASE}/api/public/blog?page=${page}&limit=${limit}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) throw new Error(`Sitemap blog slugs: API responded ${res.status}`);
+    const json = await res.json() as { success: boolean; data?: PublicBlogListItem[]; totalPages?: number };
+    if (!json.success || !json.data) throw new Error("Sitemap blog slugs: unexpected API response");
     all.push(...json.data);
     if (page >= (json.totalPages ?? 1)) break;
     page++;

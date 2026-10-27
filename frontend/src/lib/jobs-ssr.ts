@@ -90,17 +90,18 @@ export interface PublicJobsListResult {
 // identical calls within one request, so calling this from both costs one
 // network round trip, not two. Returns null on any failure (404, network
 // error) — callers are responsible for calling notFound().
+// Failure policy: only a real 404 means "not found". Network errors and 5xx
+// responses THROW, so ISR keeps serving the last good page instead of caching
+// an empty list or a false 404 for an hour, and a build made while the API is
+// down fails loudly instead of deploying pages with missing content.
 export async function getPublicJobServer(id: string): Promise<PublicJobDetail | null> {
-  try {
-    const res = await fetch(`${API_BASE}/api/public/jobs/${id}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const json = await res.json() as { success: boolean; data?: PublicJobDetail };
-    return json.success && json.data ? json.data : null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${API_BASE}/api/public/jobs/${id}`, {
+    next: { revalidate: 3600 },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Public job ${id}: API responded ${res.status}`);
+  const json = await res.json() as { success: boolean; data?: PublicJobDetail };
+  return json.success && json.data ? json.data : null;
 }
 
 // Next.js page-component searchParams shape (App Router hands this to
@@ -159,26 +160,22 @@ export async function getPublicJobsListServer(
   query.limit = String(limit);
   if (page === 1) query.includeExternal = "true";
 
-  const empty: PublicJobsListResult = { jobs: [], total: 0, page, limit, totalPages: 0 };
-  try {
-    const res = await fetch(`${API_BASE}/api/public/jobs?${new URLSearchParams(query)}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return empty;
-    const json = await res.json() as {
-      success: boolean; data?: PublicJobListRow[]; total?: number; totalPages?: number;
-    };
-    if (!json.success || !json.data) return empty;
-    return {
-      jobs: json.data,
-      total: json.total ?? 0,
-      page,
-      limit,
-      totalPages: json.totalPages ?? 0,
-    };
-  } catch {
-    return empty;
-  }
+  // Throws on failure (see getPublicJobServer's note).
+  const res = await fetch(`${API_BASE}/api/public/jobs?${new URLSearchParams(query)}`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`Public jobs list: API responded ${res.status}`);
+  const json = await res.json() as {
+    success: boolean; data?: PublicJobListRow[]; total?: number; totalPages?: number;
+  };
+  if (!json.success || !json.data) throw new Error("Public jobs list: unexpected API response");
+  return {
+    jobs: json.data,
+    total: json.total ?? 0,
+    page,
+    limit,
+    totalPages: json.totalPages ?? 0,
+  };
 }
 
 export async function getPublicJobCategoriesServer(): Promise<string[]> {
@@ -213,17 +210,14 @@ export async function getAllPublicJobIdsServer(): Promise<PublicJobListItem[]> {
   const limit = 100;
 
   while (true) {
-    let json: { success: boolean; data?: PublicJobListItem[]; totalPages?: number };
-    try {
-      const res = await fetch(`${API_BASE}/api/public/jobs?page=${page}&limit=${limit}`, {
-        next: { revalidate: 3600 },
-      });
-      if (!res.ok) break;
-      json = await res.json();
-    } catch {
-      break;
-    }
-    if (!json.success || !json.data) break;
+    // Throws on failure: a partial sitemap would get job pages dropped from
+    // search indexes; a failed regeneration keeps the previous sitemap.
+    const res = await fetch(`${API_BASE}/api/public/jobs?page=${page}&limit=${limit}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) throw new Error(`Sitemap job ids: API responded ${res.status}`);
+    const json = await res.json() as { success: boolean; data?: PublicJobListItem[]; totalPages?: number };
+    if (!json.success || !json.data) throw new Error("Sitemap job ids: unexpected API response");
     all.push(...json.data);
     if (page >= (json.totalPages ?? 1)) break;
     page++;
