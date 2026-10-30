@@ -215,3 +215,23 @@ describe("public job detail caching", () => {
     assert.equal((await prisma.jobPost.findUniqueOrThrow({ where: { id: draft.id } })).viewCount, 0);
   });
 });
+
+describe("public blog caching", () => {
+  it("an unpublished post disappears immediately, even while it is being read", async () => {
+    const prisma = await db();
+    const post = await prisma.growthContentDraft.create({ data: {
+      contentType: "CAREER_GUIDE", title: "Cached post", slug: `cached-${Date.now()}`, body: "Hello",
+      status: "APPROVED", publishedAt: new Date() } });
+    for (let i = 0; i < 3; i++) assert.equal((await call("GET", `/api/public/blog/${post.slug}`)).status, 200);
+    const list = await call("GET", "/api/public/blog?limit=50");
+    assert.ok(list.body.data.some((p: { slug: string }) => p.slug === post.slug));
+
+    const admin = await createUser({ role: "ADMIN" });
+    const token = (await login(admin.email)).token!;
+    assert.equal((await call("POST", `/api/admin/growth/content/${post.id}/unpublish`, { token, body: {} })).status, 200);
+
+    assert.equal((await call("GET", `/api/public/blog/${post.slug}`)).status, 404);
+    const after = await call("GET", "/api/public/blog?limit=50");
+    assert.ok(!after.body.data.some((p: { slug: string }) => p.slug === post.slug));
+  });
+});

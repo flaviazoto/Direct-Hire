@@ -14,6 +14,10 @@ export class TtlCache<T = unknown> {
     return e.value;
   }
 
+  clear(): void {
+    this.entries.clear();
+  }
+
   set(key: string, value: T): void {
     this.entries.set(key, { value, expiresAt: Date.now() + this.ttlMs });
     if (this.entries.size > this.maxEntries) {

@@ -38,6 +38,11 @@ const PUBLISHED_WHERE = { status: "APPROVED", publishedAt: { not: null } } as co
 // jobs endpoints, so most requests skip the (slow) database round trips.
 const blogCache = new TtlCache(60_000, 200);
 
+/** Called whenever a post is approved, rejected, published or unpublished. */
+export function clearPublicBlogCache(): void {
+  blogCache.clear();
+}
+
 // ── GET /api/public/blog ─────────────────────────────────────────────────────
 
 export async function getPublicBlogPosts(req: Request, res: Response, next: NextFunction) {
@@ -72,13 +77,18 @@ export async function getPublicBlogPost(req: Request, res: Response, next: NextF
   try {
     const { slug } = req.params;
 
+    // Store only on a miss: re-storing on every hit would keep extending the
+    // entry, so an unpublished post could stay public while it has traffic.
     const cacheKey = `post:${slug}`;
-    const post = blogCache.get(cacheKey) ?? await prisma.growthContentDraft.findFirst({
-      where:  { slug, ...PUBLISHED_WHERE },
-      select: BLOG_DETAIL_SELECT,
-    });
-    if (!post) return err(res, "Post not found", 404);
-    blogCache.set(cacheKey, post);
+    let post = blogCache.get(cacheKey);
+    if (!post) {
+      post = await prisma.growthContentDraft.findFirst({
+        where:  { slug, ...PUBLISHED_WHERE },
+        select: BLOG_DETAIL_SELECT,
+      });
+      if (!post) return err(res, "Post not found", 404);
+      blogCache.set(cacheKey, post);
+    }
 
     return ok(res, post);
   } catch (e) { next(e); }

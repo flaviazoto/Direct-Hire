@@ -12,6 +12,7 @@ import prisma from "../lib/prisma";
 import { ok, err, paginated, getPagination } from "../lib/response";
 import { enqueue } from "../services/queue";
 import { insertAuditLog } from "../lib/audit";
+import { clearPublicBlogCache } from "./public-blog.controller";
 
 const STATUS_VALUES = [
   "PENDING", "IN_PROGRESS", "AWAITING_APPROVAL", "APPROVED", "REJECTED", "COMPLETED", "FAILED",
@@ -123,6 +124,7 @@ export async function approveGrowthTask(req: Request, res: Response, next: NextF
         taskUpdate,
         prisma.growthContentDraft.update({ where: { id: draft.id }, data: { status: "APPROVED" } }),
       ]);
+      clearPublicBlogCache();
     } else {
       updated = await taskUpdate;
     }
@@ -164,6 +166,7 @@ export async function rejectGrowthTask(req: Request, res: Response, next: NextFu
         taskUpdate,
         prisma.growthContentDraft.update({ where: { id: draft.id }, data: { status: "REJECTED" } }),
       ]);
+      clearPublicBlogCache();
     } else {
       updated = await taskUpdate;
     }
@@ -264,6 +267,7 @@ export async function publishGrowthContentDraft(req: Request, res: Response, nex
       where: { id },
       data:  { publishedAt: new Date() },
     });
+    clearPublicBlogCache();
 
     insertAuditLog({
       actorId:  adminId,
@@ -298,6 +302,7 @@ export async function unpublishGrowthContentDraft(req: Request, res: Response, n
       where: { id },
       data:  { publishedAt: null },
     });
+    clearPublicBlogCache();
 
     insertAuditLog({
       actorId:  adminId,
