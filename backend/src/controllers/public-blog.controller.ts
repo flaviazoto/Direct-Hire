@@ -6,8 +6,9 @@
 // approving only clears it for a human to explicitly publish afterward.
 
 import { Request, Response, NextFunction } from "express";
+import { TtlCache } from "../lib/ttl-cache";
 import prisma from "../lib/prisma";
-import { ok, err, paginated, getPagination } from "../lib/response";
+import { ok, err, getPagination } from "../lib/response";
 
 // ── Safe field selection ────────────────────────────────────────────────────
 // Nothing on this model is sensitive, but excluding internal-only fields
@@ -33,10 +34,17 @@ const BLOG_DETAIL_SELECT = {
 
 const PUBLISHED_WHERE = { status: "APPROVED", publishedAt: { not: null } } as const;
 
+// Public, rarely-changing content: a 60s in-memory cache, same as the public
+// jobs endpoints, so most requests skip the (slow) database round trips.
+const blogCache = new TtlCache(60_000, 200);
+
 // ── GET /api/public/blog ─────────────────────────────────────────────────────
 
 export async function getPublicBlogPosts(req: Request, res: Response, next: NextFunction) {
   try {
+    const cached = blogCache.get(req.originalUrl);
+    if (cached) return res.json(cached);
+
     const { page, limit, skip } = getPagination(req.query as Record<string, unknown>);
     const { contentType } = req.query as Record<string, string>;
 
@@ -52,7 +60,9 @@ export async function getPublicBlogPosts(req: Request, res: Response, next: Next
       prisma.growthContentDraft.count({ where }),
     ]);
 
-    return paginated(res, rows, total, page, limit);
+    const payload = { success: true, data: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
+    blogCache.set(req.originalUrl, payload);
+    return res.json(payload);
   } catch (e) { next(e); }
 }
 
@@ -62,11 +72,13 @@ export async function getPublicBlogPost(req: Request, res: Response, next: NextF
   try {
     const { slug } = req.params;
 
-    const post = await prisma.growthContentDraft.findFirst({
+    const cacheKey = `post:${slug}`;
+    const post = blogCache.get(cacheKey) ?? await prisma.growthContentDraft.findFirst({
       where:  { slug, ...PUBLISHED_WHERE },
       select: BLOG_DETAIL_SELECT,
     });
     if (!post) return err(res, "Post not found", 404);
+    blogCache.set(cacheKey, post);
 
     return ok(res, post);
   } catch (e) { next(e); }

@@ -197,3 +197,21 @@ describe("identity changes trigger document re-review", () => {
     assert.equal(await prisma.auditLog.count({ where: { userId: worker.id, action: "IDENTITY_CHANGED_REREVIEW" } }), 1);
   });
 });
+
+describe("public job detail caching", () => {
+  it("serves repeat views from cache but still counts every view, and 404s unapproved jobs", async () => {
+    const prisma = await db();
+    const employer = await createUser({ role: "EMPLOYER" });
+    const mk = (status: "APPROVED" | "DRAFT") => prisma.jobPost.create({ data: {
+      employerId: employer.id, title: "Cached", companyName: "Co", description: "x".repeat(120), requirements: "x".repeat(60),
+      country: "DE", city: "Berlin", salaryMin: 1, salaryMax: 2, contractType: "FULL_TIME", experienceRequired: 0,
+      category: "Trades", requiredSkills: [], status } });
+    const job = await mk("APPROVED");
+    const draft = await mk("DRAFT");
+    for (let i = 0; i < 3; i++) assert.equal((await call("GET", `/api/public/jobs/${job.id}`)).status, 200);
+    assert.equal((await call("GET", `/api/public/jobs/${draft.id}`)).status, 404);
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal((await prisma.jobPost.findUniqueOrThrow({ where: { id: job.id } })).viewCount, 3);
+    assert.equal((await prisma.jobPost.findUniqueOrThrow({ where: { id: draft.id } })).viewCount, 0);
+  });
+});

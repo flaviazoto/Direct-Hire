@@ -259,27 +259,30 @@ export async function getJobCountries(req: Request, res: Response, next: NextFun
 
 // ── GET /api/public/jobs/:id ──────────────────────────────────────────────────
 
+// Served from the same 60s cache as the list endpoints: each DB round trip
+// costs ~0.5s in production, and this used to make two (a guard read plus
+// the view-count update) on every request. The view is counted after the
+// response is sent, so every view still counts but nobody waits for the write.
 export async function getPublicJob(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
+    const cacheKey = `jobs:detail:${id}`;
 
-    // Guard: job must exist and be APPROVED before we touch view_count
-    const guard = await prisma.jobPost.findFirst({
+    let job = cacheGet(cacheKey);
+    if (!job) {
+      job = await prisma.jobPost.findFirst({
+        where:  { id, status: "APPROVED" } as Prisma.JobPostWhereInput,
+        select: JOB_DETAIL_SELECT,
+      });
+      if (!job) return err(res, "Job not found", 404);
+      cacheSet(cacheKey, job);
+    }
+
+    ok(res, job);
+
+    prisma.jobPost.updateMany({
       where: { id, status: "APPROVED" } as Prisma.JobPostWhereInput,
-      select: { id: true },
-    });
-    if (!guard) return err(res, "Job not found", 404);
-
-    // Atomically increment view_count and return full detail (no sensitive fields)
-    const job = await prisma.jobPost.update({
-      where: { id },
       data:  { viewCount: { increment: 1 } },
-      select: JOB_DETAIL_SELECT,
-    });
-
-    return ok(res, job);
-  } catch (e) {
-    if ((e as { code?: string }).code === "P2025") return err(res, "Job not found", 404);
-    next(e);
-  }
+    }).catch((e: unknown) => console.error("[public-jobs] view count update failed:", e instanceof Error ? e.message : e));
+  } catch (e) { next(e); }
 }

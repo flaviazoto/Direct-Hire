@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
+import { getStripe } from "@/lib/stripe";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { publicJobsApi, workerApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -26,7 +26,6 @@ import { ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 import { CONTRACT_LABEL, timeAgo, fmtSalary, fmtExternalSalary } from "./job-format";
 import type { PublicJobListRow } from "@/lib/jobs-ssr";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 // Same shape the page previously used, widened from PublicJobListRow with
@@ -680,7 +679,7 @@ function ApplyModal({
               </div>
             </div>
 
-            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night", variables: { colorPrimary: "#14b8a6" } } }}>
+            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: "night", variables: { colorPrimary: "#14b8a6" } } }}>
               <ApplyPaymentForm
                 jobId={job.id}
                 paymentIntentId={paymentIntentId}
@@ -930,7 +929,7 @@ export function JobsInteractionProvider({ children }: { children: React.ReactNod
     if (!clientSecret || !jobId) return;
 
     (async () => {
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (!stripe) return;
       const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
 

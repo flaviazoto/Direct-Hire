@@ -30,15 +30,11 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
+import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { userApi, workerApi } from "@/lib/api-client";
 import { ToastDisplay, type ToastData } from "@/components/ui";
 
-// Initialised once — not inside a component
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -793,7 +789,7 @@ function ApplyModal({
     }
 
     // Fee required — move to Stripe payment step
-    if (!stripePromise) {
+    if (!stripeConfigured) {
       setSubmitError("Payment is not configured — please contact support.");
       setSubmitting(false);
       return;
@@ -972,7 +968,7 @@ function ApplyModal({
         )}
 
         {/* ── Payment step ── */}
-        {step === "payment" && paymentData && stripePromise && (
+        {step === "payment" && paymentData && stripeConfigured && (
           <>
             <div style={{
               background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.15)",
@@ -984,7 +980,7 @@ function ApplyModal({
             </div>
 
             <Elements
-              stripe={stripePromise}
+              stripe={getStripe()}
               options={{
                 clientSecret: paymentData.clientSecret,
                 appearance: {
@@ -1096,10 +1092,10 @@ function WorkerJobsContent() {
   useEffect(() => {
     const clientSecret = searchParams.get("payment_intent_client_secret");
     const jobId = searchParams.get("dh_apply_job");
-    if (!clientSecret || !jobId || !stripePromise) return;
+    if (!clientSecret || !jobId || !stripeConfigured) return;
 
     (async () => {
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (!stripe) return;
       const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
 

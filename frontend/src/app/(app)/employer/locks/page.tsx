@@ -3,13 +3,12 @@
 
 import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { loadStripe } from "@stripe/stripe-js";
+import { getStripe } from "@/lib/stripe";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -246,7 +245,7 @@ function LocksContent() {
     if (!clientSecret || !workerId) return;
 
     (async () => {
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (!stripe) return;
       const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
 
@@ -556,7 +555,7 @@ function LocksContent() {
                 </div>
               </div>
 
-              <Elements stripe={stripePromise} options={{ clientSecret: extendClientSecret, appearance: { theme: "night" } }}>
+              <Elements stripe={getStripe()} options={{ clientSecret: extendClientSecret, appearance: { theme: "night" } }}>
                 <PaymentForm
                   returnUrl={`${window.location.origin}${window.location.pathname}?dh_confirm=lock_extend&dh_worker=${extendLock.worker.id}`}
                   onSuccess={handleExtendConfirmed}

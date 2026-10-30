@@ -4,13 +4,12 @@
 import React, { CSSProperties, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { loadStripe } from "@stripe/stripe-js";
+import { getStripe } from "@/lib/stripe";
 import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -308,7 +307,7 @@ function WorkerProfileContent() {
     if (!clientSecret || !flow) return;
 
     (async () => {
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (!stripe) return;
       const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
 
@@ -1208,7 +1207,7 @@ function WorkerProfileContent() {
                 </div>
               </div>
 
-              <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: "stripe" } }}>
+              <Elements stripe={getStripe()} options={{ clientSecret: stripeClientSecret, appearance: { theme: "stripe" } }}>
                 <PaymentForm
                   paymentIntentId={stripePaymentIntentId}
                   returnUrl={`${window.location.origin}${window.location.pathname}?dh_confirm=lock`}
@@ -1346,7 +1345,7 @@ function WorkerProfileContent() {
                 </div>
               </div>
 
-              <Elements stripe={stripePromise} options={{ clientSecret: extendClientSecret, appearance: { theme: "stripe" } }}>
+              <Elements stripe={getStripe()} options={{ clientSecret: extendClientSecret, appearance: { theme: "stripe" } }}>
                 <PaymentForm
                   paymentIntentId={extendPaymentIntentId}
                   returnUrl={`${window.location.origin}${window.location.pathname}?dh_confirm=lock_extend`}
