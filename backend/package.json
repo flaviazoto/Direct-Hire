@@ -23,7 +23,8 @@
     "backfill:invoices": "tsx scripts/backfill-invoices.ts",
     "seed:demo": "tsx scripts/guard-db.ts seed:demo && tsx scripts/seed-demo.ts",
     "db:guard": "tsx scripts/guard-db.ts db:guard",
-    "test:api": "node --import tsx --test --test-concurrency=1 tests/*.test.ts"
+    "test:api": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "seed:e2e": "tsx scripts/guard-db.ts seed:e2e && tsx scripts/seed-e2e.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
