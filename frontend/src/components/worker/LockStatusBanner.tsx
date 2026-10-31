@@ -86,8 +86,8 @@ function LockExplainerModal({ onClose }: { onClose: () => void }) {
       body: (
         <>
           Contact our support team at{" "}
-          <a href="mailto:support@directhire.io" style={{ color: "#fbbf24", textDecoration: "underline" }}>
-            support@directhire.io
+          <a href="mailto:support@directhire.cc" style={{ color: "#fbbf24", textDecoration: "underline" }}>
+            support@directhire.cc
           </a>
         </>
       ),

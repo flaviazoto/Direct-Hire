@@ -8,15 +8,15 @@ import { publicConfigApi } from "@/lib/api-client";
 const FAQ = [
   { q: "How does the verification process work?", a: "After registering, you submit your company details including NIPT, QKR number, and administrator ID. Our team verifies the company within 24 hours and activates your account." },
   { q: "How many candidates will I see per job post?", a: "The AI surfaces the top ranked matches for your job post automatically — there's no cap on matches per post." },
-  { q: "What is Worker Lock™ and how does it work?", a: "Worker Lock lets you exclusively hold a candidate for review — no other employer can contact them during your lock period. Billing is daily. You can release at any time, convert to a hire, or let it expire." },
+  { q: "What is Worker Lock™ and how does it work?", a: "Worker Lock lets you exclusively hold a candidate for review — it's removed from other employers' searches during your lock period. Reservations are free. You can release at any time, convert to a hire, or let it expire." },
   { q: "Can I hire from any country?", a: "Yes. You define which countries you hire from during onboarding. DirectHire currently operates across Albania, Croatia, Germany, and Italy, with verified, screened profiles." },
   { q: "What happens after I post a job?", a: "Immediately after posting, the AI runs your job requirements against our entire worker database and generates a ranked candidate list. Workers are also notified of roles that match their profile." },
 ];
 
 const FEATURES = [
-  { icon: "⚡", title: "AI-ranked candidates instantly", desc: "Post a job and receive a ranked list of the top matching workers — with skill scores, trust ratings, and full profile data — within minutes." },
+  { icon: "⚡", title: "AI-ranked candidates instantly", desc: "Post a job and receive a ranked list of the top matching workers — with skill scores, trust ratings, and profile details — within minutes." },
   { icon: "📊", title: "Score breakdowns you can trust", desc: "Every candidate comes with a full match score breakdown: skills fit, experience level, location preference, salary range, and fraud risk." },
-  { icon: "🔒", title: "Worker Lock™", desc: "Found a great candidate? Lock them exclusively while you review. No other employer can contact them during your lock period. Daily billing." },
+  { icon: "🔒", title: "Worker Lock™", desc: "Found a great candidate? Lock them exclusively while you review. They're held for you alone during the lock period — free of charge." },
   { icon: "🌍", title: "Source across our operating countries", desc: "Define which countries you hire from. DirectHire currently operates across Albania, Croatia, Germany, and Italy, with verified, screened, and AI-scored profiles." },
   { icon: "🛡", title: "Fraud protection built-in", desc: "Every worker is screened by our AI fraud detection — duplicate passport detection, velocity anomaly checks, and behavioural risk scoring." },
   { icon: "📱", title: "Full hiring pipeline", desc: "Shortlist, request interviews, mark as hired, or reject with one click. Track your entire pipeline from one dashboard with real-time notifications." },
@@ -24,7 +24,7 @@ const FEATURES = [
 
 const HOW_STEPS = [
   { num: "1", title: "Register & verify your company",  desc: "Create an account, submit your company details (NIPT, QKR, administrator ID), and upload your business registration. Verification takes 24 hours.", color: "#7C3AED" },
-  { num: "2", title: "Start your subscription",         desc: "One DirectHire Employer plan, 5,000 ALL/month, with a 14-day free trial. No credit card charged until the trial ends.", color: "#818cf8" },
+  { num: "2", title: "Set your hiring preferences",     desc: "Choose the countries and skills you hire for. DirectHire is free for employers — no subscription and no card required.", color: "#818cf8" },
   { num: "3", title: "Post your first job",             desc: "Fill in job title, required skills, country, salary range, experience level, and visa type. The AI starts matching immediately after you publish.", color: "#7C3AED" },
   { num: "4", title: "Review AI-ranked candidates",     desc: "See a ranked list of the best matching workers — complete with match scores, skill breakdowns, profile videos, and risk flags. No CV sifting required.", color: "#4F46E5" },
   { num: "5", title: "Lock, interview, hire",           desc: "Use Worker Lock™ to hold top candidates, request interviews, and complete the hire — all from your employer dashboard.", color: "#34D399" },
@@ -83,14 +83,14 @@ export default function ForEmployersPage() {
 
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap" as const }}>
                 <Link href="/register" className="btn-primary">Start Hiring Free →</Link>
-                <Link href="/pricing" className="btn-secondary">See Pricing</Link>
+                <Link href="/pricing" className="btn-secondary">It&apos;s free — how it works</Link>
               </div>
 
               <div className="pub-stats" style={{ display: "flex", gap: 32, marginTop: 40, flexWrap: "wrap" as const }}>
                 {[
                   { v: "4",       l: "Source countries"      },
                   { v: "24h",     l: "Candidate list ready"  },
-                  { v: "14 days", l: "Free trial"            },
+                  { v: "Free",    l: "No subscription"       },
                 ].map(s => (
                   <div key={s.l}>
                     <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 28, color: "#4F46E5" }}>{s.v}</div>
@@ -260,7 +260,7 @@ export default function ForEmployersPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
                 {[
                   "Exclusive hold — no other employer can contact them",
-                  "Daily billing — pay only for the days you use",
+                  "Free — no reservation fees",
                   `Up to ${lockMaxDaysDisplay} per lock${lockRate ? `, up to ${lockRate.maxConcurrent} concurrent` : ""}`,
                   "Automatic release on hire, manual release, or expiry",
                 ].map(feat => (
@@ -367,10 +367,10 @@ export default function ForEmployersPage() {
 
         <div className="container" style={{ position: "relative" }}>
           <h2 className="text-display-md" style={{ color: "#ffffff", marginBottom: 16 }}>Start hiring with AI today</h2>
-          <p className="text-body-lg" style={{ maxWidth: 440, margin: "0 auto 36px" }}>14-day free trial. No credit card required. Cancel any time.</p>
+          <p className="text-body-lg" style={{ maxWidth: 440, margin: "0 auto 36px" }}>Free for employers. No subscription, no credit card.</p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" as const }}>
-            <Link href="/register" className="btn-primary">Start Free Trial →</Link>
-            <Link href="/pricing" className="btn-secondary">View Pricing</Link>
+            <Link href="/register" className="btn-primary">Create a Free Account →</Link>
+            <Link href="/pricing" className="btn-secondary">How It&apos;s Free</Link>
           </div>
         </div>
       </section>

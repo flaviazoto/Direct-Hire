@@ -84,7 +84,7 @@ const GLOBE_DOTS = [
 const AI_FEATURES = [
   { icon: "🧠", title: "AI Match Engine",     desc: "Skill similarity, experience depth, and salary alignment scored in real-time against live job postings." },
   { icon: "🛡️", title: "Fraud Detection",     desc: "Pattern anomaly detection, duplicate profile flagging, and risk scoring on every submission." },
-  { icon: "💰", title: "Dynamic Pricing",      desc: "Region demand signals and conversion probability drive optimized pricing for maximum hire rate." },
+  { icon: "🔒", title: "Privacy by Design",    desc: "Identity documents are seen only by verification staff, and contact details stay private until a hire is confirmed." },
   { icon: "🔔", title: "Smart Notifications", desc: "Behavioral reminders and drop-off recovery sequences keep candidates engaged through the funnel." },
   { icon: "⭐", title: "Trust Scoring",        desc: "Verified profiles, employer history ratings, and hire completion scores build a transparent marketplace." },
   { icon: "🔧", title: "Admin Override",       desc: "Full human control sits above every AI decision — approve, reject, or adjust any outcome instantly." },
@@ -101,13 +101,13 @@ const WORKER_FEATURES = [
   { title: "Smart Job Matching",  desc: "Matched to jobs by skill, salary, location and experience weight." },
   { title: "Application Tracker", desc: "See every application status in real-time, one dashboard." },
   { title: "Visa Guidance",       desc: "Country-specific visa and work permit requirements surfaced instantly." },
-  { title: "Direct Contact",      desc: "Employers can reach you directly once you pass their AI threshold." },
+  { title: "Private by Default",  desc: "Your email and phone stay private until a hire is confirmed — DirectHire arranges interviews for you." },
 ];
 
 const EMPLOYER_FEATURES = [
   { title: "AI Candidate Ranking",    desc: "Top 20 matches ranked automatically the moment you post a job." },
   { title: "Fraud-Verified Profiles", desc: "Every worker profile is AI-scored for authenticity and risk." },
-  { title: "Dynamic Pricing",         desc: "Application fees optimized by region, demand, and conversion probability." },
+  { title: "Free Reservations",       desc: "Reserve a promising candidate while you decide — no fees, no subscription." },
   { title: "Instant Shortlisting",    desc: "Accept, reject, or shortlist candidates in one click." },
 ];
 
@@ -116,23 +116,23 @@ const PRICING_PLANS = [
     name: "For Workers", price: "Free", period: "", cta: "Get started free", featured: false,
     href: "/register?role=worker",
     desc: "Create a profile and get AI-matched to open roles.",
-    features: ["AI-powered job matching", "Fraud-verified employers", "Application tracking", "Pay only when you apply — $1 to $25 per application, based on role and demand"],
+    features: ["AI-powered job matching", "Fraud-verified employers", "Application tracking", "No application fees"],
   },
   {
-    name: "For Employers", price: "5,000 ALL", period: "/month", cta: "Start free trial", featured: false,
+    name: "For Employers", price: "Free", period: "", cta: "Create a free account", featured: false,
     href: "/register?role=employer",
     desc: "Post jobs and access AI-ranked candidates.",
-    features: ["Unlimited job posts", "AI-ranked candidates", "Fraud detection suite", "Worker Lock — $1/day per reserved candidate (up to 5 concurrent, 14-day max)", "14-day free trial, no credit card required"],
+    features: ["Unlimited job posts", "AI-ranked candidates", "Fraud detection suite", "Worker Lock — reserve up to 5 candidates at a time, up to 14 days each", "No subscription, no card required"],
   },
 ];
 
 const TRUST_ITEMS = ["Built with GDPR principles", "AI-Verified Profiles"];
 
 const PRICING_FAQ = [
-  { q: "Is there a free trial?",               a: "Employers get a 14-day free trial, no credit card required. Worker accounts are free — no trial needed." },
-  { q: "Can workers use DirectHire for free?", a: "Yes. Registering and receiving AI matches is completely free for workers. A small fee applies only when applying to specific roles." },
-  { q: "What currency do you charge in?",      a: "Employer subscriptions are billed in Albanian Lek (ALL). Application fees and Worker Lock reservations are charged in USD." },
-  { q: "Can I cancel anytime?",                a: "Yes — cancel anytime from your billing dashboard. Your subscription stays active through the end of the period you've already paid for, with no early-termination penalty." },
+  { q: "Is DirectHire really free?",           a: "Yes. Workers and employers use DirectHire free of charge — creating a profile, applying to jobs, posting jobs, searching candidates and reserving workers. No card is needed." },
+  { q: "Are there any hidden fees?",           a: "No. There are no application fees, subscriptions, reservation fees or processing fees." },
+  { q: "What if that ever changes?",           a: "We would tell you at least 30 days in advance, and nothing would be charged without your agreement." },
+  { q: "I had a paid subscription — what now?", a: "It's no longer needed. Employers can cancel any remaining subscription from Billing history; past invoices stay available there." },
 ];
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -683,10 +683,10 @@ export default function LandingPage() {
           <div className="dh-reveal" style={{ textAlign: "center" as const, marginBottom: "4rem" }}>
             <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.12em", color: "#6366f1", marginBottom: 16 }}>Pricing</div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, letterSpacing: "-1.5px", color: "#fff", margin: "0 0 1rem" }}>
-              Transparent global pricing
+              Free for everyone
             </h2>
             <p style={{ fontFamily: "var(--font-body)", fontSize: 16, color: "rgba(255,255,255,0.45)", margin: 0 }}>
-              Start free. Scale when you hire.
+              No subscriptions, no application fees, no card required.
             </p>
           </div>
 
@@ -762,7 +762,7 @@ export default function LandingPage() {
           {/* FAQ accordion */}
           <div className="dh-reveal" style={{ marginTop: "4rem" }}>
             <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-1px", color: "#fff", margin: "0 0 2rem" }}>
-              Common pricing questions
+              Common questions
             </h3>
             <div style={{ maxWidth: 720 }}>
               {PRICING_FAQ.map((item, i) => (

@@ -81,7 +81,7 @@ export default function CookiesPage() {
             Cookie Policy
           </h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-body)" }}>
-            Last updated: January 2025
+            Last updated: October 2026
           </p>
         </div>
       </section>
@@ -143,7 +143,7 @@ export default function CookiesPage() {
 
               <Section id="section-2" title="2. Essential cookies">
                 <P>Essential cookies are required for the platform to function. They cannot be disabled because removing them would break core features including login, session management, and security.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Authentication:</strong> we set one essential cookie, a refresh token, as HttpOnly and Secure, scoped only to our token-refresh endpoint — it cannot be read by JavaScript and is not sent with general page requests. Your short-lived access token is returned to your browser when you log in and is kept in your browser&apos;s local storage rather than a cookie; it is sent with each request via an authorization header, not automatically attached by the browser.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Authentication:</strong> we set one essential cookie, a refresh token, as HttpOnly and Secure, scoped only to our authentication endpoints — it cannot be read by JavaScript and is not sent with general page requests. Your short-lived access token is returned to your browser when you log in and is kept in your browser&apos;s local storage rather than a cookie; it is sent with each request via an authorization header, not automatically attached by the browser.</P>
                 <P><strong style={{ color: "#cbd5e1" }}>Cross-site request handling:</strong> because the access token travels via an authorization header rather than an ambient cookie, it is not automatically attached to requests originating from another site, which reduces cross-site request forgery exposure on our platform. We do not currently set a dedicated CSRF token cookie.</P>
               </Section>
 
@@ -168,7 +168,7 @@ export default function CookiesPage() {
               </Section>
 
               <Section id="section-6" title="6. Contact">
-                <P>If you have questions about our use of cookies or this policy, contact our Data Protection team at <a href="mailto:privacy@directhire.io" style={{ color: "#818cf8", textDecoration: "none" }}>privacy@directhire.io</a>.</P>
+                <P>If you have questions about our use of cookies or this policy, contact our Data Protection team at <a href="mailto:privacy@directhire.cc" style={{ color: "#818cf8", textDecoration: "none" }}>privacy@directhire.cc</a>.</P>
                 <P>DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania.</P>
               </Section>
 

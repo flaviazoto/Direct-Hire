@@ -76,7 +76,7 @@ export default function AboutPage() {
                 Traditional recruitment platforms were never designed for cross-border hiring. They lack fraud detection for international profiles, have no visa or accommodation workflows, and charge workers fees they can&apos;t afford.
               </p>
               <p className="text-body" style={{ marginBottom: 16 }}>
-                We built DirectHire from the ground up for this specific use case — an AI-powered infrastructure platform that handles matching, verification, dynamic pricing, and communication in one place.
+                We built DirectHire from the ground up for this specific use case — an AI-powered infrastructure platform that handles matching, verification, and communication in one place.
               </p>
               <p className="text-body" style={{ marginBottom: 0 }}>
                 Every feature exists because a real worker or employer needed it. Not because a designer thought it looked good.

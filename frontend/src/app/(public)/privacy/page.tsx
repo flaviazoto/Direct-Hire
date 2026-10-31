@@ -87,7 +87,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-body)" }}>
-            Last updated: January 2025
+            Last updated: October 2026
           </p>
         </div>
       </section>
@@ -144,7 +144,7 @@ export default function PrivacyPage() {
             <div style={{ flex: 1, maxWidth: 720 }}>
               <Section id="section-1" title="1. Who We Are">
                 <P>DirectHire Ltd (&ldquo;DirectHire,&rdquo; &ldquo;we,&rdquo; &ldquo;our&rdquo;) is the data controller for personal data collected through the DirectHire platform. We are registered in Albania.</P>
-                <P>Contact our Data Protection team: privacy@directhire.io</P>
+                <P>Contact our Data Protection team: privacy@directhire.cc</P>
               </Section>
 
               <Section id="section-2" title="2. What Data We Collect">
@@ -153,7 +153,7 @@ export default function PrivacyPage() {
                 <P><strong style={{ color: "#cbd5e1" }}>Profile data (employers):</strong> company name, NIPT, QKR number, administrator ID (encrypted), business description, industry, company size, address.</P>
                 <P><strong style={{ color: "#cbd5e1" }}>Uploaded files:</strong> profile photos, work videos, introduction videos, medical certificates, and business registration documents. All stored encrypted on secure servers.</P>
                 <P><strong style={{ color: "#cbd5e1" }}>Usage data:</strong> pages visited, features used, timestamps, IP addresses, device type, and browser.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Payment data:</strong> subscription status and billing cycle. Full payment card data is handled by our payment processor and never stored on our servers.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Payment records:</strong> DirectHire is free and no longer takes payments. We keep the records of payments made before then (amount, date and invoice) as required for accounting. Payment card data was handled by our payment processor and never stored on our servers.</P>
               </Section>
 
               <Section id="section-3" title="3. How We Use Your Data">
@@ -171,8 +171,8 @@ export default function PrivacyPage() {
 
               <Section id="section-5" title="5. Data Sharing">
                 <P>We share your data only in the following circumstances:</P>
-                <P><strong style={{ color: "#cbd5e1" }}>With employers:</strong> workers&apos; profile information, match scores, and uploaded materials are visible to verified employers who have an active subscription and are searching for candidates matching your profile. Your contact details are only shared when you apply to a job or are shortlisted.</P>
-                <P><strong style={{ color: "#cbd5e1" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery, and payment processing. We also use a third-party AI service to help generate marketing and search-visibility content (such as article drafts about job categories and locations) from already-public job posting data; this service does not process your personal profile data. All providers are contractually bound to process data only as instructed.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>With employers:</strong> once your account is approved and your profile is searchable, verified employers can see your name, profession, experience, skills, languages, location, availability, preferred countries, match score, profile photo and videos. An employer you apply to can see the same profile. Employers never see your identity documents, medical certificates, marital status or family details; these are reviewed only by DirectHire&apos;s verification staff. Your email address and phone number are shared with an employer only once a hire with that employer has been confirmed.</P>
+                <P><strong style={{ color: "#cbd5e1" }}>Service providers:</strong> we use third-party services for cloud storage, email delivery and, for payments made before DirectHire became free, payment processing. We also use a third-party AI service to help generate marketing and search-visibility content (such as article drafts about job categories and locations) from already-public job posting data; this service does not process your personal profile data. All providers are contractually bound to process data only as instructed.</P>
                 <P><strong style={{ color: "#cbd5e1" }}>Legal requirements:</strong> we may disclose data to comply with applicable law or lawful requests from authorities.</P>
                 <P>We do not sell your data. We do not share data with advertisers.</P>
               </Section>
@@ -182,7 +182,7 @@ export default function PrivacyPage() {
               </Section>
 
               <Section id="section-7" title="7. Sensitive Data">
-                <P>Passport numbers, administrator IDs, and similar identity data are encrypted using AES-256-GCM before being stored in our database. The encryption key is held as a server-side environment variable, access to which is restricted to our backend infrastructure. Decryption of this data is limited to the minimum staff access required for identity verification purposes.</P>
+                <P>Passport numbers, administrator IDs, and similar identity data are encrypted using AES-256-GCM before being stored in our database. The encryption key is held as a server-side environment variable, access to which is restricted to our backend infrastructure. Decryption of this data is limited to the minimum staff access required for identity verification purposes. Each time our staff view your private documents or decrypted identity data, the access is recorded in an audit log.</P>
               </Section>
 
               <Section id="section-8" title="8. Data Retention">
@@ -191,11 +191,11 @@ export default function PrivacyPage() {
 
               <Section id="section-9" title="9. Your Rights (GDPR)">
                 <P>You have the right to: <strong style={{ color: "#cbd5e1" }}>access</strong> your personal data; <strong style={{ color: "#cbd5e1" }}>correct</strong> inaccurate data; <strong style={{ color: "#cbd5e1" }}>delete</strong> your account and associated data; <strong style={{ color: "#cbd5e1" }}>export</strong> your data in a portable format; <strong style={{ color: "#cbd5e1" }}>restrict</strong> or object to certain processing; <strong style={{ color: "#cbd5e1" }}>withdraw consent</strong> at any time.</P>
-                <P>To exercise these rights, email privacy@directhire.io. We will respond within 30 days.</P>
+                <P>To exercise these rights, email privacy@directhire.cc. We will respond within 30 days.</P>
               </Section>
 
               <Section id="section-10" title="10. Cookies">
-                <P>We use only one strictly necessary cookie, an HttpOnly refresh token scoped to our token-refresh endpoint. Your access token itself is kept in your browser&apos;s local storage rather than a cookie. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
+                <P>We use only one strictly necessary cookie, an HttpOnly refresh token scoped to our authentication endpoints. Your access token itself is kept in your browser&apos;s local storage rather than a cookie. We do not use advertising or tracking cookies. See our <a href="/cookies" style={{ color: "#818cf8", textDecoration: "none" }}>Cookie Policy</a> for full details.</P>
               </Section>
 
               <Section id="section-11" title="11. Changes to This Policy">
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
               </Section>
 
               <Section id="section-12" title="12. Contact">
-                <P>Data Protection Officer: privacy@directhire.io<br />DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania</P>
+                <P>Data Protection Officer: privacy@directhire.cc<br />DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania</P>
                 <P>If you are unsatisfied with our response, you have the right to lodge a complaint with the relevant supervisory authority in your country.</P>
               </Section>
 

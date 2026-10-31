@@ -8,7 +8,7 @@ const TOC_ITEMS = [
   { id: "section-2", label: "2. Account Registration"     },
   { id: "section-3", label: "3. Worker Terms"             },
   { id: "section-4", label: "4. Employer Terms"           },
-  { id: "section-5", label: "5. Payments and Refunds"     },
+  { id: "section-5", label: "5. Fees"                     },
   { id: "section-6", label: "6. Prohibited Conduct"       },
   { id: "section-7", label: "7. Limitation of Liability"  },
   { id: "section-8", label: "8. Governing Law"            },
@@ -84,7 +84,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-body)" }}>
-            Last updated: January 2025
+            Last updated: October 2026
           </p>
         </div>
       </section>
@@ -150,24 +150,25 @@ export default function TermsPage() {
               </Section>
 
               <Section id="section-3" title="3. Worker Terms">
-                <P>Workers may create a profile, upload verification materials, and apply to job postings. Profile creation is free. An application fee applies when applying to specific job posts. Fees are displayed before you confirm any application.</P>
-                <P>You must not create duplicate accounts, provide false identity documents, or misrepresent your skills or experience. Violation of these terms may result in immediate account suspension and forfeiture of any fees paid.</P>
-                <P>By uploading videos and documents, you grant DirectHire a limited licence to store and display your materials to verified employers. We do not share your materials with third parties outside the platform.</P>
+                <P>Workers may create a profile, upload verification materials, and apply to job postings. Creating a profile and applying to jobs are free.</P>
+                <P>You must not create duplicate accounts, provide false identity documents, or misrepresent your skills or experience. Violation of these terms may result in immediate account suspension.</P>
+                <P>By uploading photos, videos and documents, you grant DirectHire a limited licence to store them and to show your profile photo and videos to verified employers. Identity documents and medical certificates are reviewed only by DirectHire&apos;s verification staff and are never shown to employers. Your contact details are shared with an employer only once a hire with that employer has been confirmed. We do not share your materials with third parties outside the platform.</P>
               </Section>
 
               <Section id="section-4" title="4. Employer Terms">
                 <P>Employers must have a legitimate, registered business entity to use the platform. You agree to comply with all applicable employment laws, immigration laws, and visa regulations in your country and in the countries from which you hire workers.</P>
                 <P>Job postings must be genuine. You may not use the platform to collect worker data without the intention of hiring. Fraudulent postings will result in immediate account termination and possible legal action.</P>
-                <P>Worker Lock™ is a paid feature that provides exclusive candidate access for a defined period. Fees are billed daily and are non-refundable once a lock period begins.</P>
+                <P>Worker Lock™ lets an employer reserve a candidate exclusively for a limited period. Reservations are subject to limits on how many candidates can be reserved at once and for how long, and may be released at any time.</P>
               </Section>
 
-              <Section id="section-5" title="5. Payments and Refunds">
-                <P>Subscription fees are billed monthly in advance. Application fees are charged per application and are non-refundable. Worker Lock™ daily fees are charged at the start of each day and are non-refundable.</P>
-                <P>Subscription plans may be cancelled at any time. Cancellation takes effect at the end of the current billing period. We do not provide pro-rata refunds for unused subscription time.</P>
+              <Section id="section-5" title="5. Fees">
+                <P>DirectHire is free for workers and employers. There are no subscription, application, reservation or processing fees, and we do not ask for payment card details.</P>
+                <P>If we introduce paid features in the future, we will tell you at least 30 days in advance, the change will not apply to anything you have already done, and you will be charged for a paid feature only after you have agreed to it.</P>
+                <P>Payments made before DirectHire became free were made under the terms in force at that time. For any question about a past payment, contact support@directhire.cc.</P>
               </Section>
 
               <Section id="section-6" title="6. Prohibited Conduct">
-                <P>You may not: (a) circumvent the platform to hire workers or be hired outside of it to avoid fees; (b) scrape or harvest any data from the platform; (c) use the platform for any unlawful purpose; (d) impersonate any person or entity; (e) upload malware or harmful code.</P>
+                <P>You may not: (a) circumvent the platform&apos;s verification and hiring process, for example by using it to contact candidates for recruitment outside the platform; (b) scrape or harvest any data from the platform; (c) use the platform for any unlawful purpose; (d) impersonate any person or entity; (e) upload malware or harmful code.</P>
               </Section>
 
               <Section id="section-7" title="7. Limitation of Liability">
@@ -179,7 +180,7 @@ export default function TermsPage() {
               </Section>
 
               <Section id="section-9" title="9. Contact">
-                <P>For questions about these Terms, contact us at legal@directhire.io or write to: DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania.</P>
+                <P>For questions about these Terms, contact us at legal@directhire.cc or write to: DirectHire Ltd, Rruga e Durrësit 42, Tirana, Albania.</P>
               </Section>
 
               {/* Footer strip */}

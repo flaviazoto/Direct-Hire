@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { publicJobsApi } from "@/lib/api-client";
 
 const FAQ = [
-  { q: "Is it free to register as a worker?", a: "Yes. Creating your profile and getting matched to jobs is completely free. You only pay a small application fee when you apply to a specific position, which varies by region and salary." },
+  { q: "Is it free to register as a worker?", a: "Yes. Creating your profile, getting matched and applying to jobs are all completely free — there are no application fees." },
   { q: "What documents do I need?", a: "Your passport number (text entry only — no scanned document required), a profile photo, a short work video, a 30-second introduction video, and a medical certificate. All documents are stored encrypted." },
   { q: "How does the AI matching work?", a: "Our engine scores your profile against every live job post across 5 dimensions: skills, experience, location preferences, salary compatibility, and trust score. You see ranked matches instantly." },
   { q: "How long does verification take?", a: "Profile review typically takes 24–48 hours after you submit. You'll receive an email as soon as a decision is made." },
