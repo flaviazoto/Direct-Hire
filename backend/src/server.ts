@@ -20,6 +20,9 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
+// Optional exception tracking (no-op until SENTRY_DSN is set).
+initErrorTracking();
+
 // Email env warnings — visible in Railway/Render logs
 if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
   console.warn("WARNING: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set — emails will be logged to console only");
@@ -38,6 +41,8 @@ import path from "path";
 import { authRouter }        from "./routes/auth.routes";
 import { mediaRouter } from "./routes/media.routes";
 import { cspReportRouter } from "./routes/csp-report.routes";
+import { clientErrorsRouter } from "./routes/client-errors.routes";
+import { initErrorTracking } from "./lib/error-tracking";
 import { onboardingRouter }  from "./routes/onboarding.routes";
 import { uploadsRouter }     from "./routes/uploads.routes";
 import { userRouter }        from "./routes/user.routes";
@@ -58,6 +63,7 @@ import { requestId }         from "./middleware/request-id.middleware";
 import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
 import { startScheduler } from "./services/scheduler";
+import { recordProcessStart } from "./services/health-monitor/checks";
 
 const app  = express();
 app.set("trust proxy", 1);
@@ -101,6 +107,7 @@ app.post("/api/webhooks/resend", express.raw({ type: "application/json" }), rese
 
 // CSP reports use their own content types and parser — mounted before express.json().
 app.use("/api/csp-report", cspReportRouter);
+app.use("/api/client-errors", clientErrorsRouter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 morgan.token("id", (req) => (req as express.Request).id ?? "-");
@@ -163,6 +170,9 @@ const server = app.listen(PORT, () => {
 
   // Lock billing + expiry scheduler
   startScheduler().catch(console.error);
+
+  // Restarts/deploys are recorded so crash loops can be alerted on.
+  recordProcessStart().catch((e) => console.error("[server] could not record process start:", e instanceof Error ? e.message : e));
 });
 
 // Graceful shutdown: Railway sends SIGTERM on every deploy/restart. Stop

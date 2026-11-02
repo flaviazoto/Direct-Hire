@@ -1,0 +1,31 @@
+# External uptime check. Runs outside Railway, so it still fires when the API
+# process itself is down (the in-process health monitor cannot). A failed run
+# makes GitHub email the repository owner — no extra service or secret needed.
+#
+# www.directhire.cc is not checked here: Vercel's bot protection answers
+# GitHub's runners with a 403 challenge, which would be a false alarm.
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: API health
+        run: |
+          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://api.directhire.cc/health)
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"'
+      - name: Public jobs endpoint (database reachable)
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-delay 10 'https://api.directhire.cc/api/public/jobs?limit=1')
+          echo "HTTP $code"
+          test "$code" = "200"

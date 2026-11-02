@@ -4,6 +4,7 @@ import { Inter, Manrope, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ErrorReporter } from "@/components/ErrorReporter";
 
 // DirectHire design system fonts — Inter for all UI/body/forms/tables/nav,
 // Manrope for display (marketing H1s, section headers), IBM Plex Mono for
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="light" className="scroll-smooth">
       <body className={`${inter.variable} ${manrope.variable} ${plexMono.variable} antialiased`} style={{ overflowX: 'hidden' }}>
+        <ErrorReporter />
         <AuthProvider>
           {children}
         </AuthProvider>
