@@ -351,7 +351,7 @@ export default function AdminHiringReviewPage() {
           Application Review
         </h1>
         <p style={{ fontSize: 13, color: C.muted, margin: "4px 0 0" }}>
-          Vet applications, verify documents, and track admin processing fees before they reach the employer.
+          Vet applications and verify documents before they reach the employer. The fee stage only applies while payments are switched on.
         </p>
       </div>
 
@@ -535,7 +535,7 @@ export default function AdminHiringReviewPage() {
                         <div style={{ fontSize: 11, color: C.muted }}>
                           The employer can now see this candidate to request an interview and/or hire (
                           <a href="/admin/hiring/interview" style={{ color: C.accent, textDecoration: "none", fontWeight: 700 }}>Interview &amp; Hire</a>
-                          ). Once the employer hires and the worker confirms, the admin fee becomes chargeable on the Awaiting Fee tab.
+                          ). Once the employer hires and the worker confirms, the hire is final (while payments are switched on, it first passes through the Awaiting Fee tab).
                         </div>
                       </div>
                     )}

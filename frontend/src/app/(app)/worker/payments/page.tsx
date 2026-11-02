@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { workerApi } from "@/lib/api-client";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { ErrorState } from "@/components/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ function TypeIcon({ type }: { type: string }) {
 export default function WorkerPaymentsPage() {
   const [data, setData]     = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { enabled: paymentsEnabled } = usePaymentsEnabled();
   const [error, setError]   = useState<string | null>(null);
   const [page, setPage]     = useState(1);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export default function WorkerPaymentsPage() {
           Payment History
         </h1>
         <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.45)", fontSize: "14px" }}>
-          All fees and charges associated with your account.
+          {paymentsEnabled ? "All fees and charges associated with your account." : "Any past payments on your account. DirectHire is free for workers."}
         </p>
       </div>
 
@@ -214,7 +216,7 @@ export default function WorkerPaymentsPage() {
             <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.2 }}>💳</div>
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "15px" }}>No payments yet.</div>
             <div style={{ color: "rgba(255,255,255,0.25)", fontSize: "13px", marginTop: "6px" }}>
-              Fees from applications and reservations will appear here.
+              {paymentsEnabled ? "Fees from applications and reservations will appear here." : "Applying for jobs is free, so you won't be charged."}
             </div>
           </div>
         ) : (

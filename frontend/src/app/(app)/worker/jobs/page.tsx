@@ -51,6 +51,7 @@ interface Job {
   visaSupport?: boolean;
   salaryMin?: number | null;
   salaryMax?: number | null;
+  salaryCurrency?: string | null; // the job's real currency (JobPost.salaryCurrency)
   currency?: string | null;
   matchScore?: number; // canonical field — see backend/src/controllers/worker.controller.ts
   isSaved?: boolean;
@@ -178,7 +179,7 @@ function multiplierLabel(m: number): string {
 
 function fmtSalary(job: Job): string | null {
   return job.salaryMin
-    ? `${job.currency ?? "EUR"} ${Math.round(job.salaryMin).toLocaleString()}${job.salaryMax ? `–${Math.round(job.salaryMax).toLocaleString()}` : "+"}`
+    ? `${job.salaryCurrency ?? job.currency ?? "USD"} ${Math.round(job.salaryMin).toLocaleString()}${job.salaryMax ? `–${Math.round(job.salaryMax).toLocaleString()}` : "+"}`
     : null;
 }
 

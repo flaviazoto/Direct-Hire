@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { workerApi } from "@/lib/api-client";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { LoadingPage, ErrorState, EmptyState, ToastDisplay, type ToastData } from "@/components/ui";
 
 type WorkflowStatus =
@@ -75,17 +76,23 @@ const STEPS: { key: string; label: string }[] = [
   { key: "CLEARED_FOR_EMPLOYER",              label: "Hired & cleared" },
 ];
 
-function currentStepIndex(app: AppRow): number {
-  const idx = STEPS.findIndex(s => s.key === app.workflowStatus);
-  return idx === -1 ? 0 : idx;
+const FEE_STEPS = new Set(["ADMIN_FEE_DUE", "ADMIN_FEE_PAID"]);
+
+/** With payments off the backend skips the fee stages, so they aren't shown —
+ *  unless this application is already sitting in one (created while paid). */
+function stepsFor(app: AppRow, paymentsEnabled: boolean) {
+  if (paymentsEnabled || FEE_STEPS.has(app.workflowStatus ?? "")) return STEPS;
+  return STEPS.filter(s => !FEE_STEPS.has(s.key));
 }
 
-function Stepper({ app, hasPendingDoc }: { app: AppRow; hasPendingDoc: boolean }) {
-  const current = currentStepIndex(app);
+function Stepper({ app, hasPendingDoc, paymentsEnabled }: { app: AppRow; hasPendingDoc: boolean; paymentsEnabled: boolean }) {
+  const steps = stepsFor(app, paymentsEnabled);
+  const found = steps.findIndex(s => s.key === app.workflowStatus);
+  const current = found === -1 ? 0 : found;
   return (
     <div style={{ overflowX: "auto", paddingBottom: 4 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: STEPS.length * 84 }}>
-        {STEPS.map((step, i) => {
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 0, minWidth: steps.length * 84 }}>
+        {steps.map((step, i) => {
           const done = i < current;
           const isCurrent = i === current;
           return (
@@ -140,6 +147,7 @@ export default function WorkerApplicationStatusPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const { enabled: paymentsEnabled } = usePaymentsEnabled();
 
   const showToast = useCallback((msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
@@ -174,7 +182,7 @@ export default function WorkerApplicationStatusPage() {
     const res = await workerApi.confirmHire(applicationId);
     setConfirmingId(null);
     if (res.success) {
-      showToast("Hire confirmed — the admin processing fee is next", "ok");
+      showToast(paymentsEnabled ? "Hire confirmed — the admin processing fee is next" : "Hire confirmed — you're hired!", "ok");
       load();
     } else {
       showToast(res.error ?? "Could not confirm hire", "err");
@@ -263,7 +271,7 @@ export default function WorkerApplicationStatusPage() {
                         </button>
                       </div>
                     )}
-                    <Stepper app={app} hasPendingDoc={pendingDocAppIds.has(app.id)} />
+                    <Stepper app={app} hasPendingDoc={pendingDocAppIds.has(app.id)} paymentsEnabled={paymentsEnabled} />
                   </>
                 )}
               </div>

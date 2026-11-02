@@ -226,6 +226,10 @@ function WorkerDashboardContent() {
   const isApproved   = onbStatus === "APPROVED" || user.accountStatus === "VERIFIED";
   const needsChanges = onbStatus === "NEEDS_CHANGES";
   const isVerified   = profile?.documentsVerified || isApproved;
+  // An approved worker who uploads a new document goes back into review
+  // (uploads.controller.ts resets documentsVerified) — say so instead of
+  // still claiming "Documents verified".
+  const docsInReview = isApproved && profile?.documentsVerified === false;
   const isRejected   = user.accountStatus === "REJECTED";
 
   const appsSent   = applications.length;
@@ -350,8 +354,14 @@ function WorkerDashboardContent() {
               }}>
                 <CheckCircle size={15} style={{ color: '#16A34A', flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', margin: '0 0 2px' }}>Documents verified</p>
-                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>Your profile is visible to employers</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', margin: '0 0 2px' }}>
+                    {docsInReview ? "New document under review" : "Documents verified"}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                    {docsInReview
+                      ? "Your profile stays visible to employers. The new file is shown once it has been approved."
+                      : "Your profile is visible to employers"}
+                  </p>
                 </div>
               </div>
             )}
