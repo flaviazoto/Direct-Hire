@@ -31,16 +31,18 @@ import { INTERNAL_MONITOR_HEADER } from "../../middleware/ratelimit.middleware";
 
 const monitorHeaders = (): Record<string, string> => (process.env.CRON_SECRET ? { [INTERNAL_MONITOR_HEADER]: process.env.CRON_SECRET } : {});
 import { sendHealthCheckAlertEmail, sendHealthCheckRecoveryEmail } from "../email";
-import {
-  checkScheduledJobs, checkUploadFailures, checkEmailDelivery, checkDatabaseLatency,
-  checkDatabaseConnections, checkMemory, checkRestarts,
-} from "./checks";
 
 const JOB_NAME     = "health-monitor";
 const COOLDOWN_MS  = 60 * 60 * 1000;          // 60 minutes — re-alert cadence for an ongoing failure
 const LOOKBACK_MS  = 7 * 24 * 60 * 60 * 1000; // 7 days — just needs to find the most recent email per check
 
-type CheckResult = import("./checks").CheckResult;
+interface CheckResult {
+  name:       string;
+  ok:         boolean;
+  skipped?:   boolean;
+  error?:     string;
+  durationMs: number;
+}
 
 function backendUrl(): string {
   return process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
@@ -156,13 +158,6 @@ export async function runHealthCheck(): Promise<void> {
     checkHealthEndpoint(),
     checkDatabase(),
     checkStorage(),
-    checkScheduledJobs(),
-    checkUploadFailures(),
-    checkEmailDelivery(),
-    checkDatabaseLatency(),
-    checkDatabaseConnections(),
-    checkMemory(),
-    checkRestarts(),
   ]);
 
   const lastAlertByCheck = await getLastAlertEmailByCheck().catch((e) => {

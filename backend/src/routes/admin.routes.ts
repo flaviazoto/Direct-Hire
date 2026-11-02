@@ -43,7 +43,6 @@ adminRouter.patch("/users/:id/activate",     requireAdmin, ctrl.activateUser);  
 adminRouter.post("/users/:id/approve",       requireAdmin, ctrl.approveUser);
 // Diagnostic: how the API sees the caller's IP through the Vercel/Railway
 // proxies — used to set "trust proxy" (and so rate-limit keying) correctly.
-adminRouter.post("/system/test-alert", requireAdmin, systemHealthCtrl.sendTestAlert);
 adminRouter.get("/system/request-info", requireAdmin, (req, res) => res.json({
   success: true,
   data: { ip: req.ip, ips: req.ips, xForwardedFor: req.headers["x-forwarded-for"] ?? null, trustProxy: req.app.get("trust proxy") },

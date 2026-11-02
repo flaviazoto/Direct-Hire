@@ -2,7 +2,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { MulterError } from "multer";
-import { captureException } from "../lib/error-tracking";
 
 export function errorHandler(
   err: unknown,
@@ -68,7 +67,6 @@ export function errorHandler(
   // Unexpected error: full details stay in the server log; the client gets a
   // generic message plus the request ID to quote to support.
   console.error(`[Server Error] requestId=${req.id ?? "-"} ${req.method} ${req.originalUrl}`, err);
-  captureException(err, { requestId: req.id, method: req.method, path: req.path });
   return res.status(500).json({
     success:   false,
     error:     "Something went wrong. Please try again.",
