@@ -20,9 +20,6 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-// Optional exception tracking (no-op until SENTRY_DSN is set).
-initErrorTracking();
-
 // Email env warnings — visible in Railway/Render logs
 if (process.env.EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
   console.warn("WARNING: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set — emails will be logged to console only");
@@ -64,6 +61,11 @@ import { rateLimiter }       from "./middleware/ratelimit.middleware";
 import { runVerificationCodeCleanup } from "./services/queue";
 import { startScheduler } from "./services/scheduler";
 import { recordProcessStart } from "./services/health-monitor/checks";
+
+// Optional exception tracking (no-op until SENTRY_DSN is set). Called after
+// the imports: the compiled CommonJS build runs statements in source order,
+// so calling an imported function above its import crashes at boot.
+initErrorTracking();
 
 const app  = express();
 app.set("trust proxy", 1);
