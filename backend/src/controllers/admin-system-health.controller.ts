@@ -9,6 +9,20 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { ok } from "../lib/response";
+import { EXPECTED_INTERVAL_MINUTES } from "../lib/job-schedule";
+import { sendHealthCheckAlertEmail } from "../services/email";
+import { insertAuditLog } from "../lib/audit";
+
+// POST /api/admin/system/test-alert — sends one alert email through the same
+// path the health monitor uses, so the owner can confirm alerts really arrive.
+export async function sendTestAlert(req: Request, res: Response, next: NextFunction) {
+  try {
+    const timestamp = new Date().toISOString();
+    await sendHealthCheckAlertEmail("test-alert", "This is a test alert requested from the admin System Health page. No action is needed.", timestamp);
+    await insertAuditLog({ actorId: req.user!.sub, targetId: req.user!.sub, action: "MONITORING_TEST_ALERT", entity: "System" });
+    return ok(res, { sentTo: "OWNER_EMAIL", at: timestamp }, "Test alert sent");
+  } catch (e) { next(e); }
+}
 
 // Expected interval per known job, in minutes — used only to compute the
 // "stale" badge (no run within 2x expected interval). Mirrors the schedules
@@ -18,15 +32,6 @@ import { ok } from "../lib/response";
 // A jobName with no entry here just skips the staleness check rather than
 // guessing — never marked stale, since "no known interval" isn't the same
 // claim as "on time".
-const EXPECTED_INTERVAL_MINUTES: Record<string, number> = {
-  "health-monitor":                 15,
-  "lock-expiry-processor":          60,
-  "storage-cleanup":                60,
-  "lock-daily-billing":             24 * 60,
-  "subscription-expiry-warnings":   24 * 60,
-  "match-score-recalc":             24 * 60,
-  "onboarding-reminders":           24 * 60,
-};
 
 interface JobRunRow {
   id:                string;
