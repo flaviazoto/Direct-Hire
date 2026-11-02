@@ -24,12 +24,17 @@ export function ConfirmDialog({
   danger = true, onConfirm, onCancel,
 }: ConfirmDialogProps) {
 
-  /* Close on Escape */
+  /* Close on Escape; keep the page behind from scrolling while open */
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handler);
+    };
   }, [open, onCancel]);
 
   if (!open) return null;
@@ -56,7 +61,7 @@ export function ConfirmDialog({
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "20px",
       }}>
-        <div className="glass-modal" style={{
+        <div className="glass-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" style={{
           padding: "36px 32px",
           maxWidth: 420, width: "100%",
           fontFamily: "var(--font-body, 'DM Sans', system-ui, sans-serif)",
@@ -76,7 +81,7 @@ export function ConfirmDialog({
           </div>
 
           {/* Title */}
-          <h2 style={{
+          <h2 id="confirm-dialog-title" style={{
             fontFamily: "var(--font-display, 'Sora', sans-serif)",
             fontWeight: 700, fontSize: 20,
             color: "#ffffff",

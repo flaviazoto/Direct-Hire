@@ -726,7 +726,7 @@ function SlideOver({
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 201,
         width: "min(560px, 100vw)",
-        background: "rgba(255,255,255,0.05)",
+        background: "rgba(15,23,42,0.97)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderLeft: "1px solid rgba(255,255,255,0.1)",
@@ -1006,7 +1006,7 @@ export function JobsInteractionProvider({ children }: { children: React.ReactNod
       {selectedJob && detailLoading && (
         <>
           <div onClick={() => setSelectedJob(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(15,23,42,0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(99,102,241,0.2)", borderTop: "2px solid #14b8a6", animation: "spin 0.8s linear infinite" }} />
           </div>
         </>
@@ -1014,7 +1014,7 @@ export function JobsInteractionProvider({ children }: { children: React.ReactNod
       {selectedJob && detailError && (
         <>
           <div onClick={() => { setSelectedJob(null); setDetailError(null); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,100vw)", background: "rgba(15,23,42,0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
             <ErrorState
               message={detailError}
               retry={() => selectedJob && openJob(selectedJob)}

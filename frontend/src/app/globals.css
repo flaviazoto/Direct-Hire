@@ -441,17 +441,19 @@ input, button, textarea, select { font: inherit; }
 /* ─── Animation Classes ────────────────────────────────────────────────────── */
 
 .animate-in {
-  animation: fadeInUp 0.6s ease both;
+  animation: fadeInUp 0.6s ease backwards; /* not "both" — see dhPageIn in design-system.css */
 }
 .delay-1 { animation-delay: 0.1s; }
 .delay-2 { animation-delay: 0.2s; }
 .delay-3 { animation-delay: 0.3s; }
 .delay-4 { animation-delay: 0.4s; }
 
-.fade-up        { animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* Entrance animations use "backwards": a retained end transform would trap
+   position:fixed descendants (modals) — see dhPageIn in design-system.css. */
+.fade-up        { animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .fade-in        { animation: fadeIn 0.25s ease both; }
-.slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.scale-in       { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.scale-in       { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .animate-spin   { animation: spin 0.75s linear infinite; }
 .animate-pulse  { animation: pulse 2s ease-in-out infinite; }
 .animate-float  { animation: float 3s ease-in-out infinite; }
@@ -880,22 +882,25 @@ input, button, textarea, select { font: inherit; }
 }
 
 /* ── Phase 4: overlay/floating UI tokens ─────────────────────────────────
-   .glass-scrim — the dimmed backdrop behind a modal. Darker + slightly
-   blurred so page content behind it stays legible-but-secondary. */
+   .glass-scrim — the dimmed backdrop behind a modal. Dark enough that the
+   page behind clearly recedes; the blur is a bonus, not relied on. */
 .glass-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(2, 6, 23, 0.72);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
 }
 
-/* .glass-modal — heavier glass than .glass-card, for the modal content box
-   itself: stronger blur, larger radius, a subtle indigo glow in the shadow
-   to tie it to the .btn-gradient brand gradient. Container-only (one
+/* .glass-modal — the modal content box: larger radius, a subtle indigo glow
+   in the shadow to tie it to the .btn-gradient brand gradient. The surface is
+   near-opaque on purpose: backdrop-filter silently does nothing when an
+   ancestor creates its own backdrop root, and a 6%-white box then let the
+   page text behind read straight through the form. Container-only (one
    instance on screen at a time) — the performance rule does not apply. */
 .glass-modal {
-  background: rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(26, 33, 56, 0.97), rgba(15, 21, 38, 0.97));
+  color: #e4e4e7;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   backdrop-filter: blur(32px);
@@ -903,11 +908,12 @@ input, button, textarea, select { font: inherit; }
   box-shadow: 0 25px 70px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.18);
 }
 
-/* .glass-dropdown — lighter glass for popovers/dropdowns (notification
-   panels, menus): less blur, tighter radius, lighter shadow than a modal
-   since it's anchored to a trigger rather than centered over a scrim. */
+/* .glass-dropdown — popovers/dropdowns (notification panels, menus): less
+   blur, tighter radius, lighter shadow than a modal since it's anchored to a
+   trigger rather than centered over a scrim. Near-opaque for the same reason
+   as .glass-modal — there is no scrim behind a dropdown at all. */
 .glass-dropdown {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(19, 26, 45, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   backdrop-filter: blur(16px);

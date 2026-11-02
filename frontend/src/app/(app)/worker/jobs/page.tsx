@@ -762,6 +762,21 @@ function ApplyModal({
   const [paymentData, setPaymentData] = useState<{ clientSecret: string; paymentIntentId: string } | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
+  // Escape closes (same rule as the backdrop: only before payment starts),
+  // and the page behind doesn't scroll while the dialog is open.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && step === "review" && !submitting) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [step, submitting, onClose]);
+
   const handleReviewSubmit = async () => {
     setSubmitting(true);
     setSubmitError(null);
@@ -827,6 +842,9 @@ function ApplyModal({
       {/* Modal — full-height bottom sheet on mobile, centered box on desktop */}
       <div
         className="glass-modal apply-modal-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="apply-modal-title"
         style={{ padding: "26px 22px", overflowY: "auto" }}
       >
         {/* Header */}
@@ -838,7 +856,7 @@ function ApplyModal({
             }}>
               {step === "payment" ? "Complete payment" : "Apply for position"}
             </div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
+            <h2 id="apply-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
               {job.title}
             </h2>
             <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
@@ -848,6 +866,7 @@ function ApplyModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
               borderRadius: 8, width: 32, height: 32, display: "flex",
@@ -1075,6 +1094,8 @@ function WorkerJobsContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const closeApplyModal = useCallback(() => setApplyModal(null), []);
+
   const showToast = useCallback((msg: string, type: "ok" | "err") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -1262,13 +1283,16 @@ function WorkerJobsContent() {
     <div style={{ minHeight: "100vh", background: "var(--glass-base)", fontFamily: "var(--font-body, 'Inter', system-ui, sans-serif)", color: "#e4e4e7" }}>
       <ToastDisplay toast={toast} />
 
-      {/* Apply modal */}
-      {applyModal && (
+      {/* Apply modal — portaled to document.body for the same reason as the
+          mobile filter sheet below: inside the page tree it was trapped in an
+          ancestor's stacking context and page content showed through it. */}
+      {mounted && applyModal && createPortal(
         <ApplyModal
           state={applyModal}
-          onClose={() => setApplyModal(null)}
+          onClose={closeApplyModal}
           onApplied={handleApplied}
-        />
+        />,
+        document.body,
       )}
 
       {/* Mobile filter sheet — portaled to document.body so it can never be

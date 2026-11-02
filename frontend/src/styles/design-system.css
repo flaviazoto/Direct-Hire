@@ -299,8 +299,13 @@
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* fill-mode "backwards", not "both": "both" keeps the final
+   transform: translateY(0) applied forever, and any transform makes the
+   element the containing block for position:fixed descendants — every modal,
+   drawer and scrim on the page was then trapped inside <main> (sidebar left
+   undimmed and clickable, scrim cut short, backdrop blur not applied). */
 main, [data-page-root] {
-  animation: dhPageIn 0.25s ease-out both;
+  animation: dhPageIn 0.25s ease-out backwards;
 }
 
 /* ─── Micro-interactions ──────────────────────────────────────────────────────── */
