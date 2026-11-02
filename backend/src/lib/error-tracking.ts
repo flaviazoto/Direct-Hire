@@ -19,8 +19,10 @@ export function scrubEvent<E extends Sentry.ErrorEvent>(event: E): E {
     event.request = { method: event.request.method, url: event.request.url?.split("?")[0] };
   }
   delete event.user;
-  // Outgoing-request breadcrumbs include signed storage URLs.
-  if (event.breadcrumbs) event.breadcrumbs = event.breadcrumbs.filter((b) => b.category !== "http" && b.category !== "fetch");
+  // Breadcrumbs are dropped entirely: outgoing-request ones include signed
+  // storage URLs, and console ones repeat full server-log lines (including
+  // the Prisma argument dumps the error handler logs).
+  delete event.breadcrumbs;
   for (const ex of event.exception?.values ?? []) {
     // Prisma messages quote the query's arguments (emails, names…); the last
     // line is the reason ("Unique constraint failed on the fields: (`email`)").

@@ -162,19 +162,18 @@ describe("POST /api/admin/system/test-alert", () => {
 });
 
 describe("error-tracking scrubber", () => {
-  it("removes query strings, headers, bodies, user info, request breadcrumbs and Prisma arguments", async () => {
+  it("removes query strings, headers, bodies, user info, breadcrumbs and Prisma arguments", async () => {
     const { scrubEvent } = await import("../src/lib/error-tracking");
     const event: any = {
       type: undefined,
       request: { method: "POST", url: "https://api.directhire.cc/api/auth/reset?token=SECRET", headers: { cookie: "dh_refresh=SECRET" }, data: { password: "SECRET" }, query_string: "token=SECRET" },
       user: { email: "someone@test.invalid", ip_address: "1.2.3.4" },
-      breadcrumbs: [{ category: "http", data: { url: "https://x.supabase.co/sign?token=SECRET" } }, { category: "console", message: "kept" }],
+      breadcrumbs: [{ category: "http", data: { url: "https://x.supabase.co/sign?token=SECRET" } }, { category: "console", message: "email: SECRET" }],
       exception: { values: [{ type: "PrismaClientKnownRequestError", value: "Invalid `prisma.user.create()` invocation:\n  email: \"someone@test.invalid\"\nUnique constraint failed on the fields: (`email`)" }] },
     };
     const out = JSON.stringify(scrubEvent(event));
     assert.doesNotMatch(out, /SECRET|someone@test\.invalid|1\.2\.3\.4/);
     assert.match(out, /api\/auth\/reset/);
     assert.match(out, /Unique constraint failed/);
-    assert.match(out, /"kept"/);
   });
 });
