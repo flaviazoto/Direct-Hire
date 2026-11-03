@@ -7,6 +7,7 @@ import {
   LoadingPage, PageHeader, Card, CardContent, Badge, Button,
   EmptyState, ToastDisplay, type ToastData, ProgressBar, ErrorState,
 } from "@/components/ui";
+import { fileLabel } from "@/lib/file-label";
 
 interface UploadRecord {
   id: string;
@@ -211,7 +212,7 @@ export default function WorkerDocumentsPage() {
                         whiteSpace: "nowrap",
                         marginBottom: 6,
                       }}>
-                        {existing.fileName}
+                        {fileLabel(existing.fileName, fileType)}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <Badge variant="green">Uploaded</Badge>

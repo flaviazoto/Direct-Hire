@@ -32,7 +32,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { userApi, workerApi } from "@/lib/api-client";
+import { publicJobsApi, userApi, workerApi } from "@/lib/api-client";
 import { ToastDisplay, type ToastData } from "@/components/ui";
 
 
@@ -55,6 +55,7 @@ interface Job {
   currency?: string | null;
   matchScore?: number; // canonical field — see backend/src/controllers/worker.controller.ts
   isSaved?: boolean;
+  companyName?: string | null; // what the jobs list actually returns
   employerProfile?: { companyName?: string | null; country?: string | null };
   requiredSkills?: { skill: string }[];
   createdAt?: string;
@@ -500,9 +501,10 @@ function CountryStrip({ countries, selected, onSelect }: {
 // as directly as the five facts above, and cost real vertical space on phones.
 
 function JobCard({
-  job, onApply, onSave, checking, applied, saving, workerVerified,
+  job, onOpen, onApply, onSave, checking, applied, saving, workerVerified,
 }: {
   job: Job;
+  onOpen: (job: Job) => void;
   onApply: (id: string) => void;
   onSave: (job: Job) => void;
   checking: boolean;
@@ -527,18 +529,24 @@ function JobCard({
           fontSize: 14, fontWeight: 800, color: "#2dd4bf",
           fontFamily: "var(--font-mono)",
         }}>
-          {(job.employerProfile?.companyName ?? job.title)?.[0]?.toUpperCase() ?? "J"}
+          {(job.companyName ?? job.employerProfile?.companyName ?? job.title)?.[0]?.toUpperCase() ?? "J"}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff", lineHeight: 1.3, marginBottom: 2 }}>
+        <button
+          type="button"
+          onClick={() => onOpen(job)}
+          className="job-card-open"
+          aria-label={`View details for ${job.title}`}
+          style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          <div className="job-card-title" style={{ fontSize: 15, fontWeight: 700, color: "#ffffff", lineHeight: 1.3, marginBottom: 2 }}>
             {job.title}
           </div>
           <div style={{ fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {job.employerProfile?.companyName ?? "Company"}
+            {job.companyName ?? job.employerProfile?.companyName ?? "Company"}
             {job.city && ` · ${job.city}`}
             {job.country && `, ${job.country}`}
           </div>
-        </div>
+        </button>
         {job.createdAt && (
           <span style={{ fontSize: 11, color: "#5a5a5a", flexShrink: 0, marginTop: 2 }}>{timeAgo(job.createdAt)}</span>
         )}
@@ -604,6 +612,168 @@ function JobCard({
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── Job Detail Drawer ───────────────────────────────────────────────────────
+// Opened from a job card's title. The list endpoint only carries card facts,
+// so the full text (description, requirements, benefits) comes from the
+// public job-detail endpoint. Apply/save reuse the card's own handlers.
+
+interface JobDetail {
+  description?: string | null;
+  requirements?: string | null;
+  benefits?: string | null;
+  requiredSkills?: string[];
+  languagesRequired?: string[];
+  experienceRequired?: number | null;
+  positionsAvailable?: number | null;
+  accommodation?: boolean;
+  remoteAllowed?: boolean;
+  applicationDeadline?: string | null;
+}
+
+function DetailSection({ title, text }: { title: string; text?: string | null }) {
+  if (!text?.trim()) return null;
+  return (
+    <section style={{ marginBottom: 20 }}>
+      <h3 style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 8px" }}>{title}</h3>
+      <p style={{ fontSize: 14, color: "#cbd5e1", lineHeight: 1.65, margin: 0, whiteSpace: "pre-line" }}>{text}</p>
+    </section>
+  );
+}
+
+function JobDetailDrawer({
+  job, onClose, onApply, onSave, checking, applied, saving, workerVerified,
+}: {
+  job: Job;
+  onClose: () => void;
+  onApply: (id: string) => void;
+  onSave: (job: Job) => void;
+  checking: boolean;
+  applied: boolean;
+  saving: boolean;
+  workerVerified: boolean;
+}) {
+  const [detail, setDetail] = useState<JobDetail | null>(null);
+  const [failed, setFailed] = useState(false);
+  const salary = fmtSalary(job);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDetail(null); setFailed(false);
+    publicJobsApi.getJob(job.id).then((res) => {
+      if (cancelled) return;
+      const data = (res as { success?: boolean; data?: JobDetail & { job?: JobDetail } }).data;
+      if (res.success && data) setDetail(data.job ?? data);
+      else setFailed(true);
+    }).catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [job.id]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prevOverflow; window.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
+  const facts: string[] = [];
+  if (detail?.experienceRequired) facts.push(`${detail.experienceRequired}+ yrs experience`);
+  if (detail?.positionsAvailable && detail.positionsAvailable > 1) facts.push(`${detail.positionsAvailable} positions`);
+  if (detail?.accommodation) facts.push("Accommodation provided");
+  if (detail?.remoteAllowed) facts.push("Remote possible");
+  if (detail?.applicationDeadline) facts.push(`Apply by ${new Date(detail.applicationDeadline).toLocaleDateString()}`);
+
+  return (
+    <>
+      <div className="glass-scrim" style={{ zIndex: 1000 }} onClick={onClose} />
+      <div
+        className="glass-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-detail-title"
+        style={{
+          position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 1001,
+          width: "min(560px, 100vw)", borderRadius: 0, borderTop: "none", borderRight: "none", borderBottom: "none",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        <div style={{ padding: "22px 22px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 id="job-detail-title" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{job.title}</h2>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+              {job.companyName ?? job.employerProfile?.companyName ?? "Company"}
+              {job.city && ` · ${job.city}`}
+              {job.country && `, ${job.country}`}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{
+            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#94a3b8", fontSize: 18, lineHeight: 1, flexShrink: 0,
+          }}>×</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+            {salary && <Pill color="green">{salary}</Pill>}
+            {job.visaSupport ? <Pill color="teal">✓ Visa support</Pill> : <Pill color="gray">No visa support</Pill>}
+            {job.category && <Pill color="cyan">{job.category}</Pill>}
+            {job.contractType && <Pill color="violet">{WORK_TYPE_LABELS[job.contractType] ?? job.contractType}</Pill>}
+          </div>
+          {job.matchScore !== undefined && <div style={{ marginBottom: 18 }}><MatchBar score={job.matchScore} /></div>}
+
+          {!detail && !failed && <p style={{ fontSize: 13, color: "#94a3b8" }}>Loading job details…</p>}
+          {failed && <p style={{ fontSize: 13, color: "#f87171" }}>Could not load the full job details. You can still apply.</p>}
+          {detail && (
+            <>
+              {facts.length > 0 && (
+                <p style={{ fontSize: 13, color: "#cbd5e1", margin: "0 0 18px" }}>{facts.join(" · ")}</p>
+              )}
+              <DetailSection title="About the job" text={detail.description} />
+              <DetailSection title="Requirements" text={detail.requirements} />
+              {(detail.requiredSkills?.length ?? 0) > 0 && (
+                <section style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 8px" }}>Skills</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {detail.requiredSkills!.map(s => <Pill key={s} color="gray">{s}</Pill>)}
+                  </div>
+                </section>
+              )}
+              {(detail.languagesRequired?.length ?? 0) > 0 && (
+                <DetailSection title="Languages" text={detail.languagesRequired!.join(", ")} />
+              )}
+              <DetailSection title="Benefits" text={detail.benefits} />
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: "14px 22px calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
+          {applied ? (
+            <button disabled style={{
+              flex: 1, height: 42, borderRadius: 9, border: "1px solid rgba(16,185,129,0.3)",
+              background: "rgba(16,185,129,0.12)", color: "#34d399", fontSize: 14, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit",
+            }}>✓ Applied</button>
+          ) : !workerVerified ? (
+            <Link href="/worker/onboarding" style={{
+              flex: 1, height: 42, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", textDecoration: "none",
+              background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#fbbf24", fontSize: 14, fontWeight: 700,
+            }}>Complete verification to apply</Link>
+          ) : (
+            <button onClick={() => !checking && onApply(job.id)} disabled={checking} className="btn-gradient" style={{ flex: 1, height: 42, fontSize: 14 }}>
+              {checking ? "Checking fee…" : "Apply now"}
+            </button>
+          )}
+          <button onClick={() => onSave(job)} disabled={saving} aria-label={job.isSaved ? "Unsave job" : "Save job"} style={{
+            height: 42, width: 42, borderRadius: 9, flexShrink: 0,
+            background: job.isSaved ? "rgba(20,184,166,0.15)" : "rgba(255,255,255,0.05)",
+            border: job.isSaved ? "1px solid rgba(20,184,166,0.35)" : "1px solid rgba(255,255,255,0.1)",
+            color: job.isSaved ? "#2dd4bf" : "#94a3b8", fontSize: 16, cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit",
+          }}>{saving ? "…" : job.isSaved ? "★" : "☆"}</button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -861,7 +1031,7 @@ function ApplyModal({
               {job.title}
             </h2>
             <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
-              {job.employerProfile?.companyName ?? "Company"}
+              {job.companyName ?? job.employerProfile?.companyName ?? "Company"}
               {job.country && ` · ${job.country}`}
             </div>
           </div>
@@ -1088,6 +1258,8 @@ function WorkerJobsContent() {
   const [toast, setToast] = useState<ToastData>(null);
   const [filtersOpen, setFiltersOpen] = useState(false); // mobile drawer only — desktop sidebar has no open/close state
   const [applyModal, setApplyModal] = useState<ApplyModalState | null>(null);
+  const [detailJob, setDetailJob] = useState<Job | null>(null);
+  const closeDetail = useCallback(() => setDetailJob(null), []);
   // Portal target readiness (SSR-safe) — same pattern DashboardHeader.tsx
   // uses for its mobile nav drawer: a portal to document.body escapes any
   // ancestor's stacking context (transform/filter/backdrop-filter), which a
@@ -1292,6 +1464,22 @@ function WorkerJobsContent() {
           state={applyModal}
           onClose={closeApplyModal}
           onApplied={handleApplied}
+        />,
+        document.body,
+      )}
+
+      {/* Job details — opened from a card's title. Closes itself when Apply
+          opens the apply dialog, so the two never stack. */}
+      {mounted && detailJob && !applyModal && createPortal(
+        <JobDetailDrawer
+          job={jobs.find(j => j.id === detailJob.id) ?? detailJob}
+          onClose={closeDetail}
+          onApply={handleApply}
+          onSave={handleSave}
+          checking={checkingFeeId === detailJob.id}
+          applied={appliedIds.has(detailJob.id)}
+          saving={savingId === detailJob.id}
+          workerVerified={workerVerified}
         />,
         document.body,
       )}
@@ -1512,6 +1700,7 @@ function WorkerJobsContent() {
                     <JobCard
                       key={job.id}
                       job={job}
+                      onOpen={setDetailJob}
                       onApply={handleApply}
                       onSave={handleSave}
                       checking={checkingFeeId === job.id}
@@ -1581,6 +1770,9 @@ function WorkerJobsContent() {
         input::placeholder { color: #5a5a5a; }
         select option { background: #1e293b; }
         textarea::placeholder { color: #5a5a5a; }
+
+        .job-card-open:hover .job-card-title { color: #5eead4; text-decoration: underline; text-underline-offset: 3px; }
+        .job-card-open:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 4px; border-radius: 6px; }
 
         /* Apply modal: full-height bottom sheet on mobile, centered box on desktop */
         .apply-modal-sheet {

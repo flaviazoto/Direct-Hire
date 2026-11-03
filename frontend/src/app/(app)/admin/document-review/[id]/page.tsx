@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { adminApi } from "@/lib/api-client";
 import { ErrorState } from "@/components/ui";
+import { fileLabel } from "@/lib/file-label";
 
 type DocStatus = "APPROVED" | "REJECTED" | "PENDING";
 
@@ -303,7 +304,7 @@ export default function WorkerDocumentReviewPage() {
                 return (
                   <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(0,0,0,0.15)", borderRadius: 8, opacity: superseded ? 0.5 : 1 }}>
                     <div>
-                      <div style={{ fontSize: 13, color: "#e2e8f0" }}>{u.fileName}</div>
+                      <div style={{ fontSize: 13, color: "#e2e8f0" }}>{fileLabel(u.fileName, u.fileType)}</div>
                       <div style={{ fontSize: 11, color: "#4b5563" }}>
                         {u.fileType.replace(/_/g, " ")} · {fmtDate(u.uploadedAt)}
                         {superseded && <span style={{ color: "#71717a" }}> · replaced by a newer upload</span>}

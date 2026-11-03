@@ -9,6 +9,7 @@ import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { employerApi } from "@/lib/api-client";
 import { ToastDisplay, Spinner, type ToastData, ErrorState } from "@/components/ui";
+import { fileLabel } from "@/lib/file-label";
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -972,7 +973,7 @@ function WorkerProfileContent() {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500, color: "#0f172a", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
-                            {doc.file_name}
+                            {fileLabel(doc.file_name, doc.file_type)}
                             <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "2px 7px", marginLeft: 6 }}>Verified</span>
                           </div>
                           <div style={{ fontSize: 12, color: "#94a3b8" }}>

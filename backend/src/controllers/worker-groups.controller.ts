@@ -15,10 +15,75 @@ const MEMBER_INCLUDE = {
   worker: {
     select: {
       id: true,
-      workerProfile: { select: { firstName: true, lastName: true, profession: true } },
+      workerProfile: {
+        select: {
+          firstName: true, lastName: true, profession: true,
+          countryOfResidence: true, yearsExperience: true, documentsVerified: true,
+        },
+      },
     },
   },
 } as const;
+
+type GroupMemberRow = {
+  workerId: string;
+  worker: {
+    workerProfile: {
+      profession: string | null; countryOfResidence: string | null;
+      yearsExperience: string | null; documentsVerified: boolean;
+    } | null;
+  };
+};
+
+/** Top entries of a tally, most common first. */
+function top(tally: Map<string, number>, n: number) {
+  return [...tally.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, n)
+    .map(([label, count]) => ({ label, count }));
+}
+
+/**
+ * Facts about the group, counted from the members' own profiles and their
+ * applications to THIS employer — nothing estimated. Shown in the employer's
+ * group panel so the group is useful before anyone talks to an admin.
+ */
+async function summarizeGroup(employerId: string, members: GroupMemberRow[]) {
+  const professions = new Map<string, number>();
+  const countries   = new Map<string, number>();
+  const years: number[] = [];
+  let documentsVerified = 0;
+
+  for (const m of members) {
+    const p = m.worker.workerProfile;
+    if (!p) continue;
+    if (p.profession?.trim()) professions.set(p.profession.trim(), (professions.get(p.profession.trim()) ?? 0) + 1);
+    if (p.countryOfResidence?.trim()) countries.set(p.countryOfResidence.trim(), (countries.get(p.countryOfResidence.trim()) ?? 0) + 1);
+    const y = Number.parseFloat(p.yearsExperience ?? "");
+    if (Number.isFinite(y) && y >= 0) years.push(y);
+    if (p.documentsVerified) documentsVerified++;
+  }
+
+  const workerIds = members.map(m => m.workerId);
+  const apps = workerIds.length === 0 ? [] : await prisma.application.findMany({
+    where:  { employerId, workerId: { in: workerIds } },
+    select: { workerId: true, workflowStatus: true },
+  });
+  const withStatus = (statuses: string[]) =>
+    new Set(apps.filter(a => a.workflowStatus && statuses.includes(a.workflowStatus)).map(a => a.workerId)).size;
+
+  return {
+    memberCount:        members.length,
+    documentsVerified,
+    appliedToYourJobs:  new Set(apps.map(a => a.workerId)).size,
+    readyForInterview:  withStatus(["DOCUMENTS_APPROVED"]),
+    hired:              withStatus(["HIRE_PENDING_WORKER_CONFIRMATION", "ADMIN_FEE_DUE", "ADMIN_FEE_PAID", "CLEARED_FOR_EMPLOYER"]),
+    averageYearsExperience: years.length ? Math.round((years.reduce((a, b) => a + b, 0) / years.length) * 10) / 10 : null,
+    topProfessions:     top(professions, 3),
+    topCountries:       top(countries, 3),
+    countryCount:       countries.size,
+  };
+}
 
 export async function getMyGroup(req: Request, res: Response, next: NextFunction) {
   try {
@@ -34,8 +99,11 @@ export async function getMyGroup(req: Request, res: Response, next: NextFunction
       },
     });
 
-    if (!group) return ok(res, { group: null, members: [], memberCount: 0, bulkQuoteRequests: [] });
-    return ok(res, { group, members: group.members, memberCount: group.members.length, bulkQuoteRequests: group.bulkQuoteRequests });
+    if (!group) return ok(res, { group: null, members: [], memberCount: 0, bulkQuoteRequests: [], summary: await summarizeGroup(employerId, []) });
+    return ok(res, {
+      group, members: group.members, memberCount: group.members.length, bulkQuoteRequests: group.bulkQuoteRequests,
+      summary: await summarizeGroup(employerId, group.members),
+    });
   } catch (e) { next(e); }
 }
 
@@ -105,11 +173,11 @@ export async function requestBulkQuote(req: Request, res: Response, next: NextFu
 
     const memberCount = group.members.length;
     if (memberCount < MIN_MEMBERS_FOR_QUOTE) {
-      return err(res, `A bulk quote requires at least ${MIN_MEMBERS_FOR_QUOTE} workers in your group (currently ${memberCount}).`, 422);
+      return err(res, `A group request needs at least ${MIN_MEMBERS_FOR_QUOTE} workers in your group (currently ${memberCount}).`, 422);
     }
 
     if (group.bulkQuoteRequests.length > 0) {
-      return err(res, "You already have a bulk quote request in progress.", 409, { request: group.bulkQuoteRequests[0] });
+      return err(res, "You already have a group request in progress.", 409, { request: group.bulkQuoteRequests[0] });
     }
 
     const request = await prisma.bulkQuoteRequest.create({

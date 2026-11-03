@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authApi } from "@/lib/api-client";
+import { approx, usePublicStats } from "@/lib/public-stats";
 import { useAuth } from "@/context/AuthContext";
 
 function EyeOpen() {
@@ -48,13 +49,16 @@ function LoginPageContent() {
     return () => clearInterval(timer);
   }, []);
 
+  // Live counts — the slides used to quote figures nobody had measured.
+  const stats = usePublicStats();
+
   const SLIDES = [
     {
       tag: "GLOBAL REACH",
-      headline: "Hire from\n190+ Countries",
-      metric: "2.4M+",
+      headline: "Hire skilled workers\nacross borders",
+      metric: approx(stats?.verifiedWorkers),
       metricLabel: "Verified Workers",
-      body: "Our AI matches verified global talent with employers across every timezone — instantly.",
+      body: "Every worker is reviewed by the DirectHire team before their profile goes live to employers.",
       accentColor: "#6366F1",
       secondaryColor: "#9333EA",
       icon: (
@@ -65,16 +69,16 @@ function LoginPageContent() {
         </svg>
       ),
       stats: [
-        { label: "Countries", value: "190+" },
-        { label: "Placements/mo", value: "1,400+" },
+        { label: "Worker countries", value: approx(stats?.workerCountries) },
+        { label: "Live jobs", value: approx(stats?.liveJobs) },
       ],
     },
     {
-      tag: "AI POWERED",
-      headline: "Matched in\nMinutes, Not Weeks",
-      metric: "92%",
-      metricLabel: "Avg Match Score",
-      body: "Five-dimension AI scoring finds your perfect candidate before your coffee gets cold.",
+      tag: "SMART MATCHING",
+      headline: "Matched on the\nfacts that matter",
+      metric: "6",
+      metricLabel: "Match Factors",
+      body: "Skills, experience, salary, location, trust and demand are weighed into one match score for every job.",
       accentColor: "#818cf8",
       secondaryColor: "#6366F1",
       icon: (
@@ -85,16 +89,16 @@ function LoginPageContent() {
         </svg>
       ),
       stats: [
-        { label: "Avg match time", value: "< 24h" },
-        { label: "Active jobs", value: "847K" },
+        { label: "Hiring countries", value: approx(stats?.jobCountries) },
+        { label: "Verified employers", value: approx(stats?.verifiedEmployers) },
       ],
     },
     {
       tag: "TRUSTED PLATFORM",
-      headline: "Fraud-Free\nGlobal Hiring",
-      metric: "99.2%",
-      metricLabel: "Verified Profiles",
-      body: "Every profile is AI-screened for authenticity, so you hire with complete confidence.",
+      headline: "Checked by people,\nnot just software",
+      metric: "Manual",
+      metricLabel: "Document Review",
+      body: "Our team reviews documents by hand, contact details stay private until hiring is complete, and every hire is confirmed by the worker.",
       accentColor: "#a78bfa",
       secondaryColor: "#9333EA",
       icon: (
@@ -104,8 +108,8 @@ function LoginPageContent() {
         </svg>
       ),
       stats: [
-        { label: "Fraud rate", value: "< 0.1%" },
-        { label: "Profile checks", value: "50+" },
+        { label: "Contact details", value: "After hire" },
+        { label: "Final say", value: "Worker" },
       ],
     },
   ];

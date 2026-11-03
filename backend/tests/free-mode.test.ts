@@ -196,3 +196,48 @@ describe("free platform: emails", () => {
     assert.match(t.text, /free/i);
   });
 });
+
+describe("worker group summary", () => {
+  it("summarizes members from their real profiles", async () => {
+    const prisma = await db();
+    const { token } = await freeEmployer();
+    const profiles = [
+      { profession: "Electrician", countryOfResidence: "Albania", yearsExperience: "4", documentsVerified: true },
+      { profession: "Electrician", countryOfResidence: "Albania", yearsExperience: "6", documentsVerified: false },
+      { profession: "Welder",      countryOfResidence: "Kosovo",  yearsExperience: "not sure", documentsVerified: true },
+    ];
+    for (const p of profiles) {
+      const w = await discoverableWorker();
+      await prisma.workerProfile.update({ where: { userId: w.id }, data: p });
+      const r = await call("POST", "/api/employer/worker-groups/members", { token, body: { workerId: w.id } });
+      assert.ok([200, 201].includes(r.status), JSON.stringify(r.body));
+    }
+    const res = await call("GET", "/api/employer/worker-groups/me", { token });
+    assert.equal(res.status, 200);
+    const s = res.body.data.summary;
+    assert.equal(s.memberCount, 3);
+    assert.equal(s.documentsVerified, 2);
+    assert.equal(s.averageYearsExperience, 5); // "not sure" is ignored, not counted as 0
+    assert.deepEqual(s.topProfessions[0], { label: "Electrician", count: 2 });
+    assert.equal(s.countryCount, 2);
+    assert.equal(s.appliedToYourJobs, 0);
+  });
+
+  it("an employer with no group gets an empty summary", async () => {
+    const { token } = await freeEmployer();
+    const res = await call("GET", "/api/employer/worker-groups/me", { token });
+    assert.equal(res.body.data.summary.memberCount, 0);
+  });
+});
+
+describe("public platform stats", () => {
+  it("returns live aggregate counts and nothing personal", async () => {
+    const prisma = await db();
+    const res = await call("GET", "/api/public/config/stats");
+    assert.equal(res.status, 200);
+    const d = res.body.data;
+    assert.deepEqual(Object.keys(d).sort(), ["jobCountries", "liveJobs", "verifiedEmployers", "verifiedWorkers", "workerCountries"]);
+    assert.equal(d.verifiedWorkers, await prisma.user.count({ where: { role: "WORKER", status: "ACTIVE", accountStatus: "VERIFIED" } }));
+    assert.equal(d.liveJobs, await prisma.jobPost.count({ where: { status: "APPROVED" } }));
+  });
+});

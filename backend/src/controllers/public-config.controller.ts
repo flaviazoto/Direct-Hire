@@ -10,6 +10,42 @@ import { Request, Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import stripe from "../services/stripe";
 import { paymentsEnabled } from "../config/flags";
+import { TtlCache } from "../lib/ttl-cache";
+
+// GET /api/public/config/stats — live platform counts for the sign-in and
+// sign-up pages, replacing figures that were never measured. Aggregates
+// only (no individual data); cached briefly since they change slowly.
+const statsCache = new TtlCache<Record<string, number>>(10 * 60_000, 1);
+
+export async function getPublicStats(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const cached = statsCache.get("stats");
+    if (cached) return res.json({ success: true, data: cached });
+
+    const verifiedWorker = { role: "WORKER" as const, status: "ACTIVE" as const, accountStatus: "VERIFIED" as const };
+    const [verifiedWorkers, workerCountries, liveJobs, jobCountries, verifiedEmployers] = await Promise.all([
+      prisma.user.count({ where: verifiedWorker }),
+      prisma.workerProfile.findMany({
+        where: { user: verifiedWorker, countryOfResidence: { not: null } },
+        distinct: ["countryOfResidence"],
+        select: { countryOfResidence: true },
+      }),
+      prisma.jobPost.count({ where: { status: "APPROVED" } }),
+      prisma.jobPost.findMany({ where: { status: "APPROVED" }, distinct: ["country"], select: { country: true } }),
+      prisma.user.count({ where: { role: "EMPLOYER", status: "ACTIVE", accountStatus: "VERIFIED" } }),
+    ]);
+
+    const data = {
+      verifiedWorkers,
+      workerCountries: workerCountries.length,
+      liveJobs,
+      jobCountries: jobCountries.length,
+      verifiedEmployers,
+    };
+    statsCache.set("stats", data);
+    return res.json({ success: true, data });
+  } catch (e) { next(e); }
+}
 
 // ── Simple in-memory cache (60-second TTL) — same pattern as public-jobs.controller.ts ──
 // Cache entries are keyed off the payments-flag state so flipping

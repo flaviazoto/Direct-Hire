@@ -219,6 +219,25 @@ describe("upload content validation", () => {
     assert.equal(real.status, 201, JSON.stringify(real.body));
   });
 
+  it("keeps the original file name for display, cleaned, with the verified extension", async () => {
+    const worker = await makeWorker();
+    const token = (await login(worker.email)).token!;
+    const res = await upload(token, form("PROFILE_PHOTO", PNG, "image/png", "Ëmïlia <photo>.jpeg"));
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    const list = await call("GET", "/api/uploads", { token });
+    const names = (list.body.data as { fileName: string }[]).map(u => u.fileName);
+    assert.ok(names.includes("Ëmïlia photo.png"), JSON.stringify(names));
+  });
+
+  it("display names: paths, markup and empty names", async () => {
+    const { displayFileName } = await import("../src/controllers/uploads.controller");
+    assert.equal(displayFileName("../../etc/passwd", "PROFILE_PHOTO", "png"), "passwd.png");
+    assert.equal(displayFileName("C:\\Users\\me\\CV final.PDF", "MEDICAL_CERTIFICATE", "pdf"), "CV final.pdf");
+    assert.equal(displayFileName("", "WORK_VIDEO", "mp4"), "work-video.mp4");
+    assert.equal(displayFileName(".png", "PROFILE_PHOTO", "png"), "profile-photo.png");
+    assert.equal(displayFileName("a".repeat(300) + ".png", "PROFILE_PHOTO", "png").length, 84);
+  });
+
   it("rejects a PNG labelled as a PDF and accepts a real PDF", async () => {
     const worker = await makeWorker();
     const token = (await login(worker.email)).token!;

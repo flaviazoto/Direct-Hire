@@ -7,6 +7,30 @@ import { verifiedMime } from "../lib/file-signature";
 import type { FileType } from "../types";
 import { insertAuditLog, recordSensitiveAccess } from "../lib/audit";
 
+/**
+ * Display name for an upload: path stripped, control and markup characters
+ * removed, whitespace collapsed, length capped, extension replaced by the one
+ * matching the verified content. Exported for tests.
+ */
+export function displayFileName(original: string | undefined, fileType: string, ext: string): string {
+  // Multer hands over the multipart filename decoded as latin1, so UTF-8
+  // names (Ë, ç, ü…) arrive garbled; re-decode when that round-trips cleanly.
+  const raw = original ?? "";
+  const utf8 = /^[\x00-\xff]*$/.test(raw) ? Buffer.from(raw, "latin1").toString("utf8") : raw;
+  const name = utf8.includes("�") ? raw : utf8;
+  const base = name.split(/[\\/]/).pop() ?? "";
+  const stem = base.replace(/\.[^.]*$/, "")
+    .normalize("NFC")
+    .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80)
+    .trim();
+  const fallback = fileType.toLowerCase().replace(/_/g, "-");
+  return `${stem || fallback}.${ext}`;
+}
+
+
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg':      'jpg',
   'image/png':       'png',
@@ -56,9 +80,12 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
       return err(res, `File too large. Max for ${fileType}: ${Math.round(maxSize / 1024 / 1024)} MB`, 422);
     }
 
-    // Safe filename — never trust the original user-provided name
+    // The stored file is addressed by its upload ID (storage only takes the
+    // extension from this name), so the name is for display: the user's
+    // original name, cleaned, with the extension taken from the VERIFIED
+    // content type rather than whatever the user typed.
     const ext          = MIME_TO_EXT[mimeType] ?? 'bin';
-    const safeFileName = `${userId}-${Date.now()}.${ext}`;
+    const safeFileName = displayFileName(file.originalname, fileType, ext);
 
     // PROFILE_PHOTO and COMPANY_LOGO stay public per the storage sensitivity
     // split — they render in bulk across browse lists (employer/workers grid,

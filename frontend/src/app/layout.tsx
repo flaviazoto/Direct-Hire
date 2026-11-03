@@ -40,7 +40,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title:       "DirectHire — AI Global Job Marketplace",
-  description: "AI-powered global employment platform connecting skilled workers with international employers in 94 countries.",
+  description: "Global employment platform connecting verified skilled workers with international employers.",
   keywords:    "global jobs, international hiring, AI matching, worker placement, recruitment platform",
   openGraph: {
     title:       "DirectHire — AI Global Job Marketplace",

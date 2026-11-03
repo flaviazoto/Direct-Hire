@@ -5,6 +5,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { employerApi } from "@/lib/api-client";
+import { usePaymentsEnabled } from "@/lib/payments-flag";
 import { LoadingPage, ToastDisplay, type ToastData, ErrorState } from "@/components/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -51,7 +52,35 @@ interface BulkQuoteRequest {
   quoteSentAt: string | null;
 }
 
+/** Real facts about the group, computed by the API from members' profiles. */
+interface GroupSummary {
+  memberCount: number;
+  documentsVerified: number;
+  appliedToYourJobs: number;
+  readyForInterview: number;
+  hired: number;
+  averageYearsExperience: number | null;
+  topProfessions: { label: string; count: number }[];
+  topCountries: { label: string; count: number }[];
+  countryCount: number;
+}
+
 const MIN_GROUP_SIZE = 10;
+
+function GroupStat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, padding: "4px 0" }} title={hint}>
+      <span style={{ color: "#a1a1aa" }}>{label}</span>
+      <span style={{ color: "#e4e4e7", fontWeight: 700, textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
+function tallyText(items: { label: string; count: number }[], total: number) {
+  const shown = items.map(i => (i.count > 1 ? `${i.label} ×${i.count}` : i.label)).join(", ");
+  const rest = total - items.length;
+  return rest > 0 ? `${shown} +${rest} more` : shown;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -323,10 +352,12 @@ function EmptyState({ availableOnly }: { availableOnly: boolean }) {
 // right with member count/progress/remove/request-quote.
 
 function GroupPanel({
-  members, pendingRequest, latestSentQuote, requesting, onRemove, onRequestQuote,
+  members, summary, paymentsEnabled, pendingRequest, latestSentQuote, requesting, onRemove, onRequestQuote,
   interviewNotes, onInterviewNotesChange, requestingInterviews, onRequestInterviews,
 }: {
   members: GroupMember[];
+  summary: GroupSummary | null;
+  paymentsEnabled: boolean;
   pendingRequest: BulkQuoteRequest | null;
   latestSentQuote: BulkQuoteRequest | null;
   requesting: boolean;
@@ -348,8 +379,10 @@ function GroupPanel({
       borderRadius: 14, padding: 20,
     }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Worker group</div>
-      <div style={{ fontSize: 12, color: "#71717a", marginBottom: 14 }}>
-        Add 10+ workers to request a bulk hiring quote.
+      <div style={{ fontSize: 12, color: "#71717a", marginBottom: 14, lineHeight: 1.5 }}>
+        {paymentsEnabled
+          ? "Add 10+ workers to request a bulk hiring quote."
+          : `Shortlist workers to hire together. With ${MIN_GROUP_SIZE} or more, DirectHire coordinates the group's interviews and hiring for you, free of charge.`}
       </div>
 
       {/* Progress */}
@@ -391,6 +424,28 @@ function GroupPanel({
         </div>
       )}
 
+      {/* Group at a glance — counted from members' real profiles */}
+      {summary && summary.memberCount > 0 && (
+        <div style={{ marginBottom: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+            Group at a glance
+          </div>
+          {summary.topProfessions.length > 0 && (
+            <GroupStat label="Trades" value={tallyText(summary.topProfessions, summary.topProfessions.length)} />
+          )}
+          {summary.topCountries.length > 0 && (
+            <GroupStat label="Based in" value={tallyText(summary.topCountries, summary.countryCount)} />
+          )}
+          {summary.averageYearsExperience !== null && (
+            <GroupStat label="Average experience" value={`≈ ${summary.averageYearsExperience} yrs`} hint="Average of the years of experience members entered on their profiles" />
+          )}
+          <GroupStat label="Documents verified" value={`${summary.documentsVerified} of ${summary.memberCount}`} />
+          <GroupStat label="Applied to your jobs" value={summary.appliedToYourJobs} />
+          <GroupStat label="Ready for interview" value={summary.readyForInterview} hint="Applications to your jobs with documents approved" />
+          {summary.hired > 0 && <GroupStat label="Hired" value={summary.hired} />}
+        </div>
+      )}
+
       {/* Request interview for group — Part B, Step B1 bulk path */}
       {count > 0 && (
         <div style={{ marginBottom: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -427,11 +482,13 @@ function GroupPanel({
           borderRadius: 10, padding: "12px 14px", marginBottom: 14,
         }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
-            Quote delivered
+            {paymentsEnabled ? "Quote delivered" : "Hiring plan from DirectHire"}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
-            ${latestSentQuote.quoteAmountUsd ?? "—"}
-          </div>
+          {paymentsEnabled && (
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
+              ${latestSentQuote.quoteAmountUsd ?? "—"}
+            </div>
+          )}
           {latestSentQuote.quoteNotes && (
             <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 6, lineHeight: 1.5 }}>{latestSentQuote.quoteNotes}</div>
           )}
@@ -441,7 +498,9 @@ function GroupPanel({
       {/* Request button */}
       {pendingRequest ? (
         <div style={{ fontSize: 12, color: "#fbbf24", textAlign: "center", padding: "9px 0" }}>
-          {pendingRequest.status === "QUOTE_PREPARED" ? "Quote is being finalized…" : "Request sent — awaiting a quote"}
+          {paymentsEnabled
+            ? (pendingRequest.status === "QUOTE_PREPARED" ? "Quote is being finalized…" : "Request sent — awaiting a quote")
+            : (pendingRequest.status === "QUOTE_PREPARED" ? "Your hiring plan is being prepared…" : "Request sent — DirectHire will contact you")}
         </div>
       ) : (
         <button
@@ -455,7 +514,7 @@ function GroupPanel({
             cursor: canRequest && !requesting ? "pointer" : "not-allowed",
           }}
         >
-          {requesting ? "Requesting…" : "Request bulk quote"}
+          {requesting ? "Requesting…" : paymentsEnabled ? "Request bulk quote" : "Request group hiring support"}
         </button>
       )}
       {!canRequest && !pendingRequest && (
@@ -487,6 +546,8 @@ function WorkersContent() {
   // Worker group (Phase 4, Step 2)
   const [groupMembers,    setGroupMembers]    = useState<GroupMember[]>([]);
   const [quoteRequests,   setQuoteRequests]   = useState<BulkQuoteRequest[]>([]);
+  const [groupSummary,    setGroupSummary]    = useState<GroupSummary | null>(null);
+  const { enabled: paymentsEnabled } = usePaymentsEnabled();
   const [groupBusyId,     setGroupBusyId]     = useState<string | null>(null);
   const [requestingQuote, setRequestingQuote] = useState(false);
   const [interviewNotes,       setInterviewNotes]       = useState("");
@@ -495,9 +556,10 @@ function WorkersContent() {
   const loadGroup = useCallback(async () => {
     const res = await employerApi.getMyWorkerGroup();
     if (res.success) {
-      const d = res.data as { members?: GroupMember[]; bulkQuoteRequests?: BulkQuoteRequest[] } | undefined;
+      const d = res.data as { members?: GroupMember[]; bulkQuoteRequests?: BulkQuoteRequest[]; summary?: GroupSummary } | undefined;
       setGroupMembers(d?.members ?? []);
       setQuoteRequests(d?.bulkQuoteRequests ?? []);
+      setGroupSummary(d?.summary ?? null);
     }
   }, []);
 
@@ -522,10 +584,10 @@ function WorkersContent() {
     const res = await employerApi.requestBulkQuote();
     setRequestingQuote(false);
     if (res.success) {
-      setToast({ msg: "Bulk quote requested", type: "ok" });
+      setToast({ msg: paymentsEnabled ? "Bulk quote requested" : "Request sent — DirectHire will contact you about hiring this group", type: "ok" });
       loadGroup();
     } else {
-      setToast({ msg: res.error ?? "Could not request a quote", type: "err" });
+      setToast({ msg: res.error ?? (paymentsEnabled ? "Could not request a quote" : "Could not send the request"), type: "err" });
     }
     setTimeout(() => setToast(null), 3500);
   }
@@ -758,6 +820,8 @@ function WorkersContent() {
 
       <GroupPanel
         members={groupMembers}
+        summary={groupSummary}
+        paymentsEnabled={paymentsEnabled}
         pendingRequest={pendingQuoteRequest}
         latestSentQuote={latestSentQuote}
         requesting={requestingQuote}

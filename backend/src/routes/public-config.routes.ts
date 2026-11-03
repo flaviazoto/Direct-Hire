@@ -6,3 +6,4 @@ import * as ctrl from "../controllers/public-config.controller";
 export const publicConfigRouter = Router();
 
 publicConfigRouter.get("/pricing", ctrl.getPublicPricingConfig);
+publicConfigRouter.get("/stats",   ctrl.getPublicStats);
