@@ -299,3 +299,22 @@ describe("data integrity", () => {
     await assert.rejects(prisma.user.create({ data: { email: user.email.toUpperCase(), passwordHash: "x", role: "WORKER" } }));
   });
 });
+
+describe("file names shown to employers", () => {
+  it("employers see a type label, never the worker's own file name", async () => {
+    const prisma = await db();
+    const worker = await makeWorker({ docsVerified: true });
+    await prisma.upload.create({
+      data: {
+        userId: worker.id, fileType: "PROFILE_PHOTO", fileName: "Wren Hoxha passport scan.png", fileUrl: "/x",
+        filePath: worker.id + "/p", mimeType: "image/png", sizeBytes: 10, status: "UPLOADED", isPrivate: false,
+      },
+    });
+    const { token } = await employerSession();
+    const r = await call("GET", "/api/employer/workers/" + worker.id, { token });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const names = (r.body.data.documents as { file_name: string }[]).map(d => d.file_name);
+    assert.ok(names.includes("Profile photo.png"), JSON.stringify(names));
+    assert.ok(!JSON.stringify(r.body).includes("Hoxha"));
+  });
+});

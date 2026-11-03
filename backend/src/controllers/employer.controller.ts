@@ -13,6 +13,15 @@ import {
   employerCanViewWorker, employerContactReleased, hasRecruitmentRelationship,
 } from "../lib/worker-visibility";
 
+const EMPLOYER_FILE_LABEL: Record<string, string> = {
+  PROFILE_PHOTO: "Profile photo", WORK_VIDEO: "Work video", INTRO_VIDEO: "Introduction video",
+};
+function employerFileLabel(fileType: string, fileName: string): string {
+  const ext = /\.([a-z0-9]{1,5})$/i.exec(fileName)?.[1]?.toLowerCase();
+  const label = EMPLOYER_FILE_LABEL[fileType] ?? "Document";
+  return ext ? `${label}.${ext}` : label;
+}
+
 // Job CRUD is handled by employer-jobs.controller.ts
 
 // GET /api/employer/workers  (replaces /candidates) — approved, searchable workers only
@@ -236,7 +245,9 @@ export async function getWorkerDetail(req: Request, res: Response, next: NextFun
           return {
             id:            u.id,
             file_type:     u.fileType,
-            file_name:     u.fileName,
+            // The original file name can carry personal details; employers
+            // get a type label. Owner and admins still see the real name.
+            file_name:     employerFileLabel(u.fileType, u.fileName),
             file_url:      fileUrl,
             uploaded_at:   u.uploadedAt,
             review_status: u.reviewStatus,

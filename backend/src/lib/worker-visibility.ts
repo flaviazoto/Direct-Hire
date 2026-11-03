@@ -46,6 +46,30 @@ export async function employerCanViewWorker(employerId: string, workerId: string
   return active > 0 && hasRecruitmentRelationship(employerId, workerId);
 }
 
+/** Batched employerCanViewWorker: which of these workers may this employer see? */
+export async function employerVisibleWorkerIds(employerId: string, workerIds: string[]): Promise<Set<string>> {
+  if (workerIds.length === 0) return new Set();
+  const [discoverable, active, applications, locks] = await Promise.all([
+    prisma.user.findMany({ where: { ...DISCOVERABLE_WORKER_WHERE, id: { in: workerIds } }, select: { id: true } }),
+    prisma.user.findMany({
+      where: { id: { in: workerIds }, role: "WORKER", status: "ACTIVE", accountStatus: { not: "SUSPENDED" } },
+      select: { id: true },
+    }),
+    prisma.application.findMany({
+      where: { employerId, workerId: { in: workerIds }, status: { not: "WITHDRAWN" } },
+      select: { workerId: true },
+    }),
+    prisma.workerLock.findMany({
+      where: { employerId, workerId: { in: workerIds }, lockStatus: "ACTIVE" },
+      select: { workerId: true },
+    }),
+  ]);
+  const visible = new Set(discoverable.map(u => u.id));
+  const activeIds = new Set(active.map(u => u.id));
+  for (const r of [...applications, ...locks]) if (activeIds.has(r.workerId)) visible.add(r.workerId);
+  return visible;
+}
+
 /** Has the hiring process released the worker's contact details to this employer? */
 export async function employerContactReleased(employerId: string, workerId: string): Promise<boolean> {
   const cleared = await prisma.application.count({

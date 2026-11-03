@@ -9,7 +9,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { ok, err } from "../lib/response";
-import { employerCanViewWorker } from "../lib/worker-visibility";
+import { employerCanViewWorker, employerVisibleWorkerIds } from "../lib/worker-visibility";
 
 const MEMBER_INCLUDE = {
   worker: {
@@ -100,9 +100,16 @@ export async function getMyGroup(req: Request, res: Response, next: NextFunction
     });
 
     if (!group) return ok(res, { group: null, members: [], memberCount: 0, bulkQuoteRequests: [], summary: await summarizeGroup(employerId, []) });
+
+    // A member who has since hidden their profile or been suspended (and has
+    // no recruitment relationship with this employer) is left out of both the
+    // list and the summary — same rule as opening their profile.
+    const visible = await employerVisibleWorkerIds(employerId, group.members.map(m => m.workerId));
+    const members = group.members.filter(m => visible.has(m.workerId));
+    const { members: _all, ...groupFields } = group;
     return ok(res, {
-      group, members: group.members, memberCount: group.members.length, bulkQuoteRequests: group.bulkQuoteRequests,
-      summary: await summarizeGroup(employerId, group.members),
+      group: groupFields, members, memberCount: members.length, bulkQuoteRequests: group.bulkQuoteRequests,
+      summary: await summarizeGroup(employerId, members),
     });
   } catch (e) { next(e); }
 }

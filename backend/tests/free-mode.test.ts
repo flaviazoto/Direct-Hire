@@ -241,3 +241,23 @@ describe("public platform stats", () => {
     assert.equal(d.liveJobs, await prisma.jobPost.count({ where: { status: "APPROVED" } }));
   });
 });
+
+describe("worker group visibility", () => {
+  it("a member who hides their profile drops out of the list and the summary", async () => {
+    const prisma = await db();
+    const { token } = await freeEmployer();
+    const a = await discoverableWorker();
+    const b = await discoverableWorker();
+    for (const w of [a, b]) {
+      await call("POST", "/api/employer/worker-groups/members", { token, body: { workerId: w.id } });
+    }
+    assert.equal((await call("GET", "/api/employer/worker-groups/me", { token })).body.data.summary.memberCount, 2);
+
+    await prisma.workerProfile.update({ where: { userId: b.id }, data: { isSearchable: false } });
+    const res = await call("GET", "/api/employer/worker-groups/me", { token });
+    assert.equal(res.body.data.memberCount, 1);
+    assert.equal(res.body.data.summary.memberCount, 1);
+    assert.deepEqual(res.body.data.members.map((m: { workerId: string }) => m.workerId), [a.id]);
+    assert.ok(!("members" in res.body.data.group));
+  });
+});
